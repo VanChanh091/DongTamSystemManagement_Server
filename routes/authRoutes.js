@@ -3,16 +3,16 @@ import {
   changePassword,
   login,
   register,
-  verifyOTP,
-  handleSendEmail,
+  verifyOTPChangePassword,
+  getOtpCode,
 } from "../controller/authController.js";
 
 const authRoutes = Router();
 
 authRoutes.post("/login", login);
 authRoutes.post("/register", register);
-authRoutes.post("/handleSendEmail", handleSendEmail);
-authRoutes.post("/verifyOTP", verifyOTP);
+authRoutes.post("/getOtpCode", getOtpCode);
+authRoutes.post("/verifyOTPChangePassword", verifyOTPChangePassword);
 authRoutes.post("/changePassword", changePassword);
 
 export default authRoutes;

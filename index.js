@@ -2,11 +2,13 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 
-// import authRoutes from "./routes/authRoutes";
 import { connectDB, sequelize } from "./configs/connectDB.js";
-import errorMiddleHandle from "./middlewares/errorMiddleWare.js";
+import errorMiddlewareHandle from "./middlewares/errorMiddleWare.js";
 
+//create table
 import "./models/index.js";
+
+// import routes
 import authRoutes from "./routes/authRoutes.js";
 
 const app = express();
@@ -24,7 +26,7 @@ sequelize
   .then(() => console.log("✅ Database & tables synchronized"))
   .catch((err) => console.error("❌ Error syncing database:", err));
 
-app.use(errorMiddleHandle);
+app.use(errorMiddlewareHandle);
 
 app.listen(port, (err) => {
   if (err) {
