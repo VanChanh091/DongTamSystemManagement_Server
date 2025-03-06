@@ -30,7 +30,11 @@ const User = sequelize.define(
     },
     role: {
       type: DataTypes.STRING,
-      allowNull: false,
+    },
+    avatar: {
+      type: DataTypes.STRING,
+      defaultValue:
+        "https://static.vecteezy.com/system/resources/previews/024/983/914/original/simple-user-default-icon-free-png.png",
     },
   },
   { timestamps: true }

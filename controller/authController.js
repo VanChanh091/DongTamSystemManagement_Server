@@ -11,7 +11,7 @@ const redis = new Redis();
 
 const generateJWT = (userId) => {
   return jwt.sign({ id: userId }, process.env.SECRET_KEY, {
-    expiresIn: "7d",
+    expiresIn: "1d",
   });
 };
 
@@ -48,7 +48,7 @@ const checkExistAndMatchOtp = asyncHandler(async (email, res, otpInput) => {
   // check OTP has existing
   const redisUser = await redis.get(`user:${email}`);
   if (!redisUser) {
-    return res.status(404).json({ message: "OTP đã hết hạn" });
+    return res.status(401).json({ message: "OTP đã hết hạn" });
   }
   const { otp } = JSON.parse(redisUser);
   if (parseInt(otpInput) !== otp) {
@@ -87,7 +87,7 @@ export const register = asyncHandler(async (req, res) => {
   // delete user from redis
   await redis.del(`user:${email}`);
 
-  return res.status(200).json({ message: "Xác thực thành công!" });
+  return res.status(201).json({ message: "Xác thực thành công!" });
 });
 
 export const login = asyncHandler(async (req, res) => {
@@ -126,7 +126,7 @@ export const verifyOTPChangePassword = asyncHandler(async (req, res) => {
 
   checkExistAndMatchOtp(email, res, otpInput);
 
-  return res.status(200).json({ message: "Xác thực thành công!" });
+  return res.status(201).json({ message: "Xác thực thành công!" });
 });
 
 export const changePassword = asyncHandler(async (req, res) => {
