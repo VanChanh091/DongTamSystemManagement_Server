@@ -10,6 +10,7 @@ import "./models/index.js";
 
 // import routes
 import authRoutes from "./routes/authRoutes.js";
+import customerRoutes from "./routes/customerRoutes.js";
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/auth", authRoutes);
+app.use("/api/customer", customerRoutes);
 
 sequelize
   .sync({ alter: true })
