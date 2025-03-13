@@ -24,7 +24,7 @@ app.use("/auth", authRoutes);
 app.use("/api/customer", customerRoutes);
 
 sequelize
-  .sync({ alter: true })
+  .sync()
   .then(() => console.log("✅ Database & tables synchronized"))
   .catch((err) => console.error("❌ Error syncing database:", err));
 

@@ -17,41 +17,44 @@ export const getAllCustomer = async (req, res) => {
 // get by id
 export const getById = async (req, res) => {
   const { id } = req.params;
+
   try {
-    const customer = await Customer.findOne({
-      where: where(fn("LOWER", col("customerId")), id.toLowerCase()),
+    const customer = await Customer.findAll({
+      where: where(fn("LOWER", col("customerId")), {
+        [Op.like]: `%${id.toLowerCase()}%`,
+      }),
     });
+
     if (!customer) {
-      return res.status(401).json({ message: "customerId not found" });
+      return res.status(404).json({ message: "Customer not found" });
     }
 
-    res.status(201).json({
-      message: "get customer successfully",
-      customer: customer || {},
+    res.status(200).json({ customer });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to get customer",
+      error: error.message,
     });
-  } catch (e) {
-    res.status(404).json({ message: "get customer failed" });
   }
 };
 
 // get by name
 export const getByName = async (req, res) => {
   const { name } = req.params;
+
   try {
-    const customer = await Customer.findOne({
-      where: where(fn("LOWER", col("customerName")), name.toLowerCase()),
+    const customer = await Customer.findAll({
+      where: where(fn("LOWER", col("customerName")), {
+        [Op.like]: `%${name.toLowerCase()}%`,
+      }),
     });
 
-    if (!customer) {
-      return res.status(404).json({ message: "customerName not found" });
-    }
-
-    res.status(201).json({
-      message: "get customer successfully",
-      customer: customer || {},
+    res.status(200).json({ customer });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to get customers by name",
+      error: error.message,
     });
-  } catch (e) {
-    res.status(404).json({ message: "get customer failed" });
   }
 };
 
