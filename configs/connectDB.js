@@ -1,12 +1,19 @@
 import { Sequelize } from "sequelize";
+import dotenv from "dotenv";
+dotenv.config();
 
 // Khởi tạo Sequelize với thông tin kết nối MySQL
-const sequelize = new Sequelize("DongTam", "root", "dongtam123", {
-  host: "localhost",
-  dialect: "mysql",
-  port: 3306,
-  logging: false,
-});
+const sequelize = new Sequelize(
+  "DongTam",
+  process.env.USER,
+  process.env.PASSWORD,
+  {
+    host: "localhost",
+    dialect: "mysql",
+    port: 3306,
+    logging: false,
+  }
+);
 
 const connectDB = async () => {
   try {

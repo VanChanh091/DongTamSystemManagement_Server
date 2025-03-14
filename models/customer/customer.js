@@ -1,5 +1,5 @@
-import { DataTypes, Op } from "sequelize";
-import { sequelize } from "../configs/connectDB.js";
+import { DataTypes } from "sequelize";
+import { sequelize } from "../../configs/connectDB.js";
 
 const Customer = sequelize.define(
   "Customer",
@@ -28,5 +28,9 @@ const Customer = sequelize.define(
   },
   { timestamps: true }
 );
+
+Customer.associations = (model) => {
+  Customer.hasMany(model.Order, { foreignKey: "customerId" });
+};
 
 export default Customer;
