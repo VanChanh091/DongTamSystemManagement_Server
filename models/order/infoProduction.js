@@ -29,7 +29,7 @@ const InfoProduction = sequelize.define(
       type: DataTypes.ENUM("1", "2", "3", "4", "5"),
       allowNull: false,
     },
-    te_Bien: {
+    teBien: {
       type: DataTypes.ENUM(
         "Cấn lằn",
         "Tề biên",
@@ -47,9 +47,5 @@ const InfoProduction = sequelize.define(
   },
   { timestamps: true }
 );
-
-InfoProduction.associations = (model) => {
-  InfoProduction.hasOne(model.Order, { foreignKey: "infoProductionId" });
-};
 
 export default InfoProduction;

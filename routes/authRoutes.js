@@ -1,11 +1,11 @@
 import Router from "express";
 import {
   changePassword,
+  getOtpCode,
   login,
   register,
   verifyOTPChangePassword,
-  getOtpCode,
-} from "../controller/authController.js";
+} from "../controller/auth/authController.js";
 
 const authRoutes = Router();
 

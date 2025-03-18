@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-import Customer from "../models/customer/customer.js";
+import Customer from "../../models/customer/customer.js";
 import { Op, fn, col, where } from "sequelize";
 
 const redisClient = new Redis();

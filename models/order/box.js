@@ -46,8 +46,4 @@ const Box = sequelize.define(
   { timestamps: true }
 );
 
-Box.associations = (model) => {
-  Box.hasOne(model.Order, { foreignKey: "orderId" });
-};
-
 export default Box;

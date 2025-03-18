@@ -1,9 +1,9 @@
 import asyncHandler from "express-async-handler";
-import User from "../models/user/user.js";
+import User from "../../models/user/user.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import Redis from "ioredis";
-import sendEmail from "../utils/sendMail.js";
+import sendEmail from "../../utils/sendMail.js";
 import dotenv from "dotenv";
 dotenv.config();
 

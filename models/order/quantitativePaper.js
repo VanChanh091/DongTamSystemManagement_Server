@@ -41,8 +41,4 @@ const QuantitativePaper = sequelize.define(
   { timestamps: true }
 );
 
-QuantitativePaper.associations = (model) => {
-  QuantitativePaper.hasOne(model.Order, { foreignKey: "quantitativePaperId" });
-};
-
 export default QuantitativePaper;
