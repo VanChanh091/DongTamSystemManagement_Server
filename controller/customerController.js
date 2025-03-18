@@ -7,7 +7,20 @@ const redisClient = new Redis();
 // get all
 export const getAllCustomer = async (req, res) => {
   try {
+    const cacheKey = "customers:all";
+    const cachedData = await redisClient.get(cacheKey);
+    if (cachedData) {
+      console.log("✅ Dữ liệu từ Redis");
+      return res.status(200).json({
+        message: "Get all customers from cache",
+        data: JSON.parse(cachedData),
+      });
+    }
+
     const data = await Customer.findAll();
+
+    //save in 2h
+    await redisClient.set(cacheKey, JSON.stringify(data), "EX", 7200);
     res.status(201).json({ message: "get all customers successfully", data });
   } catch (e) {
     res.status(404).json({ message: "get all customers failed" });
@@ -85,12 +98,14 @@ export const createCustomer = async (req, res) => {
     }
 
     const formattedNumber = String(newNumber).padStart(3, "0");
-    const customerId = `${prefix}${formattedNumber}`;
+    const newCustomerId = `${prefix}${formattedNumber}`;
 
     const newCustomer = await Customer.create({
-      customerId,
+      customerId: newCustomerId,
       ...customerData,
     });
+
+    await redisClient.del("customers:all");
 
     res.status(201).json(newCustomer);
   } catch (error) {
@@ -110,6 +125,8 @@ export const updateCustomer = async (req, res) => {
     }
 
     await customer.update(customerData);
+
+    await redisClient.del("customers:all");
 
     res.status(201).json({
       message: "Customer updated successfully",
@@ -135,11 +152,10 @@ export const deleteCustomer = async (req, res) => {
       return res.status(404).json({ message: "Customer deleted failed" });
     }
 
+    await redisClient.del("customers:all");
+
     res.status(201).json({ message: "Customer deleted successfully" });
   } catch (error) {
     res.status(404).json({ error: error.message });
   }
 };
-
-// renew
-// export const renewCustomer = async (req, res) => {};

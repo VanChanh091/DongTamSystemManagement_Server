@@ -18,30 +18,8 @@ const Order = sequelize.define(
       allowNull: false,
       defaultValue: DataTypes.DATE,
     },
-    song: {
-      type: DataTypes.ENUM(
-        "1N",
-        "2B",
-        "2C",
-        "2E",
-        "3B",
-        "3C",
-        "3E",
-        "4BC",
-        "4BE",
-        "4CE",
-        "4EE",
-        "5BC",
-        "5BE",
-        "5CE",
-        "5EE",
-        "6BCE",
-        "7BCE",
-        "7CBC",
-        "A",
-        "CBC",
-        "Giấy cuộn"
-      ),
+    songId: {
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
     productName: {
@@ -120,6 +98,7 @@ Order.associations = (model) => {
     foreignKey: "quantitativePaperId",
   });
   Order.belongsTo(model.Box, { foreignKey: "boxId" });
+  Order.belongsTo(model.Song, { foreignKey: "songId" });
 };
 
 export default Order;

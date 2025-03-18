@@ -26,7 +26,7 @@ const InfoProduction = sequelize.define(
       allowNull: false,
     },
     numberChild: {
-      type: DataTypes.ENUM(1, 2, 3, 4, 5),
+      type: DataTypes.ENUM("1", "2", "3", "4", "5"),
       allowNull: false,
     },
     te_Bien: {
