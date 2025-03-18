@@ -9,6 +9,9 @@ const InfoProduction = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
+    orderId: {
+      type: DataTypes.STRING,
+    },
     structureReplace: {
       type: DataTypes.STRING,
       allowNull: false,

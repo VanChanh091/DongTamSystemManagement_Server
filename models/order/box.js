@@ -9,6 +9,9 @@ const Box = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
+    orderId: {
+      type: DataTypes.STRING,
+    },
     inMatTruoc: {
       type: DataTypes.STRING,
     },
@@ -27,15 +30,15 @@ const Box = sequelize.define(
     be: {
       type: DataTypes.STRING,
     },
-    inMatTruoc: {
-      type: DataTypes.STRING,
-    },
-    inMatTruoc: {
-      type: DataTypes.STRING,
-    },
-    inMatTruoc: {
-      type: DataTypes.STRING,
-    },
+    // inMatTruoc: {
+    //   type: DataTypes.STRING,
+    // },
+    // inMatTruoc: {
+    //   type: DataTypes.STRING,
+    // },
+    // inMatTruoc: {
+    //   type: DataTypes.STRING,
+    // },
     khac_1: {
       type: DataTypes.STRING,
     },
