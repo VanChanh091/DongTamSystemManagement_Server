@@ -9,9 +9,6 @@ const Box = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
-    orderId: {
-      type: DataTypes.STRING,
-    },
     inMatTruoc: {
       type: DataTypes.STRING,
     },

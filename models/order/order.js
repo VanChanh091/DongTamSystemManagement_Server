@@ -9,11 +9,11 @@ const Order = sequelize.define(
       primaryKey: true,
       allowNull: false,
     },
-    customerName: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    companyName: { type: DataTypes.STRING, allowNull: false },
+    // customerName: {
+    //   type: DataTypes.STRING,
+    //   allowNull: false,
+    // },
+    // companyName: { type: DataTypes.STRING, allowNull: false },
     dayReceiveOrder: {
       type: DataTypes.DATE,
       allowNull: false,

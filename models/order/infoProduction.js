@@ -9,9 +9,6 @@ const InfoProduction = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
-    orderId: {
-      type: DataTypes.STRING,
-    },
     structureReplace: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -29,18 +26,11 @@ const InfoProduction = sequelize.define(
       allowNull: false,
     },
     numberChild: {
-      type: DataTypes.ENUM("1", "2", "3", "4", "5"),
+      type: DataTypes.STRING,
       allowNull: false,
     },
     teBien: {
-      type: DataTypes.ENUM(
-        "Cấn lằn",
-        "Tề biên",
-        "Quấn cuộn",
-        "Tề biên cột",
-        "Tề gọn",
-        "Tề đẹp"
-      ),
+      type: DataTypes.STRING,
       allowNull: false,
     },
     nextStep: {

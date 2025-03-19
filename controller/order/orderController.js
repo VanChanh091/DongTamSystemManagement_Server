@@ -5,13 +5,13 @@ import Customer from "../../models/customer/customer.js";
 import InfoProduction from "../../models/order/infoProduction.js";
 import QuantitativePaper from "../../models/order/quantitativePaper.js";
 import Box from "../../models/order/box.js";
-import { receiveMessageOnPort } from "worker_threads";
 
 const redisCache = new Redis();
 
 //get all
 export const getAllOrder = async (req, res) => {
   try {
+    //check cache redis
     const cacheKey = "orders:all";
     const cachedData = await redisCache.get(cacheKey);
     if (cachedData) {
@@ -22,18 +22,18 @@ export const getAllOrder = async (req, res) => {
       });
     }
 
+    //find order
     const orders = await Order.findAll({
       include: [
-        {
-          model: Customer,
-          attributes: ["customerId", "customerName"],
-        },
-        { model: InfoProduction },
-        { model: QuantitativePaper },
-        { model: Box },
+        { model: Customer, attributes: ["customerName", "companyName"] },
+        { model: InfoProduction, as: "infoProduction" },
+        { model: QuantitativePaper, as: "quantitativePaper" },
+        { model: Box, as: "box" },
       ],
+      order: [["createdAt", "DESC"]],
     });
 
+    // save redis cache in 2h
     await redisCache.set(cacheKey, JSON.stringify(orders), "EX", 7200);
     res.status(201).json({ message: "get all orders successfully", orders });
   } catch (error) {
@@ -46,9 +46,15 @@ export const getOrderById = async (req, res) => {
   const { id } = req.params;
   try {
     const order = await Order.findAll({
-      where: where(fn("LOWER", col("orderId")), {
+      where: where(fn("LOWER", col("Order.orderId")), {
         [Op.like]: `%${id.toLowerCase()}%`,
       }),
+      include: [
+        { model: Customer, attributes: ["customerName", "companyName"] },
+        { model: InfoProduction, as: "infoProduction" },
+        { model: QuantitativePaper, as: "quantitativePaper" },
+        { model: Box, as: "box" },
+      ],
     });
 
     if (!order) {
@@ -67,15 +73,15 @@ export const getOrderById = async (req, res) => {
 //add order
 export const addOrder = async (req, res) => {
   const {
-    customerId,
     prefix = "CUSTOM",
+    customerId,
     infoProduction,
     quantitativePaper,
     box,
     ...orderData
   } = req.body;
   try {
-    //check customerId
+    //check customerId exist
     const customer = await Customer.findOne({
       where: { customerId: customerId },
     });
@@ -105,34 +111,16 @@ export const addOrder = async (req, res) => {
     //create order
     const newOrder = await Order.create({
       orderId: newOrderId,
-      customerName: customer.customerName,
-      companyName: customer.companyName,
+      customerId: customerId,
+      // customerName: customer.customerName,
+      // companyName: customer.companyName,
       ...orderData,
     });
 
-    //create info production
-    if (infoProduction) {
-      await InfoProduction.create({
-        orderId: newOrderId,
-        ...infoProduction,
-      });
-    }
-
-    //create quantitative paper
-    if (quantitativePaper) {
-      await QuantitativePaper.create({
-        orderId: newOrderId,
-        ...quantitativePaper,
-      });
-    }
-
-    //create box
-    if (box) {
-      await Box.create({
-        orderId: newOrderId,
-        ...box,
-      });
-    }
+    //create table data
+    await createDataTable(newOrderId, InfoProduction, infoProduction);
+    await createDataTable(newOrderId, QuantitativePaper, quantitativePaper);
+    await createDataTable(newOrderId, Box, box);
 
     //delete redis
     await redisCache.del("orders:all");
@@ -144,10 +132,23 @@ export const addOrder = async (req, res) => {
   }
 };
 
+const createDataTable = async (id, model, data) => {
+  try {
+    if (data) {
+      await model.create({
+        orderId: id,
+        ...data,
+      });
+    }
+  } catch (error) {
+    console.error(`Create table ${model} error:`, error);
+  }
+};
+
 //update order
 export const updateOrder = async (req, res) => {
   const { id } = req.params;
-  const { ...orderData } = req.body;
+  const { infoProduction, quantitativePaper, box, ...orderData } = req.body;
   try {
     const order = await Order.findOne({ where: { orderId: id } });
     if (!order) {
@@ -155,6 +156,10 @@ export const updateOrder = async (req, res) => {
     }
 
     await order.update(orderData);
+
+    await updateChildOrder(id, InfoProduction, infoProduction);
+    await updateChildOrder(id, QuantitativePaper, quantitativePaper);
+    await updateChildOrder(id, Box, box);
 
     await redisCache.del("orders:all");
 
@@ -170,10 +175,25 @@ export const updateOrder = async (req, res) => {
   }
 };
 
+const updateChildOrder = async (id, model, data) => {
+  try {
+    if (data) {
+      const existingData = await model.findOne({ where: { orderId: id } });
+      if (existingData) {
+        await model.update(data, { where: { orderId: id } });
+      } else {
+        await model.create({ orderId: id, ...data });
+      }
+    }
+  } catch (error) {
+    console.error(`Create table ${model} error:`, error);
+  }
+};
+
 //delete order
 export const deleteOrder = async (req, res) => {
+  const { id } = req.params;
   try {
-    const { id } = req.params;
     const deleteOrder = await Order.destroy({
       where: { orderId: id },
     });

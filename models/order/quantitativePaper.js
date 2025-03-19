@@ -9,9 +9,6 @@ const QuantitativePaper = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
-    orderId: {
-      type: DataTypes.STRING,
-    },
     day: {
       type: DataTypes.INTEGER,
       allowNull: false,
