@@ -9,34 +9,20 @@ const InfoProduction = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
-    structureReplace: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    sizePaper: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    quantity: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    instructSpecial: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    numberChild: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    teBien: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    nextStep: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
+    dayReplace: { type: DataTypes.STRING },
+    middle_1Replace: { type: DataTypes.STRING },
+    middle_2Replace: { type: DataTypes.STRING },
+    matReplace: { type: DataTypes.STRING },
+    songE_Replace: { type: DataTypes.STRING },
+    songB_Replace: { type: DataTypes.STRING },
+    songC_Replace: { type: DataTypes.STRING },
+    songE2_Replace: { type: DataTypes.STRING },
+    sizePaper: { type: DataTypes.DOUBLE, allowNull: false },
+    quantity: { type: DataTypes.INTEGER, allowNull: false },
+    instructSpecial: { type: DataTypes.STRING },
+    numberChild: { type: DataTypes.INTEGER, allowNull: false },
+    teBien: { type: DataTypes.STRING, allowNull: false },
+    nextStep: { type: DataTypes.STRING },
   },
   { timestamps: true }
 );

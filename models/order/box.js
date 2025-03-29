@@ -9,39 +9,17 @@ const Box = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
-    inMatTruoc: {
-      type: DataTypes.STRING,
-    },
-    inMatSau: {
-      type: DataTypes.STRING,
-    },
-    canMang: {
-      type: DataTypes.STRING,
-    },
-    Xa: {
-      type: DataTypes.STRING,
-    },
-    catKhe: {
-      type: DataTypes.STRING,
-    },
-    be: {
-      type: DataTypes.STRING,
-    },
-    // inMatTruoc: {
-    //   type: DataTypes.STRING,
-    // },
-    // inMatTruoc: {
-    //   type: DataTypes.STRING,
-    // },
-    // inMatTruoc: {
-    //   type: DataTypes.STRING,
-    // },
-    khac_1: {
-      type: DataTypes.STRING,
-    },
-    khac_2: {
-      type: DataTypes.STRING,
-    },
+    inMatTruoc: { type: DataTypes.INTEGER },
+    inMatSau: { type: DataTypes.INTEGER },
+    canMang: { type: DataTypes.BOOLEAN },
+    Xa: { type: DataTypes.BOOLEAN },
+    catKhe: { type: DataTypes.BOOLEAN },
+    be: { type: DataTypes.BOOLEAN },
+    dan_1_Manh: { type: DataTypes.BOOLEAN },
+    dan_2_Manh: { type: DataTypes.BOOLEAN },
+    dongGhim: { type: DataTypes.BOOLEAN },
+    khac_1: { type: DataTypes.STRING },
+    khac_2: { type: DataTypes.STRING },
   },
   { timestamps: true }
 );

@@ -10,6 +10,8 @@ const redisCache = new Redis();
 
 //get all
 export const getAllOrder = async (req, res) => {
+  const { customerId } = req.query;
+
   try {
     //check cache redis
     const cacheKey = "orders:all";
@@ -25,9 +27,12 @@ export const getAllOrder = async (req, res) => {
     //find order
     const orders = await Order.findAll({
       include: [
-        { model: Customer, attributes: ["customerName", "companyName"] },
+        {
+          model: Customer,
+          attributes: ["customerName", "companyName"],
+        },
         { model: InfoProduction, as: "infoProduction" },
-        { model: QuantitativePaper, as: "quantitativePaper" },
+        // { model: QuantitativePaper, as: "quantitativePaper" },
         { model: Box, as: "box" },
       ],
       order: [["createdAt", "DESC"]],
@@ -45,7 +50,7 @@ export const getAllOrder = async (req, res) => {
 export const getOrderById = async (req, res) => {
   const { id } = req.params;
   try {
-    const order = await Order.findAll({
+    const orders = await Order.findAll({
       where: where(fn("LOWER", col("Order.orderId")), {
         [Op.like]: `%${id.toLowerCase()}%`,
       }),
@@ -57,11 +62,11 @@ export const getOrderById = async (req, res) => {
       ],
     });
 
-    if (!order) {
+    if (!orders) {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    res.status(200).json({ order });
+    res.status(200).json({ orders });
   } catch (err) {
     res.status(500).json({
       message: "Failed to get order",
@@ -112,14 +117,13 @@ export const addOrder = async (req, res) => {
     const newOrder = await Order.create({
       orderId: newOrderId,
       customerId: customerId,
-      // customerName: customer.customerName,
-      // companyName: customer.companyName,
+
       ...orderData,
     });
 
     //create table data
     await createDataTable(newOrderId, InfoProduction, infoProduction);
-    await createDataTable(newOrderId, QuantitativePaper, quantitativePaper);
+    // await createDataTable(newOrderId, QuantitativePaper, quantitativePaper);
     await createDataTable(newOrderId, Box, box);
 
     //delete redis

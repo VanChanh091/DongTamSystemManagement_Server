@@ -9,80 +9,35 @@ const Order = sequelize.define(
       primaryKey: true,
       allowNull: false,
     },
-    // customerName: {
-    //   type: DataTypes.STRING,
-    //   allowNull: false,
-    // },
-    // companyName: { type: DataTypes.STRING, allowNull: false },
     dayReceiveOrder: {
       type: DataTypes.DATE,
       allowNull: false,
-      defaultValue: DataTypes.DATE,
     },
-    song: {
+    song: { type: DataTypes.STRING, allowNull: false },
+    typeProduct: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    productName: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    QC_box: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    structure: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    // lengthPaper: {
-    //   type: DataTypes.DOUBLE,
-    //   allowNull: false,
-    // },
-    // paperSize: {
-    //   type: DataTypes.DOUBLE,
-    //   allowNull: false,
-    // },
-    // quantity: {
-    //   type: DataTypes.INTEGER,
-    //   allowNull: false,
-    // },
-    // acreage: {
-    //   type: DataTypes.STRING,
-    //   allowNull: false,
-    // },
-    // price: {
-    //   type: DataTypes.DOUBLE,
-    //   allowNull: false,
-    // },
-    // pricePaper: {
-    //   type: DataTypes.DOUBLE,
-    //   allowNull: false,
-    // },
-    // dateRequestShipping: {
-    //   type: DataTypes.DATE,
-    //   allowNull: false,
-    //   defaultValue: DataTypes.DATE,
-    // },
-    // quantitativePaperId: {
-    //   type: DataTypes.INTEGER,
-    //   allowNull: false,
-    // },
-    // infoProductionId: {
-    //   type: DataTypes.INTEGER,
-    //   allowNull: false,
-    // },
-    vat: {
-      type: DataTypes.DOUBLE,
-      allowNull: false,
-    },
-    // boxId: {
-    //   type: DataTypes.INTEGER,
-    //   allowNull: false,
-    // },
-    totalPrice: {
-      type: DataTypes.DOUBLE,
-    },
+    productName: { type: DataTypes.STRING, allowNull: false },
+    QC_box: { type: DataTypes.STRING, allowNull: false },
+    day: { type: DataTypes.STRING },
+    middle_1: { type: DataTypes.STRING },
+    middle_2: { type: DataTypes.STRING },
+    mat: { type: DataTypes.STRING },
+    songE: { type: DataTypes.STRING },
+    songB: { type: DataTypes.STRING },
+    songC: { type: DataTypes.STRING },
+    songE2: { type: DataTypes.STRING },
+    lengthPaper: { type: DataTypes.DOUBLE, allowNull: false },
+    paperSize: { type: DataTypes.DOUBLE, allowNull: false },
+    quantity: { type: DataTypes.INTEGER, allowNull: false },
+    acreage: { type: DataTypes.DOUBLE, allowNull: false },
+    dvt: { type: DataTypes.STRING, allowNull: false },
+    price: { type: DataTypes.DOUBLE, allowNull: false },
+    pricePaper: { type: DataTypes.DOUBLE, allowNull: false },
+    dateRequestShipping: { type: DataTypes.DATE, allowNull: false },
+    totalPrice: { type: DataTypes.DOUBLE },
+    vat: { type: DataTypes.DOUBLE },
   },
   { timestamps: true }
 );
