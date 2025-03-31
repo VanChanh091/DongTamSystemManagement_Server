@@ -13,13 +13,13 @@ const Order = sequelize.define(
       type: DataTypes.DATE,
       allowNull: false,
     },
-    song: { type: DataTypes.STRING, allowNull: false },
+
     typeProduct: {
       type: DataTypes.STRING,
-      allowNull: false,
     },
-    productName: { type: DataTypes.STRING, allowNull: false },
-    QC_box: { type: DataTypes.STRING, allowNull: false },
+    song: { type: DataTypes.STRING },
+    productName: { type: DataTypes.STRING },
+    QC_box: { type: DataTypes.STRING },
     day: { type: DataTypes.STRING },
     middle_1: { type: DataTypes.STRING },
     middle_2: { type: DataTypes.STRING },

@@ -14,6 +14,6 @@ router.get("/", errorMiddleWare, getAllOrder);
 router.get("/:id", errorMiddleWare, getOrderById);
 router.post("/", errorMiddleWare, addOrder);
 router.put("/:id", errorMiddleWare, updateOrder);
-router.delete("/:id", errorMiddleWare, deleteOrder);
+router.delete("/orders", errorMiddleWare, deleteOrder);
 
 export default router;

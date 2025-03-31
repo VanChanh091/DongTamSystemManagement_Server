@@ -32,7 +32,6 @@ export const getAllOrder = async (req, res) => {
           attributes: ["customerName", "companyName"],
         },
         { model: InfoProduction, as: "infoProduction" },
-        // { model: QuantitativePaper, as: "quantitativePaper" },
         { model: Box, as: "box" },
       ],
       order: [["createdAt", "DESC"]],
@@ -196,7 +195,7 @@ const updateChildOrder = async (id, model, data) => {
 
 //delete order
 export const deleteOrder = async (req, res) => {
-  const { id } = req.params;
+  const { id } = req.query;
   try {
     const deleteOrder = await Order.destroy({
       where: { orderId: id },
