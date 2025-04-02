@@ -10,21 +10,18 @@ const redisCache = new Redis();
 
 //get all
 export const getAllOrder = async (req, res) => {
-  const { customerId } = req.query;
-
   try {
-    //check cache redis
+    // Kiểm tra cache Redis
     const cacheKey = "orders:all";
     const cachedData = await redisCache.get(cacheKey);
     if (cachedData) {
       console.log("✅ Dữ liệu từ Redis");
       return res.status(200).json({
-        message: "Get all order from cache",
+        message: "Get all orders from cache",
         data: JSON.parse(cachedData),
       });
     }
 
-    //find order
     const orders = await Order.findAll({
       include: [
         {
@@ -37,39 +34,141 @@ export const getAllOrder = async (req, res) => {
       order: [["createdAt", "DESC"]],
     });
 
-    // save redis cache in 2h
-    await redisCache.set(cacheKey, JSON.stringify(orders), "EX", 7200);
-    res.status(201).json({ message: "get all orders successfully", orders });
+    // save data in redis in 2h
+    await redisCache.set(cacheKey, JSON.stringify(orders));
+    await redisCache.expire(cacheKey, 7200);
+
+    return res
+      .status(200)
+      .json({ message: "Get all orders successfully", orders });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("❌ Lỗi:", error);
+    return res.status(500).json({ message: error.message });
   }
 };
 
-//get by id
-export const getOrderById = async (req, res) => {
-  const { id } = req.params;
+//get by customer name
+export const getOrderByCustomerName = async (req, res) => {
+  const { name } = req.query;
+
   try {
+    const customer = await Customer.findOne({
+      where: { customerName: name.toLowerCase() },
+    });
+    if (!customer) {
+      return res.status(404).json({ message: "Không tìm thấy khách hàng" });
+    }
+
     const orders = await Order.findAll({
-      where: where(fn("LOWER", col("Order.orderId")), {
-        [Op.like]: `%${id.toLowerCase()}%`,
-      }),
-      include: [
-        { model: Customer, attributes: ["customerName", "companyName"] },
-        { model: InfoProduction, as: "infoProduction" },
-        { model: QuantitativePaper, as: "quantitativePaper" },
-        { model: Box, as: "box" },
-      ],
+      where: { customerId: customer.customerId },
+      order: [["createdAt", "DESC"]],
     });
 
     if (!orders) {
-      return res.status(404).json({ message: "Order not found" });
+      return res.status(404).json({ message: "Orders not found" });
     }
 
     res.status(200).json({ orders });
-  } catch (err) {
+  } catch (error) {
     res.status(500).json({
-      message: "Failed to get order",
-      error: err.message,
+      message: "Failed to get customers by name",
+      error: error.message,
+    });
+  }
+};
+
+//get by product name
+export const getOrderByProductName = async (req, res) => {
+  const { name } = req.query;
+
+  try {
+    const orders = await Order.findAll({
+      where: where(fn("LOWER", col("productName")), {
+        [Op.like]: `%${name.toLowerCase()}%`,
+      }),
+      order: [["createdAt", "DESC"]],
+    });
+
+    if (!orders) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    res.status(200).json({ orders });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to get customers by name",
+      error: error.message,
+    });
+  }
+};
+
+//get by type product
+export const getOrderByTypeProduct = async (req, res) => {
+  const { type } = req.query;
+  try {
+    const orders = await Order.findAll({
+      where: where(fn("LOWER", col("typeProduct")), {
+        [Op.like]: `%${type.toLowerCase()}%`,
+      }),
+      order: [["createdAt", "DESC"]],
+    });
+
+    if (!orders) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    res.status(200).json({ orders });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to get customers by name",
+      error: error.message,
+    });
+  }
+};
+
+//get by QC box
+export const getOrderByQcBox = async (req, res) => {
+  const { QcBox } = req.query;
+  try {
+    const orders = await Order.findAll({
+      where: where(fn("LOWER", col("QC_box")), {
+        [Op.like]: `%${QcBox.toLowerCase()}%`,
+      }),
+      order: [["createdAt", "DESC"]],
+    });
+
+    if (!orders) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    res.status(200).json({ orders });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to get customers by name",
+      error: error.message,
+    });
+  }
+};
+//get by price
+export const getOrderByPrice = async (req, res) => {
+  const { price } = req.query;
+  try {
+    const orders = await Order.findAll({
+      where: where(fn("LOWER", col("price")), {
+        [Op.like]: `%${price.toLowerCase()}%`,
+      }),
+      order: [["createdAt", "DESC"]],
+    });
+
+    if (!orders) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    res.status(200).json({ orders });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to get customers by name",
+      error: error.message,
     });
   }
 };
@@ -150,7 +249,7 @@ const createDataTable = async (id, model, data) => {
 
 //update order
 export const updateOrder = async (req, res) => {
-  const { id } = req.params;
+  const { id } = req.query;
   const { infoProduction, quantitativePaper, box, ...orderData } = req.body;
   try {
     const order = await Order.findOne({ where: { orderId: id } });

@@ -4,16 +4,22 @@ import {
   addOrder,
   deleteOrder,
   getAllOrder,
-  getOrderById,
+  getOrderByCustomerName,
+  getOrderByProductName,
+  getOrderByQcBox,
+  getOrderByTypeProduct,
   updateOrder,
 } from "../controller/order/orderController.js";
 
 const router = Router();
 
 router.get("/", errorMiddleWare, getAllOrder);
-router.get("/:id", errorMiddleWare, getOrderById);
+router.get("/customerName", errorMiddleWare, getOrderByCustomerName);
+router.get("/productName", errorMiddleWare, getOrderByProductName);
+router.get("/typeProduct", errorMiddleWare, getOrderByTypeProduct);
+router.get("/qcBox", errorMiddleWare, getOrderByQcBox);
 router.post("/", errorMiddleWare, addOrder);
-router.put("/:id", errorMiddleWare, updateOrder);
+router.put("/orders", errorMiddleWare, updateOrder);
 router.delete("/orders", errorMiddleWare, deleteOrder);
 
 export default router;
