@@ -1,6 +1,5 @@
 import { DataTypes } from "sequelize";
 import { sequelize } from "../../configs/connectDB.js";
-import Order from "../order/order.js";
 
 const Customer = sequelize.define(
   "Customer",

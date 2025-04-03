@@ -22,7 +22,7 @@ export const getAllOrder = async (req, res) => {
       });
     }
 
-    const orders = await Order.findAll({
+    const data = await Order.findAll({
       include: [
         {
           model: Customer,
@@ -35,12 +35,11 @@ export const getAllOrder = async (req, res) => {
     });
 
     // save data in redis in 2h
-    await redisCache.set(cacheKey, JSON.stringify(orders));
-    await redisCache.expire(cacheKey, 7200);
+    await redisCache.set(cacheKey, JSON.stringify(data), "EX", 7200);
 
     return res
-      .status(200)
-      .json({ message: "Get all orders successfully", orders });
+      .status(201)
+      .json({ message: "Get all orders successfully", data });
   } catch (error) {
     console.error("❌ Lỗi:", error);
     return res.status(500).json({ message: error.message });
@@ -52,15 +51,27 @@ export const getOrderByCustomerName = async (req, res) => {
   const { name } = req.query;
 
   try {
-    const customer = await Customer.findOne({
-      where: { customerName: name.toLowerCase() },
+    const customers = await Customer.findAll({
+      where: { customerName: { [Op.like]: `%${name.toLowerCase()}%` } },
+      attributes: ["customerId", "customerName", "companyName"],
     });
-    if (!customer) {
+
+    if (!customers) {
       return res.status(404).json({ message: "Không tìm thấy khách hàng" });
     }
 
+    const customerIds = customers.map((customer) => customer.customerId);
+
     const orders = await Order.findAll({
-      where: { customerId: customer.customerId },
+      where: { customerId: { [Op.in]: customerIds } },
+      include: [
+        {
+          model: Customer,
+          attributes: ["customerName", "companyName"],
+        },
+        { model: InfoProduction, as: "infoProduction" },
+        { model: Box, as: "box" },
+      ],
       order: [["createdAt", "DESC"]],
     });
 
@@ -86,6 +97,14 @@ export const getOrderByProductName = async (req, res) => {
       where: where(fn("LOWER", col("productName")), {
         [Op.like]: `%${name.toLowerCase()}%`,
       }),
+      include: [
+        {
+          model: Customer,
+          attributes: ["customerName", "companyName"],
+        },
+        { model: InfoProduction, as: "infoProduction" },
+        { model: Box, as: "box" },
+      ],
       order: [["createdAt", "DESC"]],
     });
 
@@ -110,6 +129,14 @@ export const getOrderByTypeProduct = async (req, res) => {
       where: where(fn("LOWER", col("typeProduct")), {
         [Op.like]: `%${type.toLowerCase()}%`,
       }),
+      include: [
+        {
+          model: Customer,
+          attributes: ["customerName", "companyName"],
+        },
+        { model: InfoProduction, as: "infoProduction" },
+        { model: Box, as: "box" },
+      ],
       order: [["createdAt", "DESC"]],
     });
 
@@ -134,6 +161,14 @@ export const getOrderByQcBox = async (req, res) => {
       where: where(fn("LOWER", col("QC_box")), {
         [Op.like]: `%${QcBox.toLowerCase()}%`,
       }),
+      include: [
+        {
+          model: Customer,
+          attributes: ["customerName", "companyName"],
+        },
+        { model: InfoProduction, as: "infoProduction" },
+        { model: Box, as: "box" },
+      ],
       order: [["createdAt", "DESC"]],
     });
 
@@ -149,14 +184,25 @@ export const getOrderByQcBox = async (req, res) => {
     });
   }
 };
+
 //get by price
 export const getOrderByPrice = async (req, res) => {
   const { price } = req.query;
   try {
     const orders = await Order.findAll({
-      where: where(fn("LOWER", col("price")), {
-        [Op.like]: `%${price.toLowerCase()}%`,
-      }),
+      where: {
+        price: {
+          [Op.eq]: price,
+        },
+      },
+      include: [
+        {
+          model: Customer,
+          attributes: ["customerName", "companyName"],
+        },
+        { model: InfoProduction, as: "infoProduction" },
+        { model: Box, as: "box" },
+      ],
       order: [["createdAt", "DESC"]],
     });
 
@@ -184,6 +230,8 @@ export const addOrder = async (req, res) => {
     ...orderData
   } = req.body;
   try {
+    const sanitizedPrefix = prefix.trim().replace(/\s+/g, "");
+
     //check customerId exist
     const customer = await Customer.findOne({
       where: { customerId: customerId },
@@ -196,33 +244,40 @@ export const addOrder = async (req, res) => {
     const lastOrderId = await Order.findOne({
       where: {
         orderId: {
-          [Op.like]: `${prefix}%`,
+          [Op.startsWith]: `${sanitizedPrefix}%`,
         },
       },
       order: [["orderId", "DESC"]],
     });
+
     let newNumber = 1;
     if (lastOrderId && lastOrderId.orderId) {
-      const lastNumber = parseInt(lastOrderId.orderId.slice(prefix.length), 10);
+      const lastNumber = parseInt(
+        lastOrderId.orderId.slice(sanitizedPrefix.length),
+        10
+      );
       if (!isNaN(lastNumber)) {
         newNumber = lastNumber + 1;
       }
     }
     const formattedNumber = String(newNumber).padStart(3, "0");
-    const newOrderId = `${prefix}${formattedNumber}`;
+    const newOrderId = `${sanitizedPrefix}${formattedNumber}`;
 
     //create order
     const newOrder = await Order.create({
       orderId: newOrderId,
       customerId: customerId,
-
       ...orderData,
     });
 
     //create table data
-    await createDataTable(newOrderId, InfoProduction, infoProduction);
-    // await createDataTable(newOrderId, QuantitativePaper, quantitativePaper);
-    await createDataTable(newOrderId, Box, box);
+    try {
+      await createDataTable(newOrderId, InfoProduction, infoProduction);
+      await createDataTable(newOrderId, Box, box);
+    } catch (error) {
+      console.error("Error creating related data:", error);
+      return res.status(500).json({ message: "Failed to create related data" });
+    }
 
     //delete redis
     await redisCache.del("orders:all");
@@ -244,6 +299,7 @@ const createDataTable = async (id, model, data) => {
     }
   } catch (error) {
     console.error(`Create table ${model} error:`, error);
+    throw error;
   }
 };
 

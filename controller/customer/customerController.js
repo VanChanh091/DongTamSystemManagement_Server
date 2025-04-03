@@ -76,11 +76,13 @@ export const createCustomer = async (req, res) => {
   try {
     const { prefix = "CUSTOM", ...customerData } = req.body;
 
+    const sanitizedPrefix = prefix.trim().replace(/\s+/g, "");
+
     // Generate customerId manually
     const lastCustomer = await Customer.findOne({
       where: {
         customerId: {
-          [Op.like]: `${prefix}%`,
+          [Op.like]: `${sanitizedPrefix}%`,
         },
       },
       order: [["customerId", "DESC"]],
@@ -89,7 +91,7 @@ export const createCustomer = async (req, res) => {
     let newNumber = 1;
     if (lastCustomer && lastCustomer.customerId) {
       const lastNumber = parseInt(
-        lastCustomer.customerId.slice(prefix.length),
+        lastCustomer.customerId.slice(sanitizedPrefix.length),
         10
       );
       if (!isNaN(lastNumber)) {
@@ -98,7 +100,7 @@ export const createCustomer = async (req, res) => {
     }
 
     const formattedNumber = String(newNumber).padStart(3, "0");
-    const newCustomerId = `${prefix}${formattedNumber}`;
+    const newCustomerId = `${sanitizedPrefix}${formattedNumber}`;
 
     const newCustomer = await Customer.create({
       customerId: newCustomerId,

@@ -17,8 +17,8 @@ const Order = sequelize.define(
     typeProduct: {
       type: DataTypes.STRING,
     },
-    song: { type: DataTypes.STRING },
     productName: { type: DataTypes.STRING },
+    song: { type: DataTypes.STRING },
     QC_box: { type: DataTypes.STRING },
     day: { type: DataTypes.STRING },
     middle_1: { type: DataTypes.STRING },

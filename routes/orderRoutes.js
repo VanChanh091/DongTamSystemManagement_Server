@@ -5,6 +5,7 @@ import {
   deleteOrder,
   getAllOrder,
   getOrderByCustomerName,
+  getOrderByPrice,
   getOrderByProductName,
   getOrderByQcBox,
   getOrderByTypeProduct,
@@ -18,6 +19,7 @@ router.get("/customerName", errorMiddleWare, getOrderByCustomerName);
 router.get("/productName", errorMiddleWare, getOrderByProductName);
 router.get("/typeProduct", errorMiddleWare, getOrderByTypeProduct);
 router.get("/qcBox", errorMiddleWare, getOrderByQcBox);
+router.get("/price", errorMiddleWare, getOrderByPrice);
 router.post("/", errorMiddleWare, addOrder);
 router.put("/orders", errorMiddleWare, updateOrder);
 router.delete("/orders", errorMiddleWare, deleteOrder);
