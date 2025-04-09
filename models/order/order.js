@@ -37,7 +37,7 @@ const Order = sequelize.define(
     pricePaper: { type: DataTypes.DOUBLE, allowNull: false },
     dateRequestShipping: { type: DataTypes.DATE, allowNull: false },
     totalPrice: { type: DataTypes.DOUBLE },
-    vat: { type: DataTypes.DOUBLE },
+    vat: { type: DataTypes.INTEGER },
   },
   { timestamps: true }
 );
