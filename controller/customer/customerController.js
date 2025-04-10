@@ -54,13 +54,35 @@ export const getById = async (req, res) => {
 // get by name
 export const getByName = async (req, res) => {
   const { name } = req.params;
-
   try {
     const customer = await Customer.findAll({
       where: where(fn("LOWER", col("customerName")), {
         [Op.like]: `%${name.toLowerCase()}%`,
       }),
     });
+
+    res.status(200).json({ customer });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to get customers by name",
+      error: error.message,
+    });
+  }
+};
+
+//get by cskh
+export const getByCSKH = async (req, res) => {
+  const { cskh } = req.params;
+  try {
+    const customer = await Customer.findAll({
+      where: where(fn("LOWER", col("cskh")), {
+        [Op.like]: `%${cskh.toLowerCase()}%`,
+      }),
+    });
+
+    if (!customer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
 
     res.status(200).json({ customer });
   } catch (error) {

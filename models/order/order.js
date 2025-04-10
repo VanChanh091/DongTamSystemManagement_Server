@@ -4,19 +4,9 @@ import { sequelize } from "../../configs/connectDB.js";
 const Order = sequelize.define(
   "Order",
   {
-    orderId: {
-      type: DataTypes.STRING(18),
-      primaryKey: true,
-      allowNull: false,
-    },
-    dayReceiveOrder: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
-
-    typeProduct: {
-      type: DataTypes.STRING,
-    },
+    orderId: { type: DataTypes.STRING(18), allowNull: false, primaryKey: true },
+    dayReceiveOrder: { type: DataTypes.DATE, allowNull: false },
+    typeProduct: { type: DataTypes.STRING },
     productName: { type: DataTypes.STRING },
     song: { type: DataTypes.STRING },
     QC_box: { type: DataTypes.STRING },
