@@ -15,7 +15,7 @@ export const getAllOrder = async (req, res) => {
     const cacheKey = "orders:all";
     const cachedData = await redisCache.get(cacheKey);
     if (cachedData) {
-      console.log("✅ Dữ liệu từ Redis");
+      console.log("✅ Data Order from Redis");
       return res.status(200).json({
         message: "Get all orders from cache",
         data: JSON.parse(cachedData),
@@ -35,7 +35,7 @@ export const getAllOrder = async (req, res) => {
     });
 
     // save data in redis in 2h
-    await redisCache.set(cacheKey, JSON.stringify(data), "EX", 7200);
+    await redisCache.set(cacheKey, JSON.stringify(data), "EX", 3600);
 
     return res
       .status(201)

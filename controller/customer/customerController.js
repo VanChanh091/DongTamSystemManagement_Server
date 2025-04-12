@@ -10,7 +10,7 @@ export const getAllCustomer = async (req, res) => {
     const cacheKey = "customers:all";
     const cachedData = await redisClient.get(cacheKey);
     if (cachedData) {
-      console.log("✅ Dữ liệu từ Redis");
+      console.log("✅ Data Customer from Redis");
       return res.status(200).json({
         message: "Get all customers from cache",
         data: JSON.parse(cachedData),
@@ -20,7 +20,7 @@ export const getAllCustomer = async (req, res) => {
     const data = await Customer.findAll();
 
     //save in 2h
-    await redisClient.set(cacheKey, JSON.stringify(data), "EX", 7200);
+    await redisClient.set(cacheKey, JSON.stringify(data), "EX", 3600);
     res.status(201).json({ message: "get all customers successfully", data });
   } catch (e) {
     res.status(404).json({ message: "get all customers failed" });
@@ -42,7 +42,7 @@ export const getById = async (req, res) => {
       return res.status(404).json({ message: "Customer not found" });
     }
 
-    res.status(200).json({ customer });
+    res.status(201).json({ customer });
   } catch (error) {
     res.status(500).json({
       message: "Failed to get customer",
@@ -87,7 +87,37 @@ export const getByCSKH = async (req, res) => {
     res.status(200).json({ customer });
   } catch (error) {
     res.status(500).json({
-      message: "Failed to get customers by name",
+      message: "Failed to get customers by cskh",
+      error: error.message,
+    });
+  }
+};
+
+//get by sdt
+export const getBySDT = async (req, res) => {
+  const { sdt } = req.params;
+  try {
+    // const customer = await Customer.findOne({
+    //   where: where(fn("LOWER", col("phone")), {
+    //     [Op.like]: `%${sdt.toLowerCase()}%`,
+    //   }),
+    // });
+    const customer = await Customer.findAll({
+      where: {
+        phone: {
+          [Op.eq]: sdt,
+        },
+      },
+    });
+
+    if (!customer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    res.status(200).json({ customer });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to get customers by phone",
       error: error.message,
     });
   }
@@ -121,7 +151,7 @@ export const createCustomer = async (req, res) => {
       }
     }
 
-    const formattedNumber = String(newNumber).padStart(3, "0");
+    const formattedNumber = String(newNumber).padStart(4, "0");
     const newCustomerId = `${sanitizedPrefix}${formattedNumber}`;
 
     const newCustomer = await Customer.create({

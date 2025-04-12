@@ -7,6 +7,7 @@ import {
   getByCSKH,
   getById,
   getByName,
+  getBySDT,
   updateCustomer,
 } from "../controller/customer/customerController.js";
 
@@ -16,6 +17,7 @@ router.get("/", errorMiddleWare, getAllCustomer);
 router.get("/:id", errorMiddleWare, getById);
 router.get("/search/:name", errorMiddleWare, getByName);
 router.get("/cskh/:cskh", errorMiddleWare, getByCSKH);
+router.get("/phone/:sdt", errorMiddleWare, getBySDT);
 router.post("/", errorMiddleWare, createCustomer);
 router.put("/:id", errorMiddleWare, updateCustomer);
 router.delete("/:id", errorMiddleWare, deleteCustomer);
