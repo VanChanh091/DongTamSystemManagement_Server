@@ -48,7 +48,7 @@ const cacheRedis = async (colData, params) => {
 
 // get by id
 export const getById = async (req, res) => {
-  const { id } = req.query;
+  const { id } = req.params;
 
   try {
     const cachedResult = await cacheRedis("customerId", id);

@@ -32,29 +32,48 @@ export const getAllProduct = async (req, res) => {
   }
 };
 
+const cacheRedis = async (colData, params) => {
+  const cacheKey = "products:all";
+  const cachedData = await redisCache.get(cacheKey);
+
+  if (cachedData) {
+    const parsedData = JSON.parse(cachedData);
+
+    const product = parsedData.filter((item) =>
+      item[colData]?.toLowerCase().includes(params.toLowerCase())
+    );
+
+    if (product.length > 0) {
+      return product;
+    }
+  }
+
+  return null;
+};
+
 //get product by id
 export const getProductById = async (req, res) => {
   const { id } = req.query;
 
   try {
-    const cacheKey = `products:productId:${id}`;
-    const cachedData = await redisCache.get(cacheKey);
+    const cachedResult = await cacheRedis("productId", id);
 
-    if (cachedData) {
-      console.log("✅ Data Product from Redis");
+    if (cachedResult) {
+      console.log("✅ Get product from cache");
       return res.status(200).json({
         message: "Get product from cache",
-        data: JSON.parse(cachedData),
+        data: cachedResult,
       });
     }
 
+    // Nếu không có cache thì lấy từ DB
     const product = await Product.findAll({
       where: where(fn("LOWER", col("productId")), {
         [Op.like]: `%${id.toUpperCase()}%`,
       }),
     });
 
-    if (!product) {
+    if (!product || product.length === 0) {
       return res.status(404).json({ message: "Product not found" });
     }
 
@@ -72,17 +91,17 @@ export const getProductByName = async (req, res) => {
   const { name } = req.query;
 
   try {
-    const cacheKey = `products:name:${name}`;
-    const cachedData = await redisCache.get(cacheKey);
+    const cachedResult = await cacheRedis("productName", name);
 
-    if (cachedData) {
-      console.log("✅ Data Product from Redis");
+    if (cachedResult) {
+      console.log("✅ Get product from cache");
       return res.status(200).json({
         message: "Get product from cache",
-        data: JSON.parse(cachedData),
+        data: cachedResult,
       });
     }
 
+    // Nếu không có cache thì lấy từ DB
     const products = await Product.findAll({
       where: { productName: { [Op.like]: `%${name}%` } },
     });
@@ -135,6 +154,8 @@ export const addProduct = async (req, res) => {
       ...productData,
     });
 
+    await redisCache.del("products:all");
+
     return res.status(201).json({
       message: "Product created successfully",
       data: newProduct,
@@ -147,7 +168,7 @@ export const addProduct = async (req, res) => {
 
 //update product
 export const updateProduct = async (req, res) => {
-  const { id } = req.params;
+  const { id } = req.query;
   const { ...productData } = req.body;
 
   try {
@@ -158,6 +179,7 @@ export const updateProduct = async (req, res) => {
     }
 
     await product.update(productData);
+
     await redisCache.del("products:all");
 
     return res.status(200).json({
