@@ -1,6 +1,6 @@
 import Redis from "ioredis";
 import Product from "../../models/product/product.js";
-import { Op } from "sequelize";
+import { Op, fn, col, where } from "sequelize";
 
 const redisCache = new Redis();
 
@@ -20,7 +20,7 @@ export const getAllProduct = async (req, res) => {
 
     const data = await Product.findAll();
 
-    // Cache for 1 hour
+    // Cache redis in 1 hour
     await redisCache.set(cacheKey, JSON.stringify(data), "EX", 3600);
 
     return res
@@ -34,10 +34,10 @@ export const getAllProduct = async (req, res) => {
 
 //get product by id
 export const getProductById = async (req, res) => {
-  const { id } = req.params;
+  const { id } = req.query;
 
   try {
-    const cacheKey = `products:${id}`;
+    const cacheKey = `products:productId:${id}`;
     const cachedData = await redisCache.get(cacheKey);
 
     if (cachedData) {
@@ -48,7 +48,11 @@ export const getProductById = async (req, res) => {
       });
     }
 
-    const product = await Product.findByPk(id);
+    const product = await Product.findAll({
+      where: where(fn("LOWER", col("productId")), {
+        [Op.like]: `%${id.toUpperCase()}%`,
+      }),
+    });
 
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
@@ -86,9 +90,6 @@ export const getProductByName = async (req, res) => {
     if (!products.length) {
       return res.status(404).json({ message: "Product not found" });
     }
-
-    // Cache for 1 hour
-    await redisCache.set(cacheKey, JSON.stringify(products), "EX", 3600);
 
     return res
       .status(200)
@@ -147,7 +148,7 @@ export const addProduct = async (req, res) => {
 //update product
 export const updateProduct = async (req, res) => {
   const { id } = req.params;
-  const { productName, productType, price } = req.body;
+  const { ...productData } = req.body;
 
   try {
     const product = await Product.findByPk(id);
@@ -156,11 +157,8 @@ export const updateProduct = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    product.productName = productName || product.productName;
-    product.productType = productType || product.productType;
-    product.price = price || product.price;
-
-    await product.save();
+    await product.update(productData);
+    await redisCache.del("products:all");
 
     return res.status(200).json({
       message: "Product updated successfully",
@@ -184,6 +182,7 @@ export const deleteProduct = async (req, res) => {
     }
 
     await product.destroy();
+    await redisCache.del("products:all");
 
     return res.status(200).json({ message: "Product deleted successfully" });
   } catch (error) {

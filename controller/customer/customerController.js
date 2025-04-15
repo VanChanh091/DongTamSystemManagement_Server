@@ -27,22 +27,55 @@ export const getAllCustomer = async (req, res) => {
   }
 };
 
+const cacheRedis = async (colData, params) => {
+  const cacheKey = "customers:all";
+  const cachedData = await redisClient.get(cacheKey);
+
+  if (cachedData) {
+    const parsedData = JSON.parse(cachedData);
+
+    const product = parsedData.filter((item) =>
+      item[colData]?.toLowerCase().includes(params.toLowerCase())
+    );
+
+    if (product.length > 0) {
+      return product;
+    }
+  }
+
+  return null;
+};
+
 // get by id
 export const getById = async (req, res) => {
-  const { id } = req.params;
+  const { id } = req.query;
 
   try {
+    const cachedResult = await cacheRedis("customerId", id);
+
+    if (cachedResult) {
+      console.log("✅ Get customer from cache");
+      return res.status(200).json({
+        message: "Get customer from cache",
+        data: cachedResult,
+      });
+    }
+
+    // Nếu không có cache thì lấy từ DB
     const customer = await Customer.findAll({
       where: where(fn("LOWER", col("customerId")), {
         [Op.like]: `%${id.toLowerCase()}%`,
       }),
     });
 
-    if (!customer) {
+    if (!customer || customer.length === 0) {
       return res.status(404).json({ message: "Customer not found" });
     }
 
-    res.status(201).json({ customer });
+    res.status(200).json({
+      message: "Get customer from DB",
+      data: customer,
+    });
   } catch (error) {
     res.status(500).json({
       message: "Failed to get customer",
@@ -52,16 +85,35 @@ export const getById = async (req, res) => {
 };
 
 // get by name
-export const getByName = async (req, res) => {
-  const { name } = req.params;
+export const getByCustomerName = async (req, res) => {
+  const { name } = req.query;
+
   try {
+    const cachedResult = await cacheRedis("customerName", name);
+
+    if (cachedResult) {
+      console.log("✅ Get customer from cache");
+      return res.status(200).json({
+        message: "Get customer from cache",
+        data: cachedResult,
+      });
+    }
+
+    // Nếu không có cache thì lấy từ DB
     const customer = await Customer.findAll({
       where: where(fn("LOWER", col("customerName")), {
         [Op.like]: `%${name.toLowerCase()}%`,
       }),
     });
 
-    res.status(200).json({ customer });
+    if (!customer || customer.length === 0) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    res.status(200).json({
+      message: "Get customer from DB",
+      data: customer,
+    });
   } catch (error) {
     res.status(500).json({
       message: "Failed to get customers by name",
@@ -74,6 +126,17 @@ export const getByName = async (req, res) => {
 export const getByCSKH = async (req, res) => {
   const { cskh } = req.params;
   try {
+    const cachedResult = await cacheRedis("cskh", cskh);
+
+    if (cachedResult) {
+      console.log("✅ Get customer from cache");
+      return res.status(200).json({
+        message: "Get customer from cache",
+        data: cachedResult,
+      });
+    }
+
+    // Nếu không có cache thì lấy từ DB
     const customer = await Customer.findAll({
       where: where(fn("LOWER", col("cskh")), {
         [Op.like]: `%${cskh.toLowerCase()}%`,
@@ -97,12 +160,18 @@ export const getByCSKH = async (req, res) => {
 export const getBySDT = async (req, res) => {
   const { sdt } = req.params;
   try {
-    // const customer = await Customer.findOne({
-    //   where: where(fn("LOWER", col("phone")), {
-    //     [Op.like]: `%${sdt.toLowerCase()}%`,
-    //   }),
-    // });
-    const customer = await Customer.findAll({
+    const cachedResult = await cacheRedis("phone", sdt);
+
+    if (cachedResult) {
+      console.log("✅ Get customer from cache");
+      return res.status(200).json({
+        message: "Get customer from cache",
+        data: cachedResult,
+      });
+    }
+
+    // Nếu không có cache thì lấy từ DB
+    const customer = await Customer.findOne({
       where: {
         phone: {
           [Op.eq]: sdt,

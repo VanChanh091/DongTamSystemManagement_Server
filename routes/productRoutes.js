@@ -12,10 +12,10 @@ import {
 const router = Router();
 
 router.get("/", errorMiddlewareHandle, getAllProduct);
-router.get("/:id", errorMiddlewareHandle, getProductById);
-router.get("/search/:name", errorMiddlewareHandle, getProductByName);
+router.get("/productId", errorMiddlewareHandle, getProductById);
+router.get("/productName", errorMiddlewareHandle, getProductByName);
 router.post("/", errorMiddlewareHandle, addProduct);
-router.put("/:id", errorMiddlewareHandle, updateProduct);
+router.put("/updateProduct", errorMiddlewareHandle, updateProduct);
 router.delete("/:id", errorMiddlewareHandle, deleteProduct);
 
 export default router;

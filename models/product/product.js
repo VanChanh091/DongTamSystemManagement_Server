@@ -9,7 +9,15 @@ const Product = sequelize.define(
       allowNull: false,
       primaryKey: true,
     },
+    typeProduct: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     productName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    maKhuon: {
       type: DataTypes.STRING,
       allowNull: false,
     },

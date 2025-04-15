@@ -5,6 +5,7 @@ import Customer from "../../models/customer/customer.js";
 import InfoProduction from "../../models/order/infoProduction.js";
 import QuantitativePaper from "../../models/order/quantitativePaper.js";
 import Box from "../../models/order/box.js";
+import Product from "../../models/product/product.js";
 
 const redisCache = new Redis();
 
@@ -28,13 +29,14 @@ export const getAllOrder = async (req, res) => {
           model: Customer,
           attributes: ["customerName", "companyName"],
         },
+        { model: Product },
         { model: InfoProduction, as: "infoProduction" },
         { model: Box, as: "box" },
       ],
       order: [["createdAt", "DESC"]],
     });
 
-    // save data in redis in 2h
+    // Cache redis in 1 hour
     await redisCache.set(cacheKey, JSON.stringify(data), "EX", 3600);
 
     return res
@@ -88,15 +90,22 @@ export const getOrderByCustomerName = async (req, res) => {
   }
 };
 
-//get by product name
-export const getOrderByProductName = async (req, res) => {
-  const { name } = req.query;
-
+//get by type product
+export const getOrderByTypeProduct = async (req, res) => {
+  const { type } = req.query;
   try {
+    const product = await Product.findAll({
+      where: { typeProduct: { [Op.like]: `%${type.toLowerCase()}%` } },
+    });
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    const productIds = product.map((product) => product.productId);
+
     const orders = await Order.findAll({
-      where: where(fn("LOWER", col("productName")), {
-        [Op.like]: `%${name.toLowerCase()}%`,
-      }),
+      where: { productId: { [Op.in]: productIds } },
       include: [
         {
           model: Customer,
@@ -121,14 +130,23 @@ export const getOrderByProductName = async (req, res) => {
   }
 };
 
-//get by type product
-export const getOrderByTypeProduct = async (req, res) => {
-  const { type } = req.query;
+//get by product name
+export const getOrderByProductName = async (req, res) => {
+  const { name } = req.query;
+
   try {
+    const product = await Product.findAll({
+      where: { productName: { [Op.like]: `%${name.toLowerCase()}%` } },
+    });
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    const productIds = product.map((product) => product.productId);
+
     const orders = await Order.findAll({
-      where: where(fn("LOWER", col("typeProduct")), {
-        [Op.like]: `%${type.toLowerCase()}%`,
-      }),
+      where: { productId: { [Op.in]: productIds } },
       include: [
         {
           model: Customer,
@@ -224,6 +242,7 @@ export const addOrder = async (req, res) => {
   const {
     prefix = "CUSTOM",
     customerId,
+    productId,
     infoProduction,
     quantitativePaper,
     box,
@@ -238,6 +257,14 @@ export const addOrder = async (req, res) => {
     });
     if (!customer) {
       return res.status(404).json({ message: "Customer not found" });
+    }
+
+    //check productId exist
+    const product = await Product.findOne({
+      where: { productId: productId },
+    });
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
     }
 
     // Tạo orderId tự động theo prefix
@@ -260,13 +287,14 @@ export const addOrder = async (req, res) => {
         newNumber = lastNumber + 1;
       }
     }
-    const formattedNumber = String(newNumber).padStart(3, "0");
+    const formattedNumber = String(newNumber).padStart(4, "0");
     const newOrderId = `${sanitizedPrefix}${formattedNumber}`;
 
     //create order
     const newOrder = await Order.create({
       orderId: newOrderId,
       customerId: customerId,
+      productId: productId,
       ...orderData,
     });
 

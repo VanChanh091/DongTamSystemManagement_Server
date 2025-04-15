@@ -6,7 +6,7 @@ import {
   getAllCustomer,
   getByCSKH,
   getById,
-  getByName,
+  getByCustomerName,
   getBySDT,
   updateCustomer,
 } from "../controller/customer/customerController.js";
@@ -14,8 +14,8 @@ import {
 const router = Router();
 
 router.get("/", errorMiddleWare, getAllCustomer);
-router.get("/:id", errorMiddleWare, getById);
-router.get("/search/:name", errorMiddleWare, getByName);
+router.get("/customerId", errorMiddleWare, getById);
+router.get("/customerName", errorMiddleWare, getByCustomerName);
 router.get("/cskh/:cskh", errorMiddleWare, getByCSKH);
 router.get("/phone/:sdt", errorMiddleWare, getBySDT);
 router.post("/", errorMiddleWare, createCustomer);

@@ -22,7 +22,6 @@ const InfoProduction = sequelize.define(
     instructSpecial: { type: DataTypes.STRING },
     numberChild: { type: DataTypes.INTEGER, allowNull: false },
     teBien: { type: DataTypes.STRING },
-    nextStep: { type: DataTypes.STRING },
   },
   { timestamps: true }
 );
