@@ -106,7 +106,7 @@ export const getProductByName = async (req, res) => {
       where: { productName: { [Op.like]: `%${name}%` } },
     });
 
-    if (!products.length) {
+    if (!products || products.length === 0) {
       return res.status(404).json({ message: "Product not found" });
     }
 
