@@ -19,6 +19,7 @@ const Box = sequelize.define(
     dan_2_Manh: { type: DataTypes.BOOLEAN },
     dongGhim1Manh: { type: DataTypes.BOOLEAN },
     dongGhim2Manh: { type: DataTypes.BOOLEAN },
+    chongTham: { type: DataTypes.BOOLEAN },
     dongGoi: { type: DataTypes.STRING },
     maKhuon: { type: DataTypes.STRING },
     khac_1: { type: DataTypes.STRING },
