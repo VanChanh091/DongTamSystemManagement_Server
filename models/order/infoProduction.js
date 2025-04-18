@@ -21,7 +21,8 @@ const InfoProduction = sequelize.define(
     quantity: { type: DataTypes.INTEGER, allowNull: false },
     instructSpecial: { type: DataTypes.STRING },
     numberChild: { type: DataTypes.INTEGER, allowNull: false },
-    teBien: { type: DataTypes.STRING },
+    canLan: { type: DataTypes.STRING },
+    daoXa: { type: DataTypes.STRING, allowNull: false },
   },
   { timestamps: true }
 );
