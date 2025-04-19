@@ -2,8 +2,6 @@ import Redis from "ioredis";
 import Order from "../../models/order/order.js";
 import { Op, fn, col, where } from "sequelize";
 import Customer from "../../models/customer/customer.js";
-import InfoProduction from "../../models/order/infoProduction.js";
-import QuantitativePaper from "../../models/order/quantitativePaper.js";
 import Box from "../../models/order/box.js";
 import Product from "../../models/product/product.js";
 
@@ -30,7 +28,6 @@ export const getAllOrder = async (req, res) => {
           attributes: ["customerName", "companyName"],
         },
         { model: Product },
-        { model: InfoProduction, as: "infoProduction" },
         { model: Box, as: "box" },
       ],
       order: [["createdAt", "DESC"]],
@@ -119,7 +116,6 @@ export const getOrderByCustomerName = async (req, res) => {
         {
           model: Product,
         },
-        { model: InfoProduction, as: "infoProduction" },
         { model: Box, as: "box" },
       ],
       order: [["createdAt", "DESC"]],
@@ -186,7 +182,6 @@ export const getOrderByTypeProduct = async (req, res) => {
           attributes: ["customerName", "companyName"],
         },
         { model: Product },
-        { model: InfoProduction, as: "infoProduction" },
         { model: Box, as: "box" },
       ],
       order: [["createdAt", "DESC"]],
@@ -252,7 +247,6 @@ export const getOrderByProductName = async (req, res) => {
           attributes: ["customerName", "companyName"],
         },
         { model: Product },
-        { model: InfoProduction, as: "infoProduction" },
         { model: Box, as: "box" },
       ],
       order: [["createdAt", "DESC"]],
@@ -299,7 +293,6 @@ export const getOrderByQcBox = async (req, res) => {
           attributes: ["customerName", "companyName"],
         },
         { model: Product },
-        { model: InfoProduction, as: "infoProduction" },
         { model: Box, as: "box" },
       ],
       order: [["createdAt", "DESC"]],
@@ -363,7 +356,6 @@ export const getOrderByPrice = async (req, res) => {
           attributes: ["customerName", "companyName"],
         },
         { model: Product },
-        { model: InfoProduction, as: "infoProduction" },
         { model: Box, as: "box" },
       ],
       order: [["createdAt", "DESC"]],
@@ -391,7 +383,6 @@ export const addOrder = async (req, res) => {
     prefix = "CUSTOM",
     customerId,
     productId,
-    infoProduction,
     quantitativePaper,
     box,
     ...orderData
@@ -448,7 +439,6 @@ export const addOrder = async (req, res) => {
 
     //create table data
     try {
-      await createDataTable(newOrderId, InfoProduction, infoProduction);
       await createDataTable(newOrderId, Box, box);
     } catch (error) {
       console.error("Error creating related data:", error);
@@ -482,7 +472,7 @@ const createDataTable = async (id, model, data) => {
 //update order
 export const updateOrder = async (req, res) => {
   const { id } = req.query;
-  const { infoProduction, quantitativePaper, box, ...orderData } = req.body;
+  const { quantitativePaper, box, ...orderData } = req.body;
   try {
     const order = await Order.findOne({ where: { orderId: id } });
     if (!order) {
@@ -491,8 +481,6 @@ export const updateOrder = async (req, res) => {
 
     await order.update(orderData);
 
-    await updateChildOrder(id, InfoProduction, infoProduction);
-    await updateChildOrder(id, QuantitativePaper, quantitativePaper);
     await updateChildOrder(id, Box, box);
 
     await redisCache.del("orders:all");

@@ -22,8 +22,6 @@ const Box = sequelize.define(
     chongTham: { type: DataTypes.BOOLEAN },
     dongGoi: { type: DataTypes.STRING },
     maKhuon: { type: DataTypes.STRING },
-    khac_1: { type: DataTypes.STRING },
-    khac_2: { type: DataTypes.STRING },
   },
   { timestamps: true }
 );

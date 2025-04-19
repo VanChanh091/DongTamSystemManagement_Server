@@ -19,7 +19,6 @@ const InfoProduction = sequelize.define(
     songE2_Replace: { type: DataTypes.STRING },
     sizePaper: { type: DataTypes.DOUBLE, allowNull: false },
     quantity: { type: DataTypes.INTEGER, allowNull: false },
-    instructSpecial: { type: DataTypes.STRING },
     numberChild: { type: DataTypes.INTEGER, allowNull: false },
     canLan: { type: DataTypes.STRING },
     daoXa: { type: DataTypes.STRING, allowNull: false },

@@ -25,6 +25,7 @@ const Order = sequelize.define(
     dateRequestShipping: { type: DataTypes.DATE, allowNull: false },
     totalPrice: { type: DataTypes.DOUBLE },
     vat: { type: DataTypes.INTEGER },
+    instructSpecial: { type: DataTypes.STRING },
   },
   { timestamps: true }
 );
