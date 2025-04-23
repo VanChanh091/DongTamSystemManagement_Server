@@ -192,44 +192,61 @@ export const getBySDT = async (req, res) => {
 export const createCustomer = async (req, res) => {
   try {
     const { prefix = "CUSTOM", ...customerData } = req.body;
+    const sanitizedPrefix = prefix.trim().replace(/\s+/g, "").toUpperCase();
 
-    const sanitizedPrefix = prefix.trim().replace(/\s+/g, "");
+    const transaction = await Customer.sequelize.transaction();
 
-    // Generate customerId manually
-    const lastCustomer = await Customer.findOne({
-      where: {
-        customerId: {
-          [Op.like]: `${sanitizedPrefix}%`,
-        },
-      },
-      order: [["customerId", "DESC"]],
-    });
+    try {
+      const customers = await Customer.findAll({
+        attributes: ["customerId"],
+        transaction,
+      });
 
-    let newNumber = 1;
-    if (lastCustomer && lastCustomer.customerId) {
-      const lastNumber = parseInt(
-        lastCustomer.customerId.slice(sanitizedPrefix.length),
-        10
-      );
-      if (!isNaN(lastNumber)) {
-        newNumber = lastNumber + 1;
+      let maxNumber = 0;
+      for (const customer of customers) {
+        const numberMatch = customer.customerId.match(/\d+$/);
+        if (numberMatch) {
+          const number = parseInt(numberMatch[0], 10);
+          if (!isNaN(number) && number > maxNumber) {
+            maxNumber = number;
+          }
+        }
       }
+
+      const newNumber = maxNumber + 1;
+      const formattedNumber = String(newNumber).padStart(4, "0");
+      const newCustomerId = `${sanitizedPrefix}${formattedNumber}`;
+
+      const existingCustomer = await Customer.findOne({
+        where: { customerId: newCustomerId },
+        transaction,
+      });
+
+      if (existingCustomer) {
+        throw new Error(`Customer ID ${newCustomerId} already exists`);
+      }
+
+      const newCustomer = await Customer.create(
+        {
+          customerId: newCustomerId,
+          ...customerData,
+        },
+        { transaction }
+      );
+
+      await transaction.commit();
+      await redisClient.del("customers:all");
+
+      res.status(201).json(newCustomer);
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
     }
-
-    const formattedNumber = String(newNumber).padStart(4, "0");
-    const newCustomerId = `${sanitizedPrefix}${formattedNumber}`;
-
-    const newCustomer = await Customer.create({
-      customerId: newCustomerId,
-      ...customerData,
-    });
-
-    await redisClient.del("customers:all");
-
-    res.status(201).json(newCustomer);
   } catch (error) {
     console.error("Create customer error:", error);
-    res.status(404).json({ error: error.message });
+    res
+      .status(500)
+      .json({ error: `Failed to create customer: ${error.message}` });
   }
 };
 

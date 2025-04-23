@@ -7,6 +7,8 @@ const Order = sequelize.define(
     orderId: { type: DataTypes.STRING(14), allowNull: false, primaryKey: true },
     dayReceiveOrder: { type: DataTypes.DATE, allowNull: false },
     QC_box: { type: DataTypes.STRING },
+    canLan: { type: DataTypes.STRING },
+    daoXa: { type: DataTypes.STRING },
     day: { type: DataTypes.STRING },
     middle_1: { type: DataTypes.STRING },
     middle_2: { type: DataTypes.STRING },

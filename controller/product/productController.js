@@ -73,7 +73,7 @@ export const getProductById = async (req, res) => {
       }),
     });
 
-    if (!product || product.length === 0) {
+    if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
 
