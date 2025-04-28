@@ -1,30 +1,37 @@
 import asyncHandler from "express-async-handler";
 import User from "../../models/user/user.js";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import Redis from "ioredis";
 import sendEmail from "../../utils/sendMail.js";
+import generateToken from "../../middlewares/jwtHelper.js";
 import dotenv from "dotenv";
 dotenv.config();
 
 const redis = new Redis();
-
-const generateJWT = (userId) => {
-  return jwt.sign({ id: userId }, process.env.SECRET_KEY, {
-    expiresIn: "1d",
-  });
-};
 
 const handleSendEmail = async (email, otp) => {
   try {
     await sendEmail(
       email,
       "DongTam System Management",
-      `Vui lòng không chia sẻ mã OTP với bất kì ai. Mã OTP của bạn là: ${otp}`
+      `Vui lòng không chia sẻ mã OTP với bất kì ai. Mã OTP của bạn là: ${otp}. Mã OTP có hiệu lực trong 5 phút.`
     );
   } catch (error) {
     console.log(error);
   }
+};
+
+const checkExistAndMatchOtp = async (email, otpInput) => {
+  const redisUser = await redis.get(`user:${email}`);
+  if (!redisUser) {
+    return { success: false, message: "OTP đã hết hạn" };
+  }
+  const { otp } = JSON.parse(redisUser);
+  if (parseInt(otpInput) !== otp) {
+    return { success: false, message: "OTP không đúng" };
+  }
+
+  return { success: true };
 };
 
 export const getOtpCode = asyncHandler(async (req, res) => {
@@ -33,7 +40,7 @@ export const getOtpCode = asyncHandler(async (req, res) => {
   //random code
   const otp = Math.round(1000 + Math.random() * 9000);
 
-  const userData = JSON.stringify({ email: email, otp });
+  const userData = JSON.stringify({ email, otp });
 
   //save new data user into Redis in 5m
   await redis.setex(`user:${email}`, 300, userData);
@@ -41,19 +48,9 @@ export const getOtpCode = asyncHandler(async (req, res) => {
   // Send OTP email
   handleSendEmail(email, otp);
 
-  return res.status(201).json({ message: "Mã OTP đã được gửi đến bạn" });
-});
-
-const checkExistAndMatchOtp = asyncHandler(async (email, res, otpInput) => {
-  // check OTP has existing
-  const redisUser = await redis.get(`user:${email}`);
-  if (!redisUser) {
-    return res.status(401).json({ message: "OTP đã hết hạn" });
-  }
-  const { otp } = JSON.parse(redisUser);
-  if (parseInt(otpInput) !== otp) {
-    return res.status(401).json({ message: "OTP không đúng" });
-  }
+  return res
+    .status(201)
+    .json({ message: `Mã OTP đã được gửi đến bạn, mã OTP là ${otp}` });
 });
 
 export const register = asyncHandler(async (req, res) => {
@@ -61,8 +58,7 @@ export const register = asyncHandler(async (req, res) => {
 
   const adminRole = email === "admin@gmail.com" ? "admin" : "user";
 
-  // Check if user already exists
-  const existingEmail = await User.findOne({ where: { email: email } });
+  const existingEmail = await User.findOne({ where: { email } });
   if (existingEmail) {
     return res.status(401).json({ message: "User already exists" });
   }
@@ -71,23 +67,24 @@ export const register = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: "Mật khẩu không khớp" });
   }
 
-  // Hash password
+  const otpCheck = await checkExistAndMatchOtp(email, otpInput);
+  if (!otpCheck.success) {
+    return res.status(401).json({ message: otpCheck.message });
+  }
+
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);
 
-  checkExistAndMatchOtp(email, res, otpInput);
-
   await User.create({
-    fullName: fullName,
-    email: email,
+    fullName,
+    email,
     password: hashedPassword,
     role: adminRole,
   });
 
-  // delete user from redis
   await redis.del(`user:${email}`);
 
-  return res.status(201).json({ message: "Xác thực thành công!" });
+  return res.status(201).json({ message: "Đăng ký thành công!" });
 });
 
 export const login = asyncHandler(async (req, res) => {
@@ -109,22 +106,25 @@ export const login = asyncHandler(async (req, res) => {
     message: "Đăng nhập thành công",
     user: {
       id: existUser.id,
-      email: await existUser.email,
+      email: existUser.email,
+      role: existUser.role,
     },
-    token: generateJWT(existUser.id),
+    token: generateToken(existUser),
   });
 });
 
 export const verifyOTPChangePassword = asyncHandler(async (req, res) => {
   const { email, otpInput } = req.body;
 
-  //check email
-  const existingEmail = await User.findOne({ where: { email: email } });
+  const existingEmail = await User.findOne({ where: { email } });
   if (!existingEmail) {
     return res.status(401).json({ message: "Email không tồn tại" });
   }
 
-  checkExistAndMatchOtp(email, res, otpInput);
+  const otpCheck = await checkExistAndMatchOtp(email, otpInput);
+  if (!otpCheck.success) {
+    return res.status(401).json({ message: otpCheck.message });
+  }
 
   return res.status(201).json({ message: "Xác thực thành công!" });
 });

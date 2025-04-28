@@ -28,6 +28,7 @@ const Order = sequelize.define(
     totalPrice: { type: DataTypes.DOUBLE },
     vat: { type: DataTypes.INTEGER },
     instructSpecial: { type: DataTypes.STRING },
+    // status: { type: DataTypes.STRING },
   },
   { timestamps: true }
 );

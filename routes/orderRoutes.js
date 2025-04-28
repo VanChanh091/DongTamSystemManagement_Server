@@ -1,5 +1,4 @@
 import Router from "express";
-import errorMiddleWare from "../middlewares/errorMiddleWare.js";
 import {
   addOrder,
   deleteOrder,
@@ -11,17 +10,18 @@ import {
   getOrderByTypeProduct,
   updateOrder,
 } from "../controller/order/orderController.js";
+import authenticate from "../middlewares/authMiddleware.js";
 
 const router = Router();
 
-router.get("/", errorMiddleWare, getAllOrder);
-router.get("/qcBox", errorMiddleWare, getOrderByQcBox);
-router.get("/price", errorMiddleWare, getOrderByPrice);
-router.get("/customerName", errorMiddleWare, getOrderByCustomerName);
-router.get("/productName", errorMiddleWare, getOrderByProductName);
-router.get("/typeProduct", errorMiddleWare, getOrderByTypeProduct);
-router.post("/", errorMiddleWare, addOrder);
-router.put("/orders", errorMiddleWare, updateOrder);
-router.delete("/orders", errorMiddleWare, deleteOrder);
+router.get("/", authenticate, getAllOrder);
+router.get("/qcBox", authenticate, getOrderByQcBox);
+router.get("/price", authenticate, getOrderByPrice);
+router.get("/customerName", authenticate, getOrderByCustomerName);
+router.get("/productName", authenticate, getOrderByProductName);
+router.get("/typeProduct", authenticate, getOrderByTypeProduct);
+router.post("/", authenticate, addOrder);
+router.put("/orders", authenticate, updateOrder);
+router.delete("/orders", authenticate, deleteOrder);
 
 export default router;

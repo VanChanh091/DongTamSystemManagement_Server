@@ -3,7 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 
 import { connectDB, sequelize } from "./configs/connectDB.js";
-import errorMiddlewareHandle from "./middlewares/errorMiddleWare.js";
+import authenticate from "./middlewares/authMiddleware.js";
 
 //create table
 import "./models/index.js";
@@ -33,7 +33,7 @@ sequelize
   .then(() => console.log("✅ Database & tables synchronized"))
   .catch((err) => console.error("❌ Error syncing database:", err));
 
-app.use(errorMiddlewareHandle);
+app.use(authenticate);
 
 app.listen(port, (err) => {
   if (err) {

@@ -1,5 +1,4 @@
 import Router from "express";
-import errorMiddleWare from "../middlewares/errorMiddleWare.js";
 import {
   createCustomer,
   deleteCustomer,
@@ -10,16 +9,17 @@ import {
   getBySDT,
   updateCustomer,
 } from "../controller/customer/customerController.js";
+import authenticate from "../middlewares/authMiddleware.js";
 
 const router = Router();
 
-router.get("/", errorMiddleWare, getAllCustomer);
-router.get("/:id", errorMiddleWare, getById);
-router.get("/byName/:name", errorMiddleWare, getByCustomerName);
-router.get("/cskh/:cskh", errorMiddleWare, getByCSKH);
-router.get("/phone/:sdt", errorMiddleWare, getBySDT);
-router.post("/", errorMiddleWare, createCustomer);
-router.put("/:id", errorMiddleWare, updateCustomer);
-router.delete("/:id", errorMiddleWare, deleteCustomer);
+router.get("/", authenticate, getAllCustomer);
+router.get("/:id", authenticate, getById);
+router.get("/byName/:name", authenticate, getByCustomerName);
+router.get("/cskh/:cskh", authenticate, getByCSKH);
+router.get("/phone/:sdt", authenticate, getBySDT);
+router.post("/", authenticate, createCustomer);
+router.put("/:id", authenticate, updateCustomer);
+router.delete("/:id", authenticate, deleteCustomer);
 
 export default router;

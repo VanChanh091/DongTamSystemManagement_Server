@@ -14,7 +14,18 @@ const User = sequelize.define(
     password: { type: DataTypes.STRING, allowNull: false },
     sex: { type: DataTypes.STRING },
     phone: { type: DataTypes.STRING },
-    role: { type: DataTypes.STRING },
+    role: { type: DataTypes.ENUM("admin", "user"), defaultValue: "user" },
+    permissions: {
+      type: DataTypes.TEXT,
+      get() {
+        const rawValue = this.getDataValue("permissions");
+        return rawValue ? JSON.parse(rawValue) : [];
+      },
+      set(val) {
+        this.setDataValue("permissions", JSON.stringify(val));
+      },
+      defaultValue: "[]",
+    },
     avatar: {
       type: DataTypes.STRING,
       defaultValue:

@@ -1,5 +1,4 @@
 import { Router } from "express";
-import errorMiddlewareHandle from "../middlewares/errorMiddleWare.js";
 import {
   addProduct,
   deleteProduct,
@@ -8,14 +7,15 @@ import {
   getProductByName,
   updateProduct,
 } from "../controller/product/productController.js";
+import authenticate from "../middlewares/authMiddleware.js";
 
 const router = Router();
 
-router.get("/", errorMiddlewareHandle, getAllProduct);
-router.get("/productId", errorMiddlewareHandle, getProductById);
-router.get("/productName", errorMiddlewareHandle, getProductByName);
-router.post("/", errorMiddlewareHandle, addProduct);
-router.put("/updateProduct", errorMiddlewareHandle, updateProduct);
-router.delete("/:id", errorMiddlewareHandle, deleteProduct);
+router.get("/", authenticate, getAllProduct);
+router.get("/productId", authenticate, getProductById);
+router.get("/productName", authenticate, getProductByName);
+router.post("/", authenticate, addProduct);
+router.put("/updateProduct", authenticate, updateProduct);
+router.delete("/:id", authenticate, deleteProduct);
 
 export default router;
