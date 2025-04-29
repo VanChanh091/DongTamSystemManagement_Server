@@ -9,7 +9,7 @@ import {
   getOrderByProductName,
   getOrderByTypeProduct,
   updateOrder,
-} from "../controller/order/orderController.js";
+} from "../controller/user/order/orderController.js";
 import authenticate from "../middlewares/authMiddleware.js";
 
 const router = Router();

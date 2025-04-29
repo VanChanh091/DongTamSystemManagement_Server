@@ -8,7 +8,7 @@ import {
   getById,
   getBySDT,
   updateCustomer,
-} from "../controller/customer/customerController.js";
+} from "../controller/user/customer/customerController.js";
 import authenticate from "../middlewares/authMiddleware.js";
 
 const router = Router();

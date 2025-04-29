@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-import Product from "../../models/product/product.js";
+import Product from "../../../models/product/product.js";
 import { Op, fn, col, where } from "sequelize";
 
 const redisCache = new Redis();
