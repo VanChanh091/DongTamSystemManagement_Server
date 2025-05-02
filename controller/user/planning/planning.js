@@ -1,13 +1,27 @@
 import Redis from "ioredis";
-import Order from "../../models/order/order.js";
+import Order from "../../../models/order/order.js";
 
 const redisCache = new Redis();
 
+//getOrderAccept
+export const getOrderAccept = async (req, res) => {
+  try {
+    const data = await Order.findAll({
+      where: { status: "planning" },
+      order: [["createdAt", "DESC"]],
+    });
+    res.json({ message: "Get all order have status:planning", data });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 //update status
-export const updateStatus = async (req, res) => {
+export const updateStatusPlanning = async (req, res) => {
   const { id, newStatus } = req.query;
   try {
-    if (!["pending", "accept", "reject"].includes(newStatus)) {
+    if (!["pending", "accept", "reject", "planning"].includes(newStatus)) {
       return res.status(400).json({ message: "Invalid status" });
     }
 

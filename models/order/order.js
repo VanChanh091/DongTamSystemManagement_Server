@@ -29,7 +29,7 @@ const Order = sequelize.define(
     vat: { type: DataTypes.INTEGER },
     instructSpecial: { type: DataTypes.STRING },
     status: {
-      type: DataTypes.ENUM("pending", "accept", "reject"),
+      type: DataTypes.ENUM("pending", "accept", "reject", "planning"),
       allowNull: false,
       defaultValue: "pending",
     },

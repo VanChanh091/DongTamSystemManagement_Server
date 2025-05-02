@@ -479,7 +479,16 @@ export const updateOrder = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    await order.update(orderData);
+    if (order.status == "accept") {
+      return res
+        .status(400)
+        .json({ message: "Chỉ được cập nhật đơn hàng bị từ chối" });
+    }
+
+    await order.update({
+      status: "pending",
+      ...orderData,
+    });
 
     await updateChildOrder(id, Box, box);
 

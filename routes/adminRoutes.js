@@ -1,9 +1,13 @@
 import { Router } from "express";
 import authenticate from "../middlewares/authMiddleware.js";
-import { updateStatus } from "../controller/admin/orderAdmin.js";
+import {
+  getOrderPending,
+  updateStatusAdmin,
+} from "../controller/admin/adminOrder.js";
 
 const router = Router();
 
-router.put("/updateStatus", authenticate, updateStatus);
+router.get("/", authenticate, getOrderPending);
+router.put("/updateStatus", authenticate, updateStatusAdmin);
 
 export default router;
