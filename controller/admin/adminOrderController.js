@@ -44,7 +44,7 @@ export const updateStatusAdmin = async (req, res) => {
     order.status = newStatus;
     await order.save();
 
-    await redisCache.set(`order:${id}`, JSON.stringify(order), "EX", 3600);
+    await redisCache.del("orders:all");
 
     res.json({ message: "Order status updated successfully", order });
   } catch (error) {
