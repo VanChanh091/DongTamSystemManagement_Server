@@ -1,5 +1,8 @@
 import Redis from "ioredis";
 import Order from "../../models/order/order.js";
+import Customer from "../../models/customer/customer.js";
+import Product from "../../models/product/product.js";
+import Box from "../../models/order/box.js";
 
 const redisCache = new Redis();
 
@@ -8,6 +11,14 @@ export const getOrderPending = async (req, res) => {
   try {
     const data = await Order.findAll({
       where: { status: "pending" },
+      include: [
+        {
+          model: Customer,
+          attributes: ["customerName", "companyName"],
+        },
+        { model: Product },
+        { model: Box, as: "box" },
+      ],
       order: [["createdAt", "DESC"]],
     });
     res.json({ message: "get all order have status:pending", data });

@@ -3,7 +3,7 @@ import authenticate from "../middlewares/authMiddleware.js";
 import {
   getOrderPending,
   updateStatusAdmin,
-} from "../controller/admin/adminOrder.js";
+} from "../controller/admin/adminOrderController.js";
 
 const router = Router();
 

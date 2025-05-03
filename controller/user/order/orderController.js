@@ -482,7 +482,7 @@ export const updateOrder = async (req, res) => {
     if (order.status == "accept") {
       return res
         .status(400)
-        .json({ message: "Chỉ được cập nhật đơn hàng bị từ chối" });
+        .json({ message: "Không thể cập nhật đơn hàng đã được duyệt" });
     }
 
     await order.update({
