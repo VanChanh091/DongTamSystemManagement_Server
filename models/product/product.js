@@ -12,6 +12,7 @@ const Product = sequelize.define(
     typeProduct: { type: DataTypes.STRING, allowNull: false },
     productName: { type: DataTypes.STRING, allowNull: false },
     maKhuon: { type: DataTypes.STRING, allowNull: false },
+    productImage: { type: DataTypes.STRING },
   },
   { timestamps: true }
 );

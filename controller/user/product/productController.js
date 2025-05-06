@@ -1,6 +1,9 @@
 import Redis from "ioredis";
 import Product from "../../../models/product/product.js";
 import { Op, fn, col, where } from "sequelize";
+import sharp from "sharp";
+import path from "path";
+import fs from "fs";
 
 const redisCache = new Redis();
 
@@ -121,7 +124,9 @@ export const getProductByName = async (req, res) => {
 
 //add product
 export const addProduct = async (req, res) => {
-  const { prefix = "CUSTOM", ...productData } = req.body;
+  const { prefix = "CUSTOM", product } = req.body;
+  const parsedProduct =
+    typeof product === "string" ? JSON.parse(product) : product;
 
   try {
     const sanitizedPrefix = prefix.trim().replace(/\s+/g, "");
@@ -147,11 +152,28 @@ export const addProduct = async (req, res) => {
     }
 
     const formattedNumber = number.toString().padStart(4, "0");
-    const newProductId = `${sanitizedPrefix}${formattedNumber}`;
+    const newProductId = `${sanitizedPrefix}${formattedNumber}`.toUpperCase();
+
+    // ✅ Xử lý ảnh nếu có
+    if (req.file) {
+      const ext = path.extname(req.file.originalname); //lấy đuôi file
+      const newFileName = newProductId;
+      const newPath = `uploads/${newFileName}.webp`;
+
+      await sharp(req.file.path)
+        .resize({ width: 800 })
+        .toFormat("webp")
+        .toFile(newPath);
+
+      // Xóa ảnh gốc nếu muốn
+      fs.unlinkSync(req.file.path);
+
+      parsedProduct.productImage = `${newFileName}.webp`;
+    }
 
     const newProduct = await Product.create({
-      productId: newProductId.toUpperCase(),
-      ...productData,
+      productId: newProductId,
+      ...parsedProduct,
     });
 
     await redisCache.del("products:all");
@@ -169,22 +191,46 @@ export const addProduct = async (req, res) => {
 //update product
 export const updateProduct = async (req, res) => {
   const { id } = req.query;
-  const { ...productData } = req.body;
+  const productData =
+    typeof req.body === "string" ? JSON.parse(req.body) : req.body;
 
   try {
-    const product = await Product.findByPk(id);
+    const existingProduct = await Product.findByPk(id);
 
-    if (!product) {
+    if (!existingProduct) {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    await product.update(productData);
+    // Nếu có ảnh mới được upload
+    if (req.file) {
+      const ext = path.extname(req.file.originalname); //lấy đuôi file
+      const newFileName = id;
+      const newPath = `uploads/${newFileName}.webp`;
 
+      if (existingProduct.productImage) {
+        const oldPath = path.join("uploads", existingProduct.productImage);
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
+      }
+
+      // Resize ảnh mới và lưu
+      await sharp(req.file.path)
+        .resize({ width: 800 })
+        .toFormat("webp")
+        .toFile(newPath);
+
+      fs.unlinkSync(req.file.path);
+
+      productData.productImage = `${newFileName}.webp`;
+    }
+
+    await existingProduct.update(productData);
     await redisCache.del("products:all");
 
     return res.status(200).json({
       message: "Product updated successfully",
-      data: product,
+      data: existingProduct,
     });
   } catch (error) {
     console.error("Update product error:", error);
@@ -203,8 +249,16 @@ export const deleteProduct = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
+    const imagePath = path.join("uploads", product.productImage);
+
+    // Xoá record trong DB
     await product.destroy();
     await redisCache.del("products:all");
+
+    // Xoá ảnh nếu tồn tại
+    if (fs.existsSync(imagePath)) {
+      fs.unlinkSync(imagePath);
+    }
 
     return res.status(200).json({ message: "Product deleted successfully" });
   } catch (error) {
