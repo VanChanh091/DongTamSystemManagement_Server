@@ -23,6 +23,7 @@ const port = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+app.use("/uploads", express.static("uploads")); //set up to get product image
 
 //routes
 app.use("/auth", authRoutes);
