@@ -30,7 +30,8 @@ export const getOrderPending = async (req, res) => {
 
 //update status
 export const updateStatusAdmin = async (req, res) => {
-  const { id, newStatus } = req.query;
+  const { id } = req.query;
+  const { newStatus, rejectReason } = req.body;
   try {
     if (!["pending", "accept", "reject", "planning"].includes(newStatus)) {
       return res.status(400).json({ message: "Invalid status" });
@@ -42,6 +43,13 @@ export const updateStatusAdmin = async (req, res) => {
     }
 
     order.status = newStatus;
+
+    if (newStatus === "reject") {
+      order.rejectReason = rejectReason || "";
+    } else {
+      order.rejectReason = null;
+    }
+
     await order.save();
 
     await redisCache.del("orders:all");

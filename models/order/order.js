@@ -38,6 +38,7 @@ const Order = sequelize.define(
       allowNull: false,
       defaultValue: "pending",
     },
+    rejectReason: { type: DataTypes.STRING },
   },
   { timestamps: true }
 );
