@@ -4,6 +4,7 @@ import { Op, fn, col, where } from "sequelize";
 import Customer from "../../../models/customer/customer.js";
 import Box from "../../../models/order/box.js";
 import Product from "../../../models/product/product.js";
+import sendNotification from "../../../utils/notification.js";
 
 const redisCache = new Redis();
 
@@ -129,71 +130,6 @@ export const getOrderByCustomerName = async (req, res) => {
       message: "Get orders by customer name from DB",
       orders: orders,
     });
-  } catch (error) {
-    res.status(500).json({
-      message: "Failed to get customers by name",
-      error: error.message,
-    });
-  }
-};
-
-//get by type product
-export const getOrderByTypeProduct = async (req, res) => {
-  const { type } = req.query;
-  try {
-    //check cache redis
-    const cacheKey = "orders:all";
-    const cachedData = await redisCache.get(cacheKey);
-
-    if (cachedData) {
-      console.log("✅ Get Orders from Redis");
-      const parsedOrders = JSON.parse(cachedData);
-
-      const matchedOrders = parsedOrders.filter((order) =>
-        order?.Product?.typeProduct?.toLowerCase().includes(type.toLowerCase())
-      );
-
-      if (!matchedOrders || matchedOrders.length === 0) {
-        return res.status(404).json({
-          message: "Không tìm thấy đơn hàng theo loại sản phẩm trong cache",
-        });
-      }
-      return res.status(200).json({
-        message: "Get orders by type product from cache",
-        orders: matchedOrders,
-      });
-    }
-
-    //  Nếu không có cache → truy vấn từ DB
-    const product = await Product.findAll({
-      where: { typeProduct: { [Op.like]: `%${type.toLowerCase()}%` } },
-    });
-
-    if (!product) {
-      return res.status(404).json({ message: "Product not found" });
-    }
-    const productIds = product.map((product) => product.productId);
-
-    const orders = await Order.findAll({
-      where: { productId: { [Op.in]: productIds } },
-      include: [
-        {
-          model: Customer,
-          attributes: ["customerName", "companyName"],
-        },
-        { model: Product },
-        { model: Box, as: "box" },
-      ],
-      order: [["createdAt", "DESC"]],
-    });
-
-    if (!orders) {
-      return res.status(404).json({ message: "Customer not found" });
-    }
-
-    return res
-      .status(201)
-      .json({ message: "Get orders by type product from DB", orders: orders });
   } catch (error) {
     res.status(500).json({
       message: "Failed to get customers by name",
@@ -377,6 +313,55 @@ export const getOrderByPrice = async (req, res) => {
   }
 };
 
+//get order pending and reject
+export const getOrderPendingAndReject = async (req, res) => {
+  try {
+    const data = await Order.findAll({
+      where: { status: { [Op.in]: ["pending", "reject"] } },
+      include: [
+        {
+          model: Customer,
+          attributes: ["customerName", "companyName"],
+        },
+        { model: Product },
+        { model: Box, as: "box" },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+    res.json({
+      message: "get all order have status: pending and reject",
+      data,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const getOrderAcceptAndPlanning = async (req, res) => {
+  try {
+    const data = await Order.findAll({
+      where: { status: { [Op.in]: ["accept", "planning"] } },
+      include: [
+        {
+          model: Customer,
+          attributes: ["customerName", "companyName"],
+        },
+        { model: Product },
+        { model: Box, as: "box" },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+    res.json({
+      message: "get all order have status: accept and planning",
+      data,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 //add order
 export const addOrder = async (req, res) => {
   const {
@@ -449,6 +434,17 @@ export const addOrder = async (req, res) => {
     await redisCache.del("orders:all");
 
     res.status(201).json(newOrder);
+
+    await sendNotification({
+      title: "Đơn hàng mới",
+      message: `Đơn hàng ${newOrderId} đã được tạo.`,
+      targetUserId: "admin",
+      // data: {
+      //   orderId: newOrderId,
+      //   customerId,
+      //   productId,
+      // },
+    });
   } catch (error) {
     console.error("Create order error:", error);
     res.status(500).json({ error: error.message });

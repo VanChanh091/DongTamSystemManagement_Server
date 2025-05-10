@@ -5,7 +5,7 @@ import {
   login,
   register,
   verifyOTPChangePassword,
-} from "../controller/auth/authController.js";
+} from "../../controller/auth/authController.js";
 
 const authRoutes = Router();
 

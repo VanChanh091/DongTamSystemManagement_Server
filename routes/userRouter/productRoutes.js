@@ -1,5 +1,5 @@
 import { Router } from "express";
-import authenticate from "../middlewares/authMiddleware.js";
+import authenticate from "../../middlewares/authMiddleware.js";
 import {
   addProduct,
   deleteProduct,
@@ -7,8 +7,8 @@ import {
   getProductById,
   getProductByName,
   updateProduct,
-} from "../controller/user/product/productController.js";
-import upload from "../utils/uploadImage.js";
+} from "../../controller/user/product/productController.js";
+import upload from "../../utils/uploadImage.js";
 
 const router = Router();
 

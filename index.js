@@ -4,17 +4,17 @@ import dotenv from "dotenv";
 
 import { connectDB, sequelize } from "./configs/connectDB.js";
 import authenticate from "./middlewares/authMiddleware.js";
+import {
+  authRoutes,
+  adminRoutes,
+  customerRoutes,
+  orderRoutes,
+  productRoutes,
+  planningRoutes,
+} from "./routes/index.js";
 
 //create table
 import "./models/index.js";
-
-// import routes
-import authRoutes from "./routes/authRoutes.js";
-import customerRoutes from "./routes/customerRoutes.js";
-import orderRoutes from "./routes/orderRoutes.js";
-import productRoutes from "./routes/productRoutes.js";
-import adminRoutes from "./routes/adminRoutes.js";
-import planningRoutes from "./routes/planningRoutes.js";
 
 const app = express();
 

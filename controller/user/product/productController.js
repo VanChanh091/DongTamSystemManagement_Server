@@ -4,6 +4,7 @@ import { Op, fn, col, where } from "sequelize";
 import sharp from "sharp";
 import path from "path";
 import fs from "fs";
+import { generateNextId } from "../../../utils/generateNextId.js";
 
 const redisCache = new Redis();
 
@@ -128,35 +129,21 @@ export const addProduct = async (req, res) => {
   const parsedProduct =
     typeof product === "string" ? JSON.parse(product) : product;
 
-  try {
-    const sanitizedPrefix = prefix.trim().replace(/\s+/g, "");
+  const transaction = await Product.sequelize.transaction();
 
-    const lastProduct = await Product.findOne({
-      where: {
-        productId: {
-          [Op.like]: `${sanitizedPrefix}%`,
-        },
-      },
-      order: [["productId", "DESC"]],
+  try {
+    const products = await Product.findAll({
+      attributes: ["productId"],
+      transaction,
     });
 
-    let number = 1;
-    if (lastProduct && lastProduct.productId) {
-      const lastNumber = parseInt(
-        lastProduct.productId.slice(sanitizedPrefix.length),
-        10
-      );
-      if (!isNaN(lastNumber)) {
-        number = lastNumber + 1;
-      }
-    }
-
-    const formattedNumber = number.toString().padStart(4, "0");
-    const newProductId = `${sanitizedPrefix}${formattedNumber}`.toUpperCase();
+    const allProductIds = products.map((p) => p.productId);
+    const sanitizedPrefix = prefix.trim().replace(/\s+/g, "").toUpperCase();
+    const newProductId = generateNextId(allProductIds, sanitizedPrefix);
 
     // ✅ Xử lý ảnh nếu có
     if (req.file) {
-      const ext = path.extname(req.file.originalname); //lấy đuôi file
+      const ext = path.extname(req.file.originalname);
       const newFileName = newProductId;
       const newPath = `uploads/${newFileName}.webp`;
 
@@ -165,17 +152,19 @@ export const addProduct = async (req, res) => {
         .toFormat("webp")
         .toFile(newPath);
 
-      // Xóa ảnh gốc nếu muốn
       fs.unlinkSync(req.file.path);
-
       parsedProduct.productImage = `${newFileName}.webp`;
     }
 
-    const newProduct = await Product.create({
-      productId: newProductId,
-      ...parsedProduct,
-    });
+    const newProduct = await Product.create(
+      {
+        productId: newProductId,
+        ...parsedProduct,
+      },
+      { transaction }
+    );
 
+    await transaction.commit();
     await redisCache.del("products:all");
 
     return res.status(201).json({
@@ -183,8 +172,8 @@ export const addProduct = async (req, res) => {
       data: newProduct,
     });
   } catch (error) {
-    console.error("Add product error:", error);
-    res.status(404).json({ error: error.message });
+    await transaction.rollback();
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -249,15 +238,16 @@ export const deleteProduct = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    const imagePath = path.join("uploads", product.productImage);
+    const imageName = product.productImage;
 
-    // Xoá record trong DB
     await product.destroy();
     await redisCache.del("products:all");
 
-    // Xoá ảnh nếu tồn tại
-    if (fs.existsSync(imagePath)) {
-      fs.unlinkSync(imagePath);
+    if (imageName) {
+      const imagePath = path.join("uploads", imageName);
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+      }
     }
 
     return res.status(200).json({ message: "Product deleted successfully" });

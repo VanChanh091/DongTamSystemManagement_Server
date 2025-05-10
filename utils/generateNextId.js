@@ -1,0 +1,14 @@
+export const generateNextId = (allIds, prefix, num) => {
+  let maxNumber = 0;
+  allIds.forEach((ids) => {
+    const match = ids.match(/\d+$/); // Tìm số ở cuối ID
+    if (match) {
+      const number = parseInt(match[0], 10);
+      if (!isNaN(number) && number > maxNumber) {
+        maxNumber = number;
+      }
+    }
+  });
+  const newNumber = maxNumber + 1;
+  return `${prefix}${String(newNumber).padStart(num, "0")}`;
+};

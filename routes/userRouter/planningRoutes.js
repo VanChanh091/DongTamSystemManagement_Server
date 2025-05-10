@@ -1,9 +1,9 @@
 import { Router } from "express";
-import authenticate from "../middlewares/authMiddleware.js";
+import authenticate from "../../middlewares/authMiddleware.js";
 import {
   getOrderAccept,
   updateStatusPlanning,
-} from "../controller/user/planning/planning.js";
+} from "../../controller/user/planning/planning.js";
 
 const router = Router();
 

@@ -8,6 +8,7 @@ const Customer = sequelize.define(
       type: DataTypes.STRING(10),
       allowNull: false,
       primaryKey: true,
+      unique: true,
     },
     customerName: { type: DataTypes.STRING, allowNull: false },
     companyName: { type: DataTypes.STRING, allowNull: false },

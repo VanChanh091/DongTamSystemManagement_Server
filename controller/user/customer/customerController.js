@@ -1,6 +1,7 @@
 import Redis from "ioredis";
 import Customer from "../../../models/customer/customer.js";
 import { Op, fn, col, where } from "sequelize";
+import { generateNextId } from "../../../utils/generateNextId.js";
 
 const redisClient = new Redis();
 
@@ -188,62 +189,36 @@ export const getBySDT = async (req, res) => {
   }
 };
 
-// create
 export const createCustomer = async (req, res) => {
+  const { prefix = "CUSTOM", ...customerData } = req.body;
+  const transaction = await Customer.sequelize.transaction();
+
   try {
-    const { prefix = "CUSTOM", ...customerData } = req.body;
+    const customers = await Customer.findAll({
+      attributes: ["customerId"],
+      transaction,
+    });
+
+    const allCustomerIds = customers.map((c) => c.customerId);
     const sanitizedPrefix = prefix.trim().replace(/\s+/g, "").toUpperCase();
+    const newCustomerId = generateNextId(allCustomerIds, sanitizedPrefix);
 
-    const transaction = await Customer.sequelize.transaction();
+    const newCustomer = await Customer.create(
+      {
+        customerId: newCustomerId,
+        ...customerData,
+      },
+      { transaction }
+    );
 
-    try {
-      const customers = await Customer.findAll({
-        attributes: ["customerId"],
-        transaction,
-      });
+    await transaction.commit();
+    await redisClient.del("customers:all");
 
-      let maxNumber = 0;
-      for (const customer of customers) {
-        const numberMatch = customer.customerId.match(/\d+$/);
-        if (numberMatch) {
-          const number = parseInt(numberMatch[0], 10);
-          if (!isNaN(number) && number > maxNumber) {
-            maxNumber = number;
-          }
-        }
-      }
-
-      const newNumber = maxNumber + 1;
-      const formattedNumber = String(newNumber).padStart(4, "0");
-      const newCustomerId = `${sanitizedPrefix}${formattedNumber}`;
-
-      const existingCustomer = await Customer.findOne({
-        where: { customerId: newCustomerId },
-        transaction,
-      });
-
-      if (existingCustomer) {
-        throw new Error(`Customer ID ${newCustomerId} already exists`);
-      }
-
-      const newCustomer = await Customer.create(
-        {
-          customerId: newCustomerId,
-          ...customerData,
-        },
-        { transaction }
-      );
-
-      await transaction.commit();
-      await redisClient.del("customers:all");
-
-      res.status(201).json(newCustomer);
-    } catch (error) {
-      await transaction.rollback();
-      throw error;
-    }
+    res
+      .status(201)
+      .json({ message: "Customer created successfully", data: newCustomer });
   } catch (error) {
-    console.error("Create customer error:", error);
+    await transaction.rollback();
     res
       .status(500)
       .json({ error: `Failed to create customer: ${error.message}` });
