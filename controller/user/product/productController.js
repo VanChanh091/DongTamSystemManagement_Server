@@ -7,8 +7,10 @@ import fs from "fs";
 import { generateNextId } from "../../../utils/generateNextId.js";
 import {
   convertToWebp,
+  getCloudinaryPublicId,
   uploadImageToCloudinary,
 } from "../../../utils/image/converToWebp.js";
+import cloudinary from "../../../configs/connectCloudinary.js";
 
 const redisCache = new Redis();
 
@@ -231,10 +233,10 @@ export const deleteProduct = async (req, res) => {
     await product.destroy();
     await redisCache.del("products:all");
 
-    if (imageName) {
-      const imagePath = path.join("uploads", imageName);
-      if (fs.existsSync(imagePath)) {
-        fs.unlinkSync(imagePath);
+    if (imageName && imageName.includes("cloudinary.com")) {
+      const publicId = getCloudinaryPublicId(imageName);
+      if (publicId) {
+        await cloudinary.uploader.destroy(publicId);
       }
     }
 
