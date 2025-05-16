@@ -40,7 +40,12 @@ const Order = sequelize.define(
     },
     rejectReason: { type: DataTypes.STRING },
   },
-  { timestamps: true }
+  { timestamps: true },
+  {
+    name: "customer_fulltext_index",
+    type: "FULLTEXT",
+    fields: ["QC_box"],
+  }
 );
 
 export default Order;

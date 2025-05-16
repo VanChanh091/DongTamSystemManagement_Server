@@ -5,8 +5,31 @@ import sharp from "sharp";
 import path from "path";
 import fs from "fs";
 import { generateNextId } from "../../../utils/generateNextId.js";
+import {
+  convertToWebp,
+  uploadImageToCloudinary,
+} from "../../../utils/image/converToWebp.js";
 
 const redisCache = new Redis();
+
+const cacheRedis = async (colData, params) => {
+  const cacheKey = "products:all";
+  const cachedData = await redisCache.get(cacheKey);
+
+  if (cachedData) {
+    const parsedData = JSON.parse(cachedData);
+
+    const product = parsedData.filter((item) =>
+      item[colData]?.toLowerCase().includes(params.toLowerCase())
+    );
+
+    if (product.length > 0) {
+      return product;
+    }
+  }
+
+  return null;
+};
 
 //get all product
 export const getAllProduct = async (req, res) => {
@@ -34,25 +57,6 @@ export const getAllProduct = async (req, res) => {
     console.error("Get all products error:", error);
     res.status(500).json({ error: error.message });
   }
-};
-
-const cacheRedis = async (colData, params) => {
-  const cacheKey = "products:all";
-  const cachedData = await redisCache.get(cacheKey);
-
-  if (cachedData) {
-    const parsedData = JSON.parse(cachedData);
-
-    const product = parsedData.filter((item) =>
-      item[colData]?.toLowerCase().includes(params.toLowerCase())
-    );
-
-    if (product.length > 0) {
-      return product;
-    }
-  }
-
-  return null;
 };
 
 //get product by id
@@ -139,21 +143,16 @@ export const addProduct = async (req, res) => {
 
     const allProductIds = products.map((p) => p.productId);
     const sanitizedPrefix = prefix.trim().replace(/\s+/g, "").toUpperCase();
-    const newProductId = generateNextId(allProductIds, sanitizedPrefix);
+    const newProductId = generateNextId(allProductIds, sanitizedPrefix, 4);
 
-    // ✅ Xử lý ảnh nếu có
     if (req.file) {
-      const ext = path.extname(req.file.originalname);
-      const newFileName = newProductId;
-      const newPath = `uploads/${newFileName}.webp`;
-
-      await sharp(req.file.path)
-        .resize({ width: 800 })
-        .toFormat("webp")
-        .toFile(newPath);
-
-      fs.unlinkSync(req.file.path);
-      parsedProduct.productImage = `${newFileName}.webp`;
+      const webpBuffer = await convertToWebp(req.file.buffer);
+      const result = await uploadImageToCloudinary(
+        webpBuffer,
+        "products",
+        newProductId.replace(/\s+/g, "_")
+      );
+      parsedProduct.productImage = result.secure_url;
     }
 
     const newProduct = await Product.create(
@@ -192,26 +191,15 @@ export const updateProduct = async (req, res) => {
 
     // Nếu có ảnh mới được upload
     if (req.file) {
-      const ext = path.extname(req.file.originalname); //lấy đuôi file
-      const newFileName = id;
-      const newPath = `uploads/${newFileName}.webp`;
-
-      if (existingProduct.productImage) {
-        const oldPath = path.join("uploads", existingProduct.productImage);
-        if (fs.existsSync(oldPath)) {
-          fs.unlinkSync(oldPath);
-        }
+      if (req.file) {
+        const webpBuffer = await convertToWebp(req.file.buffer);
+        const result = await uploadImageToCloudinary(
+          webpBuffer,
+          "products",
+          id
+        );
+        productData.productImage = result.secure_url;
       }
-
-      // Resize ảnh mới và lưu
-      await sharp(req.file.path)
-        .resize({ width: 800 })
-        .toFormat("webp")
-        .toFile(newPath);
-
-      fs.unlinkSync(req.file.path);
-
-      productData.productImage = `${newFileName}.webp`;
     }
 
     await existingProduct.update(productData);

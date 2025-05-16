@@ -8,7 +8,7 @@ import {
   getProductByName,
   updateProduct,
 } from "../../controller/user/product/productController.js";
-import upload from "../../utils/uploadImage.js";
+import upload from "../../utils/image/uploadImage.js";
 
 const router = Router();
 

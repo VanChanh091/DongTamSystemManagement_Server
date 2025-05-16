@@ -10,5 +10,6 @@ export const generateNextId = (allIds, prefix, num) => {
     }
   });
   const newNumber = maxNumber + 1;
-  return `${prefix}${String(newNumber).padStart(num, "0")}`;
+  const formattedNumber = String(newNumber).padStart(num, "0");
+  return `${prefix}${formattedNumber}`;
 };

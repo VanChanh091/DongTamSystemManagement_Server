@@ -201,7 +201,7 @@ export const createCustomer = async (req, res) => {
 
     const allCustomerIds = customers.map((c) => c.customerId);
     const sanitizedPrefix = prefix.trim().replace(/\s+/g, "").toUpperCase();
-    const newCustomerId = generateNextId(allCustomerIds, sanitizedPrefix);
+    const newCustomerId = generateNextId(allCustomerIds, sanitizedPrefix, 4);
 
     const newCustomer = await Customer.create(
       {
