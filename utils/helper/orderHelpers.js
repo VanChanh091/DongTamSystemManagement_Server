@@ -93,7 +93,7 @@ export const cachedStatus = async (cachedName, redisCache, prop1, prop2) => {
   }
 
   // Kiểm tra nếu dữ liệu là object có `data` (kiểu mới)
-  const ordersArray = Array.isArray(parsed) ? parsed : parsed.data;
+  const ordersArray = Array.isArray(parsed) ? parsed : parsed?.data;
 
   if (!Array.isArray(ordersArray)) {
     return null;
@@ -106,47 +106,60 @@ export const cachedStatus = async (cachedName, redisCache, prop1, prop2) => {
   return data.length > 0 ? data : null;
 };
 
-export const getOrdersFromCacheOrDb = async ({
-  cacheKey,
-  matchFn,
-  dbQueryFn,
-  notFoundMessage,
-  successCacheMessage,
-  successDbMessage,
-  res,
+export const filterOrdersFromCache = async ({
+  keyword,
+  getFieldValue,
+  page = 1,
+  pageSize = 25,
+  message,
 }) => {
-  try {
-    const cachedData = await redisCache.get(cacheKey);
+  const currentPage = Number(page);
+  const currentPageSize = Number(pageSize);
+  const lowerKeyword = keyword?.toLowerCase?.() || "";
 
-    if (cachedData) {
-      console.log("✅ Get Orders from Redis");
-      const parsedOrders = JSON.parse(cachedData);
+  const allDataCacheKey = `orders:tests:status:accept_planning:all`;
 
-      const matchedOrders = parsedOrders.filter(matchFn);
-
-      if (!matchedOrders || matchedOrders.length === 0) {
-        return res.status(404).json({ message: notFoundMessage });
-      }
-
-      return res.status(200).json({
-        message: successCacheMessage,
-        orders: matchedOrders,
-      });
-    }
-
-    const orders = await dbQueryFn();
-
-    if (!orders || orders.length === 0) {
-      return res.status(404).json({ message: notFoundMessage });
-    }
-
-    return res.status(200).json({
-      message: successDbMessage,
-      orders,
+  // Lấy cache
+  let allOrders = await redisCache.get(allDataCacheKey);
+  if (!allOrders) {
+    allOrders = await Order.findAll({
+      where: { status: { [Op.in]: ["accept", "planning"] } },
+      include: [
+        { model: Customer, attributes: ["customerName", "companyName"] },
+        { model: Product },
+        { model: Box, as: "box" },
+      ],
+      order: [["createdAt", "DESC"]],
     });
-  } catch (error) {
-    return res
-      .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
+
+    await redisCache.set(
+      allDataCacheKey,
+      JSON.stringify(allOrders),
+      "EX",
+      3600
+    );
+  } else {
+    allOrders = JSON.parse(allOrders);
   }
+
+  // Lọc
+  const filteredOrders = allOrders.filter((order) =>
+    getFieldValue(order)?.toLowerCase?.().includes(lowerKeyword)
+  );
+
+  const totalOrders = filteredOrders.length;
+  const totalPages = Math.ceil(totalOrders / currentPageSize);
+  const offset = (currentPage - 1) * currentPageSize;
+  const paginatedOrders = filteredOrders.slice(
+    offset,
+    offset + currentPageSize
+  );
+
+  return {
+    message,
+    data: paginatedOrders,
+    totalOrders,
+    totalPages,
+    currentPage,
+  };
 };

@@ -11,7 +11,7 @@ import {
   updateChildOrder,
   validateCustomerAndProduct,
   cachedStatus,
-  getOrdersFromCacheOrDb,
+  filterOrdersFromCache,
 } from "../../../utils/helper/orderHelpers.js";
 
 const redisCache = new Redis();
@@ -25,7 +25,7 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
     const currentPage = Number(page);
     const currentPageSize = Number(pageSize);
 
-    const cacheKey = `orders:tests:page:${page}:status:accept_planning`;
+    const cacheKey = `orders:tests:status:accept_planning:page:${currentPage}`;
 
     // Lấy data đã lọc từ cachedStatus
     const cachedData = await redisCache.get(cacheKey);
@@ -58,6 +58,7 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
 
     const totalPages = Math.ceil(totalOrders / currentPageSize);
 
+    //find data from db
     const data = await Order.findAll({
       where: { status: { [Op.in]: ["accept", "planning"] } },
       include: [
@@ -101,131 +102,99 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
 
 //get by customer name
 export const getOrderByCustomerName = async (req, res) => {
-  const { name, page = 1 } = req.query;
-  const cacheKey = `orders:tests:page:${page}:status:accept_planning`;
+  const { name, page = 1, pageSize = 25 } = req.query;
 
-  return getOrdersFromCacheOrDb({
-    cacheKey,
-    matchFn: (order) =>
-      order?.Customer?.customerName?.toLowerCase().includes(name.toLowerCase()),
-    dbQueryFn: async () => {
-      const customers = await Customer.findAll({
-        where: { customerName: { [Op.like]: `%${name.toLowerCase()}%` } },
-        attributes: ["customerId", "customerName", "companyName"],
-      });
-
-      const customerIds = customers.map((c) => c.customerId);
-      return Order.findAll({
-        where: { customerId: { [Op.in]: customerIds } },
-        include: [
-          { model: Customer, attributes: ["customerName", "companyName"] },
-          { model: Product },
-          { model: Box, as: "box" },
-        ],
-        order: [["createdAt", "DESC"]],
-        offset: (page - 1) * 20,
-        limit: 20,
-      });
-    },
-    notFoundMessage: "Không tìm thấy đơn hàng theo khách hàng",
-    successCacheMessage: "Get orders by customer name from cache",
-    successDbMessage: "Get orders by customer name from DB",
-    res,
+  const result = await filterOrdersFromCache({
+    keyword: name,
+    getFieldValue: (order) => order?.Customer?.customerName,
+    page,
+    pageSize,
+    message: "Get orders by customer name from filtered cache",
   });
+
+  return res.status(200).json(result);
 };
 
 //get by product name
 export const getOrderByProductName = async (req, res) => {
-  const { name, page = 1 } = req.query;
-  const cacheKey = `orders:tests:page:${page}:status:accept_planning`;
+  const { productName, page = 1, pageSize = 25 } = req.query;
 
-  return getOrdersFromCacheOrDb({
-    cacheKey,
-    matchFn: (order) =>
-      order?.Product?.productName?.toLowerCase().includes(name.toLowerCase()),
-    dbQueryFn: async () => {
-      const products = await Product.findAll({
-        where: { productName: { [Op.like]: `%${name.toLowerCase()}%` } },
-      });
-
-      const productIds = products.map((p) => p.productId);
-      return Order.findAll({
-        where: { productId: { [Op.in]: productIds } },
-        include: [
-          { model: Customer, attributes: ["customerName", "companyName"] },
-          { model: Product },
-          { model: Box, as: "box" },
-        ],
-        order: [["createdAt", "DESC"]],
-        offset: (page - 1) * 20,
-        limit: 20,
-      });
-    },
-    notFoundMessage: "Không tìm thấy đơn hàng theo tên sản phẩm",
-    successCacheMessage: "Get orders by product name from cache",
-    successDbMessage: "Get orders by product name from DB",
-    res,
+  const result = await filterOrdersFromCache({
+    keyword: productName,
+    getFieldValue: (order) => order?.Product?.productName,
+    page,
+    pageSize,
+    message: "Get orders by product name from filtered cache",
   });
+
+  return res.status(200).json(result);
 };
 
 //get by QC box
 export const getOrderByQcBox = async (req, res) => {
-  const { QcBox, page = 1 } = req.query;
-  const cacheKey = `orders:tests:page:${page}:status:accept_planning`;
+  const { QcBox, page = 1, pageSize = 25 } = req.query;
 
-  return getOrdersFromCacheOrDb({
-    cacheKey,
-    matchFn: (order) =>
-      order?.QC_box?.toLowerCase().includes(QcBox.toLowerCase()),
-    dbQueryFn: async () =>
-      Order.findAll({
-        where: {
-          status: "accept_planning",
-          [Op.and]: where(fn("LOWER", col("QC_box")), {
-            [Op.like]: `%${QcBox.toLowerCase()}%`,
-          }),
-        },
-        include: [
-          { model: Customer, attributes: ["customerName", "companyName"] },
-          { model: Product },
-          { model: Box, as: "box" },
-        ],
-        order: [["createdAt", "DESC"]],
-        offset: (page - 1) * 20,
-        limit: 20,
-      }),
-    notFoundMessage: "Không tìm thấy đơn hàng theo QC_box",
-    successCacheMessage: "Get orders by QC_box from cache",
-    successDbMessage: "Get orders by QC_box from DB",
-    res,
+  const result = await filterOrdersFromCache({
+    keyword: QcBox,
+    getFieldValue: (order) => order?.QC_box,
+    page,
+    pageSize,
+    message: "Get orders by QC box from filtered cache",
   });
+
+  return res.status(200).json(result);
 };
 
 //get by price
 export const getOrderByPrice = async (req, res) => {
-  const { price, page = 1 } = req.query;
+  const { price, page = 1, pageSize = 25 } = req.query;
+  const currentPage = Number(page);
+  const currentPageSize = Number(pageSize);
   const targetPrice = parseFloat(price);
-  const cacheKey = `orders:tests:page:${page}:status:accept_planning`;
 
-  return getOrdersFromCacheOrDb({
-    cacheKey,
-    matchFn: (order) => Number(order?.price) === targetPrice,
-    dbQueryFn: async () =>
-      Order.findAll({
-        where: { price: { [Op.eq]: targetPrice } },
-        include: [
-          { model: Customer, attributes: ["customerName", "companyName"] },
-          { model: Product },
-          { model: Box, as: "box" },
-        ],
-        order: [["createdAt", "DESC"]],
-        offset: (page - 1) * 20,
-        limit: 20,
-      }),
-    notFoundMessage: "Không tìm thấy đơn hàng theo giá",
-    successCacheMessage: "Get orders by price from cache",
-    successDbMessage: "Get orders by price from DB",
-    res,
+  const allDataCacheKey = `orders:tests:status:accept_planning:all`;
+
+  let allOrders = await redisCache.get(allDataCacheKey);
+  if (!allOrders) {
+    allOrders = await Order.findAll({
+      where: { status: { [Op.in]: ["accept", "planning"] } },
+      include: [
+        { model: Customer, attributes: ["customerName", "companyName"] },
+        { model: Product },
+        { model: Box, as: "box" },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    await redisCache.set(
+      allDataCacheKey,
+      JSON.stringify(allOrders),
+      "EX",
+      3600
+    );
+  } else {
+    allOrders = JSON.parse(allOrders);
+  }
+
+  // Lọc
+  const filteredOrders = allOrders.filter(
+    (order) => Number(order?.price) === targetPrice
+  );
+
+  const totalOrders = filteredOrders.length;
+  const totalPages = Math.ceil(totalOrders / currentPageSize);
+  const offset = (currentPage - 1) * currentPageSize;
+  const paginatedOrders = filteredOrders.slice(
+    offset,
+    offset + currentPageSize
+  );
+
+  res.status(200).json({
+    message: "Get orders by price from filtered cache",
+    data: paginatedOrders,
+    totalOrders,
+    totalPages,
+    currentPage,
   });
 };
 
