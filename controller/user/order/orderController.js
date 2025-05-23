@@ -1,6 +1,6 @@
 import Redis from "ioredis";
 import Order from "../../../models/order/order.js";
-import { Op, fn, col, where } from "sequelize";
+import { Op } from "sequelize";
 import Customer from "../../../models/customer/customer.js";
 import Box from "../../../models/order/box.js";
 import Product from "../../../models/product/product.js";
@@ -25,7 +25,7 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
     const currentPage = Number(page);
     const currentPageSize = Number(pageSize);
 
-    const cacheKey = `orders:tests:status:accept_planning:page:${currentPage}`;
+    const cacheKey = `orders:userId:status:accept_planning:page:${currentPage}`;
 
     // Lấy data đã lọc từ cachedStatus
     const cachedData = await redisCache.get(cacheKey);
@@ -152,7 +152,7 @@ export const getOrderByPrice = async (req, res) => {
   const currentPageSize = Number(pageSize);
   const targetPrice = parseFloat(price);
 
-  const allDataCacheKey = `orders:tests:status:accept_planning:all`;
+  const allDataCacheKey = `orders:userId:status:accept_planning:all`;
 
   let allOrders = await redisCache.get(allDataCacheKey);
   if (!allOrders) {
@@ -208,7 +208,7 @@ export const getOrderPendingAndReject = async (req, res) => {
     //   return res.status(400).json({ message: "Missing userId" });
     // }
 
-    const cacheKey = `orders:tests:status:pending_reject`;
+    const cacheKey = `orders:userId:status:pending_reject`;
 
     const cachedResult = await cachedStatus(
       cacheKey,
@@ -261,7 +261,6 @@ export const addOrder = async (req, res) => {
     prefix = "CUSTOM",
     customerId,
     productId,
-    quantitativePaper,
     box,
     ...orderData
   } = req.body;
@@ -293,7 +292,7 @@ export const addOrder = async (req, res) => {
     }
 
     //delete redis
-    const cacheKey = `orders:tests:status:pending_reject`;
+    const cacheKey = `orders:userId:status:pending_reject`;
     await redisCache.del(cacheKey);
 
     const notificationResult = await sendNotification({
@@ -320,7 +319,7 @@ export const updateOrder = async (req, res) => {
     id,
     //userId
   } = req.query;
-  const { quantitativePaper, box, ...orderData } = req.body;
+  const { box, ...orderData } = req.body;
   try {
     // if (!userId) return res.status(400).json({ message: "Missing userId" });
 
@@ -342,7 +341,7 @@ export const updateOrder = async (req, res) => {
 
     await updateChildOrder(id, Box, box);
 
-    const cacheKey = `orders:tests:status:pending_reject`;
+    const cacheKey = `orders:userId:status:pending_reject`;
     await redisCache.del(cacheKey);
 
     res.status(201).json({
@@ -374,7 +373,7 @@ export const deleteOrder = async (req, res) => {
       return res.status(404).json({ message: "Order deleted failed" });
     }
 
-    const cacheKey = `orders:tests:status:pending_reject`;
+    const cacheKey = `orders:userId:status:pending_reject`;
     await redisCache.del(cacheKey);
 
     res.status(201).json({ message: "Order deleted successfully" });
