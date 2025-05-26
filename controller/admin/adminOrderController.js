@@ -3,6 +3,7 @@ import Order from "../../models/order/order.js";
 import Customer from "../../models/customer/customer.js";
 import Product from "../../models/product/product.js";
 import Box from "../../models/order/box.js";
+import { deleteKeysByPattern } from "../../utils/helper/adminHelper.js";
 
 const redisCache = new Redis();
 
@@ -26,28 +27,6 @@ export const getOrderPending = async (req, res) => {
     console.error(error);
     res.status(500).json({ message: "Server error" });
   }
-};
-
-// Hàm hỗ trợ: quét và xóa các key theo pattern bằng SCAN
-const deleteKeysByPattern = async (redisClient, pattern) => {
-  let cursor = "0";
-
-  do {
-    const [nextCursor, keys] = await redisClient.scan(
-      cursor,
-      "MATCH",
-      pattern,
-      "COUNT",
-      100
-    );
-    cursor = nextCursor;
-
-    if (keys.length > 0) {
-      const pipeline = redisClient.pipeline();
-      keys.forEach((key) => pipeline.del(key));
-      await pipeline.exec();
-    }
-  } while (cursor !== "0");
 };
 
 //update status
