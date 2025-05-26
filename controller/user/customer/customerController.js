@@ -1,7 +1,7 @@
 import Redis from "ioredis";
 import Customer from "../../../models/customer/customer.js";
 import { Op, fn, col, where } from "sequelize";
-import { generateNextId } from "../../../utils/generateNextId.js";
+import { generateNextId } from "../../../utils/helper/generateNextId.js";
 
 const redisClient = new Redis();
 

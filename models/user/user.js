@@ -4,7 +4,7 @@ import { sequelize } from "../../configs/connectDB.js";
 const User = sequelize.define(
   "User",
   {
-    id: {
+    userId: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true,

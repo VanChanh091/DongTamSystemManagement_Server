@@ -13,8 +13,8 @@ const handleSendEmail = async (email, otp) => {
   try {
     await sendEmail(
       email,
-      "DongTam System Management",
-      `Vui lòng không chia sẻ mã OTP với bất kì ai. Mã OTP của bạn là: ${otp}. Mã OTP có hiệu lực trong 5 phút.`
+      "Mã xác thực đăng ký tài khoản",
+      `Vui lòng không chia sẻ mã OTP với bất kì ai. Mã OTP của bạn là: ${otp}. Mã OTP có hiệu lực trong 10 phút.`
     );
   } catch (error) {
     console.log(error);
@@ -43,7 +43,7 @@ export const getOtpCode = asyncHandler(async (req, res) => {
   const userData = JSON.stringify({ email, otp });
 
   //save new data user into Redis in 5m
-  await redis.setex(`user:${email}`, 300, userData);
+  await redis.setex(`user:${email}`, 600, userData);
 
   // Send OTP email
   handleSendEmail(email, otp);

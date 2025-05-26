@@ -1,10 +1,7 @@
 import Redis from "ioredis";
 import Product from "../../../models/product/product.js";
 import { Op, fn, col, where } from "sequelize";
-import sharp from "sharp";
-import path from "path";
-import fs from "fs";
-import { generateNextId } from "../../../utils/generateNextId.js";
+import { generateNextId } from "../../../utils/helper/generateNextId.js";
 import {
   convertToWebp,
   getCloudinaryPublicId,
