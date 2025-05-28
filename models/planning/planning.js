@@ -25,7 +25,7 @@ const Planning = sequelize.define(
     quantity: { type: DataTypes.INTEGER, allowNull: false },
     numberChild: { type: DataTypes.INTEGER, allowNull: false },
     chooseMachine: {
-      type: DataTypes.ENUM("1350", "1900", "2 Lớp"),
+      type: DataTypes.ENUM("Máy 1350", "Máy 1900", "Máy 2 Lớp"),
       allowNull: false,
     },
   },

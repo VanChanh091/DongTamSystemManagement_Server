@@ -295,18 +295,19 @@ export const addOrder = async (req, res) => {
     const cacheKey = `orders:userId:status:pending_reject`;
     await redisCache.del(cacheKey);
 
-    const notificationResult = await sendNotification({
-      title: "Đơn hàng mới",
-      message: `Đơn hàng ${newOrderId} đã được tạo.`,
-      targetUserId: "admin",
-      data: {
-        orderId: newOrderId,
-        customerId,
-        productId,
-      },
-    });
+    // const notificationResult = await sendNotification({
+    //   title: "Đơn hàng mới",
+    //   message: `Đơn hàng ${newOrderId} đã được tạo.`,
+    //   targetUserId: "admin",
+    //   data: {
+    //     orderId: newOrderId,
+    //     customerId,
+    //     productId,
+    //   },
+    // });
 
-    res.status(201).json({ order: newOrder, notification: notificationResult });
+    // res.status(201).json({ order: newOrder, notification: notificationResult });
+    res.status(201).json({ order: newOrder });
   } catch (error) {
     console.error("Create order error:", error);
     res.status(500).json({ error: error.message });
