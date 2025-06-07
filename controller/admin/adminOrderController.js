@@ -37,6 +37,7 @@ export const updateStatusAdmin = async (req, res) => {
   try {
     const pendingRejectCacheKey = `orders:userId:status:pending_reject`;
     const acceptPlanningCachePattern = `orders:userId:status:accept_planning:*`;
+    const acceptCacheKey = "orders:userId:status:accept";
 
     if (!["accept", "reject"].includes(newStatus)) {
       return res.status(400).json({ message: "Invalid status" });
@@ -62,6 +63,7 @@ export const updateStatusAdmin = async (req, res) => {
 
     if (newStatus === "accept") {
       await deleteKeysByPattern(redisCache, acceptPlanningCachePattern);
+      await redisCache.del(acceptCacheKey);
     }
 
     res.json({ message: "Order status updated successfully", order });

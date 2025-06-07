@@ -9,7 +9,7 @@ const Planning = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
-    dayStart: { type: DataTypes.DATEONLY, allowNull: false },
+    dayStart: { type: DataTypes.DATE, allowNull: false },
     runningPlan: { type: DataTypes.INTEGER, allowNull: false },
     timeRunning: { type: DataTypes.TIME, allowNull: false },
     dayReplace: { type: DataTypes.STRING },
@@ -22,8 +22,8 @@ const Planning = sequelize.define(
     songE2Replace: { type: DataTypes.STRING },
     lengthPaperPlanning: { type: DataTypes.DOUBLE, allowNull: false },
     sizePaperPLaning: { type: DataTypes.DOUBLE, allowNull: false },
-    quantity: { type: DataTypes.INTEGER, allowNull: false },
     numberChild: { type: DataTypes.INTEGER, allowNull: false },
+    ghepKho: { type: DataTypes.STRING },
     chooseMachine: {
       type: DataTypes.ENUM("Máy 1350", "Máy 1900", "Máy 2 Lớp"),
       allowNull: false,

@@ -5,6 +5,15 @@ import Product from "../../../models/product/product.js";
 import Box from "../../../models/order/box.js";
 import PaperConsumptionNorm from "../../../models/planning/paperConsumptionNorm.js";
 import PLanning from "../../../models/planning/planning.js";
+import {
+  calculateDao,
+  calculateDay,
+  calculateDmSong,
+  calculateTotalConsumption,
+  calculateWeight,
+} from "../../../utils/calculator/paperCalculator.js";
+import { deleteKeysByPattern } from "../../../utils/helper/adminHelper.js";
+import Planning from "../../../models/planning/planning.js";
 
 const redisCache = new Redis();
 
@@ -43,10 +52,42 @@ export const getOrderAccept = async (req, res) => {
   }
 };
 
+//getOrderPLanning
+export const getOrderPlanning = async (req, res) => {
+  try {
+    const cacheKey = "planning:all";
+
+    const cachedData = await redisCache.get(cacheKey);
+    if (cachedData) {
+      return res.json({
+        message: "get all order have status:planning from cache",
+        data: JSON.parse(cachedData),
+      });
+    }
+
+    const data = await PLanning.findAll({
+      include: [{ model: Order }, { model: PaperConsumptionNorm, as: "norm" }],
+      order: [["createdAt", "DESC"]],
+    });
+
+    await redisCache.set(cacheKey, JSON.stringify(data), "EX", 3600);
+
+    res.json({ message: "get all order have status:planning", data });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+//planning
 export const planningOrder = async (req, res) => {
   const { orderId, newStatus } = req.query;
-  const { paperConsumptionNorm, ...planningData } = req.body;
+  const { paperConsumptionNorm, layerType, ...planningData } = req.body;
+
   try {
+    const orderAcceptCacheKey = "orders:userId:status:accept";
+    const acceptPlanningCachePattern = `orders:userId:status:accept_planning:*`;
+
     const order = await Order.findOne({
       where: { orderId: orderId },
       include: [
@@ -71,7 +112,8 @@ export const planningOrder = async (req, res) => {
       await createDataTable(
         planning.planningId,
         PaperConsumptionNorm,
-        paperConsumptionNorm
+        paperConsumptionNorm,
+        layerType
       );
     } catch (error) {
       console.error("Error creating related data:", error);
@@ -81,7 +123,8 @@ export const planningOrder = async (req, res) => {
     order.status = newStatus;
     await order.save();
 
-    await redisCache.del("orders:userId:status:accept");
+    await redisCache.del(orderAcceptCacheKey);
+    await deleteKeysByPattern(redisCache, acceptPlanningCachePattern);
 
     res.status(201).json({
       message: "Order status updated successfully",
@@ -93,12 +136,117 @@ export const planningOrder = async (req, res) => {
   }
 };
 
-export const createDataTable = async (id, model, data) => {
+export const createDataTable = async (planningId, model, norm, layerType) => {
   try {
-    if (data) {
+    const planning = await PLanning.findOne({ where: { planningId } });
+    if (!planning) throw new Error("Planning not found");
+
+    const order = await Order.findOne({
+      where: { orderId: planning.orderId },
+    });
+    if (!order) throw new Error("Order not found");
+
+    const weight = calculateWeight(
+      norm.day,
+      norm.songE,
+      norm.songB,
+      norm.songC,
+      norm.matE,
+      norm.matB,
+      norm.matC
+    );
+
+    const DmDay = await calculateDay(
+      order.flute,
+      order.dvt,
+      order.quantityManufacture,
+      weight,
+      order.acreage,
+      layerType,
+      "BOTTOM"
+    );
+
+    const DmSongE = await calculateDmSong(
+      order.dvt,
+      norm.songE,
+      norm.matE,
+      planning.numberChild,
+      planning.sizePaperPLaning,
+      weight,
+      order.acreage,
+      planning.runningPlan,
+      1.3,
+      layerType,
+      "SONG_E"
+    );
+
+    const DmSongB = await calculateDmSong(
+      order.dvt,
+      norm.songB,
+      norm.matB,
+      planning.numberChild,
+      planning.sizePaperPLaning,
+      weight,
+      order.acreage,
+      planning.runningPlan,
+      1.4,
+      layerType,
+      "SONG_B"
+    );
+
+    const DmSongC = await calculateDmSong(
+      order.dvt,
+      norm.songC,
+      norm.matC,
+      planning.numberChild,
+      planning.sizePaperPLaning,
+      weight,
+      order.acreage,
+      planning.runningPlan,
+      1.45,
+      layerType,
+      "SONG_C"
+    );
+
+    const DmDao = await calculateDao(
+      order.dvt,
+      order.daoXa,
+      weight,
+      planning.sizePaperPLaning,
+      planning.numberChild,
+      order.acreage,
+      planning.runningPlan,
+      layerType,
+      "DAO"
+    );
+
+    const totalConsumption = calculateTotalConsumption(
+      DmDay,
+      DmSongE,
+      DmSongB,
+      DmSongC,
+      DmDao
+    );
+
+    console.log(">> DmDay:", DmDay);
+    console.log(">> DmSongE:", DmSongE);
+    console.log(">> DmSongB:", DmSongB);
+    console.log(">> DmSongC:", DmSongC);
+    console.log(">> DmDao:", DmDao);
+    console.log(">> weight:", weight);
+    console.log(">> totalConsumption:", totalConsumption);
+
+    if (norm) {
       await model.create({
-        planningId: id,
-        ...data,
+        planningId: planningId,
+        ...norm,
+        weight,
+        totalConsumption,
+        DmDay,
+        DmSongE,
+        DmSongB,
+        DmSongC,
+        DmDao,
       });
     }
   } catch (error) {
@@ -126,6 +274,54 @@ export const updateStatusPlanning = async (req, res) => {
     await redisCache.set(`order:${id}`, JSON.stringify(order), "EX", 3600);
 
     res.json({ message: "Order status updated successfully", order });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+//get planning by machine
+export const getPlanningByMachine = async (req, res) => {
+  const { machine } = req.query;
+
+  if (!machine) {
+    return res
+      .status(400)
+      .json({ message: "Missing 'machine' query parameter" });
+  }
+
+  try {
+    const cacheKey = `planning:machine:${machine}`;
+
+    const cachedData = await redisCache.get(cacheKey);
+    if (cachedData) {
+      return res.json({
+        message: `get all cache planning:machine:${machine}`,
+        data: JSON.parse(cachedData),
+      });
+    }
+
+    const data = await Planning.findAll({
+      where: { chooseMachine: machine },
+      include: [
+        {
+          model: Order,
+          include: [
+            { model: Customer, attributes: ["customerName", "companyName"] },
+            { model: Box, as: "box" },
+          ],
+        },
+        { model: PaperConsumptionNorm, as: "norm" },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    await redisCache.set(cacheKey, JSON.stringify(data), "EX", 3600);
+
+    res.status(200).json({
+      message: `get planning by machine: ${machine}`,
+      data,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });

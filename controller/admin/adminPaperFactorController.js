@@ -31,6 +31,27 @@ export const getAllPaperFactors = async (req, res) => {
   }
 };
 
+export const getCoefficient = async (req, res) => {
+  const { layerType, paperType } = req.body;
+  try {
+    const data = await PaperFactor.findOne({
+      where: {
+        layerType: layerType,
+        paperType: paperType,
+      },
+    });
+
+    if (!data) {
+      res.status(404).json({ message: "PaperFactor not found!" });
+    }
+
+    res.status(201).json({ message: "getCoefficient successfully ", data });
+  } catch (error) {
+    console.error("Error fetching paper factors:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 // Add a new paper factor
 export const addPaperFactor = async (req, res) => {
   const {

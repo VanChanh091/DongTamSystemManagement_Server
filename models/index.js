@@ -30,6 +30,7 @@ Box.belongsTo(Order, { foreignKey: "orderId" });
 
 Planning.hasOne(PaperConsumptionNorm, {
   foreignKey: "planningId",
+  as: "norm",
   onDelete: "CASCADE",
 });
 PaperConsumptionNorm.belongsTo(Planning, { foreignKey: "planningId" });

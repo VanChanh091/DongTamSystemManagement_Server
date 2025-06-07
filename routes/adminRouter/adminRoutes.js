@@ -8,6 +8,7 @@ import {
   addPaperFactor,
   deletePaperFactor,
   getAllPaperFactors,
+  getCoefficient,
   updatePaperFactor,
 } from "../../controller/admin/adminPaperFactorController.js";
 
@@ -19,6 +20,7 @@ router.put("/updateStatus", authenticate, updateStatusAdmin);
 
 //admin routes for managing paper factors
 router.get("/getAllPF", authenticate, getAllPaperFactors);
+router.get("/getCoefficient", authenticate, getCoefficient);
 router.post("/addPF", authenticate, addPaperFactor);
 router.put("/updatePF", authenticate, updatePaperFactor);
 router.delete("/deletePF", authenticate, deletePaperFactor);
