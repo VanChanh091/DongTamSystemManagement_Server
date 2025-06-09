@@ -14,6 +14,7 @@ import {
 } from "../../../utils/calculator/paperCalculator.js";
 import { deleteKeysByPattern } from "../../../utils/helper/adminHelper.js";
 import Planning from "../../../models/planning/planning.js";
+import { Op } from "sequelize";
 
 const redisCache = new Redis();
 
@@ -282,7 +283,7 @@ export const updateStatusPlanning = async (req, res) => {
 
 //get planning by machine
 export const getPlanningByMachine = async (req, res) => {
-  const { machine } = req.query;
+  const { machine, date } = req.query;
 
   if (!machine) {
     return res
@@ -291,18 +292,32 @@ export const getPlanningByMachine = async (req, res) => {
   }
 
   try {
-    const cacheKey = `planning:machine:${machine}`;
+    const cacheKey = `planning:machine:${machine}:date:${date}`;
 
     const cachedData = await redisCache.get(cacheKey);
     if (cachedData) {
       return res.json({
-        message: `get all cache planning:machine:${machine}`,
+        message: `get all cache planning:machine:${machine}:date:${date}`,
         data: JSON.parse(cachedData),
       });
     }
 
+    const whereCondition = { chooseMachine: machine };
+
+    if (date) {
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      whereCondition.createdAt = {
+        [Op.between]: [startOfDay, endOfDay],
+      };
+    }
+
     const data = await Planning.findAll({
-      where: { chooseMachine: machine },
+      where: whereCondition,
       include: [
         {
           model: Order,
@@ -316,10 +331,12 @@ export const getPlanningByMachine = async (req, res) => {
       order: [["createdAt", "DESC"]],
     });
 
-    await redisCache.set(cacheKey, JSON.stringify(data), "EX", 3600);
+    await redisCache.set(cacheKey, JSON.stringify(data), "EX", 1800);
 
     res.status(200).json({
-      message: `get planning by machine: ${machine}`,
+      message: `get planning by machine: ${machine}${
+        date ? " on " + date : ""
+      }`,
       data,
     });
   } catch (error) {

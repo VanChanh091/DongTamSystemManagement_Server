@@ -11,7 +11,7 @@ const router = Router();
 
 router.get("/", authenticate, getOrderAccept);
 router.get("/planning", authenticate, getOrderPlanning);
-router.get("/byMachine", authenticate, getPlanningByMachine);
+router.get("/byMachineWDate", authenticate, getPlanningByMachine);
 router.post("/planningOrder", authenticate, planningOrder);
 
 export default router;
