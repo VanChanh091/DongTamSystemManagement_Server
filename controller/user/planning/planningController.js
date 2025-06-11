@@ -14,7 +14,7 @@ import {
 } from "../../../utils/calculator/paperCalculator.js";
 import { deleteKeysByPattern } from "../../../utils/helper/adminHelper.js";
 import Planning from "../../../models/planning/planning.js";
-import { Op } from "sequelize";
+import { Op, where } from "sequelize";
 
 const redisCache = new Redis();
 
@@ -281,9 +281,9 @@ export const updateStatusPlanning = async (req, res) => {
   }
 };
 
-//get planning by machine
+//get planning by machine & date
 export const getPlanningByMachine = async (req, res) => {
-  const { machine, date } = req.query;
+  const { machine } = req.query;
 
   if (!machine) {
     return res
@@ -292,35 +292,30 @@ export const getPlanningByMachine = async (req, res) => {
   }
 
   try {
-    const cacheKey = `planning:machine:${machine}:date:${date}`;
+    const cacheKey = `planning:machine:${machine}`;
 
     const cachedData = await redisCache.get(cacheKey);
     if (cachedData) {
       return res.json({
-        message: `get all cache planning:machine:${machine}:date:${date}`,
+        message: `get all cache planning:machine:${machine}`,
         data: JSON.parse(cachedData),
       });
     }
 
-    const whereCondition = { chooseMachine: machine };
-
-    if (date) {
-      const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
-
-      const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
-
-      whereCondition.createdAt = {
-        [Op.between]: [startOfDay, endOfDay],
-      };
-    }
+    // Get today at 00:00:00
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     const data = await Planning.findAll({
-      where: whereCondition,
+      where: { chooseMachine: machine },
       include: [
         {
           model: Order,
+          // where: {
+          //   dateRequestShipping: {
+          //     [Op.gte]: today, // lấy đơn có ngày giao hàng từ hôm nay trở đi
+          //   },
+          // },
           include: [
             { model: Customer, attributes: ["customerName", "companyName"] },
             { model: Box, as: "box" },
@@ -334,11 +329,48 @@ export const getPlanningByMachine = async (req, res) => {
     await redisCache.set(cacheKey, JSON.stringify(data), "EX", 1800);
 
     res.status(200).json({
-      message: `get planning by machine: ${machine}${
-        date ? " on " + date : ""
-      }`,
+      message: `get planning by machine: ${machine}`,
       data,
     });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+//change machine
+export const changeMachinePlanning = async (req, res) => {
+  const { planningIds, newMachine } = req.body;
+  try {
+    if (!Array.isArray(planningIds) || planningIds.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "Missing or invalid planningIds" });
+    }
+
+    const plannings = await PLanning.findAll({
+      where: {
+        planningId: planningIds,
+      },
+    });
+
+    if (plannings.length === 0) {
+      return res.status(404).json({ message: "No planning found" });
+    }
+
+    const oldMachine = plannings[0].chooseMachine;
+    const cacheOldKey = `planning:machine:${oldMachine}`;
+    const cacheNewKey = `planning:machine:${newMachine}`;
+
+    for (const planning of plannings) {
+      planning.chooseMachine = newMachine;
+      await planning.save();
+    }
+
+    await redisCache.del(cacheOldKey);
+    await redisCache.del(cacheNewKey);
+
+    res.status(200).json({ message: "Change machine complete", plannings });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });

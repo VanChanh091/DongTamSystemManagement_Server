@@ -1,6 +1,7 @@
 import { Router } from "express";
 import authenticate from "../../middlewares/authMiddleware.js";
 import {
+  changeMachinePlanning,
   getOrderAccept,
   getOrderPlanning,
   getPlanningByMachine,
@@ -11,7 +12,8 @@ const router = Router();
 
 router.get("/", authenticate, getOrderAccept);
 router.get("/planning", authenticate, getOrderPlanning);
-router.get("/byMachineWDate", authenticate, getPlanningByMachine);
+router.get("/byMachine", authenticate, getPlanningByMachine);
 router.post("/planningOrder", authenticate, planningOrder);
+router.put("/changeMachine", authenticate, changeMachinePlanning);
 
 export default router;
