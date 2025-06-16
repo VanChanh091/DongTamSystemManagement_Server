@@ -27,6 +27,7 @@ const Planning = sequelize.define(
       type: DataTypes.ENUM("Máy 1350", "Máy 1900", "Máy 2 Lớp"),
       allowNull: false,
     },
+    sortPlanning: { type: DataTypes.INTEGER },
   },
   { timestamps: true }
 );

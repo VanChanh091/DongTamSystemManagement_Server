@@ -29,7 +29,7 @@ export const calculateDay = async (req, res) => {
   try {
     const number = parseInt(flute, 10);
     if (number === 2) {
-      res.status(400).json({ message: "result = 0", number });
+      return res.status(200).json("0");
     }
 
     const paper = await PaperFactor.findOne({

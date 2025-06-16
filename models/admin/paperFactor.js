@@ -7,7 +7,9 @@ const PaperFactor = sequelize.define("PaperFactor", {
     primaryKey: true,
     autoIncrement: true,
   },
-  layerType: { type: DataTypes.ENUM("3_LAYER", "4_5_LAYER", "MORE_5_LAYER") },
+  layerType: {
+    type: DataTypes.ENUM("2_LAYER", "3_LAYER", "4_5_LAYER", "MORE_5_LAYER"),
+  },
   paperType: {
     type: DataTypes.ENUM("BOTTOM", "SONG_E", "SONG_B", "SONG_C", "DAO"),
   },

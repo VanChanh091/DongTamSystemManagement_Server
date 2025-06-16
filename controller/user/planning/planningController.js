@@ -15,6 +15,7 @@ import {
 import { deleteKeysByPattern } from "../../../utils/helper/adminHelper.js";
 import Planning from "../../../models/planning/planning.js";
 import { Op, where } from "sequelize";
+import { sequelize } from "../../../configs/connectDB.js";
 
 const redisCache = new Redis();
 
@@ -109,22 +110,25 @@ export const planningOrder = async (req, res) => {
       ...planningData,
     });
 
-    try {
-      await createDataTable(
-        planning.planningId,
-        PaperConsumptionNorm,
-        paperConsumptionNorm,
-        layerType
-      );
-    } catch (error) {
-      console.error("Error creating related data:", error);
-      return res.status(500).json({ message: "Failed to create related data" });
-    }
+    // await planning.update({ sortPlanning: planning.planningId });
+
+    // try {
+    //   await createDataTable(
+    //     planning.planningId,
+    //     PaperConsumptionNorm,
+    //     paperConsumptionNorm,
+    //     layerType
+    //   );
+    // } catch (error) {
+    //   console.error("Error creating related data:", error);
+    //   return res.status(500).json({ message: "Failed to create related data" });
+    // }
 
     order.status = newStatus;
     await order.save();
 
     await redisCache.del(orderAcceptCacheKey);
+    await redisCache.del(`planning:machine:${planning.chooseMachine}`);
     await deleteKeysByPattern(redisCache, acceptPlanningCachePattern);
 
     res.status(201).json({
@@ -281,7 +285,7 @@ export const updateStatusPlanning = async (req, res) => {
   }
 };
 
-//get planning by machine & date
+//get planning by machine
 export const getPlanningByMachine = async (req, res) => {
   const { machine } = req.query;
 
@@ -293,8 +297,8 @@ export const getPlanningByMachine = async (req, res) => {
 
   try {
     const cacheKey = `planning:machine:${machine}`;
-
     const cachedData = await redisCache.get(cacheKey);
+
     if (cachedData) {
       return res.json({
         message: `get all cache planning:machine:${machine}`,
@@ -302,29 +306,10 @@ export const getPlanningByMachine = async (req, res) => {
       });
     }
 
-    // Get today at 00:00:00
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const data = await Planning.findAll({
-      where: { chooseMachine: machine },
-      include: [
-        {
-          model: Order,
-          // where: {
-          //   dateRequestShipping: {
-          //     [Op.gte]: today, // lấy đơn có ngày giao hàng từ hôm nay trở đi
-          //   },
-          // },
-          include: [
-            { model: Customer, attributes: ["customerName", "companyName"] },
-            { model: Box, as: "box" },
-          ],
-        },
-        { model: PaperConsumptionNorm, as: "norm" },
-      ],
-      order: [["createdAt", "DESC"]],
-    });
+    const data = await getPlanningByMachineSorted(machine, today);
 
     await redisCache.set(cacheKey, JSON.stringify(data), "EX", 1800);
 
@@ -335,6 +320,60 @@ export const getPlanningByMachine = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+const getPlanningByMachineSorted = async (machine, today) => {
+  try {
+    const data = await Planning.findAll({
+      where: {
+        chooseMachine: machine,
+      },
+      include: [
+        {
+          model: Order,
+          where: {
+            dateRequestShipping: { [Op.gte]: today },
+          },
+          include: [
+            { model: Customer, attributes: ["customerName", "companyName"] },
+            { model: Box, as: "box" },
+          ],
+        },
+        { model: PaperConsumptionNorm, as: "norm" },
+      ],
+    });
+
+    const withSort = data.filter((item) => item.sortPlanning !== null);
+    const noSort = data.filter((item) => item.sortPlanning === null);
+
+    // Sắp xếp đơn có sortPlanning theo thứ tự được lưu
+    withSort.sort((a, b) => a.sortPlanning - b.sortPlanning);
+
+    // Sắp xếp đơn chưa có sortPlanning theo logic yêu cầu
+    noSort.sort((a, b) => {
+      const dateA = a.order?.dateRequestShipping
+        ? new Date(a.order.dateRequestShipping)
+        : new Date(0);
+      const dateB = b.order?.dateRequestShipping
+        ? new Date(b.order.dateRequestShipping)
+        : new Date(0);
+
+      if (dateA - dateB !== 0) return dateA - dateB;
+
+      const ghepA = a.ghepKho ?? 0;
+      const ghepB = b.ghepKho ?? 0;
+      if (ghepB - ghepA !== 0) return ghepB - ghepA;
+
+      const fluteA = a.order?.flute ?? "";
+      const fluteB = b.order?.flute ?? "";
+      return fluteB.localeCompare(fluteA);
+    });
+
+    return [...withSort, ...noSort];
+  } catch (error) {
+    console.error("Error fetching planning by machine:", error);
+    throw error;
   }
 };
 
@@ -371,6 +410,210 @@ export const changeMachinePlanning = async (req, res) => {
     await redisCache.del(cacheNewKey);
 
     res.status(200).json({ message: "Change machine complete", plannings });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+//update index planning
+export const updateIndexPlanning = async (req, res) => {
+  const { updateIndex, machine } = req.body;
+  const transaction = await sequelize.transaction();
+
+  if (!Array.isArray(updateIndex) || updateIndex.length === 0) {
+    return res.status(400).json({ message: "Missing or invalid updateIndex" });
+  }
+  try {
+    const cachedKey = `planning:machine:${machine}`;
+
+    for (const item of updateIndex) {
+      await Planning.update(
+        { sortPlanning: item.sortPlanning },
+        { where: { planningId: item.planningId }, transaction }
+      );
+    }
+
+    await transaction.commit();
+
+    await redisCache.del(cachedKey);
+
+    res.status(200).json({ message: "Sort updated successfully" });
+  } catch (error) {
+    await transaction.rollback();
+    console.error("❌ Update failed:", error);
+  }
+};
+
+//get by customer name
+export const getPlanningByCustomerName = async (req, res) => {
+  const { customerName, machine } = req.query;
+
+  try {
+    const cacheKey = `planning:machine:${machine}`;
+    const cachedData = await redisCache.get(cacheKey);
+
+    if (cachedData) {
+      const parsedData = JSON.parse(cachedData);
+      const filteredData = parsedData.filter((item) =>
+        item.order?.customer?.customerName
+          ?.toLowerCase()
+          .includes(customerName.toLowerCase())
+      );
+
+      return res.json({
+        message: `get all cache planning by customer: ${customerName} on machine ${machine}`,
+        data: filteredData,
+      });
+    }
+
+    const data = await Planning.findAll({
+      where: { chooseMachine: machine },
+      include: [
+        {
+          model: Order,
+          required: true,
+          include: [
+            {
+              model: Customer,
+              attributes: ["customerName", "companyName"],
+              required: true,
+              where: {
+                customerName: {
+                  [Op.like]: `%${customerName}%`,
+                },
+              },
+            },
+            { model: Box, as: "box" },
+          ],
+        },
+        { model: PaperConsumptionNorm, as: "norm" },
+      ],
+    });
+
+    res.status(200).json({
+      message: `get planning by customer name: ${customerName}`,
+      data,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+//get by flute
+export const getPlanningByFlute = async (req, res) => {
+  const { flute, machine } = req.query;
+  try {
+    const cacheKey = `planning:machine:${machine}`;
+    const cachedData = await redisCache.get(cacheKey);
+
+    if (cachedData) {
+      const parsedData = JSON.parse(cachedData);
+      const filteredData = parsedData.filter((item) =>
+        item.order?.flute.toLowerCase().includes(flute.toLowerCase())
+      );
+
+      return res.json({
+        message: `get all cache planning by flute: ${flute} on machine ${machine}`,
+        data: filteredData,
+      });
+    }
+
+    const data = await PLanning.findAll({
+      where: { chooseMachine: machine },
+      include: [
+        {
+          model: Order,
+          required: true,
+          where: { flute: { [Op.like]: `%${flute}%` } },
+          include: [
+            { model: Customer, attributes: ["customerName", "companyName"] },
+            { model: Box, as: "box" },
+          ],
+        },
+        { model: PaperConsumptionNorm, as: "norm" },
+      ],
+    });
+
+    res.status(200).json({
+      message: `get planning by flute: ${flute}`,
+      data,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+//get by ghepKho
+export const getPlanningByGhepKho = async (req, res) => {
+  const { ghepKho, machine } = req.query;
+  try {
+    const cacheKey = `planning:machine:${machine}`;
+    const cachedData = await redisCache.get(cacheKey);
+
+    if (cachedData) {
+      const parsedData = JSON.parse(cachedData);
+      const filteredData = parsedData.filter(
+        (item) => item?.ghepKho == ghepKho
+      );
+
+      return res.json({
+        message: `get all cache planning by customer: ${ghepKho} on machine ${machine}`,
+        data: filteredData,
+      });
+    }
+
+    const data = await PLanning.findAll({
+      where: { chooseMachine: machine, ghepKho: ghepKho },
+      include: [
+        {
+          model: Order,
+          include: [
+            { model: Customer, attributes: ["customerName", "companyName"] },
+            { model: Box, as: "box" },
+          ],
+        },
+        { model: PaperConsumptionNorm, as: "norm" },
+      ],
+    });
+
+    res.status(200).json({
+      message: `get planning by ghepKho: ${ghepKho}`,
+      data,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+//export pdf
+const exportPdfPlanning = async (req, res) => {
+  const { planningId } = req.query;
+
+  if (!Array.isArray(planningId) || planningId.length === 0) {
+    return res.status(400).json({ message: "Missing or invalid planningId" });
+  }
+
+  try {
+    const planning = await PLanning.findOne({
+      where: { planningId },
+      include: [
+        { model: Order, include: [{ model: Customer }] },
+        { model: PaperConsumptionNorm, as: "norm" },
+      ],
+    });
+
+    if (!planning) {
+      return res.status(404).json({ message: "Planning not found" });
+    }
+
+    // Logic to generate PDF from planning data
+    // ...
+
+    res.status(200).json({ message: "PDF generated successfully" });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
