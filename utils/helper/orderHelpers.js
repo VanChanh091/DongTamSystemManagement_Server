@@ -2,6 +2,7 @@ import { Op } from "sequelize";
 import Customer from "../../models/customer/customer.js";
 import Product from "../../models/product/product.js";
 import Order from "../../models/order/order.js";
+import Box from "../../models/order/box.js";
 import Redis from "ioredis";
 
 const redisCache = new Redis();

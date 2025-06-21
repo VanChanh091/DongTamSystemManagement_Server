@@ -11,8 +11,8 @@ const authorizeRole = (roles = []) => {
 
 const authorizePermission = (permission) => {
   return (req, res, next) => {
-    const userPermissions = req.user.permissions || [];
-    if (!userPermissions.includes(permission)) {
+    const user = req.user;
+    if (!user || !user.includes(permission)) {
       return res
         .status(403)
         .json({ message: "Access denied: Missing permission" });

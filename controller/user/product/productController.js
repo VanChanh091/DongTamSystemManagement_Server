@@ -140,6 +140,7 @@ export const addProduct = async (req, res) => {
       transaction,
     });
 
+    //custom productId
     const allProductIds = products.map((p) => p.productId);
     const sanitizedPrefix = prefix.trim().replace(/\s+/g, "").toUpperCase();
     const newProductId = generateNextId(allProductIds, sanitizedPrefix, 4);
@@ -220,7 +221,6 @@ export const deleteProduct = async (req, res) => {
 
   try {
     const product = await Product.findByPk(id);
-
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }

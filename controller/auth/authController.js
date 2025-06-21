@@ -56,8 +56,6 @@ export const getOtpCode = asyncHandler(async (req, res) => {
 export const register = asyncHandler(async (req, res) => {
   const { fullName, email, password, confirmPW, otpInput } = req.body;
 
-  const adminRole = email === "admin@gmail.com" ? "admin" : "user";
-
   const existingEmail = await User.findOne({ where: { email } });
   if (existingEmail) {
     return res.status(401).json({ message: "User already exists" });
@@ -79,10 +77,10 @@ export const register = asyncHandler(async (req, res) => {
     fullName,
     email,
     password: hashedPassword,
-    role: adminRole,
   });
 
   await redis.del(`user:${email}`);
+  await redis.del("users:all");
 
   return res.status(201).json({ message: "Đăng ký thành công!" });
 });

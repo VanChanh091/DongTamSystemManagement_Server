@@ -14,8 +14,11 @@ import {
 } from "../../../utils/calculator/paperCalculator.js";
 import { deleteKeysByPattern } from "../../../utils/helper/adminHelper.js";
 import Planning from "../../../models/planning/planning.js";
-import { Op, where } from "sequelize";
+import { Op } from "sequelize";
 import { sequelize } from "../../../configs/connectDB.js";
+import ejs from "ejs";
+import puppeteer from "puppeteer";
+import { PLANNING_PATH } from "../../../utils/helper/pathHelper.js";
 
 const redisCache = new Redis();
 
@@ -590,30 +593,52 @@ export const getPlanningByGhepKho = async (req, res) => {
 };
 
 //export pdf
-const exportPdfPlanning = async (req, res) => {
-  const { planningId } = req.query;
+export const exportPdfPlanning = async (req, res) => {
+  const { planningId, machine } = req.body;
 
   if (!Array.isArray(planningId) || planningId.length === 0) {
     return res.status(400).json({ message: "Missing or invalid planningId" });
   }
 
   try {
-    const planning = await PLanning.findOne({
-      where: { planningId },
+    const plannings = await PLanning.findAll({
+      where: { chooseMachine: machine },
       include: [
-        { model: Order, include: [{ model: Customer }] },
+        {
+          model: Order,
+          include: [
+            { model: Customer, attributes: ["customerName", "companyName"] },
+            { model: Box, as: "box" },
+          ],
+        },
         { model: PaperConsumptionNorm, as: "norm" },
       ],
     });
 
-    if (!planning) {
+    if (!plannings) {
       return res.status(404).json({ message: "Planning not found" });
     }
 
     // Logic to generate PDF from planning data
-    // ...
+    const html = await ejs.renderFile(PLANNING_PATH, { planning: plannings });
 
-    res.status(200).json({ message: "PDF generated successfully" });
+    const browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: "networkidle0" });
+
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+    });
+
+    await browser.close();
+
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename=planning_machine${machine}.pdf`,
+    });
+
+    res.send(pdfBuffer);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });

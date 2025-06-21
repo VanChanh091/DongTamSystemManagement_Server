@@ -2,6 +2,7 @@ import { Router } from "express";
 import authenticate from "../../middlewares/authMiddleware.js";
 import {
   changeMachinePlanning,
+  exportPdfPlanning,
   getOrderAccept,
   getOrderPlanning,
   getPlanningByCustomerName,
@@ -25,5 +26,8 @@ router.put("/updateIndex", authenticate, updateIndexPlanning);
 router.get("/getByCustomerName", authenticate, getPlanningByCustomerName);
 router.get("/getByFlute", authenticate, getPlanningByFlute);
 router.get("/getByGhepKho", authenticate, getPlanningByGhepKho);
+
+//export file pdf
+router.get("/exportPdf", authenticate, exportPdfPlanning);
 
 export default router;
