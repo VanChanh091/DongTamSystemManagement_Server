@@ -5,6 +5,25 @@ import { generateNextId } from "../../../utils/helper/generateNextId.js";
 
 const redisClient = new Redis();
 
+const cacheRedis = async (colData, params) => {
+  const cacheKey = "customers:all";
+  const cachedData = await redisClient.get(cacheKey);
+
+  if (cachedData) {
+    const parsedData = JSON.parse(cachedData);
+
+    const product = parsedData.filter((item) =>
+      item[colData]?.toLowerCase().includes(params.toLowerCase())
+    );
+
+    if (product.length > 0) {
+      return product;
+    }
+  }
+
+  return null;
+};
+
 // get all
 export const getAllCustomer = async (req, res) => {
   try {
@@ -26,25 +45,6 @@ export const getAllCustomer = async (req, res) => {
   } catch (e) {
     res.status(404).json({ message: "get all customers failed" });
   }
-};
-
-const cacheRedis = async (colData, params) => {
-  const cacheKey = "customers:all";
-  const cachedData = await redisClient.get(cacheKey);
-
-  if (cachedData) {
-    const parsedData = JSON.parse(cachedData);
-
-    const product = parsedData.filter((item) =>
-      item[colData]?.toLowerCase().includes(params.toLowerCase())
-    );
-
-    if (product.length > 0) {
-      return product;
-    }
-  }
-
-  return null;
 };
 
 // get by id

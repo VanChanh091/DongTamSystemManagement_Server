@@ -1,7 +1,7 @@
 import Redis from "ioredis";
 import User from "../../models/user/user.js";
 import bcrypt from "bcrypt";
-import { col, Op, where } from "sequelize";
+import { col, fn, Op, where } from "sequelize";
 import { getCloudinaryPublicId } from "../../utils/image/converToWebp.js";
 import cloudinary from "../../configs/connectCloudinary.js";
 
@@ -149,7 +149,6 @@ export const getUserByPermission = async (req, res) => {
   let { permission } = req.query;
 
   try {
-    // Normalize permission: nếu chỉ truyền 1 chuỗi thì convert thành mảng
     if (!permission) {
       return res.status(400).json({ message: "Permission is required" });
     }
@@ -214,7 +213,17 @@ export const getUserByPermission = async (req, res) => {
 //update role of user
 export const updateUserRole = async (req, res) => {
   const { userId, newRole } = req.query;
+
   try {
+    if (!userId || !newRole) {
+      return res.status(400).json({ message: "Missing userId or newRole" });
+    }
+
+    const validRoles = ["admin", "manager", "user"];
+    if (!validRoles.includes(newRole)) {
+      return res.status(400).json({ message: "Invalid role provided" });
+    }
+
     const user = await User.findByPk(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -222,21 +231,24 @@ export const updateUserRole = async (req, res) => {
 
     user.role = newRole;
 
-    if (newRole.toLowerCase() === "admin") {
-      user.permission = ["all"];
-    } else if (newRole.toLowerCase() === "manager") {
-      user.permission = ["manager"];
+    if (newRole === "admin") {
+      user.permissions = ["all"];
+    } else if (newRole === "manager") {
+      user.permissions = ["manager"];
     } else {
-      user.permission = [];
+      user.permissions = ["read"];
     }
 
     await user.save();
 
     await redisCache.del("users:all");
 
+    const sanitizedData = user.toJSON();
+    delete sanitizedData.password;
+
     res.status(200).json({
       message: "User role updated successfully",
-      data: user,
+      data: sanitizedData,
     });
   } catch (error) {
     console.error("Error updating user role:", error);
@@ -256,9 +268,9 @@ export const updatePermissions = async (req, res) => {
     "plan",
     "HR",
     "accountant",
-    "marketing",
     "design",
     "production",
+    "read",
   ];
 
   // Validate permissions input
@@ -330,34 +342,42 @@ export const deleteUserById = async (req, res) => {
 
 //reset-password
 export const resetPassword = async (req, res) => {
-  const { userId } = req.query;
+  const { userIds } = req.body;
   const { newPassword } = req.body;
 
-  if (!userId || !newPassword) {
-    return res
-      .status(400)
-      .json({ message: "User ID and new password are required" });
+  if (!Array.isArray(userIds) || userIds.length === 0 || !newPassword) {
+    return res.status(400).json({
+      message: "userIds must be a non-empty array and newPassword is required",
+    });
   }
-  try {
-    const user = await User.findByPk(userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
 
+  try {
     const saltPassword = 10;
     const hashedPassword = await bcrypt.hash(newPassword, saltPassword);
 
-    user.password = hashedPassword;
-    await user.save();
+    // Tìm và cập nhật tất cả user
+    const updatedUserIds = [];
+    for (const id of userIds) {
+      const user = await User.findByPk(id);
+      if (user) {
+        user.password = hashedPassword;
+        await user.save();
+        updatedUserIds.push(user.userId);
+      }
+    }
 
+    if (updatedUserIds.length === 0) {
+      return res.status(404).json({ message: "users not found to update" });
+    }
+
+    // Xóa cache sau khi cập nhật
     await redisCache.del("users:all");
 
     res.status(200).json({
-      message: "Password reset successfully",
-      userId: user.userId,
+      message: "Passwords reset successfully",
     });
   } catch (error) {
-    console.error("Error resetting password:", error);
+    console.error("Error resetting passwords:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
