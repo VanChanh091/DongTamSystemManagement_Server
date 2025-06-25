@@ -41,9 +41,10 @@ export const getAllCustomer = async (req, res) => {
 
     //save in 1h
     await redisClient.set(cacheKey, JSON.stringify(data), "EX", 3600);
-    res.status(201).json({ message: "get all customers successfully", data });
-  } catch (e) {
-    res.status(404).json({ message: "get all customers failed" });
+    res.status(200).json({ message: "get all customers successfully", data });
+  } catch (err) {
+    console.error("get all customer failed:", err);
+    res.status(500).json({ message: "get all customers failed", err });
   }
 };
 
@@ -77,10 +78,11 @@ export const getById = async (req, res) => {
       message: "Get customer from DB",
       data: customer,
     });
-  } catch (error) {
+  } catch (err) {
+    console.error("Failed to get customer by customerId:", err);
     res.status(500).json({
-      message: "Failed to get customer",
-      error: error.message,
+      message: "Failed to get customer by customerId",
+      err,
     });
   }
 };
@@ -111,10 +113,11 @@ export const getByCustomerName = async (req, res) => {
     }
 
     res.status(200).json({ customer });
-  } catch (error) {
+  } catch (err) {
+    console.error("Failed to get customer by name:", err);
     res.status(500).json({
       message: "Failed to get customers by name",
-      error: error.message,
+      err,
     });
   }
 };
@@ -145,10 +148,11 @@ export const getByCSKH = async (req, res) => {
     }
 
     res.status(200).json({ customer });
-  } catch (error) {
+  } catch (err) {
+    console.error("Failed to get customer by cskh:", err);
     res.status(500).json({
       message: "Failed to get customers by cskh",
-      error: error.message,
+      err,
     });
   }
 };
@@ -181,14 +185,16 @@ export const getBySDT = async (req, res) => {
     }
 
     res.status(200).json({ customer });
-  } catch (error) {
+  } catch (err) {
+    console.error("Failed to get customer by phone:", err);
     res.status(500).json({
       message: "Failed to get customers by phone",
-      error: error.message,
+      err,
     });
   }
 };
 
+//create customer
 export const createCustomer = async (req, res) => {
   const { prefix = "CUSTOM", ...customerData } = req.body;
   const transaction = await Customer.sequelize.transaction();
@@ -217,11 +223,10 @@ export const createCustomer = async (req, res) => {
     res
       .status(201)
       .json({ message: "Customer created successfully", data: newCustomer });
-  } catch (error) {
+  } catch (err) {
     await transaction.rollback();
-    res
-      .status(500)
-      .json({ error: `Failed to create customer: ${error.message}` });
+    console.error("Update customer failed:", err);
+    res.status(500).json({ message: "Failed to create customer", err });
   }
 };
 
@@ -243,10 +248,11 @@ export const updateCustomer = async (req, res) => {
       message: "Customer updated successfully",
       customer,
     });
-  } catch (error) {
+  } catch (err) {
+    console.error("Update customer failed:", err);
     res.status(500).json({
-      message: "Server error",
-      error: error.message,
+      message: "Update customer failed",
+      err,
     });
   }
 };
@@ -260,13 +266,14 @@ export const deleteCustomer = async (req, res) => {
     });
 
     if (!deletedCustomer) {
-      return res.status(404).json({ message: "Customer deleted failed" });
+      return res.status(404).json({ message: "Customer not found" });
     }
 
     await redisClient.del("customers:all");
 
     res.status(201).json({ message: "Customer deleted successfully" });
-  } catch (error) {
-    res.status(404).json({ error: error.message });
+  } catch (err) {
+    console.error("Delete customer failed:", err);
+    res.status(500).json({ message: "Delete customer failed", err });
   }
 };

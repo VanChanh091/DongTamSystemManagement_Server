@@ -350,8 +350,9 @@ export const updateOrder = async (req, res) => {
       order,
     });
   } catch (error) {
+    console.error("update order failed:", error);
     res.status(500).json({
-      message: "Server error",
+      message: "update order failed",
       error: error.message,
     });
   }
@@ -379,6 +380,7 @@ export const deleteOrder = async (req, res) => {
 
     res.status(201).json({ message: "Order deleted successfully" });
   } catch (error) {
+    console.error("Delete order failed:", error);
     res.status(404).json({ error: error.message });
   }
 };

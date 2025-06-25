@@ -170,9 +170,10 @@ export const addProduct = async (req, res) => {
       message: "Product created successfully",
       data: newProduct,
     });
-  } catch (error) {
+  } catch (err) {
     await transaction.rollback();
-    return res.status(500).json({ error: error.message });
+    console.error("add product failed:", err);
+    return res.status(500).json({ message: "add product failed", err });
   }
 };
 
@@ -238,8 +239,8 @@ export const deleteProduct = async (req, res) => {
     }
 
     return res.status(200).json({ message: "Product deleted successfully" });
-  } catch (error) {
-    console.error("Delete product error:", error);
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    console.error("Delete product error:", err);
+    res.status(500).json({ message: "Delete product failed", err });
   }
 };
