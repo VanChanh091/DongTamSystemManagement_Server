@@ -4,11 +4,11 @@ import {
   changeMachinePlanning,
   exportPdfPlanning,
   getOrderAccept,
-  getOrderPlanning,
   getPlanningByCustomerName,
   getPlanningByFlute,
   getPlanningByGhepKho,
   getPlanningByMachine,
+  pauseOrAcceptLackQtyPLanning,
   planningOrder,
   updateIndexPlanning,
 } from "../../controller/user/planning/planningController.js";
@@ -16,11 +16,12 @@ import {
 const router = Router();
 
 router.get("/", authenticate, getOrderAccept);
-router.get("/planning", authenticate, getOrderPlanning);
-router.get("/byMachine", authenticate, getPlanningByMachine);
 router.post("/planningOrder", authenticate, planningOrder);
+
+router.get("/byMachine", authenticate, getPlanningByMachine);
 router.put("/changeMachine", authenticate, changeMachinePlanning);
 router.put("/updateIndex", authenticate, updateIndexPlanning);
+router.put("/pauseOrAcceptLackQty", authenticate, pauseOrAcceptLackQtyPLanning);
 
 //get properties of planning
 router.get("/getByCustomerName", authenticate, getPlanningByCustomerName);

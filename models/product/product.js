@@ -10,8 +10,8 @@ const Product = sequelize.define(
       primaryKey: true,
     },
     typeProduct: { type: DataTypes.STRING, allowNull: false },
-    productName: { type: DataTypes.STRING, allowNull: false },
-    maKhuon: { type: DataTypes.STRING, allowNull: false },
+    productName: { type: DataTypes.STRING },
+    maKhuon: { type: DataTypes.STRING },
     productImage: { type: DataTypes.STRING },
   },
   { timestamps: true }

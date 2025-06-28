@@ -74,6 +74,8 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
       limit: currentPageSize,
     });
 
+    await redisCache.del(cacheKey);
+
     // Lưu cache gồm: data + meta info
     await redisCache.set(
       cacheKey,
@@ -84,7 +86,7 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
         currentPage,
       }),
       "EX",
-      3600
+      1800
     );
 
     res.status(200).json({
@@ -242,6 +244,7 @@ export const getOrderPendingAndReject = async (req, res) => {
       order: [["createdAt", "DESC"]],
     });
 
+    await redisCache.del(cacheKey);
     await redisCache.set(cacheKey, JSON.stringify(data), "EX", 3600);
 
     res.status(200).json({
@@ -329,11 +332,11 @@ export const updateOrder = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    if (order.status == "accept") {
-      return res
-        .status(400)
-        .json({ message: "Không thể cập nhật đơn hàng đã được duyệt" });
-    }
+    // if (order.status == "accept") {
+    //   return res
+    //     .status(400)
+    //     .json({ message: "Không thể cập nhật đơn hàng đã được duyệt" });
+    // }
 
     await order.update({
       status: "pending",

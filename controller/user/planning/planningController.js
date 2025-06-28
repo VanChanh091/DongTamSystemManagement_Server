@@ -1,10 +1,13 @@
 import Redis from "ioredis";
+import ejs from "ejs";
+import puppeteer from "puppeteer";
+import { Op } from "sequelize";
 import Order from "../../../models/order/order.js";
 import Customer from "../../../models/customer/customer.js";
 import Product from "../../../models/product/product.js";
 import Box from "../../../models/order/box.js";
 import PaperConsumptionNorm from "../../../models/planning/paperConsumptionNorm.js";
-import PLanning from "../../../models/planning/planning.js";
+import Planning from "../../../models/planning/planning.js";
 import {
   calculateDao,
   calculateDay,
@@ -12,15 +15,14 @@ import {
   calculateTotalConsumption,
   calculateWeight,
 } from "../../../utils/calculator/paperCalculator.js";
-import { deleteKeysByPattern } from "../../../utils/helper/adminHelper.js";
-import Planning from "../../../models/planning/planning.js";
-import { Op } from "sequelize";
 import { sequelize } from "../../../configs/connectDB.js";
-import ejs from "ejs";
-import puppeteer from "puppeteer";
+import { deleteKeysByPattern } from "../../../utils/helper/adminHelper.js";
 import { PLANNING_PATH } from "../../../utils/helper/pathHelper.js";
+import { getPlanningByField } from "../../../utils/helper/planningHelper.js";
 
 const redisCache = new Redis();
+
+//===============================PLANNING ORDER=====================================
 
 //getOrderAccept
 export const getOrderAccept = async (req, res) => {
@@ -57,33 +59,6 @@ export const getOrderAccept = async (req, res) => {
   }
 };
 
-//getOrderPLanning
-export const getOrderPlanning = async (req, res) => {
-  try {
-    const cacheKey = "planning:all";
-
-    const cachedData = await redisCache.get(cacheKey);
-    if (cachedData) {
-      return res.json({
-        message: "get all order have status:planning from cache",
-        data: JSON.parse(cachedData),
-      });
-    }
-
-    const data = await PLanning.findAll({
-      include: [{ model: Order }, { model: PaperConsumptionNorm, as: "norm" }],
-      order: [["createdAt", "DESC"]],
-    });
-
-    await redisCache.set(cacheKey, JSON.stringify(data), "EX", 3600);
-
-    res.json({ message: "get all order have status:planning", data });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
 //planning
 export const planningOrder = async (req, res) => {
   const { orderId, newStatus } = req.query;
@@ -108,8 +83,9 @@ export const planningOrder = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    const planning = await PLanning.create({
+    const planning = await Planning.create({
       orderId: orderId,
+      status: "planning",
       ...planningData,
     });
 
@@ -144,9 +120,10 @@ export const planningOrder = async (req, res) => {
   }
 };
 
-export const createDataTable = async (planningId, model, norm, layerType) => {
+//create sub table
+const createDataTable = async (planningId, model, norm, layerType) => {
   try {
-    const planning = await PLanning.findOne({ where: { planningId } });
+    const planning = await Planning.findOne({ where: { planningId } });
     if (!planning) throw new Error("Planning not found");
 
     const order = await Order.findOne({
@@ -263,30 +240,7 @@ export const createDataTable = async (planningId, model, norm, layerType) => {
   }
 };
 
-//update status
-export const updateStatusPlanning = async (req, res) => {
-  const { id, newStatus } = req.query;
-  try {
-    if (!["pending", "accept", "reject", "planning"].includes(newStatus)) {
-      return res.status(400).json({ message: "Invalid status" });
-    }
-
-    const order = await Order.findByPk(id);
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
-    }
-
-    order.status = newStatus;
-    await order.save();
-
-    await redisCache.set(`order:${id}`, JSON.stringify(order), "EX", 3600);
-
-    res.json({ message: "Order status updated successfully", order });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
+//===============================PRODUCTION QUEUE=====================================
 
 //get planning by machine
 export const getPlanningByMachine = async (req, res) => {
@@ -326,11 +280,13 @@ export const getPlanningByMachine = async (req, res) => {
   }
 };
 
+//sort planning
 const getPlanningByMachineSorted = async (machine, today) => {
   try {
     const data = await Planning.findAll({
       where: {
         chooseMachine: machine,
+        status: "planning",
       },
       include: [
         {
@@ -390,9 +346,9 @@ export const changeMachinePlanning = async (req, res) => {
         .json({ message: "Missing or invalid planningIds" });
     }
 
-    const plannings = await PLanning.findAll({
+    const plannings = await Planning.findAll({
       where: {
-        planningId: planningIds,
+        planningId: { [Op.in]: planningIds },
       },
     });
 
@@ -449,150 +405,18 @@ export const updateIndexPlanning = async (req, res) => {
 };
 
 //get by customer name
-export const getPlanningByCustomerName = async (req, res) => {
-  const { customerName, machine } = req.query;
-
-  try {
-    const cacheKey = `planning:machine:${machine}`;
-    const cachedData = await redisCache.get(cacheKey);
-
-    if (cachedData) {
-      const parsedData = JSON.parse(cachedData);
-      const filteredData = parsedData.filter((item) =>
-        item.order?.customer?.customerName
-          ?.toLowerCase()
-          .includes(customerName.toLowerCase())
-      );
-
-      return res.json({
-        message: `get all cache planning by customer: ${customerName} on machine ${machine}`,
-        data: filteredData,
-      });
-    }
-
-    const data = await Planning.findAll({
-      where: { chooseMachine: machine },
-      include: [
-        {
-          model: Order,
-          required: true,
-          include: [
-            {
-              model: Customer,
-              attributes: ["customerName", "companyName"],
-              required: true,
-              where: {
-                customerName: {
-                  [Op.like]: `%${customerName}%`,
-                },
-              },
-            },
-            { model: Box, as: "box" },
-          ],
-        },
-        { model: PaperConsumptionNorm, as: "norm" },
-      ],
-    });
-
-    res.status(200).json({
-      message: `get planning by customer name: ${customerName}`,
-      data,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
+export const getPlanningByCustomerName = async (req, res) =>
+  getPlanningByField(req, res, "customerName");
 
 //get by flute
-export const getPlanningByFlute = async (req, res) => {
-  const { flute, machine } = req.query;
-  try {
-    const cacheKey = `planning:machine:${machine}`;
-    const cachedData = await redisCache.get(cacheKey);
-
-    if (cachedData) {
-      const parsedData = JSON.parse(cachedData);
-      const filteredData = parsedData.filter((item) =>
-        item.order?.flute.toLowerCase().includes(flute.toLowerCase())
-      );
-
-      return res.json({
-        message: `get all cache planning by flute: ${flute} on machine ${machine}`,
-        data: filteredData,
-      });
-    }
-
-    const data = await PLanning.findAll({
-      where: { chooseMachine: machine },
-      include: [
-        {
-          model: Order,
-          required: true,
-          where: { flute: { [Op.like]: `%${flute}%` } },
-          include: [
-            { model: Customer, attributes: ["customerName", "companyName"] },
-            { model: Box, as: "box" },
-          ],
-        },
-        { model: PaperConsumptionNorm, as: "norm" },
-      ],
-    });
-
-    res.status(200).json({
-      message: `get planning by flute: ${flute}`,
-      data,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
+export const getPlanningByFlute = async (req, res) =>
+  getPlanningByField(req, res, "flute");
 
 //get by ghepKho
-export const getPlanningByGhepKho = async (req, res) => {
-  const { ghepKho, machine } = req.query;
-  try {
-    const cacheKey = `planning:machine:${machine}`;
-    const cachedData = await redisCache.get(cacheKey);
+export const getPlanningByGhepKho = async (req, res) =>
+  getPlanningByField(req, res, "ghepKho");
 
-    if (cachedData) {
-      const parsedData = JSON.parse(cachedData);
-      const filteredData = parsedData.filter(
-        (item) => item?.ghepKho == ghepKho
-      );
-
-      return res.json({
-        message: `get all cache planning by customer: ${ghepKho} on machine ${machine}`,
-        data: filteredData,
-      });
-    }
-
-    const data = await PLanning.findAll({
-      where: { chooseMachine: machine, ghepKho: ghepKho },
-      include: [
-        {
-          model: Order,
-          include: [
-            { model: Customer, attributes: ["customerName", "companyName"] },
-            { model: Box, as: "box" },
-          ],
-        },
-        { model: PaperConsumptionNorm, as: "norm" },
-      ],
-    });
-
-    res.status(200).json({
-      message: `get planning by ghepKho: ${ghepKho}`,
-      data,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-//export pdf
+//export pdf //waiting
 export const exportPdfPlanning = async (req, res) => {
   const { planningId, machine } = req.body;
 
@@ -642,5 +466,65 @@ export const exportPdfPlanning = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+//pause planning
+export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
+  const { planningIds, newStatus } = req.body;
+  try {
+    if (!Array.isArray(planningIds) || planningIds.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "Missing or invalid planningIds" });
+    }
+
+    const plannings = await Planning.findAll({
+      where: {
+        planningId: {
+          [Op.in]: planningIds,
+        },
+      },
+    });
+    if (plannings.length === 0) {
+      return res.status(404).json({ message: "No planning found" });
+    }
+
+    const chooseMachine = plannings[0]?.chooseMachine ?? null;
+
+    if (newStatus !== "complete") {
+      for (const planning of plannings) {
+        if (planning.orderId) {
+          console.log("Updating orderId from planning:", planning.orderId);
+
+          const order = await Order.findOne({
+            where: { orderId: planning.orderId },
+          });
+          if (order) {
+            order.status = newStatus;
+            await order.save();
+          }
+        }
+      }
+
+      for (const planning of plannings) {
+        await planning.destroy();
+      }
+    } else {
+      for (const planning of plannings) {
+        planning.status = newStatus;
+        await planning.save();
+      }
+    }
+
+    await redisCache.del(`planning:machine:${chooseMachine}`);
+    await redisCache.del("orders:userId:status:pending_reject");
+
+    res.status(200).json({
+      message: `Update status planning successfully.`,
+    });
+  } catch (error) {
+    console.log("error pause planning", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };

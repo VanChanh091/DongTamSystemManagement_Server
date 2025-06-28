@@ -16,6 +16,7 @@ const PaperConsumptionNorm = sequelize.define(
     matB: { type: DataTypes.INTEGER },
     songC: { type: DataTypes.INTEGER },
     matC: { type: DataTypes.INTEGER },
+    songE2: { type: DataTypes.INTEGER },
     weight: { type: DataTypes.DOUBLE },
     totalConsumption: { type: DataTypes.DOUBLE },
     DmDay: { type: DataTypes.DOUBLE },
