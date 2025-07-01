@@ -19,33 +19,12 @@ export const getAllPaperFactors = async (req, res) => {
 
     const data = await PaperFactor.findAll();
 
-    await redisCache.set(cacheKey, JSON.stringify(data), "EX", 3600);
+    await redisCache.set(cacheKey, JSON.stringify(data), "EX", 1800);
 
     res.json({
       message: "Get all paper factors successfully",
       data,
     });
-  } catch (error) {
-    console.error("Error fetching paper factors:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-export const getCoefficient = async (req, res) => {
-  const { layerType, paperType } = req.body;
-  try {
-    const data = await PaperFactor.findOne({
-      where: {
-        layerType: layerType,
-        paperType: paperType,
-      },
-    });
-
-    if (!data) {
-      res.status(404).json({ message: "PaperFactor not found!" });
-    }
-
-    res.status(201).json({ message: "getCoefficient successfully ", data });
   } catch (error) {
     console.error("Error fetching paper factors:", error);
     res.status(500).json({ message: "Server error" });

@@ -8,7 +8,6 @@ import {
   addPaperFactor,
   deletePaperFactor,
   getAllPaperFactors,
-  getCoefficient,
   updatePaperFactor,
 } from "../../controller/admin/adminPaperFactorController.js";
 import {
@@ -21,6 +20,13 @@ import {
   updatePermissions,
   updateUserRole,
 } from "../../controller/admin/adminUserController.js";
+import {
+  createMachine,
+  deleteMachineById,
+  getAllMachine,
+  getMachineById,
+  updateMachineById,
+} from "../../controller/admin/adminMachinePaperController.js";
 
 const router = Router();
 
@@ -30,10 +36,16 @@ router.put("/updateStatus", authenticate, updateStatusAdmin);
 
 //admin routes for managing paper factors
 router.get("/getAllPF", authenticate, getAllPaperFactors);
-router.get("/getCoefficient", authenticate, getCoefficient);
 router.post("/addPF", authenticate, addPaperFactor);
 router.put("/updatePF", authenticate, updatePaperFactor);
 router.delete("/deletePF", authenticate, deletePaperFactor);
+
+//admin routes for manage time running machine
+router.get("/getAllMachine", authenticate, getAllMachine);
+router.get("/getMachineById", authenticate, getMachineById);
+router.post("/createMachine", authenticate, createMachine);
+router.put("/updateMachineById", authenticate, updateMachineById);
+router.delete("/deleteMachineById", authenticate, deleteMachineById);
 
 // Admin routes for managing users
 router.get("/getAllUsers", authenticate, getAllUsers);

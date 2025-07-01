@@ -291,9 +291,9 @@ const getPlanningByMachineSorted = async (machine, today) => {
       include: [
         {
           model: Order,
-          where: {
-            dateRequestShipping: { [Op.gte]: today },
-          },
+          // where: {
+          //   dateRequestShipping: { [Op.gte]: today },
+          // },
           include: [
             { model: Customer, attributes: ["customerName", "companyName"] },
             { model: Box, as: "box" },
@@ -415,6 +415,20 @@ export const getPlanningByFlute = async (req, res) =>
 //get by ghepKho
 export const getPlanningByGhepKho = async (req, res) =>
   getPlanningByField(req, res, "ghepKho");
+
+//get by orderId
+// export const getPlanningByOrderId = async (req, res) => {
+//   const { orderId } = req.query;
+
+//   try {
+
+// const data =
+
+//   } catch (error) {
+//     console.error("failed to get by orderId ");
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
 
 //export pdf //waiting
 export const exportPdfPlanning = async (req, res) => {
