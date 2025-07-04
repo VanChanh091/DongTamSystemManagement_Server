@@ -24,6 +24,7 @@ const Order = sequelize.define(
     paperSizeManufacture: { type: DataTypes.DOUBLE, allowNull: false },
     quantityCustomer: { type: DataTypes.INTEGER, allowNull: false },
     quantityManufacture: { type: DataTypes.INTEGER, allowNull: false },
+    numberChild: { type: DataTypes.INTEGER, allowNull: false },
     acreage: { type: DataTypes.DOUBLE, allowNull: false },
     dvt: { type: DataTypes.STRING, allowNull: false },
     price: { type: DataTypes.DOUBLE, allowNull: false },

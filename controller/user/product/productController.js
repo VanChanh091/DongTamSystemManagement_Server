@@ -8,6 +8,7 @@ import {
   uploadImageToCloudinary,
 } from "../../../utils/image/converToWebp.js";
 import cloudinary from "../../../configs/connectCloudinary.js";
+import { sequelize } from "../../../configs/connectDB.js";
 
 const redisCache = new Redis();
 
@@ -133,7 +134,7 @@ export const addProduct = async (req, res) => {
   const parsedProduct =
     typeof product === "string" ? JSON.parse(product) : product;
 
-  const transaction = await Product.sequelize.transaction();
+  const transaction = await sequelize.transaction();
 
   try {
     const products = await Product.findAll({

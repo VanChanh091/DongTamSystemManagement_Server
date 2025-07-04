@@ -2,6 +2,7 @@ import Redis from "ioredis";
 import Customer from "../../../models/customer/customer.js";
 import { Op, fn, col, where } from "sequelize";
 import { generateNextId } from "../../../utils/helper/generateNextId.js";
+import { sequelize } from "../../../configs/connectDB.js";
 
 const redisClient = new Redis();
 
@@ -198,7 +199,7 @@ export const getBySDT = async (req, res) => {
 //create customer
 export const createCustomer = async (req, res) => {
   const { prefix = "CUSTOM", ...customerData } = req.body;
-  const transaction = await Customer.sequelize.transaction();
+  const transaction = await sequelize.transaction();
 
   try {
     const customers = await Customer.findAll({

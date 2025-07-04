@@ -19,6 +19,7 @@ import { sequelize } from "../../../configs/connectDB.js";
 import { deleteKeysByPattern } from "../../../utils/helper/adminHelper.js";
 import { PLANNING_PATH } from "../../../utils/helper/pathHelper.js";
 import { getPlanningByField } from "../../../utils/helper/planningHelper.js";
+import MachinePaper from "../../../models/admin/machinePaper.js";
 
 const redisCache = new Redis();
 
@@ -291,9 +292,6 @@ const getPlanningByMachineSorted = async (machine, today) => {
       include: [
         {
           model: Order,
-          // where: {
-          //   dateRequestShipping: { [Op.gte]: today },
-          // },
           include: [
             { model: Customer, attributes: ["customerName", "companyName"] },
             { model: Box, as: "box" },
@@ -311,22 +309,43 @@ const getPlanningByMachineSorted = async (machine, today) => {
 
     // Sắp xếp đơn chưa có sortPlanning theo logic yêu cầu
     noSort.sort((a, b) => {
-      const dateA = a.order?.dateRequestShipping
-        ? new Date(a.order.dateRequestShipping)
-        : new Date(0);
-      const dateB = b.order?.dateRequestShipping
-        ? new Date(b.order.dateRequestShipping)
-        : new Date(0);
+      const wavePriorityMap = { C: 3, B: 2, E: 1 };
 
-      if (dateA - dateB !== 0) return dateA - dateB;
+      // Hàm lấy số lớp
+      const getLayer = (flute) => {
+        if (!flute || flute.length < 1) return 0;
+        return parseInt(flute.trim()[0]) || 0;
+      };
 
+      // Hàm chuyển flute thành danh sách ưu tiên từng sóng
+      const getWavePriorityList = (flute) => {
+        if (!flute || flute.length < 2) return [];
+        const waves = flute.trim().slice(1).toUpperCase().split("");
+        return waves.map((w) => wavePriorityMap[w] || 0);
+      };
+
+      // 1. ghepKho
       const ghepA = a.ghepKho ?? 0;
       const ghepB = b.ghepKho ?? 0;
-      if (ghepB - ghepA !== 0) return ghepB - ghepA;
+      if (ghepB !== ghepA) return ghepB - ghepA;
 
-      const fluteA = a.order?.flute ?? "";
-      const fluteB = b.order?.flute ?? "";
-      return fluteB.localeCompare(fluteA);
+      // 2. Số lớp
+      const layerA = getLayer(a.Order?.flute);
+      const layerB = getLayer(b.Order?.flute);
+      if (layerB !== layerA) return layerB - layerA;
+
+      // 3. So sánh sóng từng phần tử
+      const waveA = getWavePriorityList(a.Order?.flute);
+      const waveB = getWavePriorityList(b.Order?.flute);
+      const maxLength = Math.max(waveA.length, waveB.length);
+
+      for (let i = 0; i < maxLength; i++) {
+        const priA = waveA[i] ?? 0;
+        const priB = waveB[i] ?? 0;
+        if (priB !== priA) return priB - priA;
+      }
+
+      return 0;
     });
 
     return [...withSort, ...noSort];
@@ -401,7 +420,208 @@ export const updateIndexPlanning = async (req, res) => {
   } catch (error) {
     await transaction.rollback();
     console.error("❌ Update failed:", error);
+    res.status(500).json({ message: "Sort updated failed", error });
   }
+};
+
+//update planning by time running
+export const calculateTimeRunning = async (req, res) => {
+  const { machine } = req.query;
+  const { dayStart, timeStart, totalTimeWorking, updatePlanning } = req.body;
+
+  if (!Array.isArray(updatePlanning) || updatePlanning.length === 0) {
+    return res
+      .status(400)
+      .json({ message: "Missing or invalid updatePlanning" });
+  }
+
+  const transaction = await sequelize.transaction();
+
+  try {
+    const machineInfo = await MachinePaper.findOne({
+      where: { machineName: machine },
+    });
+
+    if (!machineInfo) {
+      return res.status(404).json({ message: "Machine not found" });
+    }
+
+    // Khởi tạo currentTime dựa vào timeStart (không liên quan đến dayStart)
+    let currentTime = parseTimeOnly(timeStart);
+    let endOfWorkTime = new Date(currentTime);
+    endOfWorkTime.setHours(currentTime.getHours() + totalTimeWorking);
+
+    // Sắp xếp updatePlanning theo sortPlanning
+    const sortedPlannings = [...updatePlanning].sort(
+      (a, b) => a.sortPlanning - b.sortPlanning
+    );
+
+    let lastGhepKho = null;
+    let updatedPlannings = [];
+
+    for (let i = 0; i < sortedPlannings.length; i++) {
+      const planning = sortedPlannings[i];
+      const { planningId, runningPlan, ghepKho, Order, sortPlanning } =
+        planning;
+
+      const numberChild = Order?.numberChild || 1;
+      const flute = Order?.flute || "3B";
+      const speed = getSpeed(flute, machine, machineInfo);
+      const performance = machineInfo.machinePerformance;
+      const totalLength = runningPlan / numberChild;
+
+      const isFirst = i === 0;
+      const isSameSize = !isFirst && ghepKho === lastGhepKho;
+
+      const changeTime =
+        machine === "Máy Quấn Cuồn"
+          ? machineInfo.timeChangeSize
+          : isFirst
+          ? machineInfo.timeChangeSize
+          : isSameSize
+          ? machineInfo.timeChangeSameSize
+          : machineInfo.timeChangeSize;
+
+      // 👉 Cộng thời gian đổi khổ vào currentTime
+      currentTime.setMinutes(currentTime.getMinutes());
+
+      // 👉 Tính thời gian sản xuất (dựa vào chiều dài / tốc độ / hiệu suất)
+      const productionMinutes = Math.ceil(
+        (changeTime + totalLength / speed) * (performance / 100)
+      );
+
+      // 👉 Ước lượng thời gian kết thúc tạm để tính thời gian nghỉ
+      const tempEndTime = new Date(currentTime);
+      tempEndTime.setMinutes(tempEndTime.getMinutes() + productionMinutes);
+
+      // 👉 Cộng thêm nếu chồng vào giờ nghỉ
+      const extraBreak = isDuringBreak(currentTime, tempEndTime);
+
+      // 👉 Tổng thời gian kết thúc đơn hàng
+      const endTime = new Date(currentTime);
+      endTime.setMinutes(endTime.getMinutes() + productionMinutes + extraBreak);
+
+      // 👉 Nếu vượt quá giờ làm → chuyển sang ngày hôm sau
+      if (endTime > endOfWorkTime) {
+        const overflowMinutes = (endTime - endOfWorkTime) / 60000;
+
+        // Khởi tạo lại thời gian bắt đầu của ngày hôm sau
+        const nextDayStart = parseTimeOnly(timeStart);
+        nextDayStart.setDate(nextDayStart.getDate() + 1);
+
+        // Cộng thêm overflowMinutes vào timestamp
+        currentTime = new Date(
+          nextDayStart.getTime() + overflowMinutes * 60 * 1000
+        );
+
+        console.log(
+          `⏭️ Vượt quá giờ làm. Dời sang ngày hôm sau, tiếp tục từ: ${formatTimeToHHMMSS(
+            currentTime
+          )}`
+        );
+      } else {
+        currentTime = new Date(endTime);
+      }
+
+      // 👉 Log kiểm tra
+      console.log(
+        `🧾sort=${sortPlanning} | ghepKho=${ghepKho} | last=${lastGhepKho} | isSameSize=${isSameSize} | changeTime=${changeTime}p | ProductionTime=${productionMinutes.toFixed(
+          2
+        )}p | Break=${extraBreak}p | End=${formatTimeToHHMMSS(endTime)}`
+      );
+
+      // 👉 Cập nhật DB
+      await Planning.update(
+        {
+          dayStart,
+          timeRunning: formatTimeToHHMMSS(endTime),
+        },
+        {
+          where: { planningId },
+          transaction,
+        }
+      );
+
+      updatedPlannings.push({
+        planningId,
+        dayStart,
+        timeRunning: formatTimeToHHMMSS(endTime),
+      });
+
+      // 👉 Lưu lại khổ giấy cho đơn tiếp theo
+      lastGhepKho = ghepKho;
+    }
+
+    await transaction.commit();
+    await redisCache.del(`planning:machine:${machine}`);
+
+    // Trả về data cập nhật cùng với thông báo thành công
+    res.status(200).json({
+      message: "✅ Updated timeRunning thành công",
+      data: updatedPlannings,
+    });
+  } catch (error) {
+    await transaction.rollback();
+    console.error("❌ Update failed:", error);
+    res.status(500).json({
+      message: "Failed to update planning by time running",
+      error: error.message,
+    });
+  }
+};
+
+const parseTimeOnly = (timeStr) => {
+  const [h, min] = timeStr.split(":").map(Number);
+  const now = new Date();
+  now.setHours(h);
+  now.setMinutes(min);
+  now.setSeconds(0);
+  now.setMilliseconds(0);
+  return now;
+};
+
+const formatTimeToHHMMSS = (date) => {
+  const pad = (n) => n.toString().padStart(2, "0");
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(
+    date.getSeconds()
+  )}`;
+};
+
+const getSpeed = (flute, machineName, machineInfo) => {
+  const numberLayer = parseInt(flute[0]);
+  if (machineName === "Máy 2 Lớp") return machineInfo.speed2Layer;
+  if (machineName === "Máy Quấn Cuồn") return machineInfo.paperRollSpeed;
+  const speed = machineInfo[`speed${numberLayer}Layer`];
+  console.log(speed);
+  if (!speed) {
+    throw new Error(
+      `❌ Không tìm thấy tốc độ cho flute=${flute}, machine=${machineName}`
+    );
+  }
+  return speed;
+};
+
+const isDuringBreak = (start, end) => {
+  const breakTimes = [
+    { start: "11:30", end: "12:00" },
+    { start: "17:00", end: "17:30" },
+    { start: "02:00", end: "02:45" },
+  ];
+
+  const dayStr = start.toISOString().split("T")[0];
+  let totalOverlap = 0;
+
+  for (const brk of breakTimes) {
+    const bStart = new Date(`${dayStr}T${brk.start}:00`);
+    const bEnd = new Date(`${dayStr}T${brk.end}:00`);
+    if (end > bStart && start < bEnd) {
+      const overlapStart = start < bStart ? bStart : start;
+      const overlapEnd = end > bEnd ? bEnd : end;
+      totalOverlap += (overlapEnd - overlapStart) / 60000;
+    }
+  }
+
+  return totalOverlap;
 };
 
 //get by customer name
@@ -417,18 +637,67 @@ export const getPlanningByGhepKho = async (req, res) =>
   getPlanningByField(req, res, "ghepKho");
 
 //get by orderId
-// export const getPlanningByOrderId = async (req, res) => {
-//   const { orderId } = req.query;
+export const getPlanningByOrderId = async (req, res) => {
+  const { orderId, machine } = req.query;
 
-//   try {
+  if (!machine || !orderId) {
+    return res.status(400).json({ message: "Thiếu machine hoặc orderId" });
+  }
 
-// const data =
+  try {
+    const cacheKey = `planning:machine:${machine}`;
 
-//   } catch (error) {
-//     console.error("failed to get by orderId ");
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
+    const cachedData = await redisCache.get(cacheKey);
+    if (cachedData) {
+      console.log("✅ Data planning from Redis");
+      const parsedData = JSON.parse(cachedData);
+
+      // Tìm kiếm tương đối trong cache
+      const filteredData = parsedData.filter((item) =>
+        item.orderId.toLowerCase().includes(orderId.toLowerCase())
+      );
+
+      return res.json({
+        message: `Get planning by orderId from cache`,
+        data: filteredData,
+      });
+    }
+
+    const planning = await Planning.findAll({
+      where: {
+        orderId: {
+          [Op.like]: `%${orderId}%`,
+        },
+      },
+      include: [
+        {
+          model: Order,
+          include: [
+            {
+              model: Customer,
+              attributes: ["customerName", "companyName"],
+            },
+            { model: Box, as: "box" },
+          ],
+        },
+      ],
+    });
+
+    if (!planning || planning.length === 0) {
+      return res.status(404).json({
+        message: `Không tìm thấy kế hoạch với orderId chứa: ${orderId}`,
+      });
+    }
+
+    return res.status(200).json({
+      message: "Get planning by orderId from db",
+      data: planning,
+    });
+  } catch (error) {
+    console.error("❌ Lỗi khi tìm orderId:", error.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
 //export pdf //waiting
 export const exportPdfPlanning = async (req, res) => {
