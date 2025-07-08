@@ -20,6 +20,7 @@ import { deleteKeysByPattern } from "../../../utils/helper/adminHelper.js";
 import { PLANNING_PATH } from "../../../utils/helper/pathHelper.js";
 import { getPlanningByField } from "../../../utils/helper/planningHelper.js";
 import MachinePaper from "../../../models/admin/machinePaper.js";
+import timeOverflowPlanning from "../../../models/planning/timeOverFlowPlanning.js";
 
 const redisCache = new Redis();
 
@@ -282,7 +283,7 @@ export const getPlanningByMachine = async (req, res) => {
 };
 
 //sort planning
-const getPlanningByMachineSorted = async (machine, today) => {
+const getPlanningByMachineSorted = async (machine) => {
   try {
     const data = await Planning.findAll({
       where: {
@@ -290,6 +291,7 @@ const getPlanningByMachineSorted = async (machine, today) => {
         status: "planning",
       },
       include: [
+        { model: timeOverflowPlanning, as: "timeOverFlow" },
         {
           model: Order,
           include: [
@@ -311,30 +313,25 @@ const getPlanningByMachineSorted = async (machine, today) => {
     noSort.sort((a, b) => {
       const wavePriorityMap = { C: 3, B: 2, E: 1 };
 
-      // Hàm lấy số lớp
       const getLayer = (flute) => {
         if (!flute || flute.length < 1) return 0;
         return parseInt(flute.trim()[0]) || 0;
       };
 
-      // Hàm chuyển flute thành danh sách ưu tiên từng sóng
       const getWavePriorityList = (flute) => {
         if (!flute || flute.length < 2) return [];
         const waves = flute.trim().slice(1).toUpperCase().split("");
         return waves.map((w) => wavePriorityMap[w] || 0);
       };
 
-      // 1. ghepKho
       const ghepA = a.ghepKho ?? 0;
       const ghepB = b.ghepKho ?? 0;
       if (ghepB !== ghepA) return ghepB - ghepA;
 
-      // 2. Số lớp
       const layerA = getLayer(a.Order?.flute);
       const layerB = getLayer(b.Order?.flute);
       if (layerB !== layerA) return layerB - layerA;
 
-      // 3. So sánh sóng từng phần tử
       const waveA = getWavePriorityList(a.Order?.flute);
       const waveB = getWavePriorityList(b.Order?.flute);
       const maxLength = Math.max(waveA.length, waveB.length);
@@ -348,7 +345,31 @@ const getPlanningByMachineSorted = async (machine, today) => {
       return 0;
     });
 
-    return [...withSort, ...noSort];
+    const sortedPlannings = [...withSort, ...noSort];
+
+    // 👉 Gộp overflow vào liền sau đơn gốc
+    const allPlannings = [];
+
+    sortedPlannings.forEach((planning) => {
+      const original = {
+        ...planning.toJSON(),
+        isOverflow: false,
+        timeRunning: planning.timeRunning,
+        dayStart: planning.dayStart,
+      };
+      allPlannings.push(original);
+
+      if (planning.timeOverFlow) {
+        allPlannings.push({
+          ...original,
+          isOverflow: true,
+          timeRunning: planning.timeOverFlow.overflowTimeRunning,
+          dayStart: planning.timeOverFlow.overflowDayStart,
+        });
+      }
+    });
+
+    return allPlannings;
   } catch (error) {
     console.error("Error fetching planning by machine:", error);
     throw error;
@@ -395,179 +416,277 @@ export const changeMachinePlanning = async (req, res) => {
 };
 
 //update index planning
-export const updateIndexPlanning = async (req, res) => {
-  const { updateIndex, machine } = req.body;
-  const transaction = await sequelize.transaction();
+export const updateIndex_TimeRunning = async (req, res) => {
+  const { machine } = req.query;
+  const { updateIndex, dayStart, timeStart, totalTimeWorking } = req.body;
 
   if (!Array.isArray(updateIndex) || updateIndex.length === 0) {
     return res.status(400).json({ message: "Missing or invalid updateIndex" });
   }
-  try {
-    const cachedKey = `planning:machine:${machine}`;
-
-    for (const item of updateIndex) {
-      await Planning.update(
-        { sortPlanning: item.sortPlanning },
-        { where: { planningId: item.planningId }, transaction }
-      );
-    }
-
-    await transaction.commit();
-
-    await redisCache.del(cachedKey);
-
-    res.status(200).json({ message: "Sort updated successfully" });
-  } catch (error) {
-    await transaction.rollback();
-    console.error("❌ Update failed:", error);
-    res.status(500).json({ message: "Sort updated failed", error });
-  }
-};
-
-//update planning by time running
-export const calculateTimeRunning = async (req, res) => {
-  const { machine } = req.query;
-  const { dayStart, timeStart, totalTimeWorking, updatePlanning } = req.body;
-
-  if (!Array.isArray(updatePlanning) || updatePlanning.length === 0) {
-    return res
-      .status(400)
-      .json({ message: "Missing or invalid updatePlanning" });
-  }
 
   const transaction = await sequelize.transaction();
+  const cachedKey = `planning:machine:${machine}`;
 
   try {
-    const machineInfo = await MachinePaper.findOne({
-      where: { machineName: machine },
+    // 1. Cập nhật sortPlanning
+    await updateSortPlanning(updateIndex, transaction);
+
+    // 2. Lấy lại danh sách planning đã được update
+    const sortedPlannings = await getSortedPlannings(updateIndex, transaction);
+
+    // 3. Tính toán thời gian chạy cho từng planning
+    const updatedPlannings = await calculateTimeRunningPlannings({
+      machine,
+      machineInfo: await getMachineInfo(machine, transaction),
+      dayStart,
+      timeStart,
+      totalTimeWorking,
+      plannings: sortedPlannings,
+      transaction,
     });
 
-    if (!machineInfo) {
-      return res.status(404).json({ message: "Machine not found" });
-    }
-
-    // Khởi tạo currentTime dựa vào timeStart (không liên quan đến dayStart)
-    let currentTime = parseTimeOnly(timeStart);
-    let endOfWorkTime = new Date(currentTime);
-    endOfWorkTime.setHours(currentTime.getHours() + totalTimeWorking);
-
-    // Sắp xếp updatePlanning theo sortPlanning
-    const sortedPlannings = [...updatePlanning].sort(
-      (a, b) => a.sortPlanning - b.sortPlanning
-    );
-
-    let lastGhepKho = null;
-    let updatedPlannings = [];
-
-    for (let i = 0; i < sortedPlannings.length; i++) {
-      const planning = sortedPlannings[i];
-      const { planningId, runningPlan, ghepKho, Order, sortPlanning } =
-        planning;
-
-      const numberChild = Order?.numberChild || 1;
-      const flute = Order?.flute || "3B";
-      const speed = getSpeed(flute, machine, machineInfo);
-      const performance = machineInfo.machinePerformance;
-      const totalLength = runningPlan / numberChild;
-
-      const isFirst = i === 0;
-      const isSameSize = !isFirst && ghepKho === lastGhepKho;
-
-      const changeTime =
-        machine === "Máy Quấn Cuồn"
-          ? machineInfo.timeChangeSize
-          : isFirst
-          ? machineInfo.timeChangeSize
-          : isSameSize
-          ? machineInfo.timeChangeSameSize
-          : machineInfo.timeChangeSize;
-
-      // 👉 Cộng thời gian đổi khổ vào currentTime
-      currentTime.setMinutes(currentTime.getMinutes());
-
-      // 👉 Tính thời gian sản xuất (dựa vào chiều dài / tốc độ / hiệu suất)
-      const productionMinutes = Math.ceil(
-        (changeTime + totalLength / speed) * (performance / 100)
-      );
-
-      // 👉 Ước lượng thời gian kết thúc tạm để tính thời gian nghỉ
-      const tempEndTime = new Date(currentTime);
-      tempEndTime.setMinutes(tempEndTime.getMinutes() + productionMinutes);
-
-      // 👉 Cộng thêm nếu chồng vào giờ nghỉ
-      const extraBreak = isDuringBreak(currentTime, tempEndTime);
-
-      // 👉 Tổng thời gian kết thúc đơn hàng
-      const endTime = new Date(currentTime);
-      endTime.setMinutes(endTime.getMinutes() + productionMinutes + extraBreak);
-
-      // 👉 Nếu vượt quá giờ làm → chuyển sang ngày hôm sau
-      if (endTime > endOfWorkTime) {
-        const overflowMinutes = (endTime - endOfWorkTime) / 60000;
-
-        // Khởi tạo lại thời gian bắt đầu của ngày hôm sau
-        const nextDayStart = parseTimeOnly(timeStart);
-        nextDayStart.setDate(nextDayStart.getDate() + 1);
-
-        // Cộng thêm overflowMinutes vào timestamp
-        currentTime = new Date(
-          nextDayStart.getTime() + overflowMinutes * 60 * 1000
-        );
-
-        console.log(
-          `⏭️ Vượt quá giờ làm. Dời sang ngày hôm sau, tiếp tục từ: ${formatTimeToHHMMSS(
-            currentTime
-          )}`
-        );
-      } else {
-        currentTime = new Date(endTime);
-      }
-
-      // 👉 Log kiểm tra
-      console.log(
-        `🧾sort=${sortPlanning} | ghepKho=${ghepKho} | last=${lastGhepKho} | isSameSize=${isSameSize} | changeTime=${changeTime}p | ProductionTime=${productionMinutes.toFixed(
-          2
-        )}p | Break=${extraBreak}p | End=${formatTimeToHHMMSS(endTime)}`
-      );
-
-      // 👉 Cập nhật DB
-      await Planning.update(
-        {
-          dayStart,
-          timeRunning: formatTimeToHHMMSS(endTime),
-        },
-        {
-          where: { planningId },
-          transaction,
-        }
-      );
-
-      updatedPlannings.push({
-        planningId,
-        dayStart,
-        timeRunning: formatTimeToHHMMSS(endTime),
-      });
-
-      // 👉 Lưu lại khổ giấy cho đơn tiếp theo
-      lastGhepKho = ghepKho;
-    }
-
     await transaction.commit();
-    await redisCache.del(`planning:machine:${machine}`);
+    await redisCache.del(cachedKey);
 
-    // Trả về data cập nhật cùng với thông báo thành công
-    res.status(200).json({
-      message: "✅ Updated timeRunning thành công",
+    return res.status(200).json({
+      message: "✅ Cập nhật sortPlanning + tính thời gian thành công",
       data: updatedPlannings,
     });
   } catch (error) {
     await transaction.rollback();
     console.error("❌ Update failed:", error);
-    res.status(500).json({
-      message: "Failed to update planning by time running",
+    return res.status(500).json({
+      message: "❌ Lỗi khi cập nhật và tính toán thời gian",
       error: error.message,
     });
   }
+};
+
+const updateSortPlanning = async (updateIndex, transaction) => {
+  for (const item of updateIndex) {
+    await Planning.update(
+      { sortPlanning: item.sortPlanning },
+      { where: { planningId: item.planningId }, transaction }
+    );
+  }
+};
+
+const getSortedPlannings = async (updateIndex, transaction) => {
+  return await Planning.findAll({
+    where: { planningId: updateIndex.map((i) => i.planningId) },
+    include: [{ model: Order }],
+    order: [["sortPlanning", "ASC"]],
+    transaction,
+  });
+};
+
+const getMachineInfo = async (machine, transaction) => {
+  const machineInfo = await MachinePaper.findOne({
+    where: { machineName: machine },
+    transaction,
+  });
+  if (!machineInfo) throw new Error("Machine not found");
+  return machineInfo;
+};
+
+const calculateTimeRunningPlannings = async ({
+  machine,
+  machineInfo,
+  dayStart,
+  timeStart,
+  totalTimeWorking,
+  plannings,
+  transaction,
+}) => {
+  let currentTime = parseTimeOnly(timeStart);
+  let currentDay = new Date(dayStart);
+  let lastGhepKho = null;
+  const updated = [];
+
+  for (let i = 0; i < plannings.length; i++) {
+    const data = await calculateTimeForOnePlanning({
+      planning: plannings[i],
+      machine,
+      machineInfo,
+      currentTime,
+      currentDay,
+      timeStart,
+      totalTimeWorking,
+      lastGhepKho,
+      transaction,
+      isFirst: i === 0,
+    });
+
+    currentTime = data.nextTime;
+    currentDay = data.nextDay;
+    lastGhepKho = data.ghepKho;
+    updated.push(data.result);
+  }
+
+  return updated;
+};
+
+const calculateTimeForOnePlanning = async ({
+  planning,
+  machine,
+  machineInfo,
+  currentTime,
+  currentDay,
+  timeStart,
+  totalTimeWorking,
+  lastGhepKho,
+  transaction,
+  isFirst,
+}) => {
+  const { planningId, runningPlan, ghepKho, sortPlanning, Order } = planning;
+  const numberChild = Order?.numberChild || 1;
+  const flute = Order?.flute || "3B";
+  const speed = getSpeed(flute, machine, machineInfo);
+  const performance = machineInfo.machinePerformance;
+  const totalLength = runningPlan / numberChild;
+
+  const isSameSize = !isFirst && ghepKho === lastGhepKho;
+
+  const changeTime =
+    machine === "Máy Quấn Cuồn"
+      ? machineInfo.timeChangeSize
+      : isFirst
+      ? machineInfo.timeChangeSize
+      : isSameSize
+      ? machineInfo.timeChangeSameSize
+      : machineInfo.timeChangeSize;
+
+  //công thức
+  const productionMinutes = Math.ceil(
+    (changeTime + totalLength / speed) / (performance / 100)
+  );
+
+  // ✅ Tính thời gian bắt đầu và kết thúc ca làm việc cho currentDay
+  let startOfWorkTime = new Date(currentDay);
+  const [h, m] = timeStart.split(":").map(Number); // ✅ đúng
+  startOfWorkTime.setHours(h, m, 0, 0);
+
+  let endOfWorkTime = new Date(startOfWorkTime);
+  endOfWorkTime.setHours(startOfWorkTime.getHours() + totalTimeWorking);
+
+  // ✅ Nếu currentTime < start → set currentTime = start
+  if (currentTime < startOfWorkTime) {
+    currentTime = new Date(startOfWorkTime);
+  }
+
+  // ✅ Nếu currentTime >= end → nhảy sang hôm sau
+  if (currentTime >= endOfWorkTime) {
+    currentDay.setDate(currentDay.getDate() + 1);
+    startOfWorkTime.setDate(startOfWorkTime.getDate() + 1);
+    endOfWorkTime.setDate(endOfWorkTime.getDate() + 1);
+    currentTime = new Date(startOfWorkTime);
+  }
+
+  let tempEndTime = new Date(currentTime);
+  tempEndTime.setMinutes(tempEndTime.getMinutes() + productionMinutes);
+  const extraBreak = isDuringBreak(currentTime, tempEndTime);
+
+  let predictedEndTime = new Date(currentTime);
+  predictedEndTime.setMinutes(
+    predictedEndTime.getMinutes() + productionMinutes + extraBreak
+  );
+
+  let currentPlanningDayStart = currentDay.toISOString().split("T")[0];
+  let timeRunningForPlanning = formatTimeToHHMMSS(predictedEndTime);
+  let hasOverFlow = false;
+  let overflowDayStart = null;
+  let overflowTimeRunning = null;
+  let overflowMinutes = null;
+
+  if (predictedEndTime > endOfWorkTime) {
+    hasOverFlow = true;
+    const totalOverflowMinutes = (predictedEndTime - endOfWorkTime) / 60000;
+
+    timeRunningForPlanning = formatTimeToHHMMSS(endOfWorkTime);
+
+    let nextDay = new Date(currentDay);
+    nextDay.setDate(nextDay.getDate() + 1);
+    overflowDayStart = nextDay.toISOString().split("T")[0];
+
+    let overflowStartTime = parseTimeOnly(timeStart);
+    overflowStartTime.setDate(overflowStartTime.getDate() + 1);
+
+    let actualOverflowEndTime = new Date(overflowStartTime);
+    actualOverflowEndTime.setMinutes(
+      actualOverflowEndTime.getMinutes() + totalOverflowMinutes
+    );
+
+    overflowTimeRunning = formatTimeToHHMMSS(actualOverflowEndTime);
+    overflowMinutes = `${Math.round(totalOverflowMinutes)} phút`;
+
+    currentTime = new Date(actualOverflowEndTime);
+    currentDay = new Date(overflowDayStart);
+
+    await timeOverflowPlanning.destroy({ where: { planningId }, transaction });
+
+    await timeOverflowPlanning.create(
+      {
+        planningId,
+        overflowDayStart,
+        overflowTimeRunning,
+        sortPlanning,
+      },
+      { transaction }
+    );
+  } else {
+    currentTime = new Date(predictedEndTime);
+    currentPlanningDayStart = currentDay.toISOString().split("T")[0];
+    timeRunningForPlanning = formatTimeToHHMMSS(currentTime);
+
+    await timeOverflowPlanning.destroy({ where: { planningId }, transaction });
+  }
+
+  await Planning.update(
+    {
+      dayStart: currentPlanningDayStart,
+      timeRunning: timeRunningForPlanning,
+      hasOverFlow,
+    },
+    { where: { planningId }, transaction }
+  );
+
+  const result = {
+    planningId,
+    dayStart: currentPlanningDayStart,
+    timeRunning: timeRunningForPlanning,
+  };
+
+  if (hasOverFlow) {
+    result.overflowDayStart = overflowDayStart;
+    result.overflowTimeRunning = overflowTimeRunning;
+    result.overflowMinutes = overflowMinutes;
+  }
+
+  console.log("🔍 Chi tiết tính toán đơn hàng:");
+  console.log({
+    planningId,
+    ghepKho,
+    lastGhepKho,
+    isSameSize,
+    changeTime: `${changeTime} phút`,
+    productionTime: `${productionMinutes} phút`,
+    breakTime: `${extraBreak} phút`,
+    predictedEndTime: formatTimeToHHMMSS(predictedEndTime),
+    endOfWorkTime: formatTimeToHHMMSS(endOfWorkTime),
+    hasOverFlow,
+    ...(hasOverFlow && {
+      overflowDayStart,
+      overflowTimeRunning,
+      overflowMinutes,
+    }),
+  });
+
+  return {
+    result,
+    nextTime: currentTime,
+    nextDay: currentDay,
+    ghepKho,
+  };
 };
 
 const parseTimeOnly = (timeStr) => {
@@ -592,7 +711,6 @@ const getSpeed = (flute, machineName, machineInfo) => {
   if (machineName === "Máy 2 Lớp") return machineInfo.speed2Layer;
   if (machineName === "Máy Quấn Cuồn") return machineInfo.paperRollSpeed;
   const speed = machineInfo[`speed${numberLayer}Layer`];
-  console.log(speed);
   if (!speed) {
     throw new Error(
       `❌ Không tìm thấy tốc độ cho flute=${flute}, machine=${machineName}`
@@ -608,15 +726,37 @@ const isDuringBreak = (start, end) => {
     { start: "02:00", end: "02:45" },
   ];
 
-  const dayStr = start.toISOString().split("T")[0];
+  // Clone dates to avoid modifying the originals passed in
+  let currentStart = new Date(start);
+  let currentEnd = new Date(end);
+
   let totalOverlap = 0;
 
   for (const brk of breakTimes) {
-    const bStart = new Date(`${dayStr}T${brk.start}:00`);
-    const bEnd = new Date(`${dayStr}T${brk.end}:00`);
-    if (end > bStart && start < bEnd) {
-      const overlapStart = start < bStart ? bStart : start;
-      const overlapEnd = end > bEnd ? bEnd : end;
+    // Need to handle breaks spanning midnight if currentEnd crosses midnight
+    // For simplicity here, assuming breaks are within a 24-hour cycle from start.
+    // If a break crosses midnight, it needs more complex handling to ensure correct day context.
+
+    // Create break start/end for the current day of 'start'
+    let bStart = new Date(currentStart);
+    let [bHour, bMinute] = brk.start.split(":").map(Number);
+    bStart.setHours(bHour, bMinute, 0, 0);
+
+    let bEnd = new Date(currentStart);
+    let [beHour, beMinute] = brk.end.split(":").map(Number);
+    bEnd.setHours(beHour, beMinute, 0, 0);
+
+    // If a break period conceptually goes into the next day (e.g., 02:00-02:45 for a shift starting previous day)
+    // and currentTime is also on the next day, we need to adjust bStart/bEnd.
+    if (bEnd.getTime() < bStart.getTime()) {
+      // Break crosses midnight
+      bEnd.setDate(bEnd.getDate() + 1);
+    }
+
+    // Check for overlap between [currentStart, currentEnd] and [bStart, bEnd]
+    if (currentEnd > bStart && currentStart < bEnd) {
+      const overlapStart = currentStart < bStart ? bStart : currentStart;
+      const overlapEnd = currentEnd > bEnd ? bEnd : currentEnd;
       totalOverlap += (overlapEnd - overlapStart) / 60000;
     }
   }
@@ -625,6 +765,7 @@ const isDuringBreak = (start, end) => {
 };
 
 //get by customer name
+
 export const getPlanningByCustomerName = async (req, res) =>
   getPlanningByField(req, res, "customerName");
 

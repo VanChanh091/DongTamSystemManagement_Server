@@ -37,6 +37,11 @@ const Planning = sequelize.define(
       allowNull: false,
       defaultValue: "planning",
     },
+    hasOverFlow: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
     sortPlanning: { type: DataTypes.INTEGER },
   },
   { timestamps: true }

@@ -1,7 +1,6 @@
 import { Router } from "express";
 import authenticate from "../../middlewares/authMiddleware.js";
 import {
-  calculateTimeRunning,
   changeMachinePlanning,
   exportPdfPlanning,
   getOrderAccept,
@@ -12,7 +11,7 @@ import {
   getPlanningByOrderId,
   pauseOrAcceptLackQtyPLanning,
   planningOrder,
-  updateIndexPlanning,
+  updateIndex_TimeRunning,
 } from "../../controller/user/planning/planningController.js";
 
 const router = Router();
@@ -24,9 +23,8 @@ router.post("/planningOrder", authenticate, planningOrder);
 //production queue
 router.get("/byMachine", authenticate, getPlanningByMachine);
 router.put("/changeMachine", authenticate, changeMachinePlanning);
-router.put("/updateIndex", authenticate, updateIndexPlanning);
+router.post("/updateIndex_TimeRunning", authenticate, updateIndex_TimeRunning);
 router.put("/pauseOrAcceptLackQty", authenticate, pauseOrAcceptLackQtyPLanning);
-router.post("/calculateTimeRunning", authenticate, calculateTimeRunning);
 
 //get properties of planning
 router.get("/getByCustomerName", authenticate, getPlanningByCustomerName);
