@@ -106,6 +106,7 @@ export const login = asyncHandler(async (req, res) => {
       id: existUser.id,
       email: existUser.email,
       role: existUser.role,
+      permissions: existUser.permissions,
     },
     token: generateToken(existUser),
   });

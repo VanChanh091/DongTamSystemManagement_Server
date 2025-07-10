@@ -11,17 +11,58 @@ import {
   getOrderAcceptAndPlanning,
 } from "../../controller/user/order/orderController.js";
 import authenticate from "../../middlewares/authMiddleware.js";
+import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware.js";
 
 const router = Router();
 
-router.get("/pending-reject", authenticate, getOrderPendingAndReject);
-router.get("/accept-planning", authenticate, getOrderAcceptAndPlanning);
-router.get("/qcBox", authenticate, getOrderByQcBox);
-router.get("/price", authenticate, getOrderByPrice);
-router.get("/customerName", authenticate, getOrderByCustomerName);
-router.get("/productName", authenticate, getOrderByProductName);
-router.post("/", authenticate, addOrder);
-router.put("/orders", authenticate, updateOrder);
-router.delete("/orders", authenticate, deleteOrder);
+router.get(
+  "/pending-reject",
+  authenticate,
+  authorizeAnyPermission(["sale"]),
+  getOrderPendingAndReject
+);
+router.get(
+  "/accept-planning",
+  authenticate,
+  authorizeAnyPermission(["sale"]),
+  getOrderAcceptAndPlanning
+);
+router.get(
+  "/qcBox",
+  authenticate,
+  authorizeAnyPermission(["sale"]),
+  getOrderByQcBox
+);
+router.get(
+  "/price",
+  authenticate,
+  authorizeAnyPermission(["sale"]),
+  getOrderByPrice
+);
+router.get(
+  "/customerName",
+  authenticate,
+  authorizeAnyPermission(["sale"]),
+  getOrderByCustomerName
+);
+router.get(
+  "/productName",
+  authenticate,
+  authorizeAnyPermission(["sale"]),
+  getOrderByProductName
+);
+router.post("/", authenticate, authorizeAnyPermission(["sale"]), addOrder);
+router.put(
+  "/orders",
+  authenticate,
+  authorizeAnyPermission(["sale"]),
+  updateOrder
+);
+router.delete(
+  "/orders",
+  authenticate,
+  authorizeAnyPermission(["sale"]),
+  deleteOrder
+);
 
 export default router;

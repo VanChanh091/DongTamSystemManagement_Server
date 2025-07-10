@@ -402,6 +402,7 @@ export const changeMachinePlanning = async (req, res) => {
 
     for (const planning of plannings) {
       planning.chooseMachine = newMachine;
+      planning.sortPlanning = null;
       await planning.save();
     }
 

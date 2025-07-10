@@ -1,6 +1,6 @@
-const authorizeRole = (roles = []) => {
+export const authorizeRole = (requiredRoles = []) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
+    if (!requiredRoles.includes(req.user.role)) {
       return res
         .status(403)
         .json({ message: "Access denied: Insufficient role" });
@@ -9,16 +9,23 @@ const authorizeRole = (roles = []) => {
   };
 };
 
-const authorizePermission = (permission) => {
+export const authorizeAnyPermission = (permissions = []) => {
   return (req, res, next) => {
-    const user = req.user;
-    if (!user || !user.includes(permission)) {
+    const { role, permissions: userPermissions } = req.user;
+
+    if (role === "admin" || role === "manager") {
+      return next();
+    }
+
+    // Nếu là user thì kiểm tra permission
+    const hasPermission = permissions.some((p) => userPermissions.includes(p));
+
+    if (!hasPermission) {
       return res
         .status(403)
-        .json({ message: "Access denied: Missing permission" });
+        .json({ message: "Access denied: Missing required permission(s)" });
     }
+
     next();
   };
 };
-
-export default { authorizeRole, authorizePermission };

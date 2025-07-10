@@ -27,34 +27,120 @@ import {
   getMachineById,
   updateMachineById,
 } from "../../controller/admin/adminMachinePaperController.js";
+import { authorizeRole } from "../../middlewares/permissionMiddleware.js";
 
 const router = Router();
 
 // Admin routes for managing orders
-router.get("/", authenticate, getOrderPending);
-router.put("/updateStatus", authenticate, updateStatusAdmin);
+router.get(
+  "/",
+  authenticate,
+  authorizeRole(["admin", "manager"]),
+  getOrderPending
+);
+router.put(
+  "/updateStatus",
+  authenticate,
+  authorizeRole(["admin", "manager"]),
+  updateStatusAdmin
+);
 
 //admin routes for managing paper factors
-router.get("/getAllPF", authenticate, getAllPaperFactors);
-router.post("/addPF", authenticate, addPaperFactor);
-router.put("/updatePF", authenticate, updatePaperFactor);
-router.delete("/deletePF", authenticate, deletePaperFactor);
+router.get(
+  "/getAllPF",
+  authenticate,
+  authorizeRole(["admin"]),
+  getAllPaperFactors
+);
+router.post("/addPF", authenticate, authorizeRole(["admin"]), addPaperFactor);
+router.put(
+  "/updatePF",
+  authenticate,
+  authorizeRole(["admin"]),
+  updatePaperFactor
+);
+router.delete(
+  "/deletePF",
+  authenticate,
+  authorizeRole(["admin"]),
+  deletePaperFactor
+);
 
 //admin routes for manage time running machine
-router.get("/getAllMachine", authenticate, getAllMachine);
-router.get("/getMachineById", authenticate, getMachineById);
-router.post("/createMachine", authenticate, createMachine);
-router.put("/updateMachineById", authenticate, updateMachineById);
-router.delete("/deleteMachineById", authenticate, deleteMachineById);
+router.get(
+  "/getAllMachine",
+  authenticate,
+  authorizeRole(["admin"]),
+  getAllMachine
+);
+router.get(
+  "/getMachineById",
+  authenticate,
+  authorizeRole(["admin"]),
+  getMachineById
+);
+router.post(
+  "/createMachine",
+  authenticate,
+  authorizeRole(["admin"]),
+  createMachine
+);
+router.put(
+  "/updateMachineById",
+  authenticate,
+  authorizeRole(["admin"]),
+  updateMachineById
+);
+router.delete(
+  "/deleteMachineById",
+  authenticate,
+  authorizeRole(["admin"]),
+  deleteMachineById
+);
 
 // Admin routes for managing users
-router.get("/getAllUsers", authenticate, getAllUsers);
-router.get("/getUserByName", authenticate, getUserByName);
-router.get("/getUserByPhone", authenticate, getUserByPhone);
-router.get("/getUserByPermission", authenticate, getUserByPermission);
-router.put("/updateRole", authenticate, updateUserRole);
-router.put("/updatePermission", authenticate, updatePermissions);
-router.put("/resetPassword", authenticate, resetPassword);
-router.delete("/deleteUser", authenticate, deleteUserById);
+router.get("/getAllUsers", authenticate, authorizeRole(["admin"]), getAllUsers);
+router.get(
+  "/getUserByName",
+  authenticate,
+  authorizeRole(["admin"]),
+  getUserByName
+);
+router.get(
+  "/getUserByPhone",
+  authenticate,
+  authorizeRole(["admin"]),
+  getUserByPhone
+);
+router.get(
+  "/getUserByPermission",
+  authenticate,
+  authorizeRole(["admin"]),
+  getUserByPermission
+);
+router.put(
+  "/updateRole",
+  authenticate,
+  authorizeRole(["admin"]),
+  updateUserRole
+);
+router.put(
+  "/updatePermission",
+  authenticate,
+  authorizeRole(["admin"]),
+  updatePermissions
+);
+router.put(
+  "/resetPassword",
+  authenticate,
+  authorizeRole(["admin"]),
+  resetPassword
+);
+router.delete(
+  "/deleteUser",
+  authenticate,
+  authorizeRole(["admin"]),
+  deleteUserById
+);
 
 export default router;
