@@ -11,7 +11,6 @@ import {
   orderRoutes,
   productRoutes,
   planningRoutes,
-  calculateRoutes,
   usersRoutes,
 } from "./routes/index.js";
 
@@ -35,7 +34,6 @@ app.use("/api/customer", customerRoutes);
 app.use("/api/order", orderRoutes);
 app.use("/api/product", productRoutes);
 app.use("/api/planning", planningRoutes);
-app.use("/api/calculate", calculateRoutes);
 app.use("/api/user", usersRoutes);
 
 sequelize

@@ -6,12 +6,6 @@ import {
   updateStatusAdmin,
 } from "../../controller/admin/adminOrderController.js";
 import {
-  addPaperFactor,
-  deletePaperFactor,
-  getAllPaperFactors,
-  updatePaperFactor,
-} from "../../controller/admin/adminPaperFactorController.js";
-import {
   deleteUserById,
   getAllUsers,
   getUserByName,
@@ -57,27 +51,6 @@ router.put(
   authenticate,
   authorizeRole(["admin", "manager"]),
   updateStatusAdmin
-);
-
-//admin routes for managing paper factors
-router.get(
-  "/getAllPF",
-  authenticate,
-  authorizeRole(["admin"]),
-  getAllPaperFactors
-);
-router.post("/addPF", authenticate, authorizeRole(["admin"]), addPaperFactor);
-router.put(
-  "/updatePF",
-  authenticate,
-  authorizeRole(["admin"]),
-  updatePaperFactor
-);
-router.delete(
-  "/deletePF",
-  authenticate,
-  authorizeRole(["admin"]),
-  deletePaperFactor
 );
 
 //admin routes for manage time running machine

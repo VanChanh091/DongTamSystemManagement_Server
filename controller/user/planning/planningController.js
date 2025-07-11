@@ -8,13 +8,6 @@ import Product from "../../../models/product/product.js";
 import Box from "../../../models/order/box.js";
 import PaperConsumptionNorm from "../../../models/planning/paperConsumptionNorm.js";
 import Planning from "../../../models/planning/planning.js";
-import {
-  calculateDao,
-  calculateDay,
-  calculateDmSong,
-  calculateTotalConsumption,
-  calculateWeight,
-} from "../../../utils/calculator/paperCalculator.js";
 import { sequelize } from "../../../configs/connectDB.js";
 import { deleteKeysByPattern } from "../../../utils/helper/adminHelper.js";
 import { PLANNING_PATH } from "../../../utils/helper/pathHelper.js";
@@ -93,18 +86,6 @@ export const planningOrder = async (req, res) => {
 
     // await planning.update({ sortPlanning: planning.planningId });
 
-    // try {
-    //   await createDataTable(
-    //     planning.planningId,
-    //     PaperConsumptionNorm,
-    //     paperConsumptionNorm,
-    //     layerType
-    //   );
-    // } catch (error) {
-    //   console.error("Error creating related data:", error);
-    //   return res.status(500).json({ message: "Failed to create related data" });
-    // }
-
     order.status = newStatus;
     await order.save();
 
@@ -119,126 +100,6 @@ export const planningOrder = async (req, res) => {
   } catch (error) {
     console.error("Create order error:", error);
     res.status(500).json({ error: error.message });
-  }
-};
-
-//create sub table
-const createDataTable = async (planningId, model, norm, layerType) => {
-  try {
-    const planning = await Planning.findOne({ where: { planningId } });
-    if (!planning) throw new Error("Planning not found");
-
-    const order = await Order.findOne({
-      where: { orderId: planning.orderId },
-    });
-    if (!order) throw new Error("Order not found");
-
-    const weight = calculateWeight(
-      norm.day,
-      norm.songE,
-      norm.songB,
-      norm.songC,
-      norm.matE,
-      norm.matB,
-      norm.matC
-    );
-
-    const DmDay = await calculateDay(
-      order.flute,
-      order.dvt,
-      order.quantityManufacture,
-      weight,
-      order.acreage,
-      layerType,
-      "BOTTOM"
-    );
-
-    const DmSongE = await calculateDmSong(
-      order.dvt,
-      norm.songE,
-      norm.matE,
-      planning.numberChild,
-      planning.sizePaperPLaning,
-      weight,
-      order.acreage,
-      planning.runningPlan,
-      1.3,
-      layerType,
-      "SONG_E"
-    );
-
-    const DmSongB = await calculateDmSong(
-      order.dvt,
-      norm.songB,
-      norm.matB,
-      planning.numberChild,
-      planning.sizePaperPLaning,
-      weight,
-      order.acreage,
-      planning.runningPlan,
-      1.4,
-      layerType,
-      "SONG_B"
-    );
-
-    const DmSongC = await calculateDmSong(
-      order.dvt,
-      norm.songC,
-      norm.matC,
-      planning.numberChild,
-      planning.sizePaperPLaning,
-      weight,
-      order.acreage,
-      planning.runningPlan,
-      1.45,
-      layerType,
-      "SONG_C"
-    );
-
-    const DmDao = await calculateDao(
-      order.dvt,
-      order.daoXa,
-      weight,
-      planning.sizePaperPLaning,
-      planning.numberChild,
-      order.acreage,
-      planning.runningPlan,
-      layerType,
-      "DAO"
-    );
-
-    const totalConsumption = calculateTotalConsumption(
-      DmDay,
-      DmSongE,
-      DmSongB,
-      DmSongC,
-      DmDao
-    );
-
-    console.log(">> DmDay:", DmDay);
-    console.log(">> DmSongE:", DmSongE);
-    console.log(">> DmSongB:", DmSongB);
-    console.log(">> DmSongC:", DmSongC);
-    console.log(">> DmDao:", DmDao);
-    console.log(">> weight:", weight);
-    console.log(">> totalConsumption:", totalConsumption);
-
-    if (norm) {
-      await model.create({
-        planningId: planningId,
-        ...norm,
-        weight,
-        totalConsumption,
-        DmDay,
-        DmSongE,
-        DmSongB,
-        DmSongC,
-        DmDao,
-      });
-    }
-  } catch (error) {
-    console.error(`Create table ${model} error:`, error);
-    throw error;
   }
 };
 
