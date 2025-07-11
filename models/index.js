@@ -1,4 +1,7 @@
+import MachinePaper from "./admin/machinePaper.js";
 import PaperFactor from "./admin/paperFactor.js";
+import WasteNorm from "./admin/wasteNorm.js";
+import WaveCrestCoefficient from "./admin/waveCrestCoefficient.js";
 import Customer from "./customer/customer.js";
 import Box from "./order/box.js";
 import Order from "./order/order.js";
@@ -17,6 +20,10 @@ const models = {
   Planning,
   PaperConsumptionNorm,
   PaperFactor,
+  timeOverflowPlanning,
+  MachinePaper,
+  WasteNorm,
+  WaveCrestCoefficient,
 };
 
 //customer

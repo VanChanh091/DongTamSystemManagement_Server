@@ -1,5 +1,6 @@
 import { Router } from "express";
 import authenticate from "../../middlewares/authMiddleware.js";
+import { authorizeRole } from "../../middlewares/permissionMiddleware.js";
 import {
   getOrderPending,
   updateStatusAdmin,
@@ -27,7 +28,20 @@ import {
   getMachineById,
   updateMachineById,
 } from "../../controller/admin/adminMachinePaperController.js";
-import { authorizeRole } from "../../middlewares/permissionMiddleware.js";
+import {
+  createWasteNorm,
+  deleteWasteNormById,
+  getAllWasteNorm,
+  getWasteNormById,
+  updateWasteNormById,
+} from "../../controller/admin/adminWasteNormController.js";
+import {
+  createWaveCrestCoefficient,
+  deleteWaveCrestById,
+  getAllWaveCrestCoefficient,
+  getWaveCrestById,
+  updateWaveCrestById,
+} from "../../controller/admin/adminWaveCrestController.js";
 
 const router = Router();
 
@@ -141,6 +155,70 @@ router.delete(
   authenticate,
   authorizeRole(["admin"]),
   deleteUserById
+);
+
+//admin routes for waste norm
+router.get(
+  "/getAllWasteNorm",
+  authenticate,
+  authorizeRole(["admin"]),
+  getAllWasteNorm
+);
+router.get(
+  "/getWasteNormById",
+  authenticate,
+  authorizeRole(["admin"]),
+  getWasteNormById
+);
+router.post(
+  "/createWasteNorm",
+  authenticate,
+  authorizeRole(["admin"]),
+  createWasteNorm
+);
+router.put(
+  "/updateWasteNormById",
+  authenticate,
+  authorizeRole(["admin"]),
+  updateWasteNormById
+);
+router.delete(
+  "/deleteWasteNormById",
+  authenticate,
+  authorizeRole(["admin"]),
+  deleteWasteNormById
+);
+
+//admin routes for wave crest coefficient
+router.get(
+  "/getAllWaveCrest",
+  authenticate,
+  authorizeRole(["admin"]),
+  getAllWaveCrestCoefficient
+);
+router.get(
+  "/getWaveCrestById",
+  authenticate,
+  authorizeRole(["admin"]),
+  getWaveCrestById
+);
+router.post(
+  "/createWaveCrest",
+  authenticate,
+  authorizeRole(["admin"]),
+  createWaveCrestCoefficient
+);
+router.put(
+  "/updateWaveCrestById",
+  authenticate,
+  authorizeRole(["admin"]),
+  updateWaveCrestById
+);
+router.delete(
+  "/deleteWaveCrestById",
+  authenticate,
+  authorizeRole(["admin"]),
+  deleteWaveCrestById
 );
 
 export default router;

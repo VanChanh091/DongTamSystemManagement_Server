@@ -1,6 +1,5 @@
 import Redis from "ioredis";
 import MachinePaper from "../../models/admin/machinePaper.js";
-import { NUMBER } from "sequelize";
 
 const redisCache = new Redis();
 
@@ -30,6 +29,7 @@ export const getAllMachine = async (req, res) => {
 };
 
 //get machine by id
+//use to get id for update
 export const getMachineById = async (req, res) => {
   const { machineId } = req.query;
   try {
