@@ -3,7 +3,6 @@ import Redis from "ioredis";
 import Order from "../../models/order/order.js";
 import Customer from "../../models/customer/customer.js";
 import Box from "../../models/order/box.js";
-import PaperConsumptionNorm from "../../models/planning/paperConsumptionNorm.js";
 import Planning from "../../models/planning/planning.js";
 
 const redisCache = new Redis();
@@ -83,7 +82,7 @@ export const getPlanningByField = async (req, res, field) => {
 
     const data = await Planning.findAll({
       where: whereClause,
-      include: [orderInclude, { model: PaperConsumptionNorm, as: "norm" }],
+      include: [orderInclude],
     });
 
     return res.status(200).json({

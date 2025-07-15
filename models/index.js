@@ -4,7 +4,6 @@ import WaveCrestCoefficient from "./admin/waveCrestCoefficient.js";
 import Customer from "./customer/customer.js";
 import Box from "./order/box.js";
 import Order from "./order/order.js";
-import PaperConsumptionNorm from "./planning/paperConsumptionNorm.js";
 import Planning from "./planning/planning.js";
 import timeOverflowPlanning from "./planning/timeOverFlowPlanning.js";
 import Product from "./product/product.js";
@@ -17,7 +16,6 @@ const models = {
   Box,
   Product,
   Planning,
-  PaperConsumptionNorm,
   timeOverflowPlanning,
   MachinePaper,
   WasteNorm,
@@ -38,13 +36,6 @@ Order.hasOne(Box, { foreignKey: "orderId", as: "box", onDelete: "CASCADE" });
 Box.belongsTo(Order, { foreignKey: "orderId" });
 
 //planning
-Planning.hasOne(PaperConsumptionNorm, {
-  foreignKey: "planningId",
-  as: "norm",
-  onDelete: "CASCADE",
-});
-PaperConsumptionNorm.belongsTo(Planning, { foreignKey: "planningId" });
-
 Order.hasOne(Planning, { foreignKey: "orderId" });
 Planning.belongsTo(Order, {
   foreignKey: "orderId",

@@ -23,6 +23,12 @@ const Planning = sequelize.define(
     sizePaperPLaning: { type: DataTypes.DOUBLE, allowNull: false },
     runningPlan: { type: DataTypes.INTEGER, allowNull: false },
     ghepKho: { type: DataTypes.INTEGER },
+    bottom: { type: DataTypes.DOUBLE },
+    fluteE: { type: DataTypes.DOUBLE },
+    fluteB: { type: DataTypes.DOUBLE },
+    fluteC: { type: DataTypes.DOUBLE },
+    knife: { type: DataTypes.DOUBLE },
+    totalLoss: { type: DataTypes.DOUBLE },
     chooseMachine: {
       type: DataTypes.ENUM(
         "Máy 1350",

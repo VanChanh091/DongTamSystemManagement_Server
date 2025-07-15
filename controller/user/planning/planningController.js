@@ -6,7 +6,6 @@ import Order from "../../../models/order/order.js";
 import Customer from "../../../models/customer/customer.js";
 import Product from "../../../models/product/product.js";
 import Box from "../../../models/order/box.js";
-import PaperConsumptionNorm from "../../../models/planning/paperConsumptionNorm.js";
 import Planning from "../../../models/planning/planning.js";
 import { sequelize } from "../../../configs/connectDB.js";
 import { deleteKeysByPattern } from "../../../utils/helper/adminHelper.js";
@@ -14,6 +13,8 @@ import { PLANNING_PATH } from "../../../utils/helper/pathHelper.js";
 import { getPlanningByField } from "../../../utils/helper/planningHelper.js";
 import MachinePaper from "../../../models/admin/machinePaper.js";
 import timeOverflowPlanning from "../../../models/planning/timeOverFlowPlanning.js";
+import WasteNorm from "../../../models/admin/wasteNorm.js";
+import WaveCrestCoefficient from "../../../models/admin/waveCrestCoefficient.js";
 
 const redisCache = new Redis();
 
@@ -54,52 +55,199 @@ export const getOrderAccept = async (req, res) => {
   }
 };
 
-//planning
+//planning order
 export const planningOrder = async (req, res) => {
   const { orderId, newStatus } = req.query;
-  const { paperConsumptionNorm, layerType, ...planningData } = req.body;
+  const planningData = req.body;
+
+  if (!orderId || !newStatus) {
+    return res.status(404).json({ message: "Missing orderId or newStatus" });
+  }
 
   try {
-    const orderAcceptCacheKey = "orders:userId:status:accept";
-    const acceptPlanningCachePattern = `orders:userId:status:accept_planning:*`;
-
-    const order = await Order.findOne({
-      where: { orderId: orderId },
-      include: [
-        {
-          model: Customer,
-          attributes: ["customerName", "companyName"],
-        },
-        { model: Product },
-        { model: Box, as: "box" },
-      ],
-    });
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
-    }
-
+    // 1) Tạo record Planning với spread planningData
     const planning = await Planning.create({
-      orderId: orderId,
+      orderId,
       status: "planning",
       ...planningData,
     });
 
-    // await planning.update({ sortPlanning: planning.planningId });
+    // 2) Lấy Order để có numberChild và mã flute
+    const order = await Order.findOne({
+      where: { orderId },
+      include: [
+        { model: Customer, attributes: ["customerName", "companyName"] },
+        { model: Product },
+        { model: Box, as: "box" },
+      ],
+    });
+    if (!order) return res.status(404).json({ message: "Order not found" });
 
+    // 3) Lấy thông số định mức và hệ số sóng cho máy đã chọn
+    const { chooseMachine } = planningData;
+    const wasteNorm = await WasteNorm.findOne({
+      where: { machineName: chooseMachine },
+    });
+    const waveCoeff = await WaveCrestCoefficient.findOne({
+      where: { machineName: chooseMachine },
+    });
+    if (!wasteNorm || !waveCoeff) {
+      throw new Error(
+        `WasteNorm or WaveCrestCoefficient not found for machine: ${chooseMachine}`
+      );
+    }
+
+    // 4) Build chuỗi cấu trúc giấy và parse thành mảng lớp
+    const structStr = [
+      planning.dayReplace,
+      planning.songEReplace,
+      planning.matEReplace,
+      planning.songBReplace,
+      planning.matBReplace,
+      planning.songCReplace,
+      planning.matCReplace,
+    ]
+      .filter(Boolean)
+      .join("/");
+
+    const parseStructure = (str) =>
+      str.split("/").map((seg) => {
+        if (/^[EBC]/.test(seg)) {
+          return { kind: "flute", code: seg };
+        } else {
+          return {
+            kind: "liner",
+            thickness: parseFloat(seg.replace(/\D+/g, "")),
+          };
+        }
+      });
+    const layers = parseStructure(structStr);
+
+    console.log("➡️ structStr:", structStr);
+    console.log("➡️ parsed layers:", layers);
+
+    // 5) Xác định sóng cần tính từ order.flute (ví dụ "5EB" => ["E","B"])
+    const waveTypes = (order.flute.match(/[EBC]/gi) || []).map((s) =>
+      s.toUpperCase()
+    );
+
+    const roundSmart = (num) => Math.round(num * 100) / 100;
+
+    // 6) Hàm tính phế liệu đúng công thức (ghepKho chia 100, thickness chia 1000)
+    const calculateWaste = (
+      layers,
+      ghepKho,
+      wasteNorm,
+      waveCoeff,
+      runningPlan,
+      numberChild,
+      waveTypes
+    ) => {
+      const gkTh = ghepKho / 100;
+      let flute = { E: 0, B: 0, C: 0 };
+      let softLiner = 0;
+      let countE = 0;
+
+      for (let i = 0; i < layers.length; i++) {
+        const L = layers[i];
+        if (L.kind === "flute") {
+          const letter = L.code[0].toUpperCase();
+          if (!waveTypes.includes(letter)) continue;
+
+          const fluteTh = parseFloat(L.code.replace(/\D+/g, "")) / 1000;
+          const prev = layers[i - 1];
+          const linerBefore =
+            prev && prev.kind === "liner" ? prev.thickness / 1000 : 0;
+
+          let coef = 0;
+          if (letter === "E") {
+            coef = countE === 0 ? waveCoeff.fluteE_1 : waveCoeff.fluteE_2;
+            countE++;
+          } else {
+            coef = waveCoeff[`flute${letter}`] || 0;
+          }
+
+          const loss =
+            gkTh * wasteNorm.waveCrest * linerBefore +
+            gkTh * wasteNorm.waveCrest * fluteTh * coef;
+
+          flute[letter] += loss;
+        }
+      }
+
+      // ✅ Lấy lớp liner cuối cùng duy nhất
+      const lastLiner = [...layers].reverse().find((l) => l.kind === "liner");
+      if (lastLiner) {
+        softLiner =
+          gkTh * wasteNorm.waveCrestSoft * (lastLiner.thickness / 1000);
+      }
+
+      const bottom = flute.E + flute.B + flute.C + softLiner;
+      const haoPhi =
+        (runningPlan / numberChild) *
+        (bottom / wasteNorm.waveCrestSoft) *
+        (wasteNorm.lossInProcess / 100);
+      const knife =
+        (bottom / wasteNorm.waveCrestSoft) *
+        wasteNorm.lossInSheetingAndSlitting;
+      const totalLoss = flute.E + flute.B + flute.C + haoPhi + knife + bottom;
+
+      return {
+        fluteE: roundSmart(flute.E),
+        fluteB: roundSmart(flute.B),
+        fluteC: roundSmart(flute.C),
+        bottom: roundSmart(bottom),
+        haoPhi: roundSmart(haoPhi),
+        knife: roundSmart(knife),
+        totalLoss: roundSmart(totalLoss),
+      };
+    };
+
+    // 7) Tính phế liệu
+    const { fluteE, fluteB, fluteC, bottom, knife, haoPhi, totalLoss } =
+      calculateWaste(
+        layers,
+        planningData.ghepKho,
+        wasteNorm,
+        waveCoeff,
+        planningData.runningPlan,
+        order.numberChild,
+        waveTypes
+      );
+
+    // ✅ Log hao phí để kiểm tra
+    console.log("📦 Hao phí quy trình (haoPhi):", roundSmart(haoPhi));
+
+    // 8) Cập nhật lại Planning với kết quả tính
+    Object.assign(planning, {
+      fluteE,
+      fluteB,
+      fluteC,
+      bottom,
+      knife,
+      totalLoss,
+    });
+    await planning.save();
+
+    // 9) Cập nhật trạng thái Order & clear cache
     order.status = newStatus;
     await order.save();
 
-    await redisCache.del(orderAcceptCacheKey);
-    await redisCache.del(`planning:machine:${planning.chooseMachine}`);
-    await deleteKeysByPattern(redisCache, acceptPlanningCachePattern);
+    await redisCache.del("orders:userId:status:accept");
+    await redisCache.del(`planning:machine:${chooseMachine}`);
+    await deleteKeysByPattern(
+      redisCache,
+      `orders:userId:status:accept_planning:*`
+    );
 
-    res.status(201).json({
-      message: "Order status updated successfully",
+    // 10) Trả về client
+    return res.status(201).json({
+      message: "Order status updated và phế liệu đã được tính.",
       planning,
     });
   } catch (error) {
-    console.error("Create order error:", error);
-    res.status(500).json({ error: error.message });
+    console.error("planningOrder error:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -160,7 +308,6 @@ const getPlanningByMachineSorted = async (machine) => {
             { model: Box, as: "box" },
           ],
         },
-        { model: PaperConsumptionNorm, as: "norm" },
       ],
     });
 
@@ -626,19 +773,6 @@ const isDuringBreak = (start, end) => {
   return totalOverlap;
 };
 
-//get by customer name
-
-export const getPlanningByCustomerName = async (req, res) =>
-  getPlanningByField(req, res, "customerName");
-
-//get by flute
-export const getPlanningByFlute = async (req, res) =>
-  getPlanningByField(req, res, "flute");
-
-//get by ghepKho
-export const getPlanningByGhepKho = async (req, res) =>
-  getPlanningByField(req, res, "ghepKho");
-
 //get by orderId
 export const getPlanningByOrderId = async (req, res) => {
   const { orderId, machine } = req.query;
@@ -702,6 +836,18 @@ export const getPlanningByOrderId = async (req, res) => {
   }
 };
 
+//get by customer name
+export const getPlanningByCustomerName = async (req, res) =>
+  getPlanningByField(req, res, "customerName");
+
+//get by flute
+export const getPlanningByFlute = async (req, res) =>
+  getPlanningByField(req, res, "flute");
+
+//get by ghepKho
+export const getPlanningByGhepKho = async (req, res) =>
+  getPlanningByField(req, res, "ghepKho");
+
 //export pdf //waiting
 export const exportPdfPlanning = async (req, res) => {
   const { planningId, machine } = req.body;
@@ -711,7 +857,7 @@ export const exportPdfPlanning = async (req, res) => {
   }
 
   try {
-    const plannings = await PLanning.findAll({
+    const plannings = await Planning.findAll({
       where: { chooseMachine: machine },
       include: [
         {
@@ -721,7 +867,6 @@ export const exportPdfPlanning = async (req, res) => {
             { model: Box, as: "box" },
           ],
         },
-        { model: PaperConsumptionNorm, as: "norm" },
       ],
     });
 

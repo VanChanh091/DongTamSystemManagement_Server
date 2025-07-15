@@ -21,7 +21,7 @@ const redisCache = new Redis();
 //get order status accept and planning
 export const getOrderAcceptAndPlanning = async (req, res) => {
   try {
-    const { page = 1, pageSize = 20 } = req.query;
+    const { page = 1, pageSize = 30 } = req.query;
     const currentPage = Number(page);
     const currentPageSize = Number(pageSize);
 
