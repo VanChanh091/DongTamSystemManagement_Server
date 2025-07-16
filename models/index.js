@@ -36,7 +36,7 @@ Order.hasOne(Box, { foreignKey: "orderId", as: "box", onDelete: "CASCADE" });
 Box.belongsTo(Order, { foreignKey: "orderId" });
 
 //planning
-Order.hasOne(Planning, { foreignKey: "orderId" });
+Order.hasMany(Planning, { foreignKey: "orderId" });
 Planning.belongsTo(Order, {
   foreignKey: "orderId",
   onDelete: "CASCADE",

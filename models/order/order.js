@@ -35,6 +35,7 @@ const Order = sequelize.define(
     totalPrice: { type: DataTypes.DOUBLE },
     vat: { type: DataTypes.INTEGER },
     instructSpecial: { type: DataTypes.STRING },
+    isBox: { type: DataTypes.BOOLEAN, defaultValue: false, allowNull: false },
     status: {
       type: DataTypes.ENUM("pending", "accept", "reject", "planning"),
       allowNull: false,

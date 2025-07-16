@@ -39,7 +39,7 @@ const Planning = sequelize.define(
       allowNull: false,
     },
     status: {
-      type: DataTypes.ENUM("planning", "complete"),
+      type: DataTypes.ENUM("planning", "waiting", "complete"),
       allowNull: false,
       defaultValue: "planning",
     },
@@ -48,6 +48,8 @@ const Planning = sequelize.define(
       allowNull: false,
       defaultValue: false,
     },
+    step: { type: DataTypes.ENUM("paper", "box"), allowNull: false },
+    dependOnPlanningId: { type: DataTypes.INTEGER },
     sortPlanning: { type: DataTypes.INTEGER },
   },
   { timestamps: true }

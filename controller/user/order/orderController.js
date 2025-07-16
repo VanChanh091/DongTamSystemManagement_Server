@@ -287,11 +287,15 @@ export const addOrder = async (req, res) => {
     });
 
     //create table data
-    try {
-      await createDataTable(newOrderId, Box, box);
-    } catch (error) {
-      console.error("Error creating related data:", error);
-      return res.status(500).json({ message: "Failed to create related data" });
+    if (newOrder.isBox === true) {
+      try {
+        await createDataTable(newOrderId, Box, box);
+      } catch (error) {
+        console.error("Error creating related data:", error);
+        return res
+          .status(500)
+          .json({ message: "Failed to create related data" });
+      }
     }
 
     //delete redis
