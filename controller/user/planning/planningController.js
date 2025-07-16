@@ -65,14 +65,7 @@ export const planningOrder = async (req, res) => {
   }
 
   try {
-    // 1) Tạo record Planning với spread planningData
-    const planning = await Planning.create({
-      orderId,
-      status: "planning",
-      ...planningData,
-    });
-
-    // 2) Lấy Order để có numberChild và mã flute
+    // 1) Lấy thông tin Order kèm các quan hệ
     const order = await Order.findOne({
       where: { orderId },
       include: [
@@ -83,7 +76,7 @@ export const planningOrder = async (req, res) => {
     });
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    // 3) Lấy thông số định mức và hệ số sóng cho máy đã chọn
+    // 2) Lấy thông số định mức và hệ số sóng cho máy đã chọn
     const { chooseMachine } = planningData;
     const wasteNorm = await WasteNorm.findOne({
       where: { machineName: chooseMachine },
@@ -91,49 +84,44 @@ export const planningOrder = async (req, res) => {
     const waveCoeff = await WaveCrestCoefficient.findOne({
       where: { machineName: chooseMachine },
     });
+
     if (!wasteNorm || !waveCoeff) {
       throw new Error(
         `WasteNorm or WaveCrestCoefficient not found for machine: ${chooseMachine}`
       );
     }
 
-    // 4) Build chuỗi cấu trúc giấy và parse thành mảng lớp
+    // 3) Parse cấu trúc giấy thành mảng lớp
     const structStr = [
-      planning.dayReplace,
-      planning.songEReplace,
-      planning.matEReplace,
-      planning.songBReplace,
-      planning.matBReplace,
-      planning.songCReplace,
-      planning.matCReplace,
+      planningData.dayReplace,
+      planningData.songEReplace,
+      planningData.matEReplace,
+      planningData.songBReplace,
+      planningData.matBReplace,
+      planningData.songCReplace,
+      planningData.matCReplace,
     ]
       .filter(Boolean)
       .join("/");
 
     const parseStructure = (str) =>
       str.split("/").map((seg) => {
-        if (/^[EBC]/.test(seg)) {
-          return { kind: "flute", code: seg };
-        } else {
-          return {
-            kind: "liner",
-            thickness: parseFloat(seg.replace(/\D+/g, "")),
-          };
-        }
+        if (/^[EBC]/.test(seg)) return { kind: "flute", code: seg };
+        return {
+          kind: "liner",
+          thickness: parseFloat(seg.replace(/\D+/g, "")),
+        };
       });
+
     const layers = parseStructure(structStr);
 
-    console.log("➡️ structStr:", structStr);
-    console.log("➡️ parsed layers:", layers);
-
-    // 5) Xác định sóng cần tính từ order.flute (ví dụ "5EB" => ["E","B"])
+    // 4) Xác định loại sóng từ đơn hàng (flute: "5EB" => ["E", "B"])
     const waveTypes = (order.flute.match(/[EBC]/gi) || []).map((s) =>
       s.toUpperCase()
     );
-
     const roundSmart = (num) => Math.round(num * 100) / 100;
 
-    // 6) Hàm tính phế liệu đúng công thức (ghepKho chia 100, thickness chia 1000)
+    // 5) Hàm tính phế liệu
     const calculateWaste = (
       layers,
       ghepKho,
@@ -175,13 +163,14 @@ export const planningOrder = async (req, res) => {
         }
       }
 
-      // ✅ Lấy lớp liner cuối cùng duy nhất
+      // 5.1) Lớp liner cuối cùng
       const lastLiner = [...layers].reverse().find((l) => l.kind === "liner");
       if (lastLiner) {
         softLiner =
           gkTh * wasteNorm.waveCrestSoft * (lastLiner.thickness / 1000);
       }
 
+      // 5.2) Tính hao phí, dao, tổng hao hụt
       const bottom = flute.E + flute.B + flute.C + softLiner;
       const haoPhi =
         (runningPlan / numberChild) *
@@ -203,36 +192,49 @@ export const planningOrder = async (req, res) => {
       };
     };
 
-    // 7) Tính phế liệu
-    const { fluteE, fluteB, fluteC, bottom, knife, haoPhi, totalLoss } =
-      calculateWaste(
-        layers,
-        planningData.ghepKho,
-        wasteNorm,
-        waveCoeff,
-        planningData.runningPlan,
-        order.numberChild,
-        waveTypes
-      );
-
-    // ✅ Log hao phí để kiểm tra
-    console.log("📦 Hao phí quy trình (haoPhi):", roundSmart(haoPhi));
-
-    // 8) Cập nhật lại Planning với kết quả tính
-    Object.assign(planning, {
-      fluteE,
-      fluteB,
-      fluteC,
-      bottom,
-      knife,
-      totalLoss,
+    // 6) Tạo kế hoạch làm giấy tấm (step: lam-giay-tam)
+    const paperPlan = await Planning.create({
+      orderId,
+      step: "paper",
+      status: "planning",
+      ...planningData,
     });
-    await planning.save();
 
-    // 9) Cập nhật trạng thái Order & clear cache
+    // 7) Tính phế liệu và cập nhật lại plan giấy tấm
+    const waste = calculateWaste(
+      layers,
+      planningData.ghepKho,
+      wasteNorm,
+      waveCoeff,
+      planningData.runningPlan,
+      order.numberChild,
+      waveTypes
+    );
+    Object.assign(paperPlan, waste);
+    await paperPlan.save();
+
+    let boxPlan = null;
+
+    // 8) Nếu đơn hàng có làm thùng, tạo thêm kế hoạch lam-thung (waiting)
+    if (order.isBox) {
+      boxPlan = await Planning.create({
+        orderId,
+        chooseMachine: planningData.chooseMachine,
+        lengthPaperPlanning: planningData.lengthPaperPlanning,
+        sizePaperPLaning: planningData.sizePaperPLaning,
+        runningPlan: planningData.runningPlan,
+        ghepKho: planningData.ghepKho,
+        step: "box",
+        dependOnPlanningId: paperPlan.planningId,
+        status: "waiting",
+      });
+    }
+
+    // 9) Cập nhật trạng thái đơn hàng
     order.status = newStatus;
     await order.save();
 
+    // 10) Xoá cache
     await redisCache.del("orders:userId:status:accept");
     await redisCache.del(`planning:machine:${chooseMachine}`);
     await deleteKeysByPattern(
@@ -240,10 +242,10 @@ export const planningOrder = async (req, res) => {
       `orders:userId:status:accept_planning:*`
     );
 
-    // 10) Trả về client
+    // 11) Trả kết quả
     return res.status(201).json({
-      message: "Order status updated và phế liệu đã được tính.",
-      planning,
+      message: "Đã tạo kế hoạch thành công.",
+      planning: [paperPlan, boxPlan].filter(Boolean),
     });
   } catch (error) {
     console.error("planningOrder error:", error);
@@ -297,7 +299,7 @@ const getPlanningByMachineSorted = async (machine) => {
     const data = await Planning.findAll({
       where: {
         chooseMachine: machine,
-        status: "planning",
+        status: ["planning", "waiting"],
       },
       include: [
         { model: timeOverflowPlanning, as: "timeOverFlow" },
@@ -926,7 +928,7 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
     if (newStatus !== "complete") {
       for (const planning of plannings) {
         if (planning.orderId) {
-          console.log("Updating orderId from planning:", planning.orderId);
+          console.log("⏸️ Pause order:", planning.orderId);
 
           const order = await Order.findOne({
             where: { orderId: planning.orderId },
@@ -935,19 +937,60 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
             order.status = newStatus;
             await order.save();
           }
+
+          // 2️⃣ Xoá planning hiện tại
+          await planning.destroy();
+
+          // 3️⃣ Xoá cả planning phụ thuộc (nếu có)
+          const dependents = await Planning.findAll({
+            where: {
+              dependOnPlanningId: planning.planningId,
+            },
+          });
+
+          for (const dependent of dependents) {
+            console.log(
+              `🗑️ Deleting dependent planningId: ${dependent.planningId}`
+            );
+            await dependent.destroy();
+          }
         }
       }
-
-      for (const planning of plannings) {
-        await planning.destroy();
-      }
     } else {
+      // 2) Nếu là hoàn thành
       for (const planning of plannings) {
         planning.status = newStatus;
         await planning.save();
+
+        // 3) Kiểm tra nếu là bước làm giấy và đơn có isBox
+        const order = await Order.findOne({
+          where: { orderId: planning.orderId },
+        });
+
+        if (order?.isBox && planning.step === "paper") {
+          // 4) Tìm kế hoạch phụ thuộc (step: "box")
+          const dependent = await Planning.findOne({
+            where: {
+              orderId: planning.orderId,
+              step: "box",
+              dependOnPlanningId: planning.planningId,
+              status: "waiting",
+            },
+          });
+
+          // 5) Nếu có, cập nhật thành planning
+          if (dependent) {
+            dependent.status = "planning";
+            await dependent.save();
+            console.log(
+              `➡️ Updated dependent step 'box' to planning for order: ${order.orderId}`
+            );
+          }
+        }
       }
     }
 
+    // 6) Xóa cache
     await redisCache.del(`planning:machine:${chooseMachine}`);
     await redisCache.del("orders:userId:status:pending_reject");
 
