@@ -41,8 +41,8 @@ export const getAllCustomer = async (req, res) => {
     const data = await Customer.findAll();
 
     await redisClient.del(cacheKey);
-    //save in 1h
     await redisClient.set(cacheKey, JSON.stringify(data), "EX", 3600);
+
     res.status(200).json({ message: "get all customers successfully", data });
   } catch (err) {
     console.error("get all customer failed:", err);

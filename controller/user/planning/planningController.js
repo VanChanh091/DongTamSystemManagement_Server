@@ -257,7 +257,7 @@ export const planningOrder = async (req, res) => {
 
 //get planning by machine
 export const getPlanningByMachine = async (req, res) => {
-  const { machine } = req.query;
+  const { machine, step = "paper" } = req.query;
 
   if (!machine) {
     return res
@@ -267,8 +267,9 @@ export const getPlanningByMachine = async (req, res) => {
 
   try {
     const cacheKey = `planning:machine:${machine}`;
-    const cachedData = await redisCache.get(cacheKey);
+    await redisCache.del(cacheKey);
 
+    const cachedData = await redisCache.get(cacheKey);
     if (cachedData) {
       return res.json({
         message: `get all cache planning:machine:${machine}`,
@@ -276,10 +277,7 @@ export const getPlanningByMachine = async (req, res) => {
       });
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const data = await getPlanningByMachineSorted(machine, today);
+    const data = await getPlanningByMachineSorted(machine, step);
 
     await redisCache.set(cacheKey, JSON.stringify(data), "EX", 1800);
 
@@ -294,13 +292,19 @@ export const getPlanningByMachine = async (req, res) => {
 };
 
 //sort planning
-const getPlanningByMachineSorted = async (machine) => {
+const getPlanningByMachineSorted = async (machine, step) => {
   try {
+    const whereCondition = {
+      chooseMachine: machine,
+      status: ["planning"],
+    };
+
+    if (step) {
+      whereCondition.step = step;
+    }
+
     const data = await Planning.findAll({
-      where: {
-        chooseMachine: machine,
-        status: ["planning", "waiting"],
-      },
+      where: whereCondition,
       include: [
         { model: timeOverflowPlanning, as: "timeOverFlow" },
         {
@@ -334,6 +338,7 @@ const getPlanningByMachineSorted = async (machine) => {
         return waves.map((w) => wavePriorityMap[w] || 0);
       };
 
+      //compare
       const ghepA = a.ghepKho ?? 0;
       const ghepB = b.ghepKho ?? 0;
       if (ghepB !== ghepA) return ghepB - ghepA;
@@ -357,13 +362,13 @@ const getPlanningByMachineSorted = async (machine) => {
 
     const sortedPlannings = [...withSort, ...noSort];
 
-    // 👉 Gộp overflow vào liền sau đơn gốc
+    //Gộp overflow vào liền sau đơn gốc
     const allPlannings = [];
 
     sortedPlannings.forEach((planning) => {
       const original = {
         ...planning.toJSON(),
-        isOverflow: false,
+        hasOverflow: false,
         timeRunning: planning.timeRunning,
         dayStart: planning.dayStart,
       };
@@ -372,7 +377,7 @@ const getPlanningByMachineSorted = async (machine) => {
       if (planning.timeOverFlow) {
         allPlannings.push({
           ...original,
-          isOverflow: true,
+          hasOverflow: true,
           timeRunning: planning.timeOverFlow.overflowTimeRunning,
           dayStart: planning.timeOverFlow.overflowDayStart,
         });
@@ -423,6 +428,233 @@ export const changeMachinePlanning = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+//get by orderId
+export const getPlanningByOrderId = async (req, res) => {
+  const { orderId, machine } = req.query;
+
+  if (!machine || !orderId) {
+    return res.status(400).json({ message: "Thiếu machine hoặc orderId" });
+  }
+
+  try {
+    const cacheKey = `planning:machine:${machine}`;
+
+    const cachedData = await redisCache.get(cacheKey);
+    if (cachedData) {
+      console.log("✅ Data planning from Redis");
+      const parsedData = JSON.parse(cachedData);
+
+      // Tìm kiếm tương đối trong cache
+      const filteredData = parsedData.filter((item) =>
+        item.orderId.toLowerCase().includes(orderId.toLowerCase())
+      );
+
+      return res.json({
+        message: `Get planning by orderId from cache`,
+        data: filteredData,
+      });
+    }
+
+    const planning = await Planning.findAll({
+      where: {
+        orderId: {
+          [Op.like]: `%${orderId}%`,
+        },
+      },
+      include: [
+        {
+          model: Order,
+          include: [
+            {
+              model: Customer,
+              attributes: ["customerName", "companyName"],
+            },
+            { model: Box, as: "box" },
+          ],
+        },
+      ],
+    });
+
+    if (!planning || planning.length === 0) {
+      return res.status(404).json({
+        message: `Không tìm thấy kế hoạch với orderId chứa: ${orderId}`,
+      });
+    }
+
+    return res.status(200).json({
+      message: "Get planning by orderId from db",
+      data: planning,
+    });
+  } catch (error) {
+    console.error("❌ Lỗi khi tìm orderId:", error.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+//get by customer name
+export const getPlanningByCustomerName = async (req, res) =>
+  getPlanningByField(req, res, "customerName");
+
+//get by flute
+export const getPlanningByFlute = async (req, res) =>
+  getPlanningByField(req, res, "flute");
+
+//get by ghepKho
+export const getPlanningByGhepKho = async (req, res) =>
+  getPlanningByField(req, res, "ghepKho");
+
+//export pdf //waiting
+export const exportPdfPlanning = async (req, res) => {
+  const { planningId, machine } = req.body;
+
+  if (!Array.isArray(planningId) || planningId.length === 0) {
+    return res.status(400).json({ message: "Missing or invalid planningId" });
+  }
+
+  try {
+    const plannings = await Planning.findAll({
+      where: { chooseMachine: machine },
+      include: [
+        {
+          model: Order,
+          include: [
+            { model: Customer, attributes: ["customerName", "companyName"] },
+            { model: Box, as: "box" },
+          ],
+        },
+      ],
+    });
+
+    if (!plannings) {
+      return res.status(404).json({ message: "Planning not found" });
+    }
+
+    // Logic to generate PDF from planning data
+    const html = await ejs.renderFile(PLANNING_PATH, { planning: plannings });
+
+    const browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: "networkidle0" });
+
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+    });
+
+    await browser.close();
+
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename=planning_machine${machine}.pdf`,
+    });
+
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+//pause planning
+export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
+  const { planningIds, newStatus } = req.body;
+  try {
+    if (!Array.isArray(planningIds) || planningIds.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "Missing or invalid planningIds" });
+    }
+
+    const plannings = await Planning.findAll({
+      where: {
+        planningId: {
+          [Op.in]: planningIds,
+        },
+      },
+    });
+    if (plannings.length === 0) {
+      return res.status(404).json({ message: "No planning found" });
+    }
+
+    const chooseMachine = plannings[0]?.chooseMachine ?? null;
+
+    if (newStatus !== "complete") {
+      for (const planning of plannings) {
+        if (planning.orderId) {
+          console.log("⏸️ Pause order:", planning.orderId);
+
+          const order = await Order.findOne({
+            where: { orderId: planning.orderId },
+          });
+          if (order) {
+            order.status = newStatus;
+            await order.save();
+          }
+
+          // 2️⃣ Xoá planning hiện tại
+          await planning.destroy();
+
+          // 3️⃣ Xoá cả planning phụ thuộc (nếu có)
+          const dependents = await Planning.findAll({
+            where: {
+              dependOnPlanningId: planning.planningId,
+            },
+          });
+
+          for (const dependent of dependents) {
+            console.log(
+              `🗑️ Deleting dependent planningId: ${dependent.planningId}`
+            );
+            await dependent.destroy();
+          }
+        }
+      }
+    } else {
+      // 2) Nếu là hoàn thành
+      for (const planning of plannings) {
+        planning.status = newStatus;
+        planning.sortPlanning = null;
+
+        await planning.save();
+
+        const order = await Order.findOne({
+          where: { orderId: planning.orderId },
+        });
+
+        //Nếu là bước giấy → xử lý đơn phụ thuộc (bước box)
+        if (order?.isBox && planning.step === "paper") {
+          const dependent = await Planning.findOne({
+            where: {
+              orderId: planning.orderId,
+              step: "box",
+              dependOnPlanningId: planning.planningId,
+              status: { [Op.in]: ["waiting", "planning"] },
+            },
+          });
+
+          if (dependent) {
+            if (dependent.status === "waiting") {
+              dependent.status = "planning";
+              await dependent.save();
+            }
+          }
+        }
+      }
+    }
+
+    // 6) Xóa cache
+    await redisCache.del(`planning:machine:${chooseMachine}`);
+    await redisCache.del("orders:userId:status:pending_reject");
+
+    res.status(200).json({
+      message: `Update status planning successfully.`,
+    });
+  } catch (error) {
+    console.log("error pause planning", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
@@ -679,6 +911,8 @@ const calculateTimeForOnePlanning = async ({
     ghepKho,
     lastGhepKho,
     isSameSize,
+    timeStart,
+    totalTimeWorking,
     changeTime: `${changeTime} phút`,
     productionTime: `${productionMinutes} phút`,
     breakTime: `${extraBreak} phút`,
@@ -744,10 +978,6 @@ const isDuringBreak = (start, end) => {
   let totalOverlap = 0;
 
   for (const brk of breakTimes) {
-    // Need to handle breaks spanning midnight if currentEnd crosses midnight
-    // For simplicity here, assuming breaks are within a 24-hour cycle from start.
-    // If a break crosses midnight, it needs more complex handling to ensure correct day context.
-
     // Create break start/end for the current day of 'start'
     let bStart = new Date(currentStart);
     let [bHour, bMinute] = brk.start.split(":").map(Number);
@@ -773,232 +1003,4 @@ const isDuringBreak = (start, end) => {
   }
 
   return totalOverlap;
-};
-
-//get by orderId
-export const getPlanningByOrderId = async (req, res) => {
-  const { orderId, machine } = req.query;
-
-  if (!machine || !orderId) {
-    return res.status(400).json({ message: "Thiếu machine hoặc orderId" });
-  }
-
-  try {
-    const cacheKey = `planning:machine:${machine}`;
-
-    const cachedData = await redisCache.get(cacheKey);
-    if (cachedData) {
-      console.log("✅ Data planning from Redis");
-      const parsedData = JSON.parse(cachedData);
-
-      // Tìm kiếm tương đối trong cache
-      const filteredData = parsedData.filter((item) =>
-        item.orderId.toLowerCase().includes(orderId.toLowerCase())
-      );
-
-      return res.json({
-        message: `Get planning by orderId from cache`,
-        data: filteredData,
-      });
-    }
-
-    const planning = await Planning.findAll({
-      where: {
-        orderId: {
-          [Op.like]: `%${orderId}%`,
-        },
-      },
-      include: [
-        {
-          model: Order,
-          include: [
-            {
-              model: Customer,
-              attributes: ["customerName", "companyName"],
-            },
-            { model: Box, as: "box" },
-          ],
-        },
-      ],
-    });
-
-    if (!planning || planning.length === 0) {
-      return res.status(404).json({
-        message: `Không tìm thấy kế hoạch với orderId chứa: ${orderId}`,
-      });
-    }
-
-    return res.status(200).json({
-      message: "Get planning by orderId from db",
-      data: planning,
-    });
-  } catch (error) {
-    console.error("❌ Lỗi khi tìm orderId:", error.message);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-//get by customer name
-export const getPlanningByCustomerName = async (req, res) =>
-  getPlanningByField(req, res, "customerName");
-
-//get by flute
-export const getPlanningByFlute = async (req, res) =>
-  getPlanningByField(req, res, "flute");
-
-//get by ghepKho
-export const getPlanningByGhepKho = async (req, res) =>
-  getPlanningByField(req, res, "ghepKho");
-
-//export pdf //waiting
-export const exportPdfPlanning = async (req, res) => {
-  const { planningId, machine } = req.body;
-
-  if (!Array.isArray(planningId) || planningId.length === 0) {
-    return res.status(400).json({ message: "Missing or invalid planningId" });
-  }
-
-  try {
-    const plannings = await Planning.findAll({
-      where: { chooseMachine: machine },
-      include: [
-        {
-          model: Order,
-          include: [
-            { model: Customer, attributes: ["customerName", "companyName"] },
-            { model: Box, as: "box" },
-          ],
-        },
-      ],
-    });
-
-    if (!plannings) {
-      return res.status(404).json({ message: "Planning not found" });
-    }
-
-    // Logic to generate PDF from planning data
-    const html = await ejs.renderFile(PLANNING_PATH, { planning: plannings });
-
-    const browser = await puppeteer.launch({ headless: true });
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
-
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      printBackground: true,
-    });
-
-    await browser.close();
-
-    res.set({
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename=planning_machine${machine}.pdf`,
-    });
-
-    res.send(pdfBuffer);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-//pause planning
-export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
-  const { planningIds, newStatus } = req.body;
-  try {
-    if (!Array.isArray(planningIds) || planningIds.length === 0) {
-      return res
-        .status(400)
-        .json({ message: "Missing or invalid planningIds" });
-    }
-
-    const plannings = await Planning.findAll({
-      where: {
-        planningId: {
-          [Op.in]: planningIds,
-        },
-      },
-    });
-    if (plannings.length === 0) {
-      return res.status(404).json({ message: "No planning found" });
-    }
-
-    const chooseMachine = plannings[0]?.chooseMachine ?? null;
-
-    if (newStatus !== "complete") {
-      for (const planning of plannings) {
-        if (planning.orderId) {
-          console.log("⏸️ Pause order:", planning.orderId);
-
-          const order = await Order.findOne({
-            where: { orderId: planning.orderId },
-          });
-          if (order) {
-            order.status = newStatus;
-            await order.save();
-          }
-
-          // 2️⃣ Xoá planning hiện tại
-          await planning.destroy();
-
-          // 3️⃣ Xoá cả planning phụ thuộc (nếu có)
-          const dependents = await Planning.findAll({
-            where: {
-              dependOnPlanningId: planning.planningId,
-            },
-          });
-
-          for (const dependent of dependents) {
-            console.log(
-              `🗑️ Deleting dependent planningId: ${dependent.planningId}`
-            );
-            await dependent.destroy();
-          }
-        }
-      }
-    } else {
-      // 2) Nếu là hoàn thành
-      for (const planning of plannings) {
-        planning.status = newStatus;
-        await planning.save();
-
-        // 3) Kiểm tra nếu là bước làm giấy và đơn có isBox
-        const order = await Order.findOne({
-          where: { orderId: planning.orderId },
-        });
-
-        if (order?.isBox && planning.step === "paper") {
-          // 4) Tìm kế hoạch phụ thuộc (step: "box")
-          const dependent = await Planning.findOne({
-            where: {
-              orderId: planning.orderId,
-              step: "box",
-              dependOnPlanningId: planning.planningId,
-              status: "waiting",
-            },
-          });
-
-          // 5) Nếu có, cập nhật thành planning
-          if (dependent) {
-            dependent.status = "planning";
-            await dependent.save();
-            console.log(
-              `➡️ Updated dependent step 'box' to planning for order: ${order.orderId}`
-            );
-          }
-        }
-      }
-    }
-
-    // 6) Xóa cache
-    await redisCache.del(`planning:machine:${chooseMachine}`);
-    await redisCache.del("orders:userId:status:pending_reject");
-
-    res.status(200).json({
-      message: `Update status planning successfully.`,
-    });
-  } catch (error) {
-    console.log("error pause planning", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
 };

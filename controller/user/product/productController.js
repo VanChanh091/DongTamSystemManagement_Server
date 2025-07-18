@@ -48,11 +48,10 @@ export const getAllProduct = async (req, res) => {
     const data = await Product.findAll();
 
     await redisCache.del(cacheKey);
-    // Cache redis in 1 hour
     await redisCache.set(cacheKey, JSON.stringify(data), "EX", 3600);
 
     return res
-      .status(201)
+      .status(200)
       .json({ message: "Get all orders successfully", data });
   } catch (error) {
     console.error("Get all products error:", error);

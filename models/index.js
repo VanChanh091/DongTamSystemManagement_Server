@@ -7,6 +7,7 @@ import Order from "./order/order.js";
 import Planning from "./planning/planning.js";
 import timeOverflowPlanning from "./planning/timeOverFlowPlanning.js";
 import Product from "./product/product.js";
+import ReportProduction from "./report/reportProduction.js";
 import User from "./user/user.js";
 
 const models = {
@@ -17,6 +18,9 @@ const models = {
   Product,
   Planning,
   timeOverflowPlanning,
+  ReportProduction,
+
+  //admin
   MachinePaper,
   WasteNorm,
   WaveCrestCoefficient,
@@ -31,7 +35,7 @@ Order.belongsTo(Customer, { foreignKey: "customerId" });
 Product.hasMany(Order, { foreignKey: "productId", onDelete: "CASCADE" });
 Order.belongsTo(Product, { foreignKey: "productId" });
 
-//order
+//Order
 Order.hasOne(Box, { foreignKey: "orderId", as: "box", onDelete: "CASCADE" });
 Box.belongsTo(Order, { foreignKey: "orderId" });
 
@@ -48,5 +52,11 @@ Planning.hasOne(timeOverflowPlanning, {
   onDelete: "CASCADE",
 });
 timeOverflowPlanning.belongsTo(Planning, { foreignKey: "planningId" });
+
+Planning.hasOne(ReportProduction, {
+  foreignKey: "planningId",
+  onDelete: "CASCADE",
+});
+ReportProduction.belongsTo(Planning, { foreignKey: "planningId" });
 
 export default models;
