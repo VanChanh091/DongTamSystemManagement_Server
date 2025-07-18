@@ -1,7 +1,7 @@
 import Redis from "ioredis";
 import ejs from "ejs";
 import puppeteer from "puppeteer";
-import { Op } from "sequelize";
+import { Op, where } from "sequelize";
 import Order from "../../../models/order/order.js";
 import Customer from "../../../models/customer/customer.js";
 import Product from "../../../models/product/product.js";
@@ -620,6 +620,13 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
 
         await planning.save();
 
+        if (planning.hasOverFlow) {
+          await timeOverflowPlanning.update(
+            { status: newStatus, sortPlanning: null },
+            { where: { planningId: planning.planningId } }
+          );
+        }
+
         const order = await Order.findOne({
           where: { orderId: planning.orderId },
         });
@@ -905,26 +912,26 @@ const calculateTimeForOnePlanning = async ({
     result.overflowMinutes = overflowMinutes;
   }
 
-  console.log("🔍 Chi tiết tính toán đơn hàng:");
-  console.log({
-    planningId,
-    ghepKho,
-    lastGhepKho,
-    isSameSize,
-    timeStart,
-    totalTimeWorking,
-    changeTime: `${changeTime} phút`,
-    productionTime: `${productionMinutes} phút`,
-    breakTime: `${extraBreak} phút`,
-    predictedEndTime: formatTimeToHHMMSS(predictedEndTime),
-    endOfWorkTime: formatTimeToHHMMSS(endOfWorkTime),
-    hasOverFlow,
-    ...(hasOverFlow && {
-      overflowDayStart,
-      overflowTimeRunning,
-      overflowMinutes,
-    }),
-  });
+  // console.log("🔍 Chi tiết tính toán đơn hàng:");
+  // console.log({
+  //   planningId,
+  //   ghepKho,
+  //   lastGhepKho,
+  //   isSameSize,
+  //   timeStart,
+  //   totalTimeWorking,
+  //   changeTime: `${changeTime} phút`,
+  //   productionTime: `${productionMinutes} phút`,
+  //   breakTime: `${extraBreak} phút`,
+  //   predictedEndTime: formatTimeToHHMMSS(predictedEndTime),
+  //   endOfWorkTime: formatTimeToHHMMSS(endOfWorkTime),
+  //   hasOverFlow,
+  //   ...(hasOverFlow && {
+  //     overflowDayStart,
+  //     overflowTimeRunning,
+  //     overflowMinutes,
+  //   }),
+  // });
 
   return {
     result,
