@@ -180,7 +180,13 @@ export const addReportProduction = async (req, res) => {
       0
     );
 
+    const totalQtyWasteNorm = previousReports.reduce(
+      (sum, r) => sum + Number(r.qtyWasteNorm || 0),
+      0
+    );
+
     const totalQty = totalQtyBefore + Number(qtyActually);
+    const totalWasteNorm = totalQtyWasteNorm + Number(qtyWasteNorm);
 
     // 3. Xử lý ghi chú
     const notes = [];
@@ -193,7 +199,7 @@ export const addReportProduction = async (req, res) => {
     }
 
     // Phế liệu vượt định mức
-    if (qtyWasteNorm > planning.totalLoss) {
+    if (totalWasteNorm > planning.totalLoss) {
       notes.push("Vượt định mức phế liệu");
     }
 
@@ -222,24 +228,16 @@ export const addReportProduction = async (req, res) => {
 
     // 5. Cập nhật trạng thái planning
     if (totalQty >= planning.runningPlan) {
-      // Nếu có đơn tràn nhưng chưa complete thì chưa cho đơn chính complete
-      if (
-        planning.hasOverFlow &&
-        planning.timeOverFlow?.status !== "complete"
-      ) {
-        await planning.update({ status: "lackQty" }, { transaction });
-      } else {
-        await planning.update(
-          { status: "complete", sortPlanning: null },
-          { transaction }
-        );
+      await planning.update(
+        { status: "complete", sortPlanning: null },
+        { transaction }
+      );
 
-        if (planning.hasOverFlow) {
-          await timeOverflowPlanning.update(
-            { status: "complete", sortPlanning: null },
-            { where: { planningId }, transaction }
-          );
-        }
+      if (planning.hasOverFlow) {
+        await timeOverflowPlanning.update(
+          { status: "complete", sortPlanning: null },
+          { where: { planningId }, transaction }
+        );
       }
     } else {
       await planning.update({ status: "lackQty" }, { transaction });
