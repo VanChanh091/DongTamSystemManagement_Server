@@ -5,6 +5,7 @@ import orderRoutes from "./userRouter/orderRoutes.js";
 import planningRoutes from "./userRouter/planningRoutes.js";
 import productRoutes from "./userRouter/productRoutes.js";
 import usersRoutes from "./userRouter/usersRoutes.js";
+import reportRoutes from "./userRouter/reportRoutes.js";
 
 export {
   customerRoutes,
@@ -14,4 +15,5 @@ export {
   adminRoutes,
   authRoutes,
   usersRoutes,
+  reportRoutes,
 };

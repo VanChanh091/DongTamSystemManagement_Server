@@ -296,7 +296,7 @@ const getPlanningByMachineSorted = async (machine, step) => {
   try {
     const whereCondition = {
       chooseMachine: machine,
-      status: ["planning"],
+      status: ["planning", "lackQty"],
     };
 
     if (step) {

@@ -15,6 +15,7 @@ const ReportProduction = sequelize.define("ReportProduction", {
     allowNull: false,
   },
   shiftManagement: { type: DataTypes.STRING, allowNull: false },
+  note: { type: DataTypes.STRING },
 });
 
 export default ReportProduction;

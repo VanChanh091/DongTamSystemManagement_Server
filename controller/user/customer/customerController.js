@@ -12,7 +12,6 @@ const cacheRedis = async (colData, params) => {
 
   if (cachedData) {
     const parsedData = JSON.parse(cachedData);
-
     const product = parsedData.filter((item) =>
       item[colData]?.toLowerCase().includes(params.toLowerCase())
     );

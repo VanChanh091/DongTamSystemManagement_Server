@@ -39,7 +39,7 @@ const Planning = sequelize.define(
       allowNull: false,
     },
     status: {
-      type: DataTypes.ENUM("planning", "waiting", "complete"),
+      type: DataTypes.ENUM("planning", "waiting", "complete", "lackQty"),
       allowNull: false,
       defaultValue: "planning",
     },

@@ -1,9 +1,8 @@
 import Redis from "ioredis";
-import ReportProduction from "../../../models/report/reportProduction";
-import { report } from "process";
-import Planning from "../../../models/planning/planning";
-import Order from "../../../models/order/order";
-import timeOverflowPlanning from "../../../models/planning/timeOverFlowPlanning";
+import ReportProduction from "../../../models/report/reportProduction.js";
+import Planning from "../../../models/planning/planning.js";
+import timeOverflowPlanning from "../../../models/planning/timeOverFlowPlanning.js";
+import { Op } from "sequelize";
 
 const redisCache = new Redis();
 
@@ -11,6 +10,9 @@ const redisCache = new Redis();
 export const getAllReportProd = async (req, res) => {
   try {
     const cacheKey = "reportProduction:all";
+    //fresh cache
+    await redisCache.del(cacheKey);
+
     const cachedData = await redisCache.get(cacheKey);
 
     if (cachedData) {
@@ -21,10 +23,10 @@ export const getAllReportProd = async (req, res) => {
       });
     }
 
-    const data = await ReportProduction.findAll();
+    const data = await ReportProduction.findAll({
+      include: [{ model: Planning }],
+    });
 
-    //fresh cache
-    await redisCache.del(cacheKey);
     // Cache redis in 1 hour
     await redisCache.set(cacheKey, JSON.stringify(data), "EX", 1800);
 
@@ -37,32 +39,36 @@ export const getAllReportProd = async (req, res) => {
   }
 };
 
-//get by shift production
-export const getShiftProduction = async (req, res) => {
-  const { shift } = req.query;
+//get by shift management
+export const getReportByShiftManagement = async (req, res) => {
+  const { name } = req.query;
 
-  if (!shift) {
+  if (!name) {
     return res.status(400).json({ message: "Shift is required" });
   }
+
   try {
     const cacheKey = "reportProduction:all";
     const cachedData = await redisCache.get(cacheKey);
+
     if (cachedData) {
       const parsedData = JSON.parse(cachedData);
-      const filteredData = parsedData.filter(
-        (report) => report.shiftProduction === shift
+      const filteredData = parsedData.filter((report) =>
+        report.shiftManagement?.toLowerCase().includes(name.toLowerCase())
       );
 
-      if (filteredData.length > 0) {
-        return res.status(200).json({
-          message: `Get report production for ${shift} from cache`,
-          data: filteredData,
-        });
-      }
+      return res.status(200).json({
+        message: `Get report production for ${name} from cache`,
+        data: filteredData,
+      });
     }
 
     const data = await ReportProduction.findAll({
-      where: { shiftProduction: shift },
+      where: {
+        shiftManagement: {
+          [Op.like]: `%${name}%`,
+        },
+      },
     });
 
     if (data.length === 0) {
@@ -71,21 +77,69 @@ export const getShiftProduction = async (req, res) => {
         .json({ message: "No report found for this shift" });
     }
 
+    await redisCache.set(cacheKey, JSON.stringify(data), "EX", 1800);
+
     res.status(200).json({
-      message: `Get report production for ${shift} successfully`,
+      message: `Get report shift management successfully`,
       data,
     });
   } catch (error) {
-    console.error("Error get Shift Production:", error);
+    console.error("Error get Report By Shift Management:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-//get by orderId
-export const getReportByOrderId = async (req, res) => {
+//get by day completed
+export const getReportByDayCompleted = async (req, res) => {
+  const { fromDate, toDate } = req.query;
+
+  if (!fromDate || !toDate) {
+    return res
+      .status(400)
+      .json({ message: "fromDate and toDate are required" });
+  }
+
   try {
+    const cacheKey = "reportProduction:all";
+    const cachedData = await redisCache.get(cacheKey);
+
+    if (cachedData) {
+      const parsedData = JSON.parse(cachedData);
+      const filteredData = parsedData.filter((report) => {
+        const reportDate = new Date(report.dayCompleted);
+        return (
+          reportDate >= new Date(fromDate) && reportDate <= new Date(toDate)
+        );
+      });
+
+      return res.status(200).json({
+        message: `Get report production from cache for range ${fromDate} to ${toDate}`,
+        data: filteredData,
+      });
+    }
+
+    const reports = await ReportProduction.findAll({
+      where: {
+        dayCompleted: {
+          [Op.between]: [new Date(fromDate), new Date(toDate)],
+        },
+      },
+    });
+
+    if (!reports || reports.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No reports found in date range" });
+    }
+
+    await redisCache.set(cacheKey, JSON.stringify(reports), "EX", 1800);
+
+    res.status(200).json({
+      message: `Get Report Production from ${fromDate} to ${toDate} successfully`,
+      data: reports,
+    });
   } catch (error) {
-    console.error("Error get Report By OrderId:", error);
+    console.error("Error get Report By date range:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -93,48 +147,105 @@ export const getReportByOrderId = async (req, res) => {
 //add report production & update status planning
 export const addReportProduction = async (req, res) => {
   const { planningId } = req.query;
-  const { ...reportData } = req.body;
-
-  const transaction = await ReportProduction.sequelize.transaction();
+  const { qtyActually, qtyWasteNorm, dayCompleted, ...otherData } = req.body;
 
   if (!planningId) {
     return res.status(400).json({ message: "Planning ID is required" });
   }
+
+  const transaction = await ReportProduction.sequelize.transaction();
   try {
-    //1. find planning by planningId
+    // 1. Lấy planning (và overflow) trong transaction
     const planning = await Planning.findOne({
-      where: { planningId: planningId },
-      include: [
-        {
-          model: Order,
-          include: [
-            { model: Customer, attributes: ["customerName", "companyName"] },
-            { model: Product },
-            { model: Box, as: "box" },
-          ],
-        },
-        { model: timeOverflowPlanning, as: "timeOverFlow" },
-      ],
+      where: { planningId },
+      include: [{ model: timeOverflowPlanning, as: "timeOverFlow" }],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
     });
+
     if (!planning) {
+      await transaction.rollback();
       return res.status(404).json({ message: "Planning not found" });
     }
 
-    //2. create report production
+    // 2. Lấy tất cả các báo cáo trước đó để tính tổng
+    const previousReports = await ReportProduction.findAll({
+      where: { planningId },
+      attributes: ["qtyActually", "qtyWasteNorm"],
+      transaction,
+    });
+
+    const totalQtyBefore = previousReports.reduce(
+      (sum, r) => sum + Number(r.qtyActually || 0),
+      0
+    );
+
+    const totalQty = totalQtyBefore + Number(qtyActually);
+
+    // 3. Xử lý ghi chú
+    const notes = [];
+
+    // Thiếu / vượt / đúng số lượng
+    if (totalQty < planning.runningPlan) {
+      notes.push("Thiếu số lượng");
+    } else if (totalQty > planning.runningPlan) {
+      notes.push("Vượt số lượng");
+    }
+
+    // Phế liệu vượt định mức
+    if (qtyWasteNorm > planning.totalLoss) {
+      notes.push("Vượt định mức phế liệu");
+    }
+
+    // Trễ kế hoạch
+    const completedDate = new Date(dayCompleted);
+    const planDate = planning.hasOverFlow
+      ? new Date(planning.timeOverFlow?.overflowDayStart)
+      : new Date(planning.dayStart);
+
+    if (completedDate > planDate) {
+      notes.push("Trễ kế hoạch");
+    }
+
+    // 4. Tạo báo cáo mới (cập nhật qtyActually hôm nay, nhưng note dựa vào tổng)
     const newReport = await ReportProduction.create(
       {
         planningId,
-        ...reportData,
+        qtyActually,
+        qtyWasteNorm,
+        dayCompleted,
+        note: notes.join(", "),
+        ...otherData,
       },
       { transaction }
     );
 
-    //3. update status planning to 'complete'
-    if (reportData.qtyActually >= planning.runningPlan) {
-      await planning.update({ status: "complete" });
+    // 5. Cập nhật trạng thái planning
+    if (totalQty >= planning.runningPlan) {
+      // Nếu có đơn tràn nhưng chưa complete thì chưa cho đơn chính complete
+      if (
+        planning.hasOverFlow &&
+        planning.timeOverFlow?.status !== "complete"
+      ) {
+        await planning.update({ status: "lackQty" }, { transaction });
+      } else {
+        await planning.update(
+          { status: "complete", sortPlanning: null },
+          { transaction }
+        );
+
+        if (planning.hasOverFlow) {
+          await timeOverflowPlanning.update(
+            { status: "complete", sortPlanning: null },
+            { where: { planningId }, transaction }
+          );
+        }
+      }
+    } else {
+      await planning.update({ status: "lackQty" }, { transaction });
     }
 
-    //4. delete cache
+    // 6. Commit + clear cache
     await transaction.commit();
     await redisCache.del("reportProduction:all");
 
