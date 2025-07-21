@@ -267,6 +267,7 @@ export const getPlanningByMachine = async (req, res) => {
 
   try {
     const cacheKey = `planning:machine:${machine}`;
+    //refresh cache
     await redisCache.del(cacheKey);
 
     const cachedData = await redisCache.get(cacheKey);

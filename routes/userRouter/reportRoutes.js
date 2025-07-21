@@ -2,9 +2,9 @@ import { Router } from "express";
 import authenticate from "../../middlewares/authMiddleware.js";
 import {
   addReportProduction,
-  getAllReportProd,
   getReportByDayCompleted,
   getReportByShiftManagement,
+  getReportProdByMachine,
 } from "../../controller/user/report/reportProductionController.js";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware.js";
 
@@ -14,7 +14,7 @@ router.get(
   "/",
   authenticate,
   authorizeAnyPermission(["production"]),
-  getAllReportProd
+  getReportProdByMachine
 );
 router.get(
   "/getByShiftManagement",

@@ -3,28 +3,49 @@ import ReportProduction from "../../../models/report/reportProduction.js";
 import Planning from "../../../models/planning/planning.js";
 import timeOverflowPlanning from "../../../models/planning/timeOverFlowPlanning.js";
 import { Op } from "sequelize";
+import Order from "../../../models/order/order.js";
+import Customer from "../../../models/customer/customer.js";
 
 const redisCache = new Redis();
 
 //get all report production
-export const getAllReportProd = async (req, res) => {
+export const getReportProdByMachine = async (req, res) => {
+  const { machine } = req.query;
+
+  if (!machine) {
+    return res
+      .status(400)
+      .json({ message: "Missing 'machine' query parameter" });
+  }
+
   try {
-    const cacheKey = "reportProduction:all";
-    //fresh cache
+    const cacheKey = `reportProduction:machine:${machine}`;
+    //refresh cache
     await redisCache.del(cacheKey);
 
     const cachedData = await redisCache.get(cacheKey);
-
     if (cachedData) {
       console.log("✅ Data Report Production from Redis");
       return res.status(200).json({
-        message: "Get all Report Production from cache",
+        message: "Get machine of report production from cache",
         data: JSON.parse(cachedData),
       });
     }
 
     const data = await ReportProduction.findAll({
-      include: [{ model: Planning }],
+      include: [
+        {
+          model: Planning,
+          where: { chooseMachine: machine },
+          include: [
+            {
+              model: Order,
+              attributes: ["dayReceiveOrder"],
+              include: [{ model: Customer, attributes: ["customerName"] }],
+            },
+          ],
+        },
+      ],
     });
 
     // Cache redis in 1 hour
@@ -32,23 +53,23 @@ export const getAllReportProd = async (req, res) => {
 
     return res
       .status(200)
-      .json({ message: "Get all report production successfully", data });
+      .json({ message: "Get machine of report production successfully", data });
   } catch (error) {
-    console.error("Error get all report production:", error);
+    console.error("Error get machine of report production:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
 //get by shift management
 export const getReportByShiftManagement = async (req, res) => {
-  const { name } = req.query;
+  const { name, machine } = req.query;
 
-  if (!name) {
-    return res.status(400).json({ message: "Shift is required" });
+  if (!name || !machine) {
+    return res.status(400).json({ message: "Shift or Machine is required" });
   }
 
   try {
-    const cacheKey = "reportProduction:all";
+    const cacheKey = `reportProduction:machine:${machine}`;
     const cachedData = await redisCache.get(cacheKey);
 
     if (cachedData) {
@@ -64,6 +85,7 @@ export const getReportByShiftManagement = async (req, res) => {
     }
 
     const data = await ReportProduction.findAll({
+      include: [{ model: Planning, where: { chooseMachine: machine } }],
       where: {
         shiftManagement: {
           [Op.like]: `%${name}%`,
@@ -91,16 +113,16 @@ export const getReportByShiftManagement = async (req, res) => {
 
 //get by day completed
 export const getReportByDayCompleted = async (req, res) => {
-  const { fromDate, toDate } = req.query;
+  const { fromDate, toDate, machine } = req.query;
 
-  if (!fromDate || !toDate) {
+  if (!fromDate || !toDate || !machine) {
     return res
       .status(400)
-      .json({ message: "fromDate and toDate are required" });
+      .json({ message: "fromDate and toDate || machine are required" });
   }
 
   try {
-    const cacheKey = "reportProduction:all";
+    const cacheKey = `reportProduction:machine:${machine}`;
     const cachedData = await redisCache.get(cacheKey);
 
     if (cachedData) {
@@ -119,6 +141,7 @@ export const getReportByDayCompleted = async (req, res) => {
     }
 
     const reports = await ReportProduction.findAll({
+      include: [{ model: Planning, where: { chooseMachine: machine } }],
       where: {
         dayCompleted: {
           [Op.between]: [new Date(fromDate), new Date(toDate)],
