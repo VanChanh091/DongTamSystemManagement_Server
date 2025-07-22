@@ -36,16 +36,44 @@ export const getReportProdByMachine = async (req, res) => {
       include: [
         {
           model: Planning,
+          attributes: [
+            "orderId",
+            "dayStart",
+            "dayReplace",
+            "matEReplace",
+            "matBReplace",
+            "matCReplace",
+            "songEReplace",
+            "songBReplace",
+            "songCReplace",
+            "songE2Replace",
+            "lengthPaperPlanning",
+            "sizePaperPLaning",
+            "runningPlan",
+            "ghepKho",
+            "totalLoss",
+            "chooseMachine",
+          ],
           where: { chooseMachine: machine },
           include: [
             {
               model: Order,
-              attributes: ["dayReceiveOrder"],
+              attributes: [
+                "flute",
+                "QC_box",
+                "canLan",
+                "daoXa",
+                "dayReceiveOrder",
+                "dateRequestShipping",
+                "totalPrice",
+                "instructSpecial",
+              ],
               include: [{ model: Customer, attributes: ["customerName"] }],
             },
           ],
         },
       ],
+      order: [["dayCompleted", "DESC"]],
     });
 
     // Cache redis in 1 hour
