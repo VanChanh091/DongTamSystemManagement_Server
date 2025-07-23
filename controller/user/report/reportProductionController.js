@@ -10,7 +10,9 @@ const redisCache = new Redis();
 
 //get all report production
 export const getReportProdByMachine = async (req, res) => {
-  const { machine } = req.query;
+  const { machine, page, pageSize } = req.query;
+  const currentPage = Number(page);
+  const currentPageSize = Number(pageSize);
 
   if (!machine) {
     return res
@@ -19,7 +21,7 @@ export const getReportProdByMachine = async (req, res) => {
   }
 
   try {
-    const cacheKey = `reportProduction:machine:${machine}`;
+    const cacheKey = `reportProd:machine:${machine}:page:${currentPage}`;
     //refresh cache
     await redisCache.del(cacheKey);
 
@@ -31,6 +33,17 @@ export const getReportProdByMachine = async (req, res) => {
         data: JSON.parse(cachedData),
       });
     }
+
+    const offset = (currentPage - 1) * currentPageSize;
+    const totalReport = await ReportProduction.count({
+      include: [
+        {
+          model: Planning,
+          where: { chooseMachine: machine },
+        },
+      ],
+    });
+    const totalPages = Math.ceil(totalReport / currentPageSize);
 
     const data = await ReportProduction.findAll({
       include: [
@@ -74,16 +87,27 @@ export const getReportProdByMachine = async (req, res) => {
         },
       ],
       order: [["dayCompleted", "DESC"]],
+      offset,
+      limit: currentPageSize,
     });
 
     // Cache redis in 1 hour
-    await redisCache.set(cacheKey, JSON.stringify(data), "EX", 1800);
+    await redisCache.set(
+      cacheKey,
+      JSON.stringify({ data, totalPages, totalReport, currentPage }),
+      "EX",
+      1800
+    );
 
-    return res
-      .status(200)
-      .json({ message: "Get machine of report production successfully", data });
+    return res.status(200).json({
+      message: "Get machine of report production successfully",
+      data,
+      totalPages,
+      totalReport,
+      currentPage,
+    });
   } catch (error) {
-    console.error("Error get machine of report production:", error);
+    console.error("Error get machine of report production:", error.message);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -134,7 +158,7 @@ export const getReportByShiftManagement = async (req, res) => {
       data,
     });
   } catch (error) {
-    console.error("Error get Report By Shift Management:", error);
+    console.error("Error get Report By Shift Management:", error.message);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -190,7 +214,7 @@ export const getReportByDayCompleted = async (req, res) => {
       data: reports,
     });
   } catch (error) {
-    console.error("Error get Report By date range:", error);
+    console.error("Error get Report By date range:", error.message);
     res.status(500).json({ message: "Server error" });
   }
 };

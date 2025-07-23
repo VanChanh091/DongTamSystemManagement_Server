@@ -45,10 +45,12 @@ export const getUserByName = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const sanitizedUsers = users.map((user) => {
-      const { password, ...rest } = user.toJSON();
-      return rest;
-    });
+    const sanitizedUsers = users
+      .map((user) => {
+        const { password, ...rest } = user.toJSON();
+        return rest;
+      })
+      .filter((user) => user.role.toLowerCase() !== "admin");
 
     res.status(200).json({
       message: "Get all users from DB",
@@ -77,10 +79,12 @@ export const getUserByPhone = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const sanitizedUsers = users.map((user) => {
-      const { password, ...rest } = user.toJSON();
-      return rest;
-    });
+    const sanitizedUsers = users
+      .map((user) => {
+        const { password, ...rest } = user.toJSON();
+        return rest;
+      })
+      .filter((user) => user.role.toLowerCase() !== "admin");
 
     res.status(200).json({
       message: "Get user by phone from DB",
@@ -119,10 +123,12 @@ export const getUserByPermission = async (req, res) => {
       );
     });
 
-    const sanitizedUsers = matchedUsers.map((user) => {
-      const { password, ...rest } = user.toJSON();
-      return rest;
-    });
+    const sanitizedUsers = matchedUsers
+      .map((user) => {
+        const { password, ...rest } = user.toJSON();
+        return rest;
+      })
+      .filter((user) => user.role.toLowerCase() !== "admin");
 
     return res.status(200).json({
       message: "Get users by permission from DB",

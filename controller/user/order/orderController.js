@@ -21,7 +21,7 @@ const redisCache = new Redis();
 //get order status accept and planning
 export const getOrderAcceptAndPlanning = async (req, res) => {
   try {
-    const { page = 1, pageSize = 30 } = req.query;
+    const { page, pageSize } = req.query;
     const currentPage = Number(page);
     const currentPageSize = Number(pageSize);
 
@@ -74,7 +74,7 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
       limit: currentPageSize,
     });
 
-    await redisCache.del(cacheKey);
+    // await redisCache.del(cacheKey);
 
     // Lưu cache gồm: data + meta info
     await redisCache.set(
@@ -104,7 +104,7 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
 
 //get by customer name
 export const getOrderByCustomerName = async (req, res) => {
-  const { name, page = 1, pageSize = 25 } = req.query;
+  const { name, page, pageSize } = req.query;
 
   const result = await filterOrdersFromCache({
     keyword: name,
@@ -119,7 +119,7 @@ export const getOrderByCustomerName = async (req, res) => {
 
 //get by product name
 export const getOrderByProductName = async (req, res) => {
-  const { productName, page = 1, pageSize = 25 } = req.query;
+  const { productName, page, pageSize } = req.query;
 
   const result = await filterOrdersFromCache({
     keyword: productName,
@@ -134,7 +134,7 @@ export const getOrderByProductName = async (req, res) => {
 
 //get by QC box
 export const getOrderByQcBox = async (req, res) => {
-  const { QcBox, page = 1, pageSize = 25 } = req.query;
+  const { QcBox, page, pageSize } = req.query;
 
   const result = await filterOrdersFromCache({
     keyword: QcBox,
@@ -149,7 +149,7 @@ export const getOrderByQcBox = async (req, res) => {
 
 //get by price
 export const getOrderByPrice = async (req, res) => {
-  const { price, page = 1, pageSize = 25 } = req.query;
+  const { price, page, pageSize } = req.query;
   const currentPage = Number(page);
   const currentPageSize = Number(pageSize);
   const targetPrice = parseFloat(price);

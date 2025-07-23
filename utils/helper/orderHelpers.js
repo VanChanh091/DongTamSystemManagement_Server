@@ -110,8 +110,8 @@ export const cachedStatus = async (cachedName, redisCache, prop1, prop2) => {
 export const filterOrdersFromCache = async ({
   keyword,
   getFieldValue,
-  page = 1,
-  pageSize = 25,
+  page,
+  pageSize,
   message,
 }) => {
   const currentPage = Number(page);
