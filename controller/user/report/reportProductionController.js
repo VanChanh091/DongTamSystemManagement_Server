@@ -219,6 +219,94 @@ export const getReportByDayCompleted = async (req, res) => {
   }
 };
 
+const filterReportFromCache = async ({
+  keyword,
+  machine,
+  getFieldValue,
+  page,
+  pageSize,
+  message,
+}) => {
+  const currentPage = Number(page);
+  const currentPageSize = Number(pageSize);
+  const lowerKeyword = keyword?.toLowerCase?.() || "";
+
+  const allDataCacheKey = `reportProduction:machine:${machine}:all`;
+
+  // Lấy cache
+  let allData = await redisCache.get(allDataCacheKey);
+  if (!allData) {
+    allData = await ReportProduction.findAll({
+      include: [
+        {
+          model: Planning,
+          attributes: [
+            "orderId",
+            "dayStart",
+            "dayReplace",
+            "matEReplace",
+            "matBReplace",
+            "matCReplace",
+            "songEReplace",
+            "songBReplace",
+            "songCReplace",
+            "songE2Replace",
+            "lengthPaperPlanning",
+            "sizePaperPLaning",
+            "runningPlan",
+            "ghepKho",
+            "totalLoss",
+            "chooseMachine",
+          ],
+          where: { chooseMachine: machine },
+          include: [
+            {
+              model: Order,
+              attributes: [
+                "flute",
+                "QC_box",
+                "canLan",
+                "daoXa",
+                "dayReceiveOrder",
+                "dateRequestShipping",
+                "totalPrice",
+                "instructSpecial",
+              ],
+              include: [{ model: Customer, attributes: ["customerName"] }],
+            },
+          ],
+        },
+      ],
+      order: [["dayCompleted", "DESC"]],
+    });
+
+    await redisCache.set(allDataCacheKey, JSON.stringify(allData), "EX", 900);
+  } else {
+    allData = JSON.parse(allData); //get data in cache
+  }
+
+  // Lọc
+  const filteredReport = allData.filter((report) =>
+    getFieldValue(report)?.toLowerCase?.().includes(lowerKeyword)
+  );
+
+  const totalReport = filteredReport.length;
+  const totalPages = Math.ceil(totalReport / currentPageSize);
+  const offset = (currentPage - 1) * currentPageSize;
+  const paginatedOrders = filteredReport.slice(
+    offset,
+    offset + currentPageSize
+  );
+
+  return {
+    message,
+    data: paginatedOrders,
+    totalReport,
+    totalPages,
+    currentPage,
+  };
+};
+
 //add report production & update status planning
 export const addReportProduction = async (req, res) => {
   const { planningId } = req.query;

@@ -1,7 +1,5 @@
 import Redis from "ioredis";
-import ejs from "ejs";
-import puppeteer from "puppeteer";
-import { Op, where } from "sequelize";
+import { Op } from "sequelize";
 import Order from "../../../models/order/order.js";
 import Customer from "../../../models/customer/customer.js";
 import Product from "../../../models/product/product.js";
@@ -9,7 +7,6 @@ import Box from "../../../models/order/box.js";
 import Planning from "../../../models/planning/planning.js";
 import { sequelize } from "../../../configs/connectDB.js";
 import { deleteKeysByPattern } from "../../../utils/helper/adminHelper.js";
-import { PLANNING_PATH } from "../../../utils/helper/pathHelper.js";
 import { getPlanningByField } from "../../../utils/helper/planningHelper.js";
 import MachinePaper from "../../../models/admin/machinePaper.js";
 import timeOverflowPlanning from "../../../models/planning/timeOverFlowPlanning.js";
@@ -288,7 +285,7 @@ export const getPlanningByMachine = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
@@ -506,58 +503,6 @@ export const getPlanningByFlute = async (req, res) =>
 //get by ghepKho
 export const getPlanningByGhepKho = async (req, res) =>
   getPlanningByField(req, res, "ghepKho");
-
-//export pdf //waiting
-export const exportPdfPlanning = async (req, res) => {
-  const { planningId, machine } = req.body;
-
-  if (!Array.isArray(planningId) || planningId.length === 0) {
-    return res.status(400).json({ message: "Missing or invalid planningId" });
-  }
-
-  try {
-    const plannings = await Planning.findAll({
-      where: { chooseMachine: machine },
-      include: [
-        {
-          model: Order,
-          include: [
-            { model: Customer, attributes: ["customerName", "companyName"] },
-            { model: Box, as: "box" },
-          ],
-        },
-      ],
-    });
-
-    if (!plannings) {
-      return res.status(404).json({ message: "Planning not found" });
-    }
-
-    // Logic to generate PDF from planning data
-    const html = await ejs.renderFile(PLANNING_PATH, { planning: plannings });
-
-    const browser = await puppeteer.launch({ headless: true });
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
-
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      printBackground: true,
-    });
-
-    await browser.close();
-
-    res.set({
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename=planning_machine${machine}.pdf`,
-    });
-
-    res.send(pdfBuffer);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
 
 //pause planning
 export const pauseOrAcceptLackQtyPLanning = async (req, res) => {

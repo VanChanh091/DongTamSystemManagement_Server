@@ -2,7 +2,6 @@ import { Router } from "express";
 import authenticate from "../../middlewares/authMiddleware.js";
 import {
   changeMachinePlanning,
-  exportPdfPlanning,
   getOrderAccept,
   getPlanningByCustomerName,
   getPlanningByFlute,
@@ -76,14 +75,6 @@ router.get(
   authenticate,
   authorizeAnyPermission(["plan"]),
   getPlanningByOrderId
-);
-
-//export file pdf
-router.get(
-  "/exportPdf",
-  authenticate,
-  authorizeAnyPermission(["plan"]),
-  exportPdfPlanning
 );
 
 export default router;

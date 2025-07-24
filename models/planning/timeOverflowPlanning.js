@@ -10,13 +10,13 @@ const timeOverflowPlanning = sequelize.define(
       autoIncrement: true,
     },
     overflowDayStart: { type: DataTypes.DATE },
+    overflowDayCompleted: { type: DataTypes.DATE },
     overflowTimeRunning: { type: DataTypes.TIME },
     status: {
       type: DataTypes.ENUM("planning", "complete"),
       allowNull: false,
       defaultValue: "planning",
     },
-    sortPlanning: { type: DataTypes.INTEGER },
   },
   { timestamps: true }
 );

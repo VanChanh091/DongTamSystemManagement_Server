@@ -10,6 +10,7 @@ const Planning = sequelize.define(
       autoIncrement: true,
     },
     dayStart: { type: DataTypes.DATE },
+    dayCompleted: { type: DataTypes.DATE },
     timeRunning: { type: DataTypes.TIME },
     dayReplace: { type: DataTypes.STRING },
     matEReplace: { type: DataTypes.STRING },
@@ -22,6 +23,7 @@ const Planning = sequelize.define(
     lengthPaperPlanning: { type: DataTypes.DOUBLE, allowNull: false },
     sizePaperPLaning: { type: DataTypes.DOUBLE, allowNull: false },
     runningPlan: { type: DataTypes.INTEGER, allowNull: false },
+    qtyProduced: { type: DataTypes.INTEGER },
     ghepKho: { type: DataTypes.INTEGER },
     bottom: { type: DataTypes.DOUBLE },
     fluteE: { type: DataTypes.DOUBLE },
@@ -29,6 +31,7 @@ const Planning = sequelize.define(
     fluteC: { type: DataTypes.DOUBLE },
     knife: { type: DataTypes.DOUBLE },
     totalLoss: { type: DataTypes.DOUBLE },
+    qtyWasteNorm: { type: DataTypes.DOUBLE },
     chooseMachine: {
       type: DataTypes.ENUM(
         "Máy 1350",
@@ -38,6 +41,8 @@ const Planning = sequelize.define(
       ),
       allowNull: false,
     },
+    shiftProduction: { type: DataTypes.ENUM("Ca 1", "Ca 2", "Ca 3") },
+    shiftManagement: { type: DataTypes.STRING },
     status: {
       type: DataTypes.ENUM("planning", "waiting", "complete", "lackQty"),
       allowNull: false,

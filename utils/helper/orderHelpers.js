@@ -133,12 +133,7 @@ export const filterOrdersFromCache = async ({
       order: [["createdAt", "DESC"]],
     });
 
-    await redisCache.set(
-      allDataCacheKey,
-      JSON.stringify(allOrders),
-      "EX",
-      3600
-    );
+    await redisCache.set(allDataCacheKey, JSON.stringify(allOrders), "EX", 900);
   } else {
     allOrders = JSON.parse(allOrders);
   }
