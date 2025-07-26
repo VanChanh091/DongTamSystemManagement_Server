@@ -10,7 +10,7 @@ const redisCache = new Redis();
 
 //get planning machine paper
 export const getPlanningPaper = async (req, res) => {
-  const { machine, step } = req.query;
+  const { machine, step, refresh = false } = req.query;
 
   if (!machine || !step) {
     return res
@@ -20,8 +20,11 @@ export const getPlanningPaper = async (req, res) => {
 
   try {
     const cacheKey = `planning:machine:${machine}`;
+
     //refresh cache
-    await redisCache.del(cacheKey);
+    if (refresh === true) {
+      await redisCache.del(cacheKey);
+    }
 
     const cachedData = await redisCache.get(cacheKey);
     if (cachedData) {
@@ -77,12 +80,14 @@ export const getPlanningPaper = async (req, res) => {
       }
     });
 
+    await redisCache.set(cacheKey, JSON.stringify(allPlannings), "EX", 1800);
+
     res.status(200).json({
       message: `get planning by machine: ${machine}`,
       data: allPlannings,
     });
   } catch (error) {
-    console.error(error);
+    console.error(error.message);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -147,6 +152,7 @@ export const getPlanningBox = async (req, res) => {
 export const addReportPaper = async (req, res) => {
   const { planningId } = req.query;
   const { qtyProduced, qtyWasteNorm, dayCompleted, ...otherData } = req.body;
+  const { role, permissions: userPermissions } = req.user;
 
   if (!planningId || !qtyProduced || !dayCompleted || !qtyWasteNorm) {
     return res.status(400).json({ message: "Missing required fields" });
@@ -169,6 +175,16 @@ export const addReportPaper = async (req, res) => {
 
     const machine = planning.chooseMachine;
 
+    //check permission for machine
+    if (role !== "admin" && role !== "manager") {
+      if (!userPermissions.includes(machine)) {
+        await transaction.rollback();
+        return res.status(403).json({
+          message: `Access denied: You don't have permission to report for machine ${machine}`,
+        });
+      }
+    }
+
     // 2. Cộng dồn số lượng mới vào số đã có
     const newQtyProduced =
       Number(planning.qtyProduced || 0) + Number(qtyProduced || 0);
@@ -188,14 +204,11 @@ export const addReportPaper = async (req, res) => {
 
     // 4. Kiểm tra đã đủ sản lượng chưa
     if (newQtyProduced >= planning.runningPlan) {
-      await planning.update(
-        { status: "complete", sortPlanning: null },
-        { transaction }
-      );
+      await planning.update({ status: "complete" }, { transaction });
       //nếu có đơn tràn
       if (planning.hasOverFlow) {
         await timeOverflowPlanning.update(
-          { status: "complete", sortPlanning: null },
+          { status: "complete" },
           { where: { planningId }, transaction }
         );
       }
@@ -217,7 +230,7 @@ export const addReportPaper = async (req, res) => {
     await transaction.commit();
     await redisCache.del(`planning:machine:${machine}`);
 
-    res.status(201).json({
+    res.status(200).json({
       message: "Add Report Production successfully",
       data: {
         planningId,

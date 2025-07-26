@@ -3,10 +3,23 @@ import bcrypt from "bcrypt";
 import { col, fn, Op, where } from "sequelize";
 import { getCloudinaryPublicId } from "../../utils/image/converToWebp.js";
 import cloudinary from "../../configs/connectCloudinary.js";
+import Redis from "ioredis";
+
+const redisCache = new Redis();
 
 //get all users
 export const getAllUsers = async (req, res) => {
   try {
+    const cacheKey = "users:all";
+    const cachedData = await redisCache.get(cacheKey);
+    if (cachedData) {
+      console.log("✅ Data users from Redis");
+      return res.status(200).json({
+        message: "Get all users from cache",
+        data: JSON.parse(cachedData),
+      });
+    }
+
     const data = await User.findAll();
 
     const sanitizedData = data
@@ -15,6 +28,8 @@ export const getAllUsers = async (req, res) => {
         return sanitizedUser;
       })
       .filter((user) => user.role.toLowerCase() !== "admin"); // Loại bỏ admin
+
+    await redisCache.set(cacheKey, JSON.stringify(sanitizedData), "EX", 1800);
 
     res.status(200).json({
       message: "Get all users successfully (excluding admin)",
@@ -198,6 +213,10 @@ export const updatePermissions = async (req, res) => {
     "accountant",
     "design",
     "production",
+    "Máy 1350",
+    "Máy 1900",
+    "Máy 2 Lớp",
+    "Máy Quấn Cuồn",
     "read",
   ];
 

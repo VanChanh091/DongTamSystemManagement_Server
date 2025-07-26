@@ -21,11 +21,15 @@ const redisCache = new Redis();
 //get order status accept and planning
 export const getOrderAcceptAndPlanning = async (req, res) => {
   try {
-    const { page, pageSize } = req.query;
+    const { page, pageSize, refresh = false } = req.query;
     const currentPage = Number(page);
     const currentPageSize = Number(pageSize);
 
     const cacheKey = `orders:userId:status:accept_planning:page:${currentPage}`;
+
+    if (refresh == true) {
+      await redisCache.del(cacheKey);
+    }
 
     // Lấy data đã lọc từ cachedStatus
     const cachedData = await redisCache.get(cacheKey);
@@ -74,7 +78,7 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
       limit: currentPageSize,
     });
 
-    // await redisCache.del(cacheKey);
+    s;
 
     // Lưu cache gồm: data + meta info
     await redisCache.set(
@@ -204,6 +208,7 @@ export const getOrderByPrice = async (req, res) => {
 
 //get order pending and reject
 export const getOrderPendingAndReject = async (req, res) => {
+  const { refresh = false } = req.query;
   try {
     // const { userId } = req.query;
     //  if (!userId) {
@@ -211,6 +216,10 @@ export const getOrderPendingAndReject = async (req, res) => {
     // }
 
     const cacheKey = `orders:userId:status:pending_reject`;
+
+    if (refresh == true) {
+      await redisCache.del(cacheKey);
+    }
 
     const cachedResult = await cachedStatus(
       cacheKey,
@@ -244,7 +253,6 @@ export const getOrderPendingAndReject = async (req, res) => {
       order: [["createdAt", "DESC"]],
     });
 
-    await redisCache.del(cacheKey);
     await redisCache.set(cacheKey, JSON.stringify(data), "EX", 3600);
 
     res.status(200).json({

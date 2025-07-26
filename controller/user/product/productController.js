@@ -33,8 +33,14 @@ const cacheRedis = async (colData, params) => {
 
 //get all product
 export const getAllProduct = async (req, res) => {
+  const { refresh = false } = req.query;
   try {
     const cacheKey = "products:all";
+
+    if (refresh == true) {
+      await redisClient.del(cacheKey);
+    }
+
     const cachedData = await redisCache.get(cacheKey);
 
     if (cachedData) {

@@ -26,8 +26,14 @@ const cacheRedis = async (colData, params) => {
 
 // get all
 export const getAllCustomer = async (req, res) => {
+  const { refresh = false } = req.query;
   try {
     const cacheKey = "customers:all";
+
+    if (refresh == true) {
+      await redisClient.del(cacheKey);
+    }
+
     const cachedData = await redisClient.get(cacheKey);
     if (cachedData) {
       console.log("✅ Data Customer from Redis");
@@ -39,7 +45,6 @@ export const getAllCustomer = async (req, res) => {
 
     const data = await Customer.findAll();
 
-    await redisClient.del(cacheKey);
     await redisClient.set(cacheKey, JSON.stringify(data), "EX", 3600);
 
     res.status(200).json({ message: "get all customers successfully", data });

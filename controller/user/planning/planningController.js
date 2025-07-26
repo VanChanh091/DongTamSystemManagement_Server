@@ -19,8 +19,13 @@ const redisCache = new Redis();
 
 //getOrderAccept
 export const getOrderAccept = async (req, res) => {
+  const { refresh = false } = req.query;
   try {
     const cacheKey = "orders:userId:status:accept";
+
+    if (refresh == true) {
+      await redisCache.del(cacheKey);
+    }
 
     const cachedData = await redisCache.get(cacheKey);
     if (cachedData) {
@@ -233,7 +238,6 @@ export const planningOrder = async (req, res) => {
 
     // 10) Xoá cache
     await redisCache.del("orders:userId:status:accept");
-    await redisCache.del(`planning:machine:${chooseMachine}`);
     await deleteKeysByPattern(
       redisCache,
       `orders:userId:status:accept_planning:*`
@@ -254,7 +258,7 @@ export const planningOrder = async (req, res) => {
 
 //get planning by machine
 export const getPlanningByMachine = async (req, res) => {
-  const { machine, step = "paper" } = req.query;
+  const { machine, step = "paper", refresh = false } = req.query;
 
   if (!machine) {
     return res
@@ -264,8 +268,11 @@ export const getPlanningByMachine = async (req, res) => {
 
   try {
     const cacheKey = `planning:machine:${machine}`;
+
     //refresh cache
-    await redisCache.del(cacheKey);
+    if (refresh === "true") {
+      await redisCache.del(cacheKey);
+    }
 
     const cachedData = await redisCache.get(cacheKey);
     if (cachedData) {
@@ -294,7 +301,7 @@ const getPlanningByMachineSorted = async (machine, step) => {
   try {
     const whereCondition = {
       chooseMachine: machine,
-      status: ["planning", "lackQty"],
+      status: ["planning", "lackQty", "complete"],
     };
 
     if (step) {
@@ -315,8 +322,30 @@ const getPlanningByMachineSorted = async (machine, step) => {
       ],
     });
 
-    const withSort = data.filter((item) => item.sortPlanning !== null);
-    const noSort = data.filter((item) => item.sortPlanning === null);
+    //lọc đơn complete trong 3 ngày
+    const truncateToDate = (date) =>
+      new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+    const now = truncateToDate(new Date());
+
+    const validData = data.filter((planning) => {
+      if (["planning", "lackQty"].includes(planning.status)) return true;
+
+      if (planning.status === "complete") {
+        const dayCompleted = new Date(planning.dayCompleted);
+        if (isNaN(dayCompleted)) return false;
+
+        const expiredDate = truncateToDate(new Date(dayCompleted));
+        expiredDate.setDate(expiredDate.getDate() + 3);
+
+        return expiredDate >= now;
+      }
+
+      return false;
+    });
+
+    const withSort = validData.filter((item) => item.sortPlanning !== null);
+    const noSort = validData.filter((item) => item.sortPlanning === null);
 
     // Sắp xếp đơn có sortPlanning theo thứ tự được lưu
     withSort.sort((a, b) => a.sortPlanning - b.sortPlanning);

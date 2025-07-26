@@ -9,12 +9,7 @@ import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware.j
 
 const router = Router();
 
-router.get(
-  "/planningPaper",
-  authenticate,
-  authorizeAnyPermission(["production"]),
-  getPlanningPaper
-);
+router.get("/planningPaper", authenticate, getPlanningPaper);
 router.get(
   "/planningBox",
   authenticate,
