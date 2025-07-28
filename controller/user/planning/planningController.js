@@ -673,6 +673,13 @@ export const updateIndex_TimeRunning = async (req, res) => {
     await transaction.commit();
     await redisCache.del(cachedKey);
 
+    const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
+
+    req.io.to(roomName).emit("planningUpdated", {
+      machine,
+      message: `Kế hoạch của ${machine} đã được cập nhật.`,
+    });
+
     return res.status(200).json({
       message: "✅ Cập nhật sortPlanning + tính thời gian thành công",
       data: updatedPlannings,

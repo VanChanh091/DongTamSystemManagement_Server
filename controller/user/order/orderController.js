@@ -78,8 +78,6 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
       limit: currentPageSize,
     });
 
-    s;
-
     // Lưu cache gồm: data + meta info
     await redisCache.set(
       cacheKey,

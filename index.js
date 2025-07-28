@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import http from "http";
+import jwt from "jsonwebtoken";
 
 import { connectDB, sequelize } from "./configs/connectDB.js";
 import authenticate from "./middlewares/authMiddleware.js";
@@ -18,11 +20,49 @@ import {
 
 //create table
 import "./models/index.js";
+import { Server } from "socket.io";
 
 const app = express();
 
 dotenv.config();
 const port = process.env.PORT || 5000;
+
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Có thể thay thế bằng domain cụ thể
+    methods: ["GET", "POST"],
+  },
+});
+
+// Gắn io vào req
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
+io.on("connection", (socket) => {
+  socket.on("join-machine", (roomName) => {
+    socket.join(roomName);
+  });
+});
+
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
+
+  if (!token) {
+    return next(new Error("Authentication error: No token"));
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.SECRET_KEY);
+    socket.user = decoded;
+    next();
+  } catch (err) {
+    return next(new Error("Authentication error: Invalid token"));
+  }
+});
 
 app.use(cors());
 app.use(express.json());
@@ -47,7 +87,7 @@ sequelize
 
 app.use(authenticate);
 
-app.listen(port, (err) => {
+server.listen(port, (err) => {
   if (err) {
     console.log(err);
   }
