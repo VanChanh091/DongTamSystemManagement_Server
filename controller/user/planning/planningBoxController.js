@@ -95,7 +95,7 @@ const getPlanningByMachineSorted = async (machine, flagField) => {
       { model: timeOverflowPlanning, as: "timeOverFlow" },
       {
         model: planningBoxMachineTime,
-        where: { machine },
+        where: { machine, status: ["planning", "lackQty", "complete"] },
         as: "boxTimes",
         attributes: { exclude: ["createdAt", "updatedAt"] },
       },
@@ -319,11 +319,12 @@ export const acceptLackQtyBox = async (req, res) => {
   }
 
   try {
-    const plannings = await PlanningBox.findAll({
+    const plannings = await planningBoxMachineTime.findAll({
       where: {
         planningBoxId: {
           [Op.in]: planningBoxIds,
         },
+        machine: machine,
       },
     });
     if (plannings.length === 0) {
@@ -450,9 +451,15 @@ export const updateIndex_TimeRunningBox = async (req, res) => {
     });
 
     // 3. Tính toán thời gian chạy cho từng planning
+    const machineInfo = await MachineBox.findOne({
+      where: { machineName: machine },
+      transaction,
+    });
+    if (!machineInfo) throw new Error("Machine not found");
+
     const updatedPlannings = await calculateTimeRunningPlannings({
       machine,
-      machineInfo: await getMachineInfo(machine, transaction),
+      machineInfo: machineInfo,
       dayStart,
       timeStart,
       totalTimeWorking,
@@ -482,15 +489,6 @@ export const updateIndex_TimeRunningBox = async (req, res) => {
       error: error.message,
     });
   }
-};
-
-const getMachineInfo = async (machine, transaction) => {
-  const machineInfo = await MachineBox.findOne({
-    where: { machineName: machine },
-    transaction,
-  });
-  if (!machineInfo) throw new Error("Machine not found");
-  return machineInfo;
 };
 
 const calculateTimeRunningPlannings = async ({
@@ -538,7 +536,7 @@ const calculateTimeForOnePlanning = async ({
   totalTimeWorking,
   transaction,
 }) => {
-  const { planningId, runningPlan, sortPlanning, Order } = planning;
+  const { planningBoxId, runningPlan, sortPlanning, Order } = planning;
   const numberChild = Order?.numberChild || 1;
   const totalLength = runningPlan / numberChild;
 
@@ -615,10 +613,13 @@ const calculateTimeForOnePlanning = async ({
     currentTime = new Date(actualOverflowEndTime);
     currentDay = new Date(overflowDayStart);
 
-    await timeOverflowPlanning.destroy({ where: { planningId }, transaction });
+    await timeOverflowPlanning.destroy({
+      where: { planningBoxId },
+      transaction,
+    });
     await timeOverflowPlanning.create(
       {
-        planningId,
+        planningBoxId,
         overflowDayStart,
         overflowTimeRunning,
         sortPlanning,
@@ -629,7 +630,10 @@ const calculateTimeForOnePlanning = async ({
     currentTime = new Date(predictedEndTime);
     currentPlanningDayStart = currentDay.toISOString().split("T")[0];
     timeRunningForPlanning = formatTimeToHHMMSS(currentTime);
-    await timeOverflowPlanning.destroy({ where: { planningId }, transaction });
+    await timeOverflowPlanning.destroy({
+      where: { planningBoxId },
+      transaction,
+    });
   }
 
   await PlanningBox.update(
@@ -637,13 +641,13 @@ const calculateTimeForOnePlanning = async ({
       dayStart: currentPlanningDayStart,
       hasOverFlow,
     },
-    { where: { planningId }, transaction }
+    { where: { planningBoxId }, transaction }
   );
 
   // ✅ Update planningBoxMachineTime
   const existingBoxTime = await planningBoxMachineTime.findOne({
     where: {
-      planningBoxId: planningId,
+      planningBoxId: planningBoxId,
       machine,
     },
     transaction,
@@ -659,9 +663,9 @@ const calculateTimeForOnePlanning = async ({
 
   // ✅ LOG chuẩn, rõ ràng
   const logData = {
-    planningBoxId: planningId,
+    planningBoxId: planningBoxId,
     timeStart,
-    box: Order?.box?.dataValues,
+    // box: Order?.box?.dataValues,
     totalTimeWorking,
     timeToProduct: `${timeToProduct} phút`,
     speed: `${speed} phút`,
@@ -685,7 +689,7 @@ const calculateTimeForOnePlanning = async ({
   //log result
   return {
     result: {
-      planningBoxId: planningId,
+      planningBoxId: planningBoxId,
       dayStart: currentPlanningDayStart,
       timeRunning: timeRunningForPlanning,
       ...(hasOverFlow && {

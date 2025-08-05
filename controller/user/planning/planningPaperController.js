@@ -346,7 +346,7 @@ const getPlanningByMachineSorted = async (machine) => {
   try {
     const whereCondition = {
       chooseMachine: machine,
-      // status: ["planning", "lackQty", "complete"],
+      status: ["planning", "lackQty", "complete"],
     };
 
     const data = await PlanningPaper.findAll({
@@ -484,7 +484,7 @@ const getPlanningByMachineSorted = async (machine) => {
   }
 };
 
-//change machine
+//change planning machine
 export const changeMachinePlanning = async (req, res) => {
   const { planningIds, newMachine } = req.body;
   try {

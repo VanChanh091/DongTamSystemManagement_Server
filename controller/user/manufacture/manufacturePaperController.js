@@ -180,16 +180,6 @@ export const addReportPaper = async (req, res) => {
           { where: { planningId }, transaction }
         );
       }
-
-      //tìm đơn phụ thuộc
-      const dependentPlanning = await PlanningPaper.findOne({
-        where: { dependOnPlanningId: planning.planningId },
-        transaction,
-        lock: transaction.LOCK.UPDATE,
-      });
-      if (dependentPlanning) {
-        await dependentPlanning.update({ status: "planning" }, { transaction });
-      }
     } else {
       await planning.update({ status: "lackQty" }, { transaction });
     }

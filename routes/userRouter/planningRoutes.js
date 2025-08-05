@@ -89,12 +89,6 @@ router.get(
   authorizeAnyPermission(["plan"]),
   getPlanningBox
 );
-// router.post(
-//   "/updateIndex_TimeRunning",
-//   authenticate,
-//   authorizeAnyPermission(["plan"]),
-//   updateIndex_TimeRunning
-// );
 router.post(
   "/updateIndex_TimeRunningBox",
   authenticate,
