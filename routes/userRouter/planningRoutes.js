@@ -1,5 +1,6 @@
 import { Router } from "express";
 import authenticate from "../../middlewares/authMiddleware.js";
+import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware.js";
 import {
   changeMachinePlanning,
   getOrderAccept,
@@ -11,12 +12,16 @@ import {
   pauseOrAcceptLackQtyPLanning,
   planningOrder,
   updateIndex_TimeRunning,
-} from "../../controller/user/planning/planningController.js";
-import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware.js";
+} from "../../controller/user/planning/planningPaperController.js";
+import {
+  acceptLackQtyBox,
+  getPlanningBox,
+  updateIndex_TimeRunningBox,
+} from "../../controller/user/planning/planningBoxController.js";
 
 const router = Router();
 
-//waiting for planning
+//=========================WAITING FOR PLANNING=========================
 router.get("/", authenticate, authorizeAnyPermission(["plan"]), getOrderAccept);
 router.post(
   "/planningOrder",
@@ -25,56 +30,82 @@ router.post(
   planningOrder
 );
 
-//production queue
+//=========================PLANNING PAPER=========================
 router.get(
-  "/byMachine",
+  "/byMachinePaper",
   authenticate,
   authorizeAnyPermission(["plan"]),
   getPlanningByMachine
 );
 router.post(
-  "/updateIndex_TimeRunning",
+  "/updateIndex_TimeRunningPaper",
   authenticate,
   authorizeAnyPermission(["plan"]),
   updateIndex_TimeRunning
 );
 router.put(
-  "/changeMachine",
+  "/changeMachinePaper",
   authenticate,
   authorizeAnyPermission(["plan"]),
   changeMachinePlanning
 );
 router.put(
-  "/pauseOrAcceptLackQty",
+  "/pauseOrAcceptLackQtyPaper",
   authenticate,
   authorizeAnyPermission(["plan"]),
   pauseOrAcceptLackQtyPLanning
 );
 
-//get properties of planning
+//get properties of planning paper
 router.get(
-  "/getByCustomerName",
+  "/getCusNamePaper",
   authenticate,
   authorizeAnyPermission(["plan"]),
   getPlanningByCustomerName
 );
 router.get(
-  "/getByFlute",
+  "/getFlutePaper",
   authenticate,
   authorizeAnyPermission(["plan"]),
   getPlanningByFlute
 );
 router.get(
-  "/getByGhepKho",
+  "/getGhepKhoPaper",
   authenticate,
   authorizeAnyPermission(["plan"]),
   getPlanningByGhepKho
 );
 router.get(
-  "/getByOrderId",
+  "/getOrderIdPaper",
   authenticate,
   authorizeAnyPermission(["plan"]),
   getPlanningByOrderId
+);
+
+//=========================PLANNING BOX=========================
+router.get(
+  "/byMachineBox",
+  authenticate,
+  authorizeAnyPermission(["plan"]),
+  getPlanningBox
+);
+// router.post(
+//   "/updateIndex_TimeRunning",
+//   authenticate,
+//   authorizeAnyPermission(["plan"]),
+//   updateIndex_TimeRunning
+// );
+router.post(
+  "/updateIndex_TimeRunningBox",
+  authenticate,
+  authorizeAnyPermission(["plan"]),
+  updateIndex_TimeRunningBox
+);
+router.put(
+  "/acceptLackQtyBox",
+  authenticate,
+  authorizeAnyPermission(["plan"]),
+  acceptLackQtyBox
 );
 
 export default router;

@@ -127,8 +127,17 @@ export const filterOrdersFromCache = async ({
       where: { status: { [Op.in]: ["accept", "planning"] } },
       include: [
         { model: Customer, attributes: ["customerName", "companyName"] },
-        { model: Product },
-        { model: Box, as: "box" },
+        {
+          model: Product,
+          attributes: ["typeProduct", "productName", "maKhuon"],
+        },
+        {
+          model: Box,
+          as: "box",
+          attributes: {
+            exclude: ["boxId", "createdAt", "updatedAt", "orderId"], //loai bo cac thuoc tinh nay
+          },
+        },
       ],
       order: [["createdAt", "DESC"]],
     });

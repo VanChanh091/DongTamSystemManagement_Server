@@ -2,25 +2,37 @@ import { Router } from "express";
 import authenticate from "../../middlewares/authMiddleware.js";
 import {
   addReportPaper,
-  getPlanningBox,
   getPlanningPaper,
-} from "../../controller/user/manufacture/manufactureController.js";
+} from "../../controller/user/manufacture/manufacturePaperController.js";
+import {
+  getAllPlanning,
+  getPlanningBox,
+} from "../../controller/user/manufacture/manufactureBoxController.js";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware.js";
 
 const router = Router();
 
+//=========================PAPER=========================
 router.get("/planningPaper", authenticate, getPlanningPaper);
+router.post(
+  "/reportPaper",
+  authenticate,
+  authorizeAnyPermission(["production"]),
+  addReportPaper
+);
+
+//=========================BOX=========================
 router.get(
   "/planningBox",
   authenticate,
   authorizeAnyPermission(["production"]),
   getPlanningBox
 );
-router.post(
-  "/reportPaper",
+router.get(
+  "/getAllPlanning",
   authenticate,
   authorizeAnyPermission(["production"]),
-  addReportPaper
+  getAllPlanning
 );
 
 export default router;

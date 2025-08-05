@@ -1,6 +1,6 @@
 import Redis from "ioredis";
 import ReportProduction from "../../../models/report/reportProduction.js";
-import Planning from "../../../models/planning/planning.js";
+import PlanningPaper from "../../../models/planning/planningPaper.js";
 import timeOverflowPlanning from "../../../models/planning/timeOverFlowPlanning.js";
 import { Op } from "sequelize";
 import Order from "../../../models/order/order.js";
@@ -38,7 +38,7 @@ export const getReportProdByMachine = async (req, res) => {
     const totalReport = await ReportProduction.count({
       include: [
         {
-          model: Planning,
+          model: PlanningPaper,
           where: { chooseMachine: machine },
         },
       ],
@@ -48,7 +48,7 @@ export const getReportProdByMachine = async (req, res) => {
     const data = await ReportProduction.findAll({
       include: [
         {
-          model: Planning,
+          model: PlanningPaper,
           attributes: [
             "orderId",
             "dayStart",
@@ -137,7 +137,7 @@ export const getReportByShiftManagement = async (req, res) => {
     }
 
     const data = await ReportProduction.findAll({
-      include: [{ model: Planning, where: { chooseMachine: machine } }],
+      include: [{ model: PlanningPaper, where: { chooseMachine: machine } }],
       where: {
         shiftManagement: {
           [Op.like]: `%${name}%`,
@@ -193,7 +193,7 @@ export const getReportByDayCompleted = async (req, res) => {
     }
 
     const reports = await ReportProduction.findAll({
-      include: [{ model: Planning, where: { chooseMachine: machine } }],
+      include: [{ model: PlanningPaper, where: { chooseMachine: machine } }],
       where: {
         dayCompleted: {
           [Op.between]: [new Date(fromDate), new Date(toDate)],
@@ -319,7 +319,7 @@ export const addReportProduction = async (req, res) => {
   const transaction = await ReportProduction.sequelize.transaction();
   try {
     // 1. Lấy planning (và overflow) trong transaction
-    const planning = await Planning.findOne({
+    const planning = await PlanningPaper.findOne({
       where: { planningId },
       include: [{ model: timeOverflowPlanning, as: "timeOverFlow" }],
       transaction,

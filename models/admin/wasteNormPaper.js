@@ -1,7 +1,7 @@
 import { DataTypes } from "sequelize";
 import { sequelize } from "../../configs/connectDB.js";
 
-const WasteNorm = sequelize.define("WasteNorm", {
+const WasteNormPaper = sequelize.define("WasteNorm", {
   wasteNormId: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -14,4 +14,4 @@ const WasteNorm = sequelize.define("WasteNorm", {
   machineName: { type: DataTypes.STRING },
 });
 
-export default WasteNorm;
+export default WasteNormPaper;

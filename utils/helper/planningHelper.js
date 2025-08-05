@@ -3,7 +3,7 @@ import Redis from "ioredis";
 import Order from "../../models/order/order.js";
 import Customer from "../../models/customer/customer.js";
 import Box from "../../models/order/box.js";
-import Planning from "../../models/planning/planning.js";
+import PlanningPaper from "../../models/planning/planningPaper.js";
 
 const redisCache = new Redis();
 
@@ -53,12 +53,34 @@ export const getPlanningByField = async (req, res, field) => {
     const orderInclude = {
       model: Order,
       required: true,
+      attributes: {
+        exclude: [
+          "dayReceiveOrder",
+          "acreage",
+          "dvt",
+          "price",
+          "pricePaper",
+          "discount",
+          "profit",
+          "totalPrice",
+          "vat",
+          "rejectReason",
+          "createdAt",
+          "updatedAt",
+        ],
+      },
       include: [
         {
           model: Customer,
           attributes: ["customerName", "companyName"],
         },
-        { model: Box, as: "box" },
+        {
+          model: Box,
+          as: "box",
+          attributes: {
+            exclude: ["boxId", "createdAt", "updatedAt", "orderId"],
+          },
+        },
       ],
     };
 
@@ -80,7 +102,7 @@ export const getPlanningByField = async (req, res, field) => {
       };
     }
 
-    const data = await Planning.findAll({
+    const data = await PlanningPaper.findAll({
       where: whereClause,
       include: [orderInclude],
     });

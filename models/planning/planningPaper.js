@@ -1,7 +1,7 @@
 import { DataTypes } from "sequelize";
 import { sequelize } from "../../configs/connectDB.js";
 
-const Planning = sequelize.define(
+const PlanningPaper = sequelize.define(
   "Planning",
   {
     planningId: {
@@ -44,7 +44,7 @@ const Planning = sequelize.define(
     shiftProduction: { type: DataTypes.ENUM("Ca 1", "Ca 2", "Ca 3") },
     shiftManagement: { type: DataTypes.STRING },
     status: {
-      type: DataTypes.ENUM("planning", "waiting", "complete", "lackQty"),
+      type: DataTypes.ENUM("planning", "complete", "lackQty"),
       allowNull: false,
       defaultValue: "planning",
     },
@@ -53,11 +53,10 @@ const Planning = sequelize.define(
       allowNull: false,
       defaultValue: false,
     },
-    step: { type: DataTypes.ENUM("paper", "box"), allowNull: false },
-    dependOnPlanningId: { type: DataTypes.INTEGER },
+    hasBox: { type: DataTypes.BOOLEAN, defaultValue: false },
     sortPlanning: { type: DataTypes.INTEGER },
   },
   { timestamps: true }
 );
 
-export default Planning;
+export default PlanningPaper;

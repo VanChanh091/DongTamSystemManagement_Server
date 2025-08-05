@@ -16,17 +16,27 @@ import {
   updateUserRole,
 } from "../../controller/admin/adminUserController.js";
 import {
-  createMachine,
-  deleteMachineById,
-  getAllMachine,
-  getMachineById,
-  updateMachineById,
-} from "../../controller/admin/adminMachinePaperController.js";
+  createMachineBox,
+  createMachinePaper,
+  deleteMachineBoxById,
+  deleteMachinePaperById,
+  getAllMachineBox,
+  getAllMachinePaper,
+  getMachineBoxById,
+  getMachinePaperById,
+  updateMachineBoxById,
+  updateMachinePaperById,
+} from "../../controller/admin/adminMachineController.js";
 import {
+  createWasteBox,
   createWasteNorm,
+  deleteWasteBoxById,
   deleteWasteNormById,
+  getAllWasteBox,
   getAllWasteNorm,
+  getWasteBoxById,
   getWasteNormById,
+  updateWasteBoxById,
   updateWasteNormById,
 } from "../../controller/admin/adminWasteNormController.js";
 import {
@@ -53,36 +63,68 @@ router.put(
   updateStatusAdmin
 );
 
-//admin routes for manage time running machine
+//admin routes for machine paper
 router.get(
-  "/getAllMachine",
+  "/getAllMachinePaper",
   authenticate,
   authorizeRole(["admin"]),
-  getAllMachine
+  getAllMachinePaper
 );
 router.get(
-  "/getMachineById",
+  "/getMachinePaperById",
   authenticate,
   authorizeRole(["admin"]),
-  getMachineById
+  getMachinePaperById
 );
 router.post(
-  "/createMachine",
+  "/createMachinePaper",
   authenticate,
   authorizeRole(["admin"]),
-  createMachine
+  createMachinePaper
 );
 router.put(
-  "/updateMachineById",
+  "/updateMachinePaper",
   authenticate,
   authorizeRole(["admin"]),
-  updateMachineById
+  updateMachinePaperById
 );
 router.delete(
-  "/deleteMachineById",
+  "/deleteMachinePaper",
   authenticate,
   authorizeRole(["admin"]),
-  deleteMachineById
+  deleteMachinePaperById
+);
+
+//admin routes for machine box
+router.get(
+  "/getAllMachineBox",
+  authenticate,
+  authorizeRole(["admin"]),
+  getAllMachineBox
+);
+router.get(
+  "/getMachineBoxById",
+  authenticate,
+  authorizeRole(["admin"]),
+  getMachineBoxById
+);
+router.post(
+  "/createMachineBox",
+  authenticate,
+  authorizeRole(["admin"]),
+  createMachineBox
+);
+router.put(
+  "/updateMachineBox",
+  authenticate,
+  authorizeRole(["admin"]),
+  updateMachineBoxById
+);
+router.delete(
+  "/deleteMachineBox",
+  authenticate,
+  authorizeRole(["admin"]),
+  deleteMachineBoxById
 );
 
 // Admin routes for managing users
@@ -130,7 +172,7 @@ router.delete(
   deleteUserById
 );
 
-//admin routes for waste norm
+//admin routes for waste norm paper
 router.get(
   "/getAllWasteNorm",
   authenticate,
@@ -160,6 +202,38 @@ router.delete(
   authenticate,
   authorizeRole(["admin"]),
   deleteWasteNormById
+);
+
+//admin routes for waste norm box
+router.get(
+  "/getAllWasteBox",
+  authenticate,
+  authorizeRole(["admin"]),
+  getAllWasteBox
+);
+router.get(
+  "/getWasteBoxById",
+  authenticate,
+  authorizeRole(["admin"]),
+  getWasteBoxById
+);
+router.post(
+  "/createWasteBox",
+  authenticate,
+  authorizeRole(["admin"]),
+  createWasteBox
+);
+router.put(
+  "/updateWasteBoxById",
+  authenticate,
+  authorizeRole(["admin"]),
+  updateWasteBoxById
+);
+router.delete(
+  "/deleteWasteBoxById",
+  authenticate,
+  authorizeRole(["admin"]),
+  deleteWasteBoxById
 );
 
 //admin routes for wave crest coefficient

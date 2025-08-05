@@ -1,25 +1,12 @@
-import Redis from "ioredis";
-import WasteNorm from "../../models/admin/wasteNorm.js";
+import WasteNormPaper from "../../models/admin/wasteNormPaper.js";
+import WasteNormBox from "../../models/admin/wasteNormBox.js";
 
-const redisCache = new Redis();
+//===============================WASTE PAPER=====================================
 
 //get all
 export const getAllWasteNorm = async (req, res) => {
   try {
-    const cacheKey = "wasteNorm:all";
-
-    const cachedData = await redisCache.get(cacheKey);
-    if (cachedData) {
-      console.log("✅ Data waste norm from Redis");
-      return res.status(200).json({
-        message: "Get all waste norm from cache",
-        data: JSON.parse(cachedData),
-      });
-    }
-
-    const data = await WasteNorm.findAll();
-
-    await redisCache.set(cacheKey, JSON.stringify(data), "EX", 1800);
+    const data = await WasteNormPaper.findAll();
 
     res.status(200).json({ message: "get all machine successfully", data });
   } catch (error) {
@@ -31,37 +18,19 @@ export const getAllWasteNorm = async (req, res) => {
 //get waste norm by id
 //use to get id for update
 export const getWasteNormById = async (req, res) => {
-  const { wasterNormId } = req.query;
+  const { wasteNormId } = req.query;
   try {
-    const cacheKey = "wasteNorm:all";
-
-    const cachedData = await redisCache.get(cacheKey);
-    if (cachedData) {
-      console.log("✅ Data waste norm from Redis");
-      const parsedData = JSON.parse(cachedData);
-      const filteredData = parsedData.filter(
-        (item) => item.wasteNormId == wasterNormId
-      );
-      return res.status(200).json({
-        message: "Get all waste norm from cache",
-        data: filteredData,
-      });
-    }
-
-    const wasteNorm = await WasteNorm.findByPk(wasterNormId);
+    const wasteNorm = await WasteNormPaper.findByPk(wasteNormId);
     if (!wasteNorm) {
       return res.status(404).json({ message: "waste norm not found" });
     }
 
     return res.status(200).json({
-      message: `get waste norm by wasteNormId:${wasterNormId}`,
+      message: `get waste norm by wasteNormId:${wasteNormId}`,
       data: wasteNorm,
     });
   } catch (error) {
-    console.error(
-      `failed to get waste norm by wasteNormId:${wasterNormId}`,
-      error.message
-    );
+    console.error(`failed to get  wasteNormId:${wasteNormId}`, error.message);
     res.status(500).json({ message: "server error" });
   }
 };
@@ -70,15 +39,14 @@ export const getWasteNormById = async (req, res) => {
 export const createWasteNorm = async (req, res) => {
   const { ...wasteNorm } = req.body;
 
-  const transaction = await WasteNorm.sequelize.transaction();
+  const transaction = await WasteNormPaper.sequelize.transaction();
   try {
-    const newWasteNorm = await WasteNorm.create(
+    const newWasteNorm = await WasteNormPaper.create(
       { ...wasteNorm },
       { transaction }
     );
 
     await transaction.commit();
-    await redisCache.del("wasteNorm:all");
 
     res
       .status(200)
@@ -94,7 +62,7 @@ export const updateWasteNormById = async (req, res) => {
   const { wasteNormId } = req.query;
   const { ...wasteNormUpdated } = req.body;
   try {
-    const existingWasteNorm = await WasteNorm.findByPk(wasteNormId);
+    const existingWasteNorm = await WasteNormPaper.findByPk(wasteNormId);
     if (!existingWasteNorm) {
       return res.status(404).json({ message: "waste norm not found" });
     }
@@ -102,8 +70,6 @@ export const updateWasteNormById = async (req, res) => {
     await existingWasteNorm.update({
       ...wasteNormUpdated,
     });
-
-    await redisCache.del("wasteNorm:all");
 
     res.status(200).json({
       message: "update waste norm successfully",
@@ -120,13 +86,118 @@ export const deleteWasteNormById = async (req, res) => {
   const { wasteNormId } = req.query;
 
   try {
-    const wasteNorm = await WasteNorm.findByPk(wasteNormId);
+    const wasteNorm = await WasteNormPaper.findByPk(wasteNormId);
     if (!wasteNorm) {
       return res.status(404).json({ message: "waste norm not found" });
     }
 
     await wasteNorm.destroy();
-    await redisCache.del("wasteNorm:all");
+
+    res
+      .status(200)
+      .json({ message: `delete wasteNormId:${wasteNormId} successfully` });
+  } catch (error) {
+    console.error("failed to delete waste norm", error.message);
+    res.status(500).json({ message: "server error" });
+  }
+};
+
+//===============================WASTE BOX=====================================
+
+export const getAllWasteBox = async (req, res) => {
+  try {
+    const data = await WasteNormBox.findAll();
+
+    res
+      .status(200)
+      .json({ message: "get all WasteNormBox successfully", data });
+  } catch (error) {
+    console.error("failed to get all waste norm box", error.message);
+    res.status(500).json({ message: "server error" });
+  }
+};
+
+//get waste norm by id
+//use to get id for update
+export const getWasteBoxById = async (req, res) => {
+  const { wasteNormId } = req.query;
+  try {
+    const wasteNorm = await WasteNormBox.findByPk(wasteNormId);
+    if (!wasteNorm) {
+      return res.status(404).json({ message: "waste norm not found" });
+    }
+
+    return res.status(200).json({
+      message: `get waste norm by wasteNormId:${wasteNormId}`,
+      data: wasteNorm,
+    });
+  } catch (error) {
+    console.error(
+      `failed to get waste norm by wasteNormId:${wasteNormId}`,
+      error.message
+    );
+    res.status(500).json({ message: "server error" });
+  }
+};
+
+//add waste norm
+export const createWasteBox = async (req, res) => {
+  const { ...wasteNorm } = req.body;
+
+  const transaction = await WasteNormBox.sequelize.transaction();
+  try {
+    const newWasteNorm = await WasteNormBox.create(
+      { ...wasteNorm },
+      { transaction }
+    );
+
+    await transaction.commit();
+
+    res.status(200).json({
+      message: "create WasteNormBox successfully",
+      data: newWasteNorm,
+    });
+  } catch (error) {
+    console.error("failed to create waste norm", error.message);
+    res.status(500).json({ message: "server error" });
+  }
+};
+
+//update waste norm
+export const updateWasteBoxById = async (req, res) => {
+  const { wasteNormId } = req.query;
+  const { ...wasteNormUpdated } = req.body;
+  try {
+    const existingWasteNorm = await WasteNormBox.findByPk(wasteNormId);
+    if (!existingWasteNorm) {
+      return res.status(404).json({ message: "waste norm not found" });
+    }
+
+    await existingWasteNorm.update({
+      ...wasteNormUpdated,
+    });
+
+    res.status(200).json({
+      message: "update waste norm successfully",
+      data: existingWasteNorm,
+    });
+  } catch (error) {
+    console.error("failed to update waste norm", error.message);
+    res.status(500).json({ message: "server error" });
+  }
+};
+
+//delete waste norm
+export const deleteWasteBoxById = async (req, res) => {
+  const { wasteNormId } = req.query;
+
+  try {
+    const wasteNorm = await WasteNormBox.findByPk(wasteNormId);
+    if (!wasteNorm) {
+      return res.status(404).json({ message: "waste norm not found" });
+    }
+
+    await wasteNorm.destroy();
 
     res
       .status(200)

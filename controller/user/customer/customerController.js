@@ -30,7 +30,7 @@ export const getAllCustomer = async (req, res) => {
   try {
     const cacheKey = "customers:all";
 
-    if (refresh == true) {
+    if (refresh == "true") {
       await redisClient.del(cacheKey);
     }
 

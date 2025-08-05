@@ -4,14 +4,15 @@ import Order from "../../../models/order/order.js";
 import Customer from "../../../models/customer/customer.js";
 import Product from "../../../models/product/product.js";
 import Box from "../../../models/order/box.js";
-import Planning from "../../../models/planning/planning.js";
-import { sequelize } from "../../../configs/connectDB.js";
+import PlanningPaper from "../../../models/planning/planningPaper.js";
 import { deleteKeysByPattern } from "../../../utils/helper/adminHelper.js";
 import { getPlanningByField } from "../../../utils/helper/planningHelper.js";
 import MachinePaper from "../../../models/admin/machinePaper.js";
 import timeOverflowPlanning from "../../../models/planning/timeOverFlowPlanning.js";
-import WasteNorm from "../../../models/admin/wasteNorm.js";
+import WasteNormPaper from "../../../models/admin/wasteNormPaper.js";
 import WaveCrestCoefficient from "../../../models/admin/waveCrestCoefficient.js";
+import PlanningBox from "../../../models/planning/planningBox.js";
+import PlanningBoxTime from "../../../models/planning/planningBoxMachineTime.js";
 
 const redisCache = new Redis();
 
@@ -23,7 +24,7 @@ export const getOrderAccept = async (req, res) => {
   try {
     const cacheKey = "orders:userId:status:accept";
 
-    if (refresh == true) {
+    if (refresh == "true") {
       await redisCache.del(cacheKey);
     }
 
@@ -80,7 +81,7 @@ export const planningOrder = async (req, res) => {
 
     // 2) Lấy thông số định mức và hệ số sóng cho máy đã chọn
     const { chooseMachine } = planningData;
-    const wasteNorm = await WasteNorm.findOne({
+    const wasteNorm = await WasteNormPaper.findOne({
       where: { machineName: chooseMachine },
     });
     const waveCoeff = await WaveCrestCoefficient.findOne({
@@ -194,10 +195,9 @@ export const planningOrder = async (req, res) => {
       };
     };
 
-    // 6) Tạo kế hoạch làm giấy tấm (step: lam-giay-tam)
-    const paperPlan = await Planning.create({
+    // 6) Tạo kế hoạch làm giấy tấm
+    const paperPlan = await PlanningPaper.create({
       orderId,
-      step: "paper",
       status: "planning",
       ...planningData,
     });
@@ -218,32 +218,77 @@ export const planningOrder = async (req, res) => {
     let boxPlan = null;
 
     // 8) Nếu đơn hàng có làm thùng, tạo thêm kế hoạch lam-thung (waiting)
+    const box = order.box;
+
     if (order.isBox) {
-      boxPlan = await Planning.create({
+      boxPlan = await PlanningBox.create({
+        planningId: paperPlan.planningId,
         orderId,
-        chooseMachine: planningData.chooseMachine,
-        lengthPaperPlanning: planningData.lengthPaperPlanning,
-        sizePaperPLaning: planningData.sizePaperPLaning,
-        runningPlan: planningData.runningPlan,
-        ghepKho: planningData.ghepKho,
-        step: "box",
-        dependOnPlanningId: paperPlan.planningId,
-        status: "waiting",
+        runningPlan: paperPlan.runningPlan,
+
+        day: paperPlan.dayReplace,
+        matE: paperPlan.matEReplace,
+        matB: paperPlan.matBReplace,
+        matC: paperPlan.matCReplace,
+        songE: paperPlan.songEReplace,
+        songB: paperPlan.songBReplace,
+        songC: paperPlan.songCReplace,
+        songE2: paperPlan.songE2Replace,
+        length: paperPlan.lengthPaperPlanning,
+        size: paperPlan.sizePaperPLaning,
+
+        hasIn: !!(box.inMatTruoc || box.inMatSau),
+        hasBe: !!box.be,
+        hasXa: !!box.Xa,
+        hasDan: !!(box.dan_1_Manh || box.dan_2_Manh),
+        hasCatKhe: !!box.catKhe,
+        hasCanMang: !!box.canMang,
+        hasDongGhim: !!(box.dongGhim1Manh || box.dongGhim2Manh),
       });
     }
 
-    // 9) Cập nhật trạng thái đơn hàng
+    //9) dựa vào các hasIn, hasBe, hasXa... để tạo ra planning box time
+    if (boxPlan) {
+      const machineTimes = [];
+
+      const machineMap = {
+        hasIn: "Máy In",
+        hasBe: "Máy Bế",
+        hasXa: "Máy Xả",
+        hasDan: "Máy Dán",
+        hasCatKhe: "Máy Cắt Khe",
+        hasCanMang: "Máy Cán Màng",
+        hasDongGhim: "Máy Đóng Ghim",
+      };
+
+      for (const [flag, machineName] of Object.entries(machineMap)) {
+        const isMachineUsed = boxPlan[flag] === true;
+
+        if (isMachineUsed) {
+          machineTimes.push({
+            planningBoxId: boxPlan.planningBoxId,
+            machine: machineName,
+          });
+        }
+      }
+
+      if (machineTimes.length > 0) {
+        await PlanningBoxTime.bulkCreate(machineTimes);
+      }
+    }
+
+    // 10) Cập nhật trạng thái đơn hàng
     order.status = newStatus;
     await order.save();
 
-    // 10) Xoá cache
-    await redisCache.del("orders:userId:status:accept");
+    // 11) Xoá cache
+    await redisCache.del(`planning:machine:${chooseMachine}`);
     await deleteKeysByPattern(
       redisCache,
       `orders:userId:status:accept_planning:*`
     );
 
-    // 11) Trả kết quả
+    // 12) Trả kết quả
     return res.status(201).json({
       message: "Đã tạo kế hoạch thành công.",
       planning: [paperPlan, boxPlan].filter(Boolean),
@@ -258,7 +303,7 @@ export const planningOrder = async (req, res) => {
 
 //get planning by machine
 export const getPlanningByMachine = async (req, res) => {
-  const { machine, step = "paper", refresh = false } = req.query;
+  const { machine, refresh = false } = req.query;
 
   if (!machine) {
     return res
@@ -282,7 +327,7 @@ export const getPlanningByMachine = async (req, res) => {
       });
     }
 
-    const data = await getPlanningByMachineSorted(machine, step);
+    const data = await getPlanningByMachineSorted(machine);
 
     await redisCache.set(cacheKey, JSON.stringify(data), "EX", 1800);
 
@@ -291,32 +336,51 @@ export const getPlanningByMachine = async (req, res) => {
       data,
     });
   } catch (error) {
-    console.error(error);
+    console.error("error", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
 //sort planning
-const getPlanningByMachineSorted = async (machine, step) => {
+const getPlanningByMachineSorted = async (machine) => {
   try {
     const whereCondition = {
       chooseMachine: machine,
-      status: ["planning", "lackQty", "complete"],
+      // status: ["planning", "lackQty", "complete"],
     };
 
-    if (step) {
-      whereCondition.step = step;
-    }
-
-    const data = await Planning.findAll({
+    const data = await PlanningPaper.findAll({
       where: whereCondition,
       include: [
         { model: timeOverflowPlanning, as: "timeOverFlow" },
         {
           model: Order,
+          attributes: {
+            exclude: [
+              "acreage",
+              "dvt",
+              "price",
+              "pricePaper",
+              "discount",
+              "profit",
+              "vat",
+              "rejectReason",
+              "createdAt",
+              "updatedAt",
+              "lengthPaperCustomer",
+              "paperSizeCustomer",
+              "quantityCustomer",
+            ],
+          },
           include: [
             { model: Customer, attributes: ["customerName", "companyName"] },
-            { model: Box, as: "box" },
+            {
+              model: Box,
+              as: "box",
+              attributes: {
+                exclude: ["createdAt", "updatedAt"],
+              },
+            },
           ],
         },
       ],
@@ -354,11 +418,13 @@ const getPlanningByMachineSorted = async (machine, step) => {
     noSort.sort((a, b) => {
       const wavePriorityMap = { C: 3, B: 2, E: 1 };
 
+      //5BC -> 5
       const getLayer = (flute) => {
         if (!flute || flute.length < 1) return 0;
         return parseInt(flute.trim()[0]) || 0;
       };
 
+      //5BC -> BC [2,3]
       const getWavePriorityList = (flute) => {
         if (!flute || flute.length < 2) return [];
         const waves = flute.trim().slice(1).toUpperCase().split("");
@@ -428,7 +494,7 @@ export const changeMachinePlanning = async (req, res) => {
         .json({ message: "Missing or invalid planningIds" });
     }
 
-    const plannings = await Planning.findAll({
+    const plannings = await PlanningPaper.findAll({
       where: {
         planningId: { [Op.in]: planningIds },
       },
@@ -485,7 +551,7 @@ export const getPlanningByOrderId = async (req, res) => {
       });
     }
 
-    const planning = await Planning.findAll({
+    const planning = await PlanningPaper.findAll({
       where: {
         orderId: {
           [Op.like]: `%${orderId}%`,
@@ -494,12 +560,34 @@ export const getPlanningByOrderId = async (req, res) => {
       include: [
         {
           model: Order,
+          attributes: {
+            exclude: [
+              "dayReceiveOrder",
+              "acreage",
+              "dvt",
+              "price",
+              "pricePaper",
+              "discount",
+              "profit",
+              "totalPrice",
+              "vat",
+              "rejectReason",
+              "createdAt",
+              "updatedAt",
+            ],
+          },
           include: [
             {
               model: Customer,
               attributes: ["customerName", "companyName"],
             },
-            { model: Box, as: "box" },
+            {
+              model: Box,
+              as: "box",
+              attributes: {
+                exclude: ["createdAt", "updatedAt"],
+              },
+            },
           ],
         },
       ],
@@ -543,7 +631,7 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
         .json({ message: "Missing or invalid planningIds" });
     }
 
-    const plannings = await Planning.findAll({
+    const plannings = await PlanningPaper.findAll({
       where: {
         planningId: {
           [Op.in]: planningIds,
@@ -559,8 +647,6 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
     if (newStatus !== "complete") {
       for (const planning of plannings) {
         if (planning.orderId) {
-          console.log("⏸️ Pause order:", planning.orderId);
-
           const order = await Order.findOne({
             where: { orderId: planning.orderId },
           });
@@ -569,22 +655,19 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
             await order.save();
           }
 
-          // 2️⃣ Xoá planning hiện tại
-          await planning.destroy();
-
-          // 3️⃣ Xoá cả planning phụ thuộc (nếu có)
-          const dependents = await Planning.findAll({
-            where: {
-              dependOnPlanningId: planning.planningId,
-            },
+          // Xoá dữ liệu phụ thuộc bằng tay
+          const dependents = await PlanningBox.findAll({
+            where: { planningId: planning.planningId },
           });
 
-          for (const dependent of dependents) {
-            console.log(
-              `🗑️ Deleting dependent planningId: ${dependent.planningId}`
-            );
-            await dependent.destroy();
+          for (const box of dependents) {
+            await PlanningBoxTime.destroy({
+              where: { planningBoxId: box.planningBoxId },
+            });
+            await box.destroy(); // hoặc PlanningBox.destroy({ where: { planningId } }) sau khi xoá PlanningBoxTime
           }
+
+          await planning.destroy();
         }
       }
     } else {
@@ -600,29 +683,6 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
             { status: newStatus, sortPlanning: null },
             { where: { planningId: planning.planningId } }
           );
-        }
-
-        const order = await Order.findOne({
-          where: { orderId: planning.orderId },
-        });
-
-        //Nếu là bước giấy → xử lý đơn phụ thuộc (bước box)
-        if (order?.isBox && planning.step === "paper") {
-          const dependent = await Planning.findOne({
-            where: {
-              orderId: planning.orderId,
-              step: "box",
-              dependOnPlanningId: planning.planningId,
-              status: { [Op.in]: ["waiting", "planning"] },
-            },
-          });
-
-          if (dependent) {
-            if (dependent.status === "waiting") {
-              dependent.status = "planning";
-              await dependent.save();
-            }
-          }
         }
       }
     }
@@ -649,20 +709,35 @@ export const updateIndex_TimeRunning = async (req, res) => {
     return res.status(400).json({ message: "Missing or invalid updateIndex" });
   }
 
-  const transaction = await sequelize.transaction();
+  const transaction = await PlanningPaper.sequelize.transaction();
   const cachedKey = `planning:machine:${machine}`;
 
   try {
     // 1. Cập nhật sortPlanning
-    await updateSortPlanning(updateIndex, transaction);
-
+    for (const item of updateIndex) {
+      await PlanningPaper.update(
+        { sortPlanning: item.sortPlanning },
+        { where: { planningId: item.planningId }, transaction }
+      );
+    }
     // 2. Lấy lại danh sách planning đã được update
-    const sortedPlannings = await getSortedPlannings(updateIndex, transaction);
+    const sortedPlannings = await PlanningPaper.findAll({
+      where: { planningId: updateIndex.map((i) => i.planningId) },
+      include: [{ model: Order }],
+      order: [["sortPlanning", "ASC"]],
+      transaction,
+    });
 
     // 3. Tính toán thời gian chạy cho từng planning
+    const machineInfo = await MachinePaper.findOne({
+      where: { machineName: machine },
+      transaction,
+    });
+    if (!machineInfo) throw new Error("Machine not found");
+
     const updatedPlannings = await calculateTimeRunningPlannings({
       machine,
-      machineInfo: await getMachineInfo(machine, transaction),
+      machineInfo: machineInfo,
       dayStart,
       timeStart,
       totalTimeWorking,
@@ -694,50 +769,25 @@ export const updateIndex_TimeRunning = async (req, res) => {
   }
 };
 
-const updateSortPlanning = async (updateIndex, transaction) => {
-  for (const item of updateIndex) {
-    await Planning.update(
-      { sortPlanning: item.sortPlanning },
-      { where: { planningId: item.planningId }, transaction }
-    );
-  }
-};
-
-const getSortedPlannings = async (updateIndex, transaction) => {
-  return await Planning.findAll({
-    where: { planningId: updateIndex.map((i) => i.planningId) },
-    include: [{ model: Order }],
-    order: [["sortPlanning", "ASC"]],
-    transaction,
-  });
-};
-
-const getMachineInfo = async (machine, transaction) => {
-  const machineInfo = await MachinePaper.findOne({
-    where: { machineName: machine },
-    transaction,
-  });
-  if (!machineInfo) throw new Error("Machine not found");
-  return machineInfo;
-};
-
 const calculateTimeRunningPlannings = async ({
+  plannings,
   machine,
   machineInfo,
-  dayStart,
   timeStart,
+  dayStart,
   totalTimeWorking,
-  plannings,
   transaction,
 }) => {
-  let currentTime = parseTimeOnly(timeStart);
+  const updated = [];
+  let currentTime = null;
   let currentDay = new Date(dayStart);
   let lastGhepKho = null;
-  const updated = [];
 
   for (let i = 0; i < plannings.length; i++) {
+    const planning = plannings[i];
+
     const data = await calculateTimeForOnePlanning({
-      planning: plannings[i],
+      planning,
       machine,
       machineInfo,
       currentTime,
@@ -749,9 +799,11 @@ const calculateTimeRunningPlannings = async ({
       isFirst: i === 0,
     });
 
+    // ✅ Cập nhật thời gian cho đơn kế tiếp
     currentTime = data.nextTime;
     currentDay = data.nextDay;
     lastGhepKho = data.ghepKho;
+
     updated.push(data.result);
   }
 
@@ -873,7 +925,7 @@ const calculateTimeForOnePlanning = async ({
     await timeOverflowPlanning.destroy({ where: { planningId }, transaction });
   }
 
-  await Planning.update(
+  await PlanningPaper.update(
     {
       dayStart: currentPlanningDayStart,
       timeRunning: timeRunningForPlanning,
@@ -894,26 +946,26 @@ const calculateTimeForOnePlanning = async ({
     result.overflowMinutes = overflowMinutes;
   }
 
-  // console.log("🔍 Chi tiết tính toán đơn hàng:");
-  // console.log({
-  //   planningId,
-  //   ghepKho,
-  //   lastGhepKho,
-  //   isSameSize,
-  //   timeStart,
-  //   totalTimeWorking,
-  //   changeTime: `${changeTime} phút`,
-  //   productionTime: `${productionMinutes} phút`,
-  //   breakTime: `${extraBreak} phút`,
-  //   predictedEndTime: formatTimeToHHMMSS(predictedEndTime),
-  //   endOfWorkTime: formatTimeToHHMMSS(endOfWorkTime),
-  //   hasOverFlow,
-  //   ...(hasOverFlow && {
-  //     overflowDayStart,
-  //     overflowTimeRunning,
-  //     overflowMinutes,
-  //   }),
-  // });
+  console.log("🔍 Chi tiết tính toán đơn hàng:");
+  console.log({
+    planningId,
+    ghepKho,
+    lastGhepKho,
+    isSameSize,
+    timeStart,
+    totalTimeWorking,
+    changeTime: `${changeTime} phút`,
+    productionTime: `${productionMinutes} phút`,
+    breakTime: `${extraBreak} phút`,
+    predictedEndTime: formatTimeToHHMMSS(predictedEndTime),
+    endOfWorkTime: formatTimeToHHMMSS(endOfWorkTime),
+    hasOverFlow,
+    ...(hasOverFlow && {
+      overflowDayStart,
+      overflowTimeRunning,
+      overflowMinutes,
+    }),
+  });
 
   return {
     result,
@@ -955,41 +1007,33 @@ const getSpeed = (flute, machineName, machineInfo) => {
 
 const isDuringBreak = (start, end) => {
   const breakTimes = [
-    { start: "11:30", end: "12:00" },
-    { start: "17:00", end: "17:30" },
-    { start: "02:00", end: "02:45" },
+    { start: "11:30", end: "12:00", duration: 30 },
+    { start: "17:00", end: "17:30", duration: 30 },
+    { start: "02:00", end: "02:45", duration: 45 },
   ];
 
-  // Clone dates to avoid modifying the originals passed in
-  let currentStart = new Date(start);
-  let currentEnd = new Date(end);
-
-  let totalOverlap = 0;
+  let totalBreak = 0;
 
   for (const brk of breakTimes) {
-    // Create break start/end for the current day of 'start'
-    let bStart = new Date(currentStart);
-    let [bHour, bMinute] = brk.start.split(":").map(Number);
-    bStart.setHours(bHour, bMinute, 0, 0);
+    const [bStartHour, bStartMin] = brk.start.split(":").map(Number);
+    const [bEndHour, bEndMin] = brk.end.split(":").map(Number);
 
-    let bEnd = new Date(currentStart);
-    let [beHour, beMinute] = brk.end.split(":").map(Number);
-    bEnd.setHours(beHour, beMinute, 0, 0);
+    let bStart = new Date(start);
+    let bEnd = new Date(start);
 
-    // If a break period conceptually goes into the next day (e.g., 02:00-02:45 for a shift starting previous day)
-    // and currentTime is also on the next day, we need to adjust bStart/bEnd.
-    if (bEnd.getTime() < bStart.getTime()) {
-      // Break crosses midnight
+    bStart.setHours(bStartHour, bStartMin, 0, 0);
+    bEnd.setHours(bEndHour, bEndMin, 0, 0);
+
+    // Nếu giờ nghỉ qua đêm (VD: 02:00 – 02:45)
+    if (bEnd <= bStart) {
       bEnd.setDate(bEnd.getDate() + 1);
     }
 
-    // Check for overlap between [currentStart, currentEnd] and [bStart, bEnd]
-    if (currentEnd > bStart && currentStart < bEnd) {
-      const overlapStart = currentStart < bStart ? bStart : currentStart;
-      const overlapEnd = currentEnd > bEnd ? bEnd : currentEnd;
-      totalOverlap += (overlapEnd - overlapStart) / 60000;
+    // Nếu đơn hàng chạm vào break → cộng full thời lượng
+    if (end > bStart && start < bEnd) {
+      totalBreak += brk.duration;
     }
   }
 
-  return totalOverlap;
+  return totalBreak;
 };

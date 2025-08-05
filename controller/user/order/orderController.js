@@ -4,7 +4,6 @@ import { Op } from "sequelize";
 import Customer from "../../../models/customer/customer.js";
 import Box from "../../../models/order/box.js";
 import Product from "../../../models/product/product.js";
-import { sendNotification } from "../../../utils/notification.js";
 import {
   createDataTable,
   generateOrderId,
@@ -27,7 +26,7 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
 
     const cacheKey = `orders:userId:status:accept_planning:page:${currentPage}`;
 
-    if (refresh == true) {
+    if (refresh == "true") {
       await redisCache.del(cacheKey);
     }
 
@@ -70,8 +69,17 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
           model: Customer,
           attributes: ["customerName", "companyName"],
         },
-        { model: Product },
-        { model: Box, as: "box" },
+        {
+          model: Product,
+          attributes: ["typeProduct", "productName", "maKhuon"],
+        },
+        {
+          model: Box,
+          as: "box",
+          attributes: {
+            exclude: ["createdAt", "updatedAt"],
+          },
+        },
       ],
       order: [["createdAt", "DESC"]],
       offset,
@@ -164,8 +172,17 @@ export const getOrderByPrice = async (req, res) => {
       where: { status: { [Op.in]: ["accept", "planning"] } },
       include: [
         { model: Customer, attributes: ["customerName", "companyName"] },
-        { model: Product },
-        { model: Box, as: "box" },
+        {
+          model: Product,
+          attributes: ["typeProduct", "productName", "maKhuon"],
+        },
+        {
+          model: Box,
+          as: "box",
+          attributes: {
+            exclude: ["createdAt", "updatedAt"],
+          },
+        },
       ],
       order: [["createdAt", "DESC"]],
     });
@@ -215,7 +232,7 @@ export const getOrderPendingAndReject = async (req, res) => {
 
     const cacheKey = `orders:userId:status:pending_reject`;
 
-    if (refresh == true) {
+    if (refresh == "true") {
       await redisCache.del(cacheKey);
     }
 
@@ -245,8 +262,17 @@ export const getOrderPendingAndReject = async (req, res) => {
           model: Customer,
           attributes: ["customerName", "companyName"],
         },
-        { model: Product },
-        { model: Box, as: "box" },
+        {
+          model: Product,
+          attributes: ["typeProduct", "productName", "maKhuon"],
+        },
+        {
+          model: Box,
+          as: "box",
+          attributes: {
+            exclude: ["createdAt", "updatedAt"],
+          },
+        },
       ],
       order: [["createdAt", "DESC"]],
     });
@@ -307,17 +333,6 @@ export const addOrder = async (req, res) => {
     //delete redis
     const cacheKey = `orders:userId:status:pending_reject`;
     await redisCache.del(cacheKey);
-
-    // const notificationResult = await sendNotification({
-    //   title: "Đơn hàng mới",
-    //   message: `Đơn hàng ${newOrderId} đã được tạo.`,
-    //   targetUserId: "admin",
-    //   data: {
-    //     orderId: newOrderId,
-    //     customerId,
-    //     productId,
-    //   },
-    // });
 
     // res.status(201).json({ order: newOrder, notification: notificationResult });
     res.status(201).json({ order: newOrder });

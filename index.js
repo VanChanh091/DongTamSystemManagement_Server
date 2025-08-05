@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import http from "http";
 import jwt from "jsonwebtoken";
 
+import { Server } from "socket.io";
 import { connectDB, sequelize } from "./configs/connectDB.js";
 import authenticate from "./middlewares/authMiddleware.js";
 import {
@@ -20,7 +21,6 @@ import {
 
 //create table
 import "./models/index.js";
-import { Server } from "socket.io";
 
 const app = express();
 
