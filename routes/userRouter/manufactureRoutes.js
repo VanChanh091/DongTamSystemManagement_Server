@@ -1,13 +1,11 @@
 import { Router } from "express";
 import authenticate from "../../middlewares/authMiddleware.js";
 import {
+  addReportBox,
   addReportPaper,
   getPlanningPaper,
-} from "../../controller/user/manufacture/manufacturePaperController.js";
-import {
-  getAllPlanning,
   getPlanningBox,
-} from "../../controller/user/manufacture/manufactureBoxController.js";
+} from "../../controller/user/manufacture/manufactureController.js";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware.js";
 
 const router = Router();
@@ -22,17 +20,12 @@ router.post(
 );
 
 //=========================BOX=========================
-router.get(
-  "/planningBox",
+router.get("/planningBox", authenticate, getPlanningBox);
+router.post(
+  "/reportBox",
   authenticate,
   authorizeAnyPermission(["production"]),
-  getPlanningBox
-);
-router.get(
-  "/getAllPlanning",
-  authenticate,
-  authorizeAnyPermission(["production"]),
-  getAllPlanning
+  addReportBox
 );
 
 export default router;

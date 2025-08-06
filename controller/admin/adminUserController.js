@@ -217,6 +217,7 @@ export const updatePermissions = async (req, res) => {
     "Máy 1900",
     "Máy 2 Lớp",
     "Máy Quấn Cuồn",
+
     "read",
   ];
 

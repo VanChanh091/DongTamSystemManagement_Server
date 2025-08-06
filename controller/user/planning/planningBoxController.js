@@ -68,11 +68,6 @@ export const getPlanningBox = async (req, res) => {
 
 //sort planning
 const getPlanningByMachineSorted = async (machine, flagField) => {
-  const truncateToDate = (date) =>
-    new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-  const now = truncateToDate(new Date());
-
   // 1. Truy vấn tất cả đơn hàng theo máy và flag
   const data = await PlanningBox.findAll({
     where: {
@@ -127,6 +122,11 @@ const getPlanningByMachineSorted = async (machine, flagField) => {
   });
 
   // 2. Lọc đơn có trạng thái hợp lệ
+  const truncateToDate = (date) =>
+    new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  const now = truncateToDate(new Date());
+
   const validData = data.filter((planning) => {
     const boxTimes = planning.boxTimes || [];
 

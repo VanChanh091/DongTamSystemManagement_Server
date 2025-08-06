@@ -4,6 +4,7 @@ import Order from "../../../models/order/order.js";
 import Customer from "../../../models/customer/customer.js";
 import Product from "../../../models/product/product.js";
 import Box from "../../../models/order/box.js";
+import WasteNormBox from "../../../models/admin/wasteNormBox.js";
 import PlanningPaper from "../../../models/planning/planningPaper.js";
 import { deleteKeysByPattern } from "../../../utils/helper/adminHelper.js";
 import { getPlanningByField } from "../../../utils/helper/planningHelper.js";
@@ -12,7 +13,7 @@ import timeOverflowPlanning from "../../../models/planning/timeOverFlowPlanning.
 import WasteNormPaper from "../../../models/admin/wasteNormPaper.js";
 import WaveCrestCoefficient from "../../../models/admin/waveCrestCoefficient.js";
 import PlanningBox from "../../../models/planning/planningBox.js";
-import PlanningBoxTime from "../../../models/planning/planningBoxMachineTime.js";
+import planningBoxMachineTime from "../../../models/planning/planningBoxMachineTime.js";
 
 const redisCache = new Redis();
 
@@ -124,7 +125,7 @@ export const planningOrder = async (req, res) => {
     );
     const roundSmart = (num) => Math.round(num * 100) / 100;
 
-    // 5) Hàm tính phế liệu
+    // 5) Hàm tính phế liệu paper
     const calculateWaste = (
       layers,
       ghepKho,
@@ -273,7 +274,53 @@ export const planningOrder = async (req, res) => {
       }
 
       if (machineTimes.length > 0) {
-        await PlanningBoxTime.bulkCreate(machineTimes);
+        const createdTimes = await planningBoxMachineTime.bulkCreate(
+          machineTimes,
+          { returning: true }
+        );
+
+        const wasteNormBox = await WasteNormBox.findAll();
+
+        for (const time of createdTimes) {
+          const norm = wasteNormBox.find((n) => n.machineName === time.machine);
+          if (!norm) continue;
+
+          console.log("Calculate waste box");
+          console.log(">> Machine:", time.machine);
+          console.log(">> runningPlan:", paperPlan.runningPlan);
+          console.log(">> color:", norm.colorNumberOnProduct);
+          console.log(">> paper:", norm.paperNumberOnProduct);
+          console.log(">> totalLossOnTotalQty:", norm.totalLossOnTotalQty);
+          console.log(">> inMatTruoc:", box.inMatTruoc);
+          console.log(">> inMatSau:", box.inMatSau);
+
+          let waste = 0;
+
+          if (time.machine === "Máy In") {
+            const color = norm.colorNumberOnProduct || 0;
+
+            const inMatTruoc = box.inMatTruoc || 0;
+            const inMatSau = box.inMatSau || 0;
+
+            waste =
+              color * inMatTruoc +
+              color * inMatSau +
+              paperPlan.runningPlan * (norm.totalLossOnTotalQty / 100);
+          } else {
+            const paper = norm.paperNumberOnProduct || 0;
+            waste =
+              paper + paperPlan.runningPlan * (norm.totalLossOnTotalQty / 100);
+          }
+
+          console.log(">> Waste tính được:", waste);
+
+          // Cập nhật wasteBox cho từng công đoạn
+          time.wasteBox = waste;
+
+          console.log(">> Lưu wasteBox:", time.wasteBox);
+
+          await time.save();
+        }
       }
     }
 
@@ -661,10 +708,10 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
           });
 
           for (const box of dependents) {
-            await PlanningBoxTime.destroy({
+            await planningBoxMachineTime.destroy({
               where: { planningBoxId: box.planningBoxId },
             });
-            await box.destroy(); // hoặc PlanningBox.destroy({ where: { planningId } }) sau khi xoá PlanningBoxTime
+            await box.destroy(); // hoặc PlanningBox.destroy({ where: { planningId } }) sau khi xoá planningBoxMachineTime
           }
 
           await planning.destroy();
