@@ -225,7 +225,6 @@ export const planningOrder = async (req, res) => {
       boxPlan = await PlanningBox.create({
         planningId: paperPlan.planningId,
         orderId,
-        runningPlan: paperPlan.runningPlan,
 
         day: paperPlan.dayReplace,
         matE: paperPlan.matEReplace,
@@ -285,14 +284,14 @@ export const planningOrder = async (req, res) => {
           const norm = wasteNormBox.find((n) => n.machineName === time.machine);
           if (!norm) continue;
 
-          console.log("Calculate waste box");
-          console.log(">> Machine:", time.machine);
-          console.log(">> runningPlan:", paperPlan.runningPlan);
-          console.log(">> color:", norm.colorNumberOnProduct);
-          console.log(">> paper:", norm.paperNumberOnProduct);
-          console.log(">> totalLossOnTotalQty:", norm.totalLossOnTotalQty);
-          console.log(">> inMatTruoc:", box.inMatTruoc);
-          console.log(">> inMatSau:", box.inMatSau);
+          // console.log("Calculate waste box");
+          // console.log(">> Machine:", time.machine);
+          // console.log(">> runningPlan:", paperPlan.runningPlan);
+          // console.log(">> color:", norm.colorNumberOnProduct);
+          // console.log(">> paper:", norm.paperNumberOnProduct);
+          // console.log(">> totalLossOnTotalQty:", norm.totalLossOnTotalQty);
+          // console.log(">> inMatTruoc:", box.inMatTruoc);
+          // console.log(">> inMatSau:", box.inMatSau);
 
           let waste = 0;
 
@@ -797,7 +796,7 @@ export const updateIndex_TimeRunning = async (req, res) => {
 
     const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
 
-    req.io.to(roomName).emit("planningUpdated", {
+    req.io.to(roomName).emit("planningPaperUpdated", {
       machine,
       message: `Kế hoạch của ${machine} đã được cập nhật.`,
     });
@@ -993,26 +992,26 @@ const calculateTimeForOnePlanning = async ({
     result.overflowMinutes = overflowMinutes;
   }
 
-  console.log("🔍 Chi tiết tính toán đơn hàng:");
-  console.log({
-    planningId,
-    ghepKho,
-    lastGhepKho,
-    isSameSize,
-    timeStart,
-    totalTimeWorking,
-    changeTime: `${changeTime} phút`,
-    productionTime: `${productionMinutes} phút`,
-    breakTime: `${extraBreak} phút`,
-    predictedEndTime: formatTimeToHHMMSS(predictedEndTime),
-    endOfWorkTime: formatTimeToHHMMSS(endOfWorkTime),
-    hasOverFlow,
-    ...(hasOverFlow && {
-      overflowDayStart,
-      overflowTimeRunning,
-      overflowMinutes,
-    }),
-  });
+  // console.log("🔍 Chi tiết tính toán đơn hàng:");
+  // console.log({
+  //   planningId,
+  //   ghepKho,
+  //   lastGhepKho,
+  //   isSameSize,
+  //   timeStart,
+  //   totalTimeWorking,
+  //   changeTime: `${changeTime} phút`,
+  //   productionTime: `${productionMinutes} phút`,
+  //   breakTime: `${extraBreak} phút`,
+  //   predictedEndTime: formatTimeToHHMMSS(predictedEndTime),
+  //   endOfWorkTime: formatTimeToHHMMSS(endOfWorkTime),
+  //   hasOverFlow,
+  //   ...(hasOverFlow && {
+  //     overflowDayStart,
+  //     overflowTimeRunning,
+  //     overflowMinutes,
+  //   }),
+  // });
 
   return {
     result,

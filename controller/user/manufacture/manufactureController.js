@@ -4,7 +4,7 @@ import timeOverflowPlanning from "../../../models/planning/timeOverFlowPlanning.
 import Customer from "../../../models/customer/customer.js";
 import Box from "../../../models/order/box.js";
 import Order from "../../../models/order/order.js";
-import { Op } from "sequelize";
+import { Op, where } from "sequelize";
 import PlanningBox from "../../../models/planning/planningBox.js";
 import planningBoxMachineTime from "../../../models/planning/planningBoxMachineTime.js";
 
@@ -188,11 +188,23 @@ export const addReportPaper = async (req, res) => {
           { where: { planningId }, transaction }
         );
       }
+
+      //Cập nhật số lượng cho planning box
+      const planningBox = await PlanningBox.findOne({ where: { planningId } });
+      if (!planningBox) {
+        await transaction.rollback();
+        return res.status(404).json({ message: "PlanningBox not found" });
+      }
+
+      await planningBox.update(
+        { runningPlan: newQtyProduced },
+        { transaction }
+      );
     } else {
       await planning.update({ status: "lackQty" }, { transaction });
     }
 
-    // 5. Commit + clear cache
+    //5. Commit + clear cache
     await transaction.commit();
     await redisCache.del(`planning:machine:${machine}`);
 
@@ -225,22 +237,22 @@ export const getPlanningBox = async (req, res) => {
       .json({ message: "Missing 'machine' query parameter" });
   }
 
-  const machineMap = {
-    "máy in": "hasIn",
-    "máy bế": "hasBe",
-    "máy xả": "hasXa",
-    "máy dán": "hasDan",
-    "máy cắt khe": "hasCatKhe",
-    "máy cán màng": "hasCanMang",
-    "máy đóng ghim": "hasDongGhim",
-  };
+  // const machineMap = {
+  //   "máy in": "hasIn",
+  //   "máy bế": "hasBe",
+  //   "máy xả": "hasXa",
+  //   "máy dán": "hasDan",
+  //   "máy cắt khe": "hasCatKhe",
+  //   "máy cán màng": "hasCanMang",
+  //   "máy đóng ghim": "hasDongGhim",
+  // };
 
-  const machineKey = machine.toLowerCase();
-  const flagField = machineMap[machineKey];
+  // const machineKey = machine.toLowerCase();
+  // const flagField = machineMap[machineKey];
 
-  if (!flagField) {
-    return res.status(400).json({ message: "Invalid machine" });
-  }
+  // if (!flagField) {
+  //   return res.status(400).json({ message: "Invalid machine" });
+  // }
 
   try {
     const cacheKey = `planning:box:machine:${machine}`;
@@ -268,10 +280,8 @@ export const getPlanningBox = async (req, res) => {
       });
     }
 
-    const whereCondition = { [flagField]: true, dayStart: { [Op.ne]: null } };
-
     const planning = await PlanningBox.findAll({
-      where: whereCondition,
+      // where: { [flagField]: true },
       attributes: {
         exclude: [
           "hasIn",
@@ -289,7 +299,11 @@ export const getPlanningBox = async (req, res) => {
         { model: timeOverflowPlanning, as: "timeOverFlow" },
         {
           model: planningBoxMachineTime,
-          where: { status: ["planning", "lackOfQty"] },
+          where: {
+            machine: machine,
+            status: ["planning", "lackOfQty"],
+            dayStart: { [Op.ne]: null },
+          },
           as: "boxTimes",
           attributes: { exclude: ["createdAt", "updatedAt"] },
         },

@@ -8,6 +8,7 @@ const PlanningBoxTime = sequelize.define("PlanningBoxTime", {
     primaryKey: true,
   },
   timeRunning: { type: DataTypes.TIME },
+  dayStart: { type: DataTypes.DATE },
   dayCompleted: { type: DataTypes.DATE },
   wasteBox: { type: DataTypes.DOUBLE },
   rpWasteLoss: { type: DataTypes.DOUBLE },

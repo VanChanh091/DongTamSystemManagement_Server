@@ -10,7 +10,6 @@ import PlanningBoxTime from "./planning/planningBoxMachineTime.js";
 import PlanningPaper from "./planning/planningPaper.js";
 import timeOverflowPlanning from "./planning/timeOverFlowPlanning.js";
 import Product from "./product/product.js";
-import ReportProduction from "./report/reportProduction.js";
 import User from "./user/user.js";
 
 const models = {
@@ -25,8 +24,6 @@ const models = {
   PlanningBox,
   timeOverflowPlanning,
   PlanningBoxTime,
-
-  ReportProduction,
 
   //admin
   MachinePaper,
@@ -93,12 +90,5 @@ timeOverflowPlanning.belongsTo(PlanningBox, {
   foreignKey: "planningBoxId",
   constraints: false,
 });
-
-//report
-PlanningPaper.hasOne(ReportProduction, {
-  foreignKey: "planningId",
-  onDelete: "CASCADE",
-});
-ReportProduction.belongsTo(PlanningPaper, { foreignKey: "planningId" });
 
 export default models;

@@ -472,7 +472,7 @@ export const updateIndex_TimeRunningBox = async (req, res) => {
 
     //socket
     const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
-    req.io.to(roomName).emit("planningUpdated", {
+    req.io.to(roomName).emit("planningBoxUpdated", {
       machine,
       message: `Kế hoạch của ${machine} đã được cập nhật.`,
     }); //
@@ -637,10 +637,7 @@ const calculateTimeForOnePlanning = async ({
   }
 
   await PlanningBox.update(
-    {
-      dayStart: currentPlanningDayStart,
-      hasOverFlow,
-    },
+    { hasOverFlow },
     { where: { planningBoxId }, transaction }
   );
 
@@ -656,35 +653,38 @@ const calculateTimeForOnePlanning = async ({
   //add sort planning here
   if (existingBoxTime) {
     await existingBoxTime.update(
-      { timeRunning: timeRunningForPlanning, sortPlanning },
+      {
+        dayStart: currentPlanningDayStart,
+        timeRunning: timeRunningForPlanning,
+        sortPlanning,
+      },
       { transaction }
     );
   }
 
-  // ✅ LOG chuẩn, rõ ràng
-  const logData = {
-    planningBoxId: planningBoxId,
-    timeStart,
-    // box: Order?.box?.dataValues,
-    totalTimeWorking,
-    timeToProduct: `${timeToProduct} phút`,
-    speed: `${speed} phút`,
-    productionTime: `${productionMinutes} phút`,
-    breakTime: `${extraBreak} phút`,
-    predictedEndTime: formatTimeToHHMMSS(predictedEndTime),
-    endOfWorkTime: formatTimeToHHMMSS(endOfWorkTime),
-    hasOverFlow,
-  };
+  // const logData = {
+  //   planningBoxId: planningBoxId,
+  //   timeStart,
+  //   // box: Order?.box?.dataValues,
+  //   totalTimeWorking,
+  //   timeToProduct: `${timeToProduct} phút`,
+  //   speed: `${speed} phút`,
+  //   productionTime: `${productionMinutes} phút`,
+  //   breakTime: `${extraBreak} phút`,
+  //   predictedEndTime: formatTimeToHHMMSS(predictedEndTime),
+  //   endOfWorkTime: formatTimeToHHMMSS(endOfWorkTime),
+  //   hasOverFlow,
+  // };
 
-  if (hasOverFlow) {
-    Object.assign(logData, {
-      overflowDayStart,
-      overflowTimeRunning,
-      overflowMinutes,
-    });
-  }
+  // if (hasOverFlow) {
+  //   Object.assign(logData, {
+  //     overflowDayStart,
+  //     overflowTimeRunning,
+  //     overflowMinutes,
+  //   });
+  // }
 
-  console.log("🔍 Chi tiết tính toán đơn hàng:", logData);
+  // console.log("🔍 Chi tiết tính toán đơn hàng:", logData);
 
   //log result
   return {
