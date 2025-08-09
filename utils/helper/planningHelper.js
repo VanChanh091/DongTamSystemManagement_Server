@@ -7,6 +7,7 @@ import PlanningPaper from "../../models/planning/planningPaper.js";
 
 const redisCache = new Redis();
 
+//get properties
 export const getPlanningByField = async (req, res, field) => {
   const { machine } = req.query;
   const value = req.query[field];
@@ -115,4 +116,73 @@ export const getPlanningByField = async (req, res, field) => {
     console.error(error);
     return res.status(500).json({ message: "Lỗi server" });
   }
+};
+
+export const formatTimeToHHMMSS = (date) => {
+  return date.toTimeString().split(" ")[0];
+};
+
+export const addMinutes = (date, mins) => {
+  const d = new Date(date);
+  d.setMinutes(d.getMinutes() + mins);
+  return d;
+};
+
+export const addDays = (date, days) => {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+};
+
+export const formatDate = (date) => {
+  return date.toISOString().split("T")[0];
+};
+
+export const getWorkShift = (day, startTime, hours) => {
+  const start = parseTimeOnly(startTime);
+  start.setFullYear(day.getFullYear(), day.getMonth(), day.getDate());
+  const end = new Date(start);
+  end.setHours(start.getHours() + hours);
+  return { startOfWorkTime: start, endOfWorkTime: end };
+};
+
+export const parseTimeOnly = (timeStr) => {
+  const [h, m] = timeStr.split(":").map(Number);
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d;
+};
+
+export const isDuringBreak = (start, end) => {
+  const breaks = [
+    { start: "11:30", end: "12:00", duration: 30 },
+    { start: "17:00", end: "17:30", duration: 30 },
+    { start: "02:00", end: "02:45", duration: 45 },
+  ];
+
+  let totalBreak = 0;
+  for (const brk of breaks) {
+    const bStart = parseTimeOnly(brk.start);
+    const bEnd = parseTimeOnly(brk.end);
+
+    // Gán cùng ngày với 'start'
+    bStart.setFullYear(start.getFullYear(), start.getMonth(), start.getDate());
+    bEnd.setFullYear(start.getFullYear(), start.getMonth(), start.getDate());
+    if (bEnd <= bStart) bEnd.setDate(bEnd.getDate() + 1);
+
+    if (end > bStart && start < bEnd) {
+      totalBreak += brk.duration;
+    }
+  }
+
+  return totalBreak;
+};
+
+export const setTimeOnDay = (dayDate, timeStrOrDate) => {
+  const t =
+    typeof timeStrOrDate === "string"
+      ? parseTimeOnly(timeStrOrDate)
+      : new Date(timeStrOrDate);
+  t.setFullYear(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate());
+  return t;
 };

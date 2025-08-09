@@ -4,10 +4,18 @@ import Order from "../../../models/order/order.js";
 import Customer from "../../../models/customer/customer.js";
 import Product from "../../../models/product/product.js";
 import Box from "../../../models/order/box.js";
-import WasteNormBox from "../../../models/admin/wasteNormBox.js";
 import PlanningPaper from "../../../models/planning/planningPaper.js";
 import { deleteKeysByPattern } from "../../../utils/helper/adminHelper.js";
-import { getPlanningByField } from "../../../utils/helper/planningHelper.js";
+import {
+  getPlanningByField,
+  // parseTimeOnly,
+  // formatTimeToHHMMSS,
+  // addMinutes,
+  // addDays,
+  // formatDate,
+  // getWorkShift,
+  // isDuringBreak,
+} from "../../../utils/helper/planningHelper.js";
 import MachinePaper from "../../../models/admin/machinePaper.js";
 import timeOverflowPlanning from "../../../models/planning/timeOverFlowPlanning.js";
 import WasteNormPaper from "../../../models/admin/wasteNormPaper.js";
@@ -20,6 +28,7 @@ const redisCache = new Redis();
 //===============================PLANNING ORDER=====================================
 
 //getOrderAccept
+
 export const getOrderAccept = async (req, res) => {
   const { refresh = false } = req.query;
   try {
@@ -273,53 +282,7 @@ export const planningOrder = async (req, res) => {
       }
 
       if (machineTimes.length > 0) {
-        const createdTimes = await planningBoxMachineTime.bulkCreate(
-          machineTimes,
-          { returning: true }
-        );
-
-        const wasteNormBox = await WasteNormBox.findAll();
-
-        for (const time of createdTimes) {
-          const norm = wasteNormBox.find((n) => n.machineName === time.machine);
-          if (!norm) continue;
-
-          // console.log("Calculate waste box");
-          // console.log(">> Machine:", time.machine);
-          // console.log(">> runningPlan:", paperPlan.runningPlan);
-          // console.log(">> color:", norm.colorNumberOnProduct);
-          // console.log(">> paper:", norm.paperNumberOnProduct);
-          // console.log(">> totalLossOnTotalQty:", norm.totalLossOnTotalQty);
-          // console.log(">> inMatTruoc:", box.inMatTruoc);
-          // console.log(">> inMatSau:", box.inMatSau);
-
-          let waste = 0;
-
-          if (time.machine === "Máy In") {
-            const color = norm.colorNumberOnProduct || 0;
-
-            const inMatTruoc = box.inMatTruoc || 0;
-            const inMatSau = box.inMatSau || 0;
-
-            waste =
-              color * inMatTruoc +
-              color * inMatSau +
-              paperPlan.runningPlan * (norm.totalLossOnTotalQty / 100);
-          } else {
-            const paper = norm.paperNumberOnProduct || 0;
-            waste =
-              paper + paperPlan.runningPlan * (norm.totalLossOnTotalQty / 100);
-          }
-
-          console.log(">> Waste tính được:", waste);
-
-          // Cập nhật wasteBox cho từng công đoạn
-          time.wasteBox = waste;
-
-          console.log(">> Lưu wasteBox:", time.wasteBox);
-
-          await time.save();
-        }
+        await planningBoxMachineTime.bulkCreate(machineTimes);
       }
     }
 
@@ -507,7 +470,7 @@ const getPlanningByMachineSorted = async (machine) => {
     sortedPlannings.forEach((planning) => {
       const original = {
         ...planning.toJSON(),
-        hasOverflow: false,
+        // hasOverflow: false,
         timeRunning: planning.timeRunning,
         dayStart: planning.dayStart,
       };
@@ -516,7 +479,7 @@ const getPlanningByMachineSorted = async (machine) => {
       if (planning.timeOverFlow) {
         allPlannings.push({
           ...original,
-          hasOverflow: true,
+          // hasOverflow: true,
           timeRunning: planning.timeOverFlow.overflowTimeRunning,
           dayStart: planning.timeOverFlow.overflowDayStart,
         });
@@ -720,16 +683,26 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
       // 2) Nếu là hoàn thành
       for (const planning of plannings) {
         planning.status = newStatus;
-        planning.sortPlanning = null;
 
         await planning.save();
 
         if (planning.hasOverFlow) {
           await timeOverflowPlanning.update(
-            { status: newStatus, sortPlanning: null },
+            { status: newStatus },
             { where: { planningId: planning.planningId } }
           );
         }
+
+        const planningBox = await PlanningBox.findOne({
+          where: { planningId: planning.planningId },
+        });
+        if (!planningBox) {
+          continue;
+        }
+
+        await planningBox.update({
+          runningPlan: planning.qtyProduced,
+        });
       }
     }
 
@@ -746,7 +719,6 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
   }
 };
 
-//update index planning
 export const updateIndex_TimeRunning = async (req, res) => {
   const { machine } = req.query;
   const { updateIndex, dayStart, timeStart, totalTimeWorking } = req.body;

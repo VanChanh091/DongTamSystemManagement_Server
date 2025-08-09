@@ -7,6 +7,17 @@ import PlanningBox from "../../../models/planning/planningBox.js";
 import timeOverflowPlanning from "../../../models/planning/timeOverFlowPlanning.js";
 import planningBoxMachineTime from "../../../models/planning/planningBoxMachineTime.js";
 import MachineBox from "../../../models/admin/machineBox.js";
+import WasteNormBox from "../../../models/admin/wasteNormBox.js";
+import {
+  parseTimeOnly,
+  formatTimeToHHMMSS,
+  addMinutes,
+  addDays,
+  formatDate,
+  getWorkShift,
+  isDuringBreak,
+  setTimeOnDay,
+} from "../../../utils/helper/planningHelper.js";
 
 const redisCache = new Redis();
 
@@ -18,23 +29,6 @@ export const getPlanningBox = async (req, res) => {
     return res
       .status(400)
       .json({ message: "Missing 'machine' query parameter" });
-  }
-
-  const machineMap = {
-    "máy in": "hasIn",
-    "máy bế": "hasBe",
-    "máy xả": "hasXa",
-    "máy dán": "hasDan",
-    "máy cắt khe": "hasCatKhe",
-    "máy cán màng": "hasCanMang",
-    "máy đóng ghim": "hasDongGhim",
-  };
-
-  const machineKey = machine.toLowerCase();
-  const flagField = machineMap[machineKey];
-
-  if (!flagField) {
-    return res.status(400).json({ message: "Invalid machine" });
   }
 
   try {
@@ -52,7 +46,7 @@ export const getPlanningBox = async (req, res) => {
       });
     }
 
-    const planning = await getPlanningByMachineSorted(machine, flagField);
+    const planning = await getPlanningByMachineSorted(machine);
 
     await redisCache.set(cacheKey, JSON.stringify(planning), "EX", 1800);
 
@@ -68,11 +62,7 @@ export const getPlanningBox = async (req, res) => {
 
 //sort planning
 const getPlanningByMachineSorted = async (machine, flagField) => {
-  // 1. Truy vấn tất cả đơn hàng theo máy và flag
   const data = await PlanningBox.findAll({
-    where: {
-      [flagField]: true,
-    },
     attributes: {
       exclude: [
         "hasIn",
@@ -87,13 +77,13 @@ const getPlanningByMachineSorted = async (machine, flagField) => {
       ],
     },
     include: [
-      { model: timeOverflowPlanning, as: "timeOverFlow" },
       {
         model: planningBoxMachineTime,
-        where: { machine, status: ["planning", "lackQty", "complete"] },
+        where: { machine, status: ["planning", "lackOfQty", "complete"] },
         as: "boxTimes",
         attributes: { exclude: ["createdAt", "updatedAt"] },
       },
+      { model: timeOverflowPlanning, as: "timeOverFlow" },
       {
         model: Order,
         attributes: [
@@ -198,18 +188,24 @@ const getPlanningByMachineSorted = async (machine, flagField) => {
   sortedPlannings.forEach((planning) => {
     const original = {
       ...planning.toJSON(),
-      hasOverflow: false,
       dayStart: planning.dayStart,
     };
     allPlannings.push(original);
 
     if (planning.timeOverFlow) {
-      allPlannings.push({
+      const overflowDayStart = planning.timeOverFlow.overflowDayStart;
+      const overflowTime = planning.timeOverFlow.overflowTimeRunning;
+
+      const overflowPlanning = {
         ...original,
-        hasOverflow: true,
-        dayStart: planning.timeOverFlow.overflowDayStart,
-        timeRunning: planning.timeOverFlow.overflowTimeRunning,
-      });
+        boxTimes: (planning.boxTimes || []).map((bt) => ({
+          ...bt.dataValues,
+          dayStart: overflowDayStart,
+          timeRunning: overflowTime,
+        })),
+      };
+
+      allPlannings.push(overflowPlanning);
     }
   });
 
@@ -334,13 +330,12 @@ export const acceptLackQtyBox = async (req, res) => {
     if (newStatus == "complete") {
       for (const planning of plannings) {
         planning.status = newStatus;
-        planning.sortPlanning = null;
 
         await planning.save();
 
         if (planning.hasOverFlow) {
           await timeOverflowPlanning.update(
-            { status: newStatus, sortPlanning: null },
+            { status: newStatus },
             { where: { planningBoxId: planning.planningBoxId } }
           );
         }
@@ -363,7 +358,6 @@ export const acceptLackQtyBox = async (req, res) => {
 export const updateIndex_TimeRunningBox = async (req, res) => {
   const { machine, updateIndex, dayStart, timeStart, totalTimeWorking } =
     req.body;
-
   if (!Array.isArray(updateIndex) || updateIndex.length === 0) {
     return res.status(400).json({ message: "Missing or invalid updateIndex" });
   }
@@ -372,85 +366,12 @@ export const updateIndex_TimeRunningBox = async (req, res) => {
   const cachedKey = `planning:box:machine:${machine}`;
 
   try {
-    // 1. Cập nhật sortPlanning
-    for (const item of updateIndex) {
-      const boxTime = await planningBoxMachineTime.findOne({
-        where: {
-          planningBoxId: item.planningBoxId,
-          machine: machine,
-        },
-      });
-
-      if (boxTime) {
-        await boxTime.update({ sortPlanning: item.sortPlanning });
-      } else {
-        console.warn("❌ Không tìm thấy boxTime với:", {
-          planningBoxId: item.planningBoxId,
-          machine: machine,
-        });
-      }
-    }
-
-    // 2. Lấy lại danh sách planning đã được update
-    const sortedPlannings = await PlanningBox.findAll({
-      where: { planningBoxId: updateIndex.map((i) => i.planningBoxId) },
-      attributes: {
-        exclude: [
-          "hasIn",
-          "hasBe",
-          "hasXa",
-          "hasDan",
-          "hasCatKhe",
-          "hasCanMang",
-          "hasDongGhim",
-          "createdAt",
-          "updatedAt",
-        ],
-      },
-      include: [
-        { model: timeOverflowPlanning, as: "timeOverFlow" },
-        {
-          model: planningBoxMachineTime,
-          where: { machine },
-          as: "boxTimes",
-          attributes: { exclude: ["createdAt", "updatedAt"] },
-        },
-        {
-          model: Order,
-          attributes: [
-            "orderId",
-            "dayReceiveOrder",
-            "flute",
-            "QC_box",
-            "numberChild",
-            "dateRequestShipping",
-            "customerId",
-            "productId",
-          ],
-          include: [
-            {
-              model: Customer,
-              attributes: ["customerName", "companyName"],
-            },
-            {
-              model: Box,
-              as: "box",
-              attributes: { exclude: ["createdAt", "updatedAt"] },
-            },
-          ],
-        },
-      ],
-      order: [
-        [
-          { model: planningBoxMachineTime, as: "boxTimes" },
-          "sortPlanning",
-          "ASC",
-        ],
-      ],
-      transaction,
-    });
-
-    // 3. Tính toán thời gian chạy cho từng planning
+    await updateSortPlanning(machine, updateIndex, transaction);
+    const sortedPlannings = await getSortedPlannings(
+      machine,
+      updateIndex.map((i) => i.planningBoxId),
+      transaction
+    );
     const machineInfo = await MachineBox.findOne({
       where: { machineName: machine },
       transaction,
@@ -459,23 +380,23 @@ export const updateIndex_TimeRunningBox = async (req, res) => {
 
     const updatedPlannings = await calculateTimeRunningPlannings({
       machine,
-      machineInfo: machineInfo,
+      machineInfo,
       dayStart,
       timeStart,
       totalTimeWorking,
-      plannings: sortedPlannings, //danh sách planning
+      plannings: sortedPlannings,
       transaction,
     });
 
     await transaction.commit();
     await redisCache.del(cachedKey);
 
-    //socket
-    const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
-    req.io.to(roomName).emit("planningBoxUpdated", {
-      machine,
-      message: `Kế hoạch của ${machine} đã được cập nhật.`,
-    }); //
+    req.io
+      .to(`machine_${machine.toLowerCase().replace(/\s+/g, "_")}`)
+      .emit("planningBoxUpdated", {
+        machine,
+        message: `Kế hoạch của ${machine} đã được cập nhật.`,
+      });
 
     return res.status(200).json({
       message: "✅ Cập nhật sortPlanning + tính thời gian thành công",
@@ -484,13 +405,57 @@ export const updateIndex_TimeRunningBox = async (req, res) => {
   } catch (error) {
     await transaction.rollback();
     console.error("❌ Update failed:", error);
-    return res.status(500).json({
-      message: "❌ Lỗi khi cập nhật và tính toán thời gian",
-      error: error.message,
-    });
+    return res
+      .status(500)
+      .json({ message: "❌ Lỗi khi cập nhật", error: error.message });
   }
 };
 
+// Cập nhật sortPlanning
+const updateSortPlanning = async (machine, updateIndex, transaction) => {
+  for (const item of updateIndex) {
+    const boxTime = await planningBoxMachineTime.findOne({
+      where: { planningBoxId: item.planningBoxId, machine },
+      transaction,
+    });
+    if (boxTime) {
+      await boxTime.update(
+        { sortPlanning: item.sortPlanning },
+        { transaction }
+      );
+    } else {
+      console.warn("❌ Không tìm thấy boxTime:", item);
+    }
+  }
+};
+
+// Lấy lại danh sách planning đã update
+const getSortedPlannings = async (machine, planningBoxIds, transaction) => {
+  return PlanningBox.findAll({
+    where: { planningBoxId: planningBoxIds },
+    include: [
+      { model: timeOverflowPlanning, as: "timeOverFlow" },
+      { model: planningBoxMachineTime, as: "boxTimes", where: { machine } },
+      {
+        model: Order,
+        include: [
+          { model: Customer, attributes: ["customerName", "companyName"] },
+          { model: Box, as: "box" },
+        ],
+      },
+    ],
+    order: [
+      [
+        { model: planningBoxMachineTime, as: "boxTimes" },
+        "sortPlanning",
+        "ASC",
+      ],
+    ],
+    transaction,
+  });
+};
+
+// Tính thời gian cho danh sách planning
 const calculateTimeRunningPlannings = async ({
   machine,
   machineInfo,
@@ -500,13 +465,15 @@ const calculateTimeRunningPlannings = async ({
   plannings,
   transaction,
 }) => {
-  let currentTime = parseTimeOnly(timeStart);
+  // đảm bảo currentDay là Date và currentTime có ngày = dayStart
   let currentDay = new Date(dayStart);
+  let currentTime = setTimeOnDay(currentDay, timeStart);
+
   const updated = [];
 
-  for (let i = 0; i < plannings.length; i++) {
+  for (const planning of plannings) {
     const data = await calculateTimeForOnePlanning({
-      planning: plannings[i],
+      planning,
       machine,
       machineInfo,
       currentTime,
@@ -515,17 +482,14 @@ const calculateTimeRunningPlannings = async ({
       totalTimeWorking,
       transaction,
     });
-
     currentTime = data.nextTime;
     currentDay = data.nextDay;
-
     updated.push(data.result);
   }
-
   return updated;
 };
 
-//calculate time running
+// Tính thời gian cho từng planning (sửa để ngày/giờ luôn đồng bộ)
 const calculateTimeForOnePlanning = async ({
   planning,
   machine,
@@ -537,99 +501,131 @@ const calculateTimeForOnePlanning = async ({
   transaction,
 }) => {
   const { planningBoxId, runningPlan, sortPlanning, Order } = planning;
-  const numberChild = Order?.numberChild || 1;
-  const totalLength = runningPlan / numberChild;
-
-  const { timeToProduct, speedOfMachine } = machineInfo;
-  let productionMinutes;
-  const speed = totalLength / (speedOfMachine / 60);
-
   const isMayIn = machine.toLowerCase().includes("máy in");
 
-  // ✅ Tính thời gian chạy nếu là máy in
-  if (isMayIn && Order?.box?.dataValues) {
-    const { inMatTruoc = 0, inMatSau = 0 } = Order.box.dataValues;
-    const timeIn = timeToProduct * (inMatTruoc + inMatSau);
-    productionMinutes = Math.ceil(timeIn + speed);
-  } else {
-    productionMinutes = Math.ceil(timeToProduct + speed);
-  }
+  console.log("\n==============================");
+  console.log(`📦 Bắt đầu tính cho planningBoxId: ${planningBoxId}`);
+  console.log(`🔹 Máy: ${machine}`);
+  console.log(`🔹 runningPlan: ${runningPlan}`);
+  console.log(`🔹 Giờ bắt đầu: ${formatTimeToHHMMSS(currentTime)}`);
 
-  // ✅ Xác định thời gian bắt đầu và kết thúc ca làm việc trong ngày
-  let startOfWorkTime = new Date(currentDay);
-  const [h, m] = timeStart.split(":").map(Number);
-  startOfWorkTime.setHours(h, m, 0, 0);
+  const productionMinutes = calculateProductionMinutes({
+    runningPlan,
+    Order,
+    machineInfo,
+    isMayIn,
+  });
+  console.log(`⏱️ productionMinutes: ${productionMinutes} phút`);
 
-  let endOfWorkTime = new Date(startOfWorkTime);
-  endOfWorkTime.setHours(startOfWorkTime.getHours() + totalTimeWorking);
+  // Lấy ca và đảm bảo start/end cùng ngày với currentDay
+  const { startOfWorkTime: rawStart, endOfWorkTime: rawEnd } = getWorkShift(
+    currentDay,
+    timeStart,
+    totalTimeWorking
+  );
+  // đảm bảo start/end nằm trên cùng 'currentDay'
+  const startOfWorkTime = setTimeOnDay(currentDay, rawStart);
+  const endOfWorkTime = setTimeOnDay(currentDay, rawEnd);
+
+  console.log(`🕒 endOfWorkTime:   ${formatTimeToHHMMSS(endOfWorkTime)}`);
+
+  // Nếu currentTime có ngày khác (ví dụ parseTimeOnly trả về 'today'), ép nó về cùng ngày currentDay
+  currentTime = setTimeOnDay(currentDay, currentTime);
 
   if (currentTime < startOfWorkTime) {
-    currentTime = new Date(startOfWorkTime);
-  }
-
-  if (currentTime >= endOfWorkTime) {
-    currentDay.setDate(currentDay.getDate() + 1);
-    startOfWorkTime.setDate(startOfWorkTime.getDate() + 1);
-    endOfWorkTime.setDate(endOfWorkTime.getDate() + 1);
-    currentTime = new Date(startOfWorkTime);
-  }
-
-  let tempEndTime = new Date(currentTime);
-  tempEndTime.setMinutes(tempEndTime.getMinutes() + productionMinutes);
-  const extraBreak = isDuringBreak(currentTime, tempEndTime);
-
-  let predictedEndTime = new Date(currentTime);
-  predictedEndTime.setMinutes(
-    predictedEndTime.getMinutes() + productionMinutes + extraBreak
-  );
-
-  let currentPlanningDayStart = currentDay.toISOString().split("T")[0];
-  let timeRunningForPlanning = formatTimeToHHMMSS(predictedEndTime);
-  let hasOverFlow = false;
-  let overflowDayStart = null;
-  let overflowTimeRunning = null;
-  let overflowMinutes = null;
-
-  if (predictedEndTime > endOfWorkTime) {
-    hasOverFlow = true;
-    const totalOverflowMinutes = (predictedEndTime - endOfWorkTime) / 60000;
-    timeRunningForPlanning = formatTimeToHHMMSS(endOfWorkTime);
-
-    let nextDay = new Date(currentDay);
-    nextDay.setDate(nextDay.getDate() + 1);
-    overflowDayStart = nextDay.toISOString().split("T")[0];
-
-    let overflowStartTime = parseTimeOnly(timeStart);
-    overflowStartTime.setDate(overflowStartTime.getDate() + 1);
-
-    let actualOverflowEndTime = new Date(overflowStartTime);
-    actualOverflowEndTime.setMinutes(
-      actualOverflowEndTime.getMinutes() + totalOverflowMinutes
+    console.log(
+      "⚠️ Giờ hiện tại < giờ bắt đầu ca → đặt lại về startOfWorkTime (giữ ngày)"
     );
+    // đặt lại giờ bằng startOfWorkTime nhưng vẫn đảm bảo ngày = currentDay
+    currentTime = setTimeOnDay(currentDay, startOfWorkTime);
+  }
 
-    overflowTimeRunning = formatTimeToHHMMSS(actualOverflowEndTime);
-    overflowMinutes = `${Math.round(totalOverflowMinutes)} phút`;
+  // Nếu đã vượt hết ca -> sang ngày tiếp theo: set ngày + set startTime trên ngày mới, rồi xử lý lại
+  if (currentTime >= endOfWorkTime) {
+    console.log(
+      "⚠️ Giờ hiện tại >= giờ kết thúc ca → chuyển sang ngày hôm sau"
+    );
+    const nextDay = addDays(currentDay, 1);
+    const nextStart = setTimeOnDay(nextDay, timeStart);
 
-    currentTime = new Date(actualOverflowEndTime);
-    currentDay = new Date(overflowDayStart);
-
-    await timeOverflowPlanning.destroy({
-      where: { planningBoxId },
+    // Đệ quy: tính lại planning trên ngày tiếp theo bắt đầu từ start của ca
+    return await calculateTimeForOnePlanning({
+      planning,
+      machine,
+      machineInfo,
+      currentTime: nextStart,
+      currentDay: nextDay,
+      timeStart,
+      totalTimeWorking,
       transaction,
     });
-    await timeOverflowPlanning.create(
-      {
-        planningBoxId,
-        overflowDayStart,
-        overflowTimeRunning,
-        sortPlanning,
-      },
-      { transaction }
+  }
+
+  let result = {
+    planningBoxId,
+    dayStart: currentDay.toISOString().split("T")[0],
+  };
+  let hasOverFlow = false;
+
+  if (runningPlan > 0) {
+    const tempEndTime = addMinutes(currentTime, productionMinutes);
+    const extraBreak = isDuringBreak(currentTime, tempEndTime);
+    console.log(`☕ extraBreak: ${extraBreak} phút`);
+
+    const predictedEndTime = addMinutes(
+      currentTime,
+      productionMinutes + extraBreak
     );
+    console.log(
+      `🔚 predictedEndTime: ${formatTimeToHHMMSS(predictedEndTime)} (ngày ${
+        currentDay.toISOString().split("T")[0]
+      })`
+    );
+
+    // default (nếu không overflow) — nhưng sẽ override nếu overflow
+    result.timeRunning = formatTimeToHHMMSS(predictedEndTime);
+
+    if (predictedEndTime > endOfWorkTime) {
+      console.log("🚨 Có overflow sang ngày hôm sau!");
+      hasOverFlow = true;
+
+      // timeRunning trong ngày này = giờ kết thúc ca
+      result.timeRunning = formatTimeToHHMMSS(endOfWorkTime);
+
+      const overflowData = await handleOverflow({
+        planningBoxId,
+        sortPlanning,
+        predictedEndTime,
+        endOfWorkTime,
+        timeStart,
+        currentDay,
+        transaction,
+      });
+      console.log(`📅 Overflow sang ngày: ${overflowData.overflowDayStart}`);
+      console.log(`⏰ Bắt đầu lại lúc: ${overflowData.overflowTimeRunning}`);
+
+      Object.assign(result, overflowData);
+
+      // SET currentDay và currentTime dựa trên overflowData (quan trọng: gán ngày trước, rồi gán time với ngày đó)
+      currentDay = new Date(overflowData.overflowDayStart);
+      const nextStartFromOverflow = setTimeOnDay(
+        currentDay,
+        overflowData.overflowTimeRunning
+      );
+      currentTime = nextStartFromOverflow;
+    } else {
+      result.timeRunning = formatTimeToHHMMSS(predictedEndTime);
+      currentTime = predictedEndTime;
+      console.log("✅ Hoàn tất trong ca làm việc, không overflow");
+
+      await timeOverflowPlanning.destroy({
+        where: { planningBoxId },
+        transaction,
+      });
+    }
   } else {
-    currentTime = new Date(predictedEndTime);
-    currentPlanningDayStart = currentDay.toISOString().split("T")[0];
-    timeRunningForPlanning = formatTimeToHHMMSS(currentTime);
+    // nếu runningPlan = 0 thì giữ currentTime = startOfWorkTime (cùng ngày)
+    currentTime = setTimeOnDay(currentDay, startOfWorkTime);
     await timeOverflowPlanning.destroy({
       where: { planningBoxId },
       transaction,
@@ -637,118 +633,111 @@ const calculateTimeForOnePlanning = async ({
   }
 
   await PlanningBox.update(
-    { hasOverFlow },
+    { hasOverFlow: hasOverFlow && runningPlan > 0 },
     { where: { planningBoxId }, transaction }
   );
 
-  // ✅ Update planningBoxMachineTime
-  const existingBoxTime = await planningBoxMachineTime.findOne({
-    where: {
-      planningBoxId: planningBoxId,
-      machine,
-    },
+  const wasteBoxValue = await calculateWasteBoxValue({
+    machine,
+    runningPlan,
+    Order,
+    isMayIn,
     transaction,
   });
-
-  //add sort planning here
-  if (existingBoxTime) {
-    await existingBoxTime.update(
-      {
-        dayStart: currentPlanningDayStart,
-        timeRunning: timeRunningForPlanning,
-        sortPlanning,
-      },
-      { transaction }
-    );
+  if (wasteBoxValue !== null) {
+    console.log(`♻️ wasteBox: ${Math.round(wasteBoxValue)}`);
+    result.wasteBox = Math.round(wasteBoxValue);
   }
 
-  // const logData = {
-  //   planningBoxId: planningBoxId,
-  //   timeStart,
-  //   // box: Order?.box?.dataValues,
-  //   totalTimeWorking,
-  //   timeToProduct: `${timeToProduct} phút`,
-  //   speed: `${speed} phút`,
-  //   productionTime: `${productionMinutes} phút`,
-  //   breakTime: `${extraBreak} phút`,
-  //   predictedEndTime: formatTimeToHHMMSS(predictedEndTime),
-  //   endOfWorkTime: formatTimeToHHMMSS(endOfWorkTime),
-  //   hasOverFlow,
-  // };
+  await planningBoxMachineTime.update(
+    { ...result, sortPlanning },
+    { where: { planningBoxId, machine }, transaction }
+  );
 
-  // if (hasOverFlow) {
-  //   Object.assign(logData, {
-  //     overflowDayStart,
-  //     overflowTimeRunning,
-  //     overflowMinutes,
-  //   });
-  // }
+  return { result, nextTime: currentTime, nextDay: currentDay };
+};
 
-  // console.log("🔍 Chi tiết tính toán đơn hàng:", logData);
+// Tính phút sản xuất (có log)
+const calculateProductionMinutes = ({
+  runningPlan,
+  Order,
+  machineInfo,
+  isMayIn,
+}) => {
+  if (runningPlan <= 0) return 0;
+  const numberChild = Order?.numberChild || 1;
+  const totalLength = runningPlan / numberChild;
+  const speed = totalLength / (machineInfo.speedOfMachine / 60);
 
-  //log result
+  console.log(`📏 numberChild: ${numberChild}`);
+  console.log(`🚀 speed tính theo phút: ${speed}`);
+
+  if (isMayIn && Order?.box?.dataValues) {
+    const { inMatTruoc = 0, inMatSau = 0 } = Order.box.dataValues;
+    console.log(`🎨 inMatTruoc: ${inMatTruoc}, inMatSau: ${inMatSau}`);
+    return Math.ceil(
+      machineInfo.timeToProduct * (inMatTruoc + inMatSau) + speed
+    );
+  }
+  return Math.ceil(machineInfo.timeToProduct + speed);
+};
+
+// Xử lý overflow
+const handleOverflow = async ({
+  planningBoxId,
+  sortPlanning,
+  predictedEndTime,
+  endOfWorkTime,
+  timeStart,
+  currentDay,
+  transaction,
+}) => {
+  const overflowMinutes = (predictedEndTime - endOfWorkTime) / 60000;
+  const overflowDayStart = formatDate(addDays(currentDay, 1));
+  const overflowTimeRunning = formatTimeToHHMMSS(
+    addMinutes(parseTimeOnly(timeStart), overflowMinutes)
+  );
+
+  await timeOverflowPlanning.destroy({ where: { planningBoxId }, transaction });
+  await timeOverflowPlanning.create(
+    { planningBoxId, overflowDayStart, overflowTimeRunning, sortPlanning },
+    { transaction }
+  );
+
   return {
-    result: {
-      planningBoxId: planningBoxId,
-      dayStart: currentPlanningDayStart,
-      timeRunning: timeRunningForPlanning,
-      ...(hasOverFlow && {
-        overflowDayStart,
-        overflowTimeRunning,
-        overflowMinutes,
-      }),
-    },
-    nextTime: currentTime,
-    nextDay: currentDay,
+    overflowDayStart,
+    overflowTimeRunning,
+    overflowMinutes: `${Math.round(overflowMinutes)} phút`,
   };
 };
 
-const parseTimeOnly = (timeStr) => {
-  const [h, min] = timeStr.split(":").map(Number);
-  const now = new Date();
-  now.setHours(h);
-  now.setMinutes(min);
-  now.setSeconds(0);
-  now.setMilliseconds(0);
-  return now;
-};
+// Tính waste
+const calculateWasteBoxValue = async ({
+  machine,
+  runningPlan,
+  Order,
+  isMayIn,
+  transaction,
+}) => {
+  if (runningPlan <= 0) return null;
+  const wasteNorm = await WasteNormBox.findOne({
+    where: { machineName: machine },
+    transaction,
+  });
+  if (!wasteNorm) return null;
 
-const formatTimeToHHMMSS = (date) => {
-  const pad = (n) => n.toString().padStart(2, "0");
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(
-    date.getSeconds()
-  )}`;
-};
-
-const isDuringBreak = (start, end) => {
-  const breakTimes = [
-    { start: "11:30", end: "12:00", duration: 30 },
-    { start: "17:00", end: "17:30", duration: 30 },
-    { start: "02:00", end: "02:45", duration: 45 },
-  ];
-
-  let totalBreak = 0;
-
-  for (const brk of breakTimes) {
-    const [bStartHour, bStartMin] = brk.start.split(":").map(Number);
-    const [bEndHour, bEndMin] = brk.end.split(":").map(Number);
-
-    let bStart = new Date(start);
-    let bEnd = new Date(start);
-
-    bStart.setHours(bStartHour, bStartMin, 0, 0);
-    bEnd.setHours(bEndHour, bEndMin, 0, 0);
-
-    // Nếu giờ nghỉ qua đêm (VD: 02:00 – 02:45)
-    if (bEnd <= bStart) {
-      bEnd.setDate(bEnd.getDate() + 1);
-    }
-
-    // Nếu đơn hàng chạm vào break → cộng full thời lượng
-    if (end > bStart && start < bEnd) {
-      totalBreak += brk.duration;
-    }
+  const {
+    colorNumberOnProduct = 0,
+    paperNumberOnProduct = 0,
+    totalLossOnTotalQty = 0,
+  } = wasteNorm;
+  if (isMayIn && Order?.box?.dataValues) {
+    const { inMatTruoc = 0, inMatSau = 0 } = Order.box.dataValues;
+    return (
+      colorNumberOnProduct * inMatTruoc +
+      colorNumberOnProduct * inMatSau +
+      runningPlan * (totalLossOnTotalQty / 100)
+    );
   }
-
-  return totalBreak;
+  return paperNumberOnProduct + runningPlan * (totalLossOnTotalQty / 100);
 };
