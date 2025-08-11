@@ -4,7 +4,7 @@ import timeOverflowPlanning from "../../../models/planning/timeOverFlowPlanning.
 import Customer from "../../../models/customer/customer.js";
 import Box from "../../../models/order/box.js";
 import Order from "../../../models/order/order.js";
-import { Op, where } from "sequelize";
+import { Op } from "sequelize";
 import PlanningBox from "../../../models/planning/planningBox.js";
 import planningBoxMachineTime from "../../../models/planning/planningBoxMachineTime.js";
 
@@ -89,12 +89,11 @@ export const getPlanningPaper = async (req, res) => {
 
     const allPlannings = [];
 
-    planning.forEach((p) => {
+    planning.forEach((planning) => {
       const original = {
-        ...p.toJSON(),
-        hasOverflow: false,
-        timeRunning: p.timeRunning,
-        dayStart: p.dayStart,
+        ...planning.toJSON(),
+        timeRunning: planning.timeRunning,
+        dayStart: planning.dayStart,
       };
 
       // Chỉ push nếu dayStart khác null
@@ -102,13 +101,19 @@ export const getPlanningPaper = async (req, res) => {
         allPlannings.push(original);
       }
 
-      if (p.timeOverFlow && p.timeOverFlow.overflowDayStart !== null) {
-        allPlannings.push({
+      if (planning.timeOverFlow) {
+        const overflowDayStart = planning.timeOverFlow.overflowDayStart;
+        const overflowTime = planning.timeOverFlow.overflowTimeRunning;
+        const dayCompletedOverflow = planning.timeOverFlow.overflowDayCompleted;
+
+        const overflowPlanning = {
           ...original,
-          hasOverflow: true,
-          timeRunning: p.timeOverFlow.overflowTimeRunning,
-          dayStart: p.timeOverFlow.overflowDayStart,
-        });
+          dayStart: overflowDayStart,
+          dayCompleted: dayCompletedOverflow,
+          timeRunning: overflowTime,
+        };
+
+        allPlannings.push(overflowPlanning);
       }
     });
 
@@ -167,28 +172,62 @@ export const addReportPaper = async (req, res) => {
     const newQtyWasteNorm =
       Number(planning.qtyWasteNorm || 0) + Number(qtyWasteNorm || 0);
 
-    // 3. Cập nhật kế hoạch với số liệu mới
-    await planning.update(
-      {
-        qtyProduced: newQtyProduced,
-        qtyWasteNorm: newQtyWasteNorm,
-        dayCompleted,
-        ...otherData,
-      },
-      { transaction }
-    );
+    const isOverflowReport =
+      planning.hasOverFlow &&
+      planning.timeOverFlow &&
+      new Date(dayCompleted) >=
+        new Date(planning.timeOverFlow.overflowDayStart);
+
+    if (isOverflowReport) {
+      const overflow = await timeOverflowPlanning.findOne({
+        where: { planningId: planningId },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+
+      if (!overflow) {
+        await transaction.rollback();
+        return res.status(404).json({ message: "Overflow plan not found" });
+      }
+
+      overflow.overflowDayCompleted = dayCompleted;
+      overflow.save();
+
+      await planning.update(
+        {
+          qtyProduced: newQtyProduced,
+          qtyWasteNorm: newQtyWasteNorm,
+          ...otherData,
+        },
+        { transaction }
+      );
+
+      if (newQtyProduced >= planning.runningPlan) {
+        await planning.update({ status: "complete" }, { transaction });
+        await overflow.update({ status: "complete" }, { transaction });
+      } else {
+        await planning.update({ status: "lackQty" }, { transaction });
+      }
+    } else {
+      await planning.update(
+        {
+          qtyProduced: newQtyProduced,
+          qtyWasteNorm: newQtyWasteNorm,
+          dayCompleted: dayCompleted,
+          ...otherData,
+        },
+        { transaction }
+      );
+
+      if (newQtyProduced >= planning.runningPlan) {
+        await planning.update({ status: "complete" }, { transaction });
+      } else {
+        await planning.update({ status: "lackQty" }, { transaction });
+      }
+    }
 
     // 4. Kiểm tra đã đủ sản lượng chưa
     if (newQtyProduced >= planning.runningPlan) {
-      await planning.update({ status: "complete" }, { transaction });
-      //nếu có đơn tràn
-      if (planning.hasOverFlow) {
-        await timeOverflowPlanning.update(
-          { status: "complete" },
-          { where: { planningId }, transaction }
-        );
-      }
-
       //Cập nhật số lượng cho planning box
       const planningBox = await PlanningBox.findOne({ where: { planningId } });
       if (!planningBox) {
@@ -200,8 +239,6 @@ export const addReportPaper = async (req, res) => {
         { runningPlan: newQtyProduced },
         { transaction }
       );
-    } else {
-      await planning.update({ status: "lackQty" }, { transaction });
     }
 
     //5. Commit + clear cache
@@ -237,23 +274,6 @@ export const getPlanningBox = async (req, res) => {
       .json({ message: "Missing 'machine' query parameter" });
   }
 
-  // const machineMap = {
-  //   "máy in": "hasIn",
-  //   "máy bế": "hasBe",
-  //   "máy xả": "hasXa",
-  //   "máy dán": "hasDan",
-  //   "máy cắt khe": "hasCatKhe",
-  //   "máy cán màng": "hasCanMang",
-  //   "máy đóng ghim": "hasDongGhim",
-  // };
-
-  // const machineKey = machine.toLowerCase();
-  // const flagField = machineMap[machineKey];
-
-  // if (!flagField) {
-  //   return res.status(400).json({ message: "Invalid machine" });
-  // }
-
   try {
     const cacheKey = `planning:box:machine:${machine}`;
 
@@ -281,7 +301,6 @@ export const getPlanningBox = async (req, res) => {
     }
 
     const planning = await PlanningBox.findAll({
-      // where: { [flagField]: true },
       attributes: {
         exclude: [
           "hasIn",
@@ -296,7 +315,6 @@ export const getPlanningBox = async (req, res) => {
         ],
       },
       include: [
-        { model: timeOverflowPlanning, as: "timeOverFlow" },
         {
           model: planningBoxMachineTime,
           where: {
@@ -307,6 +325,7 @@ export const getPlanningBox = async (req, res) => {
           as: "boxTimes",
           attributes: { exclude: ["createdAt", "updatedAt"] },
         },
+        { model: timeOverflowPlanning, as: "timeOverFlow" },
         {
           model: Order,
           attributes: [
@@ -345,7 +364,6 @@ export const getPlanningBox = async (req, res) => {
     planning.forEach((planning) => {
       const original = {
         ...planning.toJSON(),
-        hasOverflow: false,
         dayStart: planning.dayStart,
       };
 
@@ -354,17 +372,25 @@ export const getPlanningBox = async (req, res) => {
         allPlannings.push(original);
       }
 
-      if (
-        planning.timeOverFlow &&
-        planning.timeOverFlow.overflowDayStart !== null
-      ) {
-        allPlannings.push({
+      if (planning.timeOverFlow) {
+        const overflowDayStart = planning.timeOverFlow.overflowDayStart;
+        const overflowTime = planning.timeOverFlow.overflowTimeRunning;
+        const dayCompletedOverflow = planning.timeOverFlow.overflowDayCompleted;
+
+        const overflowPlanning = {
           ...original,
-          hasOverflow: true,
-          dayStart: planning.timeOverFlow.overflowDayStart,
-          timeRunning: planning.timeOverFlow.overflowTimeRunning,
-        });
+          boxTimes: (planning.boxTimes || []).map((bt) => ({
+            ...bt.dataValues,
+            dayStart: overflowDayStart,
+            dayCompleted: dayCompletedOverflow,
+            timeRunning: overflowTime,
+          })),
+        };
+
+        allPlannings.push(overflowPlanning);
       }
+
+      return allPlannings;
     });
 
     await redisCache.set(cacheKey, JSON.stringify(allPlannings), "EX", 1800);
@@ -395,13 +421,25 @@ export const addReportBox = async (req, res) => {
     return res.status(400).json({ message: "Missing required fields" });
   }
 
-  const transaction = await PlanningBox.sequelize.transaction();
+  const transaction = await planningBoxMachineTime.sequelize.transaction();
   try {
     // 1. Tìm kế hoạch hiện tại
     const planning = await planningBoxMachineTime.findOne({
       where: { planningBoxId },
       include: [
-        { model: PlanningBox, attributes: ["runningPlan", "hasOverFlow"] },
+        {
+          model: PlanningBox,
+          attributes: ["runningPlan", "hasOverFlow"],
+          include: [
+            {
+              model: timeOverflowPlanning,
+              as: "timeOverFlow",
+              attributes: {
+                exclude: ["createdAt", "updatedAt"],
+              },
+            },
+          ],
+        },
       ],
       transaction,
       lock: transaction.LOCK.UPDATE,
@@ -430,31 +468,61 @@ export const addReportBox = async (req, res) => {
     const newQtyWasteNorm =
       Number(planning.rpWasteLoss || 0) + Number(rpWasteLoss || 0);
 
-    // 3. Cập nhật kế hoạch với số liệu mới
-    await planning.update(
-      {
-        dayCompleted,
-        qtyProduced: newQtyProduced,
-        rpWasteLoss: newQtyWasteNorm,
-        shiftManagement: shiftManagement,
-      },
-      { transaction }
-    );
-
-    // 4. Kiểm tra đã đủ sản lượng chưa
     const runningPlan = planning.PlanningBox.runningPlan || 0;
 
-    if (newQtyProduced >= runningPlan) {
-      await planning.update({ status: "complete" }, { transaction });
-      //nếu có đơn tràn
-      if (planning.hasOverFlow) {
-        await timeOverflowPlanning.update(
-          { status: "complete" },
-          { where: { planningBoxId }, transaction }
-        );
+    const isOverflowReport =
+      planning.PlanningBox.hasOverFlow &&
+      planning.PlanningBox.timeOverFlow &&
+      new Date(dayCompleted) >=
+        new Date(planning.PlanningBox.timeOverFlow.overflowDayStart);
+
+    if (isOverflowReport) {
+      const overflow = await timeOverflowPlanning.findOne({
+        where: { planningBoxId: planningBoxId },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+
+      if (!overflow) {
+        await transaction.rollback();
+        return res.status(404).json({ message: "Overflow plan not found" });
+      }
+
+      overflow.overflowDayCompleted = dayCompleted;
+      overflow.save();
+
+      await planning.update(
+        {
+          qtyProduced: newQtyProduced,
+          rpWasteLoss: newQtyWasteNorm,
+          shiftManagement: shiftManagement,
+        },
+        { transaction }
+      );
+
+      if (newQtyProduced >= runningPlan) {
+        await overflow.update({ status: "complete" }, { transaction });
+        await planning.update({ status: "complete" }, { transaction });
+      } else {
+        await planning.update({ status: "lackOfQty" }, { transaction });
       }
     } else {
-      await planning.update({ status: "lackOfQty" }, { transaction });
+      //Cập nhật kế hoạch với số liệu mới
+      await planning.update(
+        {
+          dayCompleted,
+          qtyProduced: newQtyProduced,
+          rpWasteLoss: newQtyWasteNorm,
+          shiftManagement: shiftManagement,
+        },
+        { transaction }
+      );
+
+      if (newQtyProduced >= runningPlan) {
+        await planning.update({ status: "complete" }, { transaction });
+      } else {
+        await planning.update({ status: "lackOfQty" }, { transaction });
+      }
     }
 
     // 5. Commit + clear cache

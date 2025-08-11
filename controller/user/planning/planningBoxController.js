@@ -61,7 +61,7 @@ export const getPlanningBox = async (req, res) => {
 };
 
 //sort planning
-const getPlanningByMachineSorted = async (machine, flagField) => {
+const getPlanningByMachineSorted = async (machine) => {
   const data = await PlanningBox.findAll({
     attributes: {
       exclude: [
@@ -79,11 +79,20 @@ const getPlanningByMachineSorted = async (machine, flagField) => {
     include: [
       {
         model: planningBoxMachineTime,
-        where: { machine, status: ["planning", "lackOfQty", "complete"] },
+        where: {
+          machine: machine,
+          status: ["planning", "lackOfQty", "complete"],
+        },
         as: "boxTimes",
         attributes: { exclude: ["createdAt", "updatedAt"] },
       },
-      { model: timeOverflowPlanning, as: "timeOverFlow" },
+      {
+        model: timeOverflowPlanning,
+        as: "timeOverFlow",
+        attributes: {
+          exclude: ["createdAt", "updatedAt"],
+        },
+      },
       {
         model: Order,
         attributes: [
@@ -121,7 +130,7 @@ const getPlanningByMachineSorted = async (machine, flagField) => {
     const boxTimes = planning.boxTimes || [];
 
     const hasValidStatus = boxTimes.some((bt) =>
-      ["planning", "lackQty", "waiting"].includes(bt.status)
+      ["planning", "lackOfQty"].includes(bt.status)
     );
 
     const hasRecentComplete = boxTimes.some((bt) => {
@@ -195,12 +204,14 @@ const getPlanningByMachineSorted = async (machine, flagField) => {
     if (planning.timeOverFlow) {
       const overflowDayStart = planning.timeOverFlow.overflowDayStart;
       const overflowTime = planning.timeOverFlow.overflowTimeRunning;
+      const dayCompletedOverflow = planning.timeOverFlow.overflowDayCompleted;
 
       const overflowPlanning = {
         ...original,
         boxTimes: (planning.boxTimes || []).map((bt) => ({
           ...bt.dataValues,
           dayStart: overflowDayStart,
+          dayCompleted: dayCompletedOverflow,
           timeRunning: overflowTime,
         })),
       };

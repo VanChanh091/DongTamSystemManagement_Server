@@ -360,8 +360,15 @@ const getPlanningByMachineSorted = async (machine) => {
 
     const data = await PlanningPaper.findAll({
       where: whereCondition,
+      attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
-        { model: timeOverflowPlanning, as: "timeOverFlow" },
+        {
+          model: timeOverflowPlanning,
+          as: "timeOverFlow",
+          attributes: {
+            exclude: ["createdAt", "updatedAt"],
+          },
+        },
         {
           model: Order,
           attributes: {
@@ -470,18 +477,25 @@ const getPlanningByMachineSorted = async (machine) => {
     sortedPlannings.forEach((planning) => {
       const original = {
         ...planning.toJSON(),
-        // hasOverflow: false,
         timeRunning: planning.timeRunning,
         dayStart: planning.dayStart,
       };
-      allPlannings.push(original);
+
+      // Chỉ push nếu dayStart khác null
+      if (original.dayStart !== null) {
+        allPlannings.push(original);
+      }
 
       if (planning.timeOverFlow) {
+        const overflowDayStart = planning.timeOverFlow.overflowDayStart;
+        const overflowTime = planning.timeOverFlow.overflowTimeRunning;
+        const dayCompletedOverflow = planning.timeOverFlow.overflowDayCompleted;
+
         allPlannings.push({
           ...original,
-          // hasOverflow: true,
-          timeRunning: planning.timeOverFlow.overflowTimeRunning,
-          dayStart: planning.timeOverFlow.overflowDayStart,
+          dayStart: overflowDayStart,
+          dayCompleted: dayCompletedOverflow,
+          timeRunning: overflowTime,
         });
       }
     });
