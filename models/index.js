@@ -66,6 +66,11 @@ PlanningBox.hasMany(PlanningBoxTime, {
   foreignKey: "planningBoxId",
   as: "boxTimes",
 });
+//created to get all box times
+PlanningBox.hasMany(PlanningBoxTime, {
+  foreignKey: "planningBoxId",
+  as: "allBoxTimes",
+});
 PlanningBoxTime.belongsTo(PlanningBox, { foreignKey: "planningBoxId" });
 
 //timeOverflowPlanning

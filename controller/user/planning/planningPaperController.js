@@ -184,14 +184,21 @@ export const planningOrder = async (req, res) => {
       }
 
       // 5.2) Tính hao phí, dao, tổng hao hụt
+      let knife = 0;
+      let haoPhi = 0;
+
       const bottom = flute.E + flute.B + flute.C + softLiner;
-      const haoPhi =
-        (runningPlan / numberChild) *
-        (bottom / wasteNorm.waveCrestSoft) *
-        (wasteNorm.lossInProcess / 100);
-      const knife =
-        (bottom / wasteNorm.waveCrestSoft) *
-        wasteNorm.lossInSheetingAndSlitting;
+      if (wasteNorm.waveCrestSoft > 0) {
+        haoPhi =
+          (runningPlan / numberChild) *
+          (bottom / wasteNorm.waveCrestSoft) *
+          (wasteNorm.lossInProcess / 100);
+      }
+      if (wasteNorm.waveCrestSoft > 0) {
+        knife =
+          (bottom / wasteNorm.waveCrestSoft) *
+          wasteNorm.lossInSheetingAndSlitting;
+      }
       const totalLoss = flute.E + flute.B + flute.C + haoPhi + knife + bottom;
 
       return {
@@ -355,7 +362,7 @@ const getPlanningByMachineSorted = async (machine) => {
   try {
     const whereCondition = {
       chooseMachine: machine,
-      status: ["planning", "lackQty", "complete"],
+      status: { [Op.in]: ["planning", "lackQty", "complete"] },
     };
 
     const data = await PlanningPaper.findAll({
@@ -473,6 +480,7 @@ const getPlanningByMachineSorted = async (machine) => {
 
     //Gộp overflow vào liền sau đơn gốc
     const allPlannings = [];
+    ``;
 
     sortedPlannings.forEach((planning) => {
       const original = {
@@ -480,11 +488,7 @@ const getPlanningByMachineSorted = async (machine) => {
         timeRunning: planning.timeRunning,
         dayStart: planning.dayStart,
       };
-
-      // Chỉ push nếu dayStart khác null
-      if (original.dayStart !== null) {
-        allPlannings.push(original);
-      }
+      allPlannings.push(original);
 
       if (planning.timeOverFlow) {
         const overflowDayStart = planning.timeOverFlow.overflowDayStart;
@@ -696,6 +700,15 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
     } else {
       // 2) Nếu là hoàn thành
       for (const planning of plannings) {
+        if (planning.status == "complete") {
+          return res
+            .status(404)
+            .json({
+              message:
+                "cannot accept lack qty for planning because planning have status complete",
+            });
+        }
+
         planning.status = newStatus;
 
         await planning.save();

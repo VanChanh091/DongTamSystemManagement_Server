@@ -87,6 +87,26 @@ const getPlanningByMachineSorted = async (machine) => {
         attributes: { exclude: ["createdAt", "updatedAt"] },
       },
       {
+        model: planningBoxMachineTime,
+        as: "allBoxTimes",
+        where: {
+          machine: { [Op.ne]: machine },
+        },
+        attributes: {
+          exclude: [
+            "timeRunning",
+            "dayStart",
+            "dayCompleted",
+            "wasteBox",
+            "shiftManagement",
+            "status",
+            "sortPlanning",
+            "createdAt",
+            "updatedAt",
+          ],
+        },
+      },
+      {
         model: timeOverflowPlanning,
         as: "timeOverFlow",
         attributes: {
@@ -104,6 +124,7 @@ const getPlanningByMachineSorted = async (machine) => {
           "dateRequestShipping",
           "customerId",
           "productId",
+          "quantityCustomer",
         ],
         include: [
           {

@@ -9,8 +9,15 @@ const redisCache = new Redis();
 
 //get all users
 export const getAllUsers = async (req, res) => {
+  const { refresh = false } = req.query;
   try {
     const cacheKey = "users:all";
+
+    //refresh cache
+    if (refresh === "true") {
+      await redisCache.del(cacheKey);
+    }
+
     const cachedData = await redisCache.get(cacheKey);
     if (cachedData) {
       console.log("✅ Data users from Redis");
@@ -189,6 +196,8 @@ export const updateUserRole = async (req, res) => {
     const sanitizedData = user.toJSON();
     delete sanitizedData.password;
 
+    await redisCache.del("users:all");
+
     res.status(200).json({
       message: "User role updated successfully",
       data: sanitizedData,
@@ -244,6 +253,8 @@ export const updatePermissions = async (req, res) => {
     user.permissions = permissions;
     await user.save();
 
+    await redisCache.del("users:all");
+
     res.status(200).json({
       message: "Permissions updated successfully",
       userId: user.userId,
@@ -274,6 +285,8 @@ export const deleteUserById = async (req, res) => {
         await cloudinary.uploader.destroy(publicId);
       }
     }
+
+    await redisCache.del("users:all");
 
     res.status(200).json({
       message: "User deleted successfully",
