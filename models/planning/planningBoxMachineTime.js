@@ -9,7 +9,16 @@ const PlanningBoxTime = sequelize.define("PlanningBoxTime", {
   },
   timeRunning: { type: DataTypes.TIME },
   dayStart: { type: DataTypes.DATE },
-  dayCompleted: { type: DataTypes.DATE },
+  dayCompleted: {
+    type: DataTypes.DATE,
+    get() {
+      const rawValue = this.getDataValue("dayCompleted");
+      if (!rawValue) return null;
+      return new Date(
+        rawValue.getTime() - rawValue.getTimezoneOffset() * 60000
+      ).toISOString();
+    },
+  },
   wasteBox: { type: DataTypes.DOUBLE },
   rpWasteLoss: { type: DataTypes.DOUBLE },
   qtyProduced: { type: DataTypes.INTEGER },

@@ -10,7 +10,16 @@ const PlanningPaper = sequelize.define(
       autoIncrement: true,
     },
     dayStart: { type: DataTypes.DATE },
-    dayCompleted: { type: DataTypes.DATE },
+    dayCompleted: {
+      type: DataTypes.DATE,
+      get() {
+        const rawValue = this.getDataValue("dayCompleted");
+        if (!rawValue) return null;
+        return new Date(
+          rawValue.getTime() - rawValue.getTimezoneOffset() * 60000
+        ).toISOString();
+      },
+    },
     timeRunning: { type: DataTypes.TIME },
     dayReplace: { type: DataTypes.STRING },
     matEReplace: { type: DataTypes.STRING },

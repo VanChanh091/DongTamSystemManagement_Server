@@ -7,6 +7,7 @@ const sequelize = new Sequelize("DongTam", "root", process.env.PASSWORD, {
   host: "localhost",
   dialect: "mysql",
   port: 3306,
+  timezone: "+07:00",
   logging: false,
 });
 

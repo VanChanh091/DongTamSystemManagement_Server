@@ -190,7 +190,7 @@ export const addReportPaper = async (req, res) => {
         return res.status(404).json({ message: "Overflow plan not found" });
       }
 
-      overflow.overflowDayCompleted = dayCompleted;
+      overflow.overflowDayCompleted = new Date(dayCompleted);
       overflow.save();
 
       await planning.update(
@@ -213,7 +213,7 @@ export const addReportPaper = async (req, res) => {
         {
           qtyProduced: newQtyProduced,
           qtyWasteNorm: newQtyWasteNorm,
-          dayCompleted: dayCompleted,
+          dayCompleted: new Date(dayCompleted),
           ...otherData,
         },
         { transaction }
@@ -488,7 +488,7 @@ export const addReportBox = async (req, res) => {
         return res.status(404).json({ message: "Overflow plan not found" });
       }
 
-      overflow.overflowDayCompleted = dayCompleted;
+      overflow.overflowDayCompleted = new Date(dayCompleted);
       overflow.save();
 
       await planning.update(
@@ -510,7 +510,7 @@ export const addReportBox = async (req, res) => {
       //Cập nhật kế hoạch với số liệu mới
       await planning.update(
         {
-          dayCompleted,
+          dayCompleted: new Date(dayCompleted),
           qtyProduced: newQtyProduced,
           rpWasteLoss: newQtyWasteNorm,
           shiftManagement: shiftManagement,

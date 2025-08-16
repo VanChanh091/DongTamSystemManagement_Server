@@ -28,7 +28,6 @@ const redisCache = new Redis();
 //===============================PLANNING ORDER=====================================
 
 //getOrderAccept
-
 export const getOrderAccept = async (req, res) => {
   const { refresh = false } = req.query;
   try {
@@ -701,12 +700,10 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
       // 2) Nếu là hoàn thành
       for (const planning of plannings) {
         if (planning.status == "complete") {
-          return res
-            .status(404)
-            .json({
-              message:
-                "cannot accept lack qty for planning because planning have status complete",
-            });
+          return res.status(404).json({
+            message:
+              "cannot accept lack qty for planning because planning have status complete",
+          });
         }
 
         planning.status = newStatus;
