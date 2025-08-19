@@ -69,6 +69,7 @@ const getPlanningByMachineSorted = async (machine) => {
         "hasBe",
         "hasXa",
         "hasDan",
+        "hasCanLan",
         "hasCatKhe",
         "hasCanMang",
         "hasDongGhim",
@@ -109,9 +110,9 @@ const getPlanningByMachineSorted = async (machine) => {
       {
         model: timeOverflowPlanning,
         as: "timeOverFlow",
-        attributes: {
-          exclude: ["createdAt", "updatedAt"],
-        },
+        required: false,
+        where: { machine: machine },
+        attributes: { exclude: ["createdAt", "updatedAt"] },
       },
       {
         model: Order,
@@ -222,22 +223,19 @@ const getPlanningByMachineSorted = async (machine) => {
     };
     allPlannings.push(original);
 
-    if (planning.timeOverFlow) {
-      const overflowDayStart = planning.timeOverFlow.overflowDayStart;
-      const overflowTime = planning.timeOverFlow.overflowTimeRunning;
-      const dayCompletedOverflow = planning.timeOverFlow.overflowDayCompleted;
-
-      const overflowPlanning = {
-        ...original,
-        boxTimes: (planning.boxTimes || []).map((bt) => ({
-          ...bt.dataValues,
-          dayStart: overflowDayStart,
-          dayCompleted: dayCompletedOverflow,
-          timeRunning: overflowTime,
-        })),
-      };
-
-      allPlannings.push(overflowPlanning);
+    if (planning.timeOverFlow && planning.timeOverFlow.length > 0) {
+      planning.timeOverFlow.forEach((of) => {
+        const overflowPlanning = {
+          ...original,
+          boxTimes: (planning.boxTimes || []).map((bt) => ({
+            ...bt.dataValues,
+            dayStart: of.overflowDayStart,
+            dayCompleted: of.overflowDayCompleted,
+            timeRunning: of.overflowTimeRunning,
+          })),
+        };
+        allPlannings.push(overflowPlanning);
+      });
     }
   });
 
@@ -631,6 +629,7 @@ const calculateTimeForOnePlanning = async ({
       endOfWorkTime,
       timeStart,
       currentDay,
+      machine,
       transaction,
     });
     console.log(`📅 Overflow sang ngày: ${overflowData.overflowDayStart}`);
@@ -714,6 +713,7 @@ const handleOverflow = async ({
   endOfWorkTime,
   timeStart,
   currentDay,
+  machine,
   transaction,
 }) => {
   const overflowMinutes = (predictedEndTime - endOfWorkTime) / 60000;
@@ -724,7 +724,13 @@ const handleOverflow = async ({
 
   await timeOverflowPlanning.destroy({ where: { planningBoxId }, transaction });
   await timeOverflowPlanning.create(
-    { planningBoxId, overflowDayStart, overflowTimeRunning, sortPlanning },
+    {
+      planningBoxId,
+      machine,
+      overflowDayStart,
+      overflowTimeRunning,
+      sortPlanning,
+    },
     { transaction }
   );
 

@@ -25,6 +25,7 @@ const PlanningBoxTime = sequelize.define("PlanningBoxTime", {
   machine: {
     type: DataTypes.ENUM(
       "Máy In",
+      "Máy Cấn Lằn",
       "Máy Bế",
       "Máy Xả",
       "Máy Dán",

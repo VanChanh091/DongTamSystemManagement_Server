@@ -253,6 +253,7 @@ export const planningOrder = async (req, res) => {
         size: paperPlan.sizePaperPLaning,
 
         hasIn: !!(box.inMatTruoc || box.inMatSau),
+        hasCanLan: !!box.canLan,
         hasBe: !!box.be,
         hasXa: !!box.Xa,
         hasDan: !!(box.dan_1_Manh || box.dan_2_Manh),
@@ -268,6 +269,7 @@ export const planningOrder = async (req, res) => {
 
       const machineMap = {
         hasIn: "Máy In",
+        hasCanLan: "Máy Cấn Lằn",
         hasBe: "Máy Bế",
         hasXa: "Máy Xả",
         hasDan: "Máy Dán",
@@ -309,7 +311,7 @@ export const planningOrder = async (req, res) => {
       planning: [paperPlan, boxPlan].filter(Boolean),
     });
   } catch (error) {
-    console.error("planningOrder error:", error);
+    console.error("planningOrder error:", error.message);
     return res.status(500).json({ error: error.message });
   }
 };

@@ -12,6 +12,7 @@ const timeOverflowPlanning = sequelize.define(
     overflowDayStart: { type: DataTypes.DATE },
     overflowDayCompleted: { type: DataTypes.DATE },
     overflowTimeRunning: { type: DataTypes.TIME },
+    machine: { type: DataTypes.STRING },
     status: {
       type: DataTypes.ENUM("planning", "complete"),
       allowNull: false,

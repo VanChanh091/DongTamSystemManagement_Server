@@ -23,6 +23,7 @@ const PlanningBox = sequelize.define(
     size: { type: DataTypes.DOUBLE, allowNull: false },
 
     hasIn: { type: DataTypes.BOOLEAN, defaultValue: false },
+    hasCanLan: { type: DataTypes.BOOLEAN, defaultValue: false },
     hasBe: { type: DataTypes.BOOLEAN, defaultValue: false },
     hasXa: { type: DataTypes.BOOLEAN, defaultValue: false },
     hasDan: { type: DataTypes.BOOLEAN, defaultValue: false },

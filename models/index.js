@@ -85,7 +85,7 @@ timeOverflowPlanning.belongsTo(PlanningPaper, {
   constraints: false,
 });
 
-PlanningBox.hasOne(timeOverflowPlanning, {
+PlanningBox.hasMany(timeOverflowPlanning, {
   foreignKey: "planningBoxId",
   as: "timeOverFlow",
   onDelete: "CASCADE",
