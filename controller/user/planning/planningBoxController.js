@@ -104,6 +104,7 @@ const getPlanningByMachineSorted = async (machine) => {
             "sortPlanning",
             "createdAt",
             "updatedAt",
+            "rpWasteLoss",
           ],
         },
       },
@@ -357,18 +358,22 @@ export const acceptLackQtyBox = async (req, res) => {
       return res.status(404).json({ message: "No planning found" });
     }
 
-    if (newStatus == "complete") {
-      for (const planning of plannings) {
-        planning.status = newStatus;
+    for (const planning of plannings) {
+      if (planning.sortPlanning === null) {
+        return res.status(400).json({
+          message: "Cannot pause planning without sortPlanning",
+        });
+      }
 
-        await planning.save();
+      planning.status = newStatus;
 
-        if (planning.hasOverFlow) {
-          await timeOverflowPlanning.update(
-            { status: newStatus },
-            { where: { planningBoxId: planning.planningBoxId } }
-          );
-        }
+      await planning.save();
+
+      if (planning.hasOverFlow) {
+        await timeOverflowPlanning.update(
+          { status: newStatus },
+          { where: { planningBoxId: planning.planningBoxId } }
+        );
       }
     }
 

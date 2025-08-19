@@ -53,8 +53,15 @@ export const getPlanningPaper = async (req, res) => {
 
     const planning = await PlanningPaper.findAll({
       where: whereCondition,
+      attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
-        { model: timeOverflowPlanning, as: "timeOverFlow" },
+        {
+          model: timeOverflowPlanning,
+          as: "timeOverFlow",
+          attributes: {
+            exclude: ["createdAt", "updatedAt"],
+          },
+        },
         {
           model: Order,
           attributes: {
@@ -65,11 +72,13 @@ export const getPlanningPaper = async (req, res) => {
               "pricePaper",
               "discount",
               "profit",
-              "totalPrice",
               "vat",
               "rejectReason",
               "createdAt",
               "updatedAt",
+              "lengthPaperCustomer",
+              "paperSizeCustomer",
+              "quantityCustomer",
             ],
           },
           include: [
@@ -307,6 +316,7 @@ export const getPlanningBox = async (req, res) => {
           "hasBe",
           "hasXa",
           "hasDan",
+          "hasCanLan",
           "hasCatKhe",
           "hasCanMang",
           "hasDongGhim",
@@ -325,7 +335,34 @@ export const getPlanningBox = async (req, res) => {
           as: "boxTimes",
           attributes: { exclude: ["createdAt", "updatedAt"] },
         },
-        { model: timeOverflowPlanning, as: "timeOverFlow" },
+        {
+          model: planningBoxMachineTime,
+          as: "allBoxTimes",
+          where: {
+            machine: { [Op.ne]: machine },
+          },
+          attributes: {
+            exclude: [
+              "timeRunning",
+              "dayStart",
+              "dayCompleted",
+              "wasteBox",
+              "shiftManagement",
+              "status",
+              "sortPlanning",
+              "rpWasteLoss",
+              "createdAt",
+              "updatedAt",
+            ],
+          },
+        },
+        {
+          model: timeOverflowPlanning,
+          as: "timeOverFlow",
+          required: false,
+          where: { machine: machine },
+          attributes: { exclude: ["createdAt", "updatedAt"] },
+        },
         {
           model: Order,
           attributes: [
@@ -337,6 +374,7 @@ export const getPlanningBox = async (req, res) => {
             "dateRequestShipping",
             "customerId",
             "productId",
+            "quantityCustomer",
           ],
           include: [
             {
@@ -372,22 +410,19 @@ export const getPlanningBox = async (req, res) => {
         allPlannings.push(original);
       }
 
-      if (planning.timeOverFlow) {
-        const overflowDayStart = planning.timeOverFlow.overflowDayStart;
-        const overflowTime = planning.timeOverFlow.overflowTimeRunning;
-        const dayCompletedOverflow = planning.timeOverFlow.overflowDayCompleted;
-
-        const overflowPlanning = {
-          ...original,
-          boxTimes: (planning.boxTimes || []).map((bt) => ({
-            ...bt.dataValues,
-            dayStart: overflowDayStart,
-            dayCompleted: dayCompletedOverflow,
-            timeRunning: overflowTime,
-          })),
-        };
-
-        allPlannings.push(overflowPlanning);
+      if (planning.timeOverFlow && planning.timeOverFlow.length > 0) {
+        planning.timeOverFlow.forEach((of) => {
+          const overflowPlanning = {
+            ...original,
+            boxTimes: (planning.boxTimes || []).map((bt) => ({
+              ...bt.dataValues,
+              dayStart: of.overflowDayStart,
+              dayCompleted: of.overflowDayCompleted,
+              timeRunning: of.overflowTimeRunning,
+            })),
+          };
+          allPlannings.push(overflowPlanning);
+        });
       }
 
       return allPlannings;
@@ -407,7 +442,7 @@ export const getPlanningBox = async (req, res) => {
 
 //create report for machine
 export const addReportBox = async (req, res) => {
-  const { planningBoxId } = req.query;
+  const { planningBoxId, machine } = req.query;
   const { qtyProduced, rpWasteLoss, dayCompleted, shiftManagement } = req.body;
   const { role, permissions: userPermissions } = req.user;
 
@@ -425,7 +460,7 @@ export const addReportBox = async (req, res) => {
   try {
     // 1. Tìm kế hoạch hiện tại
     const planning = await planningBoxMachineTime.findOne({
-      where: { planningBoxId },
+      where: { planningBoxId, machine: machine },
       include: [
         {
           model: PlanningBox,
@@ -449,8 +484,6 @@ export const addReportBox = async (req, res) => {
       await transaction.rollback();
       return res.status(404).json({ message: "Planning not found" });
     }
-
-    const machine = planning.machine;
 
     //check permission for machine
     if (role !== "admin" && role !== "manager") {
@@ -533,6 +566,7 @@ export const addReportBox = async (req, res) => {
       message: "Add Report Production successfully",
       data: {
         planningBoxId,
+        machine,
         qtyProduced: newQtyProduced,
         qtyWasteNorm: newQtyWasteNorm,
         dayCompleted,

@@ -692,7 +692,7 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
             await planningBoxMachineTime.destroy({
               where: { planningBoxId: box.planningBoxId },
             });
-            await box.destroy(); // hoặc PlanningBox.destroy({ where: { planningId } }) sau khi xoá planningBoxMachineTime
+            await box.destroy();
           }
 
           await planning.destroy();
@@ -701,10 +701,9 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
     } else {
       // 2) Nếu là hoàn thành
       for (const planning of plannings) {
-        if (planning.status == "complete") {
-          return res.status(404).json({
-            message:
-              "cannot accept lack qty for planning because planning have status complete",
+        if (planning.sortPlanning === null) {
+          return res.status(400).json({
+            message: "Cannot pause planning without sortPlanning",
           });
         }
 
