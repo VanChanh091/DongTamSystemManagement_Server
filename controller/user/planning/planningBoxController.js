@@ -143,7 +143,7 @@ const getPlanningByMachineSorted = async (machine) => {
     ],
   });
 
-  // 2. Lọc đơn có trạng thái hợp lệ
+  //lọc đơn complete trong 3 ngày
   const truncateToDate = (date) =>
     new Date(date.getFullYear(), date.getMonth(), date.getDate());
 

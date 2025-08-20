@@ -413,7 +413,6 @@ const getPlanningByMachineSorted = async (machine) => {
     //lọc đơn complete trong 3 ngày
     const truncateToDate = (date) =>
       new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
     const now = truncateToDate(new Date());
 
     const validData = data.filter((planning) => {
@@ -481,8 +480,6 @@ const getPlanningByMachineSorted = async (machine) => {
 
     //Gộp overflow vào liền sau đơn gốc
     const allPlannings = [];
-    ``;
-
     sortedPlannings.forEach((planning) => {
       const original = {
         ...planning.toJSON(),

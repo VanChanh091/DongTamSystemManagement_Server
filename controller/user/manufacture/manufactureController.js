@@ -47,7 +47,7 @@ export const getPlanningPaper = async (req, res) => {
 
     const whereCondition = {
       chooseMachine: machine,
-      status: ["planning", "lackQty"],
+      status: { [Op.in]: ["planning", "lackQty", "complete"] },
       dayStart: { [Op.ne]: null },
     };
 
@@ -96,9 +96,27 @@ export const getPlanningPaper = async (req, res) => {
       order: [["sortPlanning", "ASC"]],
     });
 
-    const allPlannings = [];
+    //lọc đơn complete trong 1 ngày
+    const truncateToDate = (date) =>
+      new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const now = truncateToDate(new Date());
 
-    planning.forEach((planning) => {
+    const validData = planning.filter((item) => {
+      if (["planning", "lackQty"].includes(item.status)) return true;
+
+      if (item.status === "complete") {
+        const dayCompleted = new Date(item.dayCompleted);
+        if (isNaN(dayCompleted)) return false;
+
+        const expiredDate = truncateToDate(new Date(dayCompleted));
+        expiredDate.setDate(expiredDate.getDate() + 1);
+
+        return expiredDate >= now;
+      }
+    });
+
+    const allPlannings = [];
+    validData.forEach((planning) => {
       const original = {
         ...planning.toJSON(),
         timeRunning: planning.timeRunning,
@@ -329,7 +347,7 @@ export const getPlanningBox = async (req, res) => {
           model: planningBoxMachineTime,
           where: {
             machine: machine,
-            status: ["planning", "lackOfQty"],
+            status: { [Op.in]: ["planning", "lackQty", "complete"] },
             dayStart: { [Op.ne]: null },
           },
           as: "boxTimes",
@@ -398,8 +416,37 @@ export const getPlanningBox = async (req, res) => {
       ],
     });
 
+    //lọc đơn complete trong 1 ngày
+    const truncateToDate = (date) =>
+      new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+    const now = truncateToDate(new Date());
+
+    const validData = planning.filter((planning) => {
+      const boxTimes = planning.boxTimes || [];
+
+      const hasValidStatus = boxTimes.some((bt) =>
+        ["planning", "lackOfQty"].includes(bt.status)
+      );
+
+      const hasRecentComplete = boxTimes.some((bt) => {
+        if (bt.status !== "complete" || !bt.dayCompleted) return false;
+
+        const dayCompleted = new Date(bt.dayCompleted);
+        if (isNaN(dayCompleted)) return false;
+
+        const expiredDate = truncateToDate(dayCompleted);
+        expiredDate.setDate(expiredDate.getDate() + 3);
+
+        return expiredDate >= now;
+      });
+
+      return hasValidStatus || hasRecentComplete;
+    });
+
     const allPlannings = [];
-    planning.forEach((planning) => {
+
+    validData.forEach((planning) => {
       const original = {
         ...planning.toJSON(),
         dayStart: planning.dayStart,
