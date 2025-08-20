@@ -214,19 +214,19 @@ export const updatePermissions = async (req, res) => {
   const { permissions } = req.body;
 
   const validPermissions = [
-    "all",
-    "manager",
+    // "all",
+    // "manager",
     "sale",
     "plan",
     "HR",
     "accountant",
     "design",
     "production",
-    "Máy 1350",
-    "Máy 1900",
-    "Máy 2 Lớp",
-    "Máy Quấn Cuồn",
-
+    "machine1350",
+    "machine1900",
+    "machine2Layer",
+    "MachineRollPaper",
+    "step2Production",
     "read",
   ];
 

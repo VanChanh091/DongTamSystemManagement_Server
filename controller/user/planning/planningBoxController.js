@@ -9,6 +9,7 @@ import planningBoxMachineTime from "../../../models/planning/planningBoxMachineT
 import MachineBox from "../../../models/admin/machineBox.js";
 import WasteNormBox from "../../../models/admin/wasteNormBox.js";
 import {
+  getPlanningBoxByField,
   parseTimeOnly,
   formatTimeToHHMMSS,
   addMinutes,
@@ -244,99 +245,67 @@ const getPlanningByMachineSorted = async (machine) => {
 };
 
 //get by orderId
-// export const getPlanningByOrderId = async (req, res) => {
-//   const { orderId, machine } = req.query;
+export const getPlanningBoxByOrderId = async (req, res) => {
+  const { orderId, machine } = req.query;
 
-//   if (!machine || !orderId) {
-//     return res.status(400).json({ message: "Thiếu machine hoặc orderId" });
-//   }
+  if (!machine || !orderId) {
+    return res.status(400).json({ message: "Thiếu machine hoặc orderId" });
+  }
 
-//   try {
-//     const cacheKey = `planning:machine:${machine}`;
+  try {
+    const cacheKey = `planning:box:machine:${machine}`;
 
-//     const cachedData = await redisCache.get(cacheKey);
-//     if (cachedData) {
-//       console.log("✅ Data planning from Redis");
-//       const parsedData = JSON.parse(cachedData);
+    const cachedData = await redisCache.get(cacheKey);
+    if (cachedData) {
+      console.log("✅ Data planning from Redis");
+      const parsedData = JSON.parse(cachedData);
 
-//       // Tìm kiếm tương đối trong cache
-//       const filteredData = parsedData.filter((item) =>
-//         item.orderId.toLowerCase().includes(orderId.toLowerCase())
-//       );
+      // Tìm kiếm tương đối trong cache
+      const filteredData = parsedData.filter((item) => {
+        return item.orderId?.toLowerCase().includes(orderId.toLowerCase());
+      });
 
-//       return res.json({
-//         message: `Get planning by orderId from cache`,
-//         data: filteredData,
-//       });
-//     }
+      return res.json({
+        message: `Get planning by orderId from cache`,
+        data: filteredData,
+      });
+    }
 
-//     const planning = await Planning.findAll({
-//       where: {
-//         orderId: {
-//           [Op.like]: `%${orderId}%`,
-//         },
-//       },
-//       include: [
-//         {
-//           model: Order,
-//           attributes: {
-//             exclude: [
-//               "dayReceiveOrder",
-//               "acreage",
-//               "dvt",
-//               "price",
-//               "pricePaper",
-//               "discount",
-//               "profit",
-//               "totalPrice",
-//               "vat",
-//               "rejectReason",
-//               "createdAt",
-//               "updatedAt",
-//             ],
-//           },
-//           include: [
-//             {
-//               model: Customer,
-//               attributes: ["customerName", "companyName"],
-//             },
-//             {
-//               model: Box,
-//               as: "box",
-//               attributes: {
-//                 exclude: ["createdAt", "updatedAt"],
-//               },
-//             },
-//           ],
-//         },
-//       ],
-//     });
+    const planning = await PlanningBox.findAll({
+      where: {
+        orderId: {
+          [Op.like]: `%${orderId}%`,
+        },
+      },
+    });
 
-//     if (!planning || planning.length === 0) {
-//       return res.status(404).json({
-//         message: `Không tìm thấy kế hoạch với orderId chứa: ${orderId}`,
-//       });
-//     }
+    if (!planning || planning.length === 0) {
+      return res.status(404).json({
+        message: `Không tìm thấy kế hoạch với orderId chứa: ${orderId}`,
+      });
+    }
 
-//     return res.status(200).json({
-//       message: "Get planning by orderId from db",
-//       data: planning,
-//     });
-//   } catch (error) {
-//     console.error("❌ Lỗi khi tìm orderId:", error.message);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
+    return res.status(200).json({
+      message: "Get planning by orderId from db",
+      data: planning,
+    });
+  } catch (error) {
+    console.error("❌ Lỗi khi tìm orderId:", error.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
-// //get by customer name
-// export const getPlanningByCustomerName = async (req, res) =>
-//   getPlanningByField(req, res, "customerName");
+//get by customer name
+export const getPlanningBoxByCusName = async (req, res) =>
+  getPlanningBoxByField(req, res, "customerName");
 
-// //get by flute
-// export const getPlanningByFlute = async (req, res) =>
-//   getPlanningByField(req, res, "flute");
+//get by flute
+export const getPlanningBoxByFlute = async (req, res) =>
+  getPlanningBoxByField(req, res, "flute");
 
-//pause planning
+//get by ghepKho
+export const getPlanningBoxByQcBox = async (req, res) =>
+  getPlanningBoxByField(req, res, "QC_box");
 
 export const acceptLackQtyBox = async (req, res) => {
   const { planningBoxIds, newStatus, machine } = req.body;

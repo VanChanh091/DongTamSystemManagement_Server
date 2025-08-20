@@ -181,11 +181,19 @@ export const addReportPaper = async (req, res) => {
       return res.status(404).json({ message: "Planning not found" });
     }
 
+    const machineLabels = {
+      "Máy 1350": "machine1350",
+      "Máy 1900": "machine1900",
+      "Máy 2 Lớp": "machine2Layer",
+      "Máy Quấn Cuồn": "MachineRollPaper",
+    };
+
     const machine = planning.chooseMachine;
+    const machineLabel = machineLabels[machine];
 
     //check permission for machine
     if (role !== "admin" && role !== "manager") {
-      if (!userPermissions.includes(machine)) {
+      if (!userPermissions.includes(machineLabel)) {
         await transaction.rollback();
         return res.status(403).json({
           message: `Access denied: You don't have permission to report for machine ${machine}`,
@@ -436,7 +444,7 @@ export const getPlanningBox = async (req, res) => {
         if (isNaN(dayCompleted)) return false;
 
         const expiredDate = truncateToDate(dayCompleted);
-        expiredDate.setDate(expiredDate.getDate() + 3);
+        expiredDate.setDate(expiredDate.getDate() + 1);
 
         return expiredDate >= now;
       });

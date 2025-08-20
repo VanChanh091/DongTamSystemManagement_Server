@@ -16,6 +16,10 @@ import {
 import {
   acceptLackQtyBox,
   getPlanningBox,
+  getPlanningBoxByCusName,
+  getPlanningBoxByFlute,
+  getPlanningBoxByOrderId,
+  getPlanningBoxByQcBox,
   updateIndex_TimeRunningBox,
 } from "../../controller/user/planning/planningBoxController.js";
 
@@ -100,6 +104,32 @@ router.put(
   authenticate,
   authorizeAnyPermission(["plan"]),
   acceptLackQtyBox
+);
+
+//get properties of planning box
+router.get(
+  "/getOrderIdBox",
+  authenticate,
+  authorizeAnyPermission(["plan"]),
+  getPlanningBoxByOrderId
+);
+router.get(
+  "/getCusNameBox",
+  authenticate,
+  authorizeAnyPermission(["plan"]),
+  getPlanningBoxByCusName
+);
+router.get(
+  "/getFluteBox",
+  authenticate,
+  authorizeAnyPermission(["plan"]),
+  getPlanningBoxByFlute
+);
+router.get(
+  "/getQcBox",
+  authenticate,
+  authorizeAnyPermission(["plan"]),
+  getPlanningBoxByQcBox
 );
 
 export default router;

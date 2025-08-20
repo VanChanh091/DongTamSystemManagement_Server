@@ -6,16 +6,7 @@ import Product from "../../../models/product/product.js";
 import Box from "../../../models/order/box.js";
 import PlanningPaper from "../../../models/planning/planningPaper.js";
 import { deleteKeysByPattern } from "../../../utils/helper/adminHelper.js";
-import {
-  getPlanningByField,
-  // parseTimeOnly,
-  // formatTimeToHHMMSS,
-  // addMinutes,
-  // addDays,
-  // formatDate,
-  // getWorkShift,
-  // isDuringBreak,
-} from "../../../utils/helper/planningHelper.js";
+import { getPlanningPaperByField } from "../../../utils/helper/planningHelper.js";
 import MachinePaper from "../../../models/admin/machinePaper.js";
 import timeOverflowPlanning from "../../../models/planning/timeOverFlowPlanning.js";
 import WasteNormPaper from "../../../models/admin/wasteNormPaper.js";
@@ -636,15 +627,15 @@ export const getPlanningByOrderId = async (req, res) => {
 
 //get by customer name
 export const getPlanningByCustomerName = async (req, res) =>
-  getPlanningByField(req, res, "customerName");
+  getPlanningPaperByField(req, res, "customerName");
 
 //get by flute
 export const getPlanningByFlute = async (req, res) =>
-  getPlanningByField(req, res, "flute");
+  getPlanningPaperByField(req, res, "flute");
 
 //get by ghepKho
 export const getPlanningByGhepKho = async (req, res) =>
-  getPlanningByField(req, res, "ghepKho");
+  getPlanningPaperByField(req, res, "ghepKho");
 
 //pause planning
 export const pauseOrAcceptLackQtyPLanning = async (req, res) => {

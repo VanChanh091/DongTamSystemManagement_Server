@@ -15,7 +15,12 @@ router.get("/planningPaper", authenticate, getPlanningPaper);
 router.post(
   "/reportPaper",
   authenticate,
-  authorizeAnyPermission(["production"]),
+  authorizeAnyPermission([
+    "machine1350",
+    "machine1900",
+    "machine2Layer",
+    "MachineRollPaper",
+  ]),
   addReportPaper
 );
 
@@ -24,7 +29,7 @@ router.get("/planningBox", authenticate, getPlanningBox);
 router.post(
   "/reportBox",
   authenticate,
-  authorizeAnyPermission(["production"]),
+  authorizeAnyPermission(["step2Production"]),
   addReportBox
 );
 

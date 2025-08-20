@@ -38,7 +38,7 @@ export const getAllProduct = async (req, res) => {
     const cacheKey = "products:all";
 
     if (refresh == "true") {
-      await redisClient.del(cacheKey);
+      await redisCache.del(cacheKey);
     }
 
     const cachedData = await redisCache.get(cacheKey);
