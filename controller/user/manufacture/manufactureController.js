@@ -540,16 +540,6 @@ export const addReportBox = async (req, res) => {
       return res.status(404).json({ message: "Planning not found" });
     }
 
-    //check permission for machine
-    if (role !== "admin" && role !== "manager") {
-      if (!userPermissions.includes(machine)) {
-        await transaction.rollback();
-        return res.status(403).json({
-          message: `Access denied: You don't have permission to report for machine ${machine}`,
-        });
-      }
-    }
-
     // 2. Cộng dồn số lượng mới vào số đã có
     const newQtyProduced =
       Number(planning.qtyProduced || 0) + Number(qtyProduced || 0);
