@@ -20,11 +20,12 @@ const redisCache = new Redis();
 //get order status accept and planning
 export const getOrderAcceptAndPlanning = async (req, res) => {
   try {
+    const { userId } = req.user;
     const { page, pageSize, refresh = false } = req.query;
     const currentPage = Number(page);
     const currentPageSize = Number(pageSize);
 
-    const cacheKey = `orders:userId:status:accept_planning:page:${currentPage}`;
+    const cacheKey = `orders:${userId}:accept_planning:page:${currentPage}`;
 
     if (refresh == "true") {
       await redisCache.del(cacheKey);
@@ -34,11 +35,13 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
     const cachedData = await redisCache.get(cacheKey);
     if (cachedData) {
       const parsed = JSON.parse(cachedData);
+
       const filteredData = await cachedStatus(
         cacheKey,
         redisCache,
         "accept",
-        "planning"
+        "planning",
+        userId
       );
 
       if (filteredData) {
@@ -63,12 +66,9 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
 
     //find data from db
     const data = await Order.findAll({
-      where: { status: { [Op.in]: ["accept", "planning"] } },
+      where: { userId, status: { [Op.in]: ["accept", "planning"] } },
       include: [
-        {
-          model: Customer,
-          attributes: ["customerName", "companyName"],
-        },
+        { model: Customer, attributes: ["customerName", "companyName"] },
         {
           model: Product,
           attributes: ["typeProduct", "productName", "maKhuon"],
@@ -76,9 +76,7 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
         {
           model: Box,
           as: "box",
-          attributes: {
-            exclude: ["createdAt", "updatedAt"],
-          },
+          attributes: { exclude: ["createdAt", "updatedAt"] },
         },
       ],
       order: [["createdAt", "DESC"]],
@@ -114,13 +112,16 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
 
 //get by customer name
 export const getOrderByCustomerName = async (req, res) => {
+  const { userId } = req.user;
   const { name, page, pageSize } = req.query;
 
   const result = await filterOrdersFromCache({
+    userId,
     keyword: name,
     getFieldValue: (order) => order?.Customer?.customerName,
     page,
     pageSize,
+    cacheKeyPrefix: `orders:${userId}:accept_planning`,
     message: "Get orders by customer name from filtered cache",
   });
 
@@ -129,13 +130,16 @@ export const getOrderByCustomerName = async (req, res) => {
 
 //get by product name
 export const getOrderByProductName = async (req, res) => {
+  const { userId } = req.user;
   const { productName, page, pageSize } = req.query;
 
   const result = await filterOrdersFromCache({
+    userId,
     keyword: productName,
     getFieldValue: (order) => order?.Product?.productName,
     page,
     pageSize,
+    cacheKeyPrefix: `orders:${userId}:accept_planning`,
     message: "Get orders by product name from filtered cache",
   });
 
@@ -144,13 +148,16 @@ export const getOrderByProductName = async (req, res) => {
 
 //get by QC box
 export const getOrderByQcBox = async (req, res) => {
+  const { userId } = req.user;
   const { QcBox, page, pageSize } = req.query;
 
   const result = await filterOrdersFromCache({
+    userId,
     keyword: QcBox,
     getFieldValue: (order) => order?.QC_box,
     page,
     pageSize,
+    cacheKeyPrefix: `orders:${userId}:accept_planning`,
     message: "Get orders by QC box from filtered cache",
   });
 
@@ -159,17 +166,26 @@ export const getOrderByQcBox = async (req, res) => {
 
 //get by price
 export const getOrderByPrice = async (req, res) => {
+  const { userId } = req.user;
   const { price, page, pageSize } = req.query;
   const currentPage = Number(page);
   const currentPageSize = Number(pageSize);
   const targetPrice = parseFloat(price);
 
-  const allDataCacheKey = `orders:userId:status:accept_planning:all`;
+  const allDataCacheKey = `orders:${userId}:accept_planning:all`;
 
   let allOrders = await redisCache.get(allDataCacheKey);
+  let fromCache = true;
+
   if (!allOrders) {
+    fromCache = false;
+    // Query DB có điều kiện lọc price luôn
     allOrders = await Order.findAll({
-      where: { status: { [Op.in]: ["accept", "planning"] } },
+      where: {
+        userId,
+        status: { [Op.in]: ["accept", "planning"] },
+        price: targetPrice, // lọc trực tiếp ở DB
+      },
       include: [
         { model: Customer, attributes: ["customerName", "companyName"] },
         {
@@ -179,39 +195,53 @@ export const getOrderByPrice = async (req, res) => {
         {
           model: Box,
           as: "box",
-          attributes: {
-            exclude: ["createdAt", "updatedAt"],
-          },
+          attributes: { exclude: ["createdAt", "updatedAt"] },
         },
       ],
       order: [["createdAt", "DESC"]],
     });
 
+    // Cache full data (không lọc price) cho lần sau
+    const fullOrders = await Order.findAll({
+      where: { userId, status: { [Op.in]: ["accept", "planning"] } },
+      include: [
+        { model: Customer, attributes: ["customerName", "companyName"] },
+        {
+          model: Product,
+          attributes: ["typeProduct", "productName", "maKhuon"],
+        },
+        {
+          model: Box,
+          as: "box",
+          attributes: { exclude: ["createdAt", "updatedAt"] },
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
     await redisCache.set(
       allDataCacheKey,
-      JSON.stringify(allOrders),
+      JSON.stringify(fullOrders),
       "EX",
       3600
     );
   } else {
     allOrders = JSON.parse(allOrders);
+    // Lọc trong cache
+    allOrders = allOrders.filter((order) => {
+      const orderPrice = parseFloat(order?.price);
+      return !isNaN(orderPrice) && orderPrice === targetPrice;
+    });
   }
 
-  // Lọc
-  const filteredOrders = allOrders.filter(
-    (order) => Number(order?.price) === targetPrice
-  );
-
-  const totalOrders = filteredOrders.length;
+  const totalOrders = allOrders.length;
   const totalPages = Math.ceil(totalOrders / currentPageSize);
   const offset = (currentPage - 1) * currentPageSize;
-  const paginatedOrders = filteredOrders.slice(
-    offset,
-    offset + currentPageSize
-  );
+  const paginatedOrders = allOrders.slice(offset, offset + currentPageSize);
 
-  res.status(200).json({
-    message: "Get orders by price from filtered cache",
+  return res.status(200).json({
+    message: fromCache
+      ? "Get orders by price from filtered cache"
+      : "Get orders by price from DB",
     data: paginatedOrders,
     totalOrders,
     totalPages,
@@ -223,14 +253,15 @@ export const getOrderByPrice = async (req, res) => {
 
 //get order pending and reject
 export const getOrderPendingAndReject = async (req, res) => {
+  const { userId } = req.user;
   const { refresh = false } = req.query;
-  try {
-    // const { userId } = req.query;
-    //  if (!userId) {
-    //   return res.status(400).json({ message: "Missing userId" });
-    // }
 
-    const cacheKey = `orders:userId:status:pending_reject`;
+  if (!userId) {
+    return res.status(400).json({ message: "Missing userId" });
+  }
+
+  try {
+    const cacheKey = `orders:${userId}:pending_reject`;
 
     if (refresh == "true") {
       await redisCache.del(cacheKey);
@@ -240,8 +271,8 @@ export const getOrderPendingAndReject = async (req, res) => {
       cacheKey,
       redisCache,
       "pending",
-      "reject"
-      //userId
+      "reject",
+      userId
     );
 
     if (cachedResult) {
@@ -253,10 +284,7 @@ export const getOrderPendingAndReject = async (req, res) => {
     }
 
     const data = await Order.findAll({
-      where: {
-        status: { [Op.in]: ["pending", "reject"] },
-        // userId
-      },
+      where: { userId, status: { [Op.in]: ["pending", "reject"] } },
       include: [
         {
           model: Customer,
@@ -291,7 +319,7 @@ export const getOrderPendingAndReject = async (req, res) => {
 
 //add order
 export const addOrder = async (req, res) => {
-  // const { userId } = req.query;
+  const { userId } = req.user;
   const {
     prefix = "CUSTOM",
     customerId,
@@ -300,7 +328,7 @@ export const addOrder = async (req, res) => {
     ...orderData
   } = req.body;
   try {
-    //  if (!userId) return res.status(400).json({ message: "Missing userId" });
+    if (!userId) return res.status(400).json({ message: "Missing userId" });
 
     const validation = await validateCustomerAndProduct(customerId, productId);
     if (!validation.success) {
@@ -314,7 +342,7 @@ export const addOrder = async (req, res) => {
       orderId: newOrderId,
       customerId: customerId,
       productId: productId,
-      // userId,
+      userId,
       ...orderData,
     });
 
@@ -331,7 +359,7 @@ export const addOrder = async (req, res) => {
     }
 
     //delete redis
-    const cacheKey = `orders:userId:status:pending_reject`;
+    const cacheKey = `orders:${userId}:pending_reject`;
     await redisCache.del(cacheKey);
 
     // res.status(201).json({ order: newOrder, notification: notificationResult });
@@ -342,38 +370,37 @@ export const addOrder = async (req, res) => {
   }
 };
 
-//update order
+// update order
 export const updateOrder = async (req, res) => {
-  const {
-    id,
-    //userId
-  } = req.query;
+  const { orderId } = req.query;
   const { box, ...orderData } = req.body;
-  try {
-    // if (!userId) return res.status(400).json({ message: "Missing userId" });
+  const { userId } = req.user;
 
-    const order = await Order.findOne({ where: { orderId: id } });
+  try {
+    if (!userId) {
+      return res.status(400).json({ message: "Missing userId" });
+    }
+
+    const order = await Order.findOne({ where: { orderId } });
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    // if (order.status == "accept") {
-    //   return res
-    //     .status(400)
-    //     .json({ message: "Không thể cập nhật đơn hàng đã được duyệt" });
-    // }
-
     await order.update({
-      status: "pending",
       ...orderData,
     });
 
-    await updateChildOrder(id, Box, box);
+    if (order.isBox === true) {
+      await updateChildOrder(orderId, Box, box);
+    } else {
+      await Box.destroy({ where: { orderId } });
+    }
 
-    const cacheKey = `orders:userId:status:pending_reject`;
+    // Xóa cache liên quan user này
+    const cacheKey = `orders:${userId}:pending_reject`;
     await redisCache.del(cacheKey);
 
-    res.status(201).json({
+    res.status(200).json({
       message: "Order updated successfully",
       order,
     });
@@ -386,29 +413,31 @@ export const updateOrder = async (req, res) => {
   }
 };
 
-//delete order
+// delete order
 export const deleteOrder = async (req, res) => {
-  const {
-    id,
-    //userId
-  } = req.query;
-  try {
-    // if (!userId) return res.status(400).json({ message: "Missing userId" });
+  const { id } = req.query;
+  const { userId } = req.user;
 
-    const deleteOrder = await Order.destroy({
+  try {
+    if (!userId) {
+      return res.status(400).json({ message: "Missing userId" });
+    }
+
+    const deletedOrder = await Order.destroy({
       where: { orderId: id },
     });
 
-    if (!deleteOrder) {
-      return res.status(404).json({ message: "Order deleted failed" });
+    if (!deletedOrder) {
+      return res.status(404).json({ message: "Order delete failed" });
     }
 
-    const cacheKey = `orders:userId:status:pending_reject`;
+    // Xóa cache liên quan user này
+    const cacheKey = `orders:${userId}:pending_reject`;
     await redisCache.del(cacheKey);
 
-    res.status(201).json({ message: "Order deleted successfully" });
+    res.status(200).json({ message: "Order deleted successfully" });
   } catch (error) {
     console.error("Delete order failed:", error);
-    res.status(404).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 };

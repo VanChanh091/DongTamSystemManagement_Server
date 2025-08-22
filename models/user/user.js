@@ -27,7 +27,7 @@ const User = sequelize.define(
       set(val) {
         this.setDataValue("permissions", JSON.stringify(val));
       },
-      defaultValue: "[]", //sale, planning, hr, accounting, marketing, design, production,
+      defaultValue: "[]", //sale, planning, hr, accounting, marketing, design, production,...
     },
     avatar: {
       type: DataTypes.STRING,

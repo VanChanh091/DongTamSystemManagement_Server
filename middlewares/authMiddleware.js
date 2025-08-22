@@ -12,7 +12,13 @@ const authenticate = async (req, res, next) => {
     const user = await User.findByPk(decoded.userId);
     if (!user) return res.status(401).json({ message: "User not found" });
 
-    req.user = user;
+    req.user = {
+      userId: user.userId,
+      role: user.role,
+      permissions: user.permissions,
+      email: user.email,
+    };
+
     next();
   } catch (err) {
     return res.status(401).json({ message: "Invalid token" });

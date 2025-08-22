@@ -77,7 +77,13 @@ export const updateChildOrder = async (id, model, data) => {
   }
 };
 
-export const cachedStatus = async (cachedName, redisCache, prop1, prop2) => {
+export const cachedStatus = async (
+  cachedName,
+  redisCache,
+  prop1,
+  prop2,
+  userId
+) => {
   const cachedKey = cachedName;
   const cachedData = await redisCache.get(cachedKey);
 
@@ -93,38 +99,42 @@ export const cachedStatus = async (cachedName, redisCache, prop1, prop2) => {
     return null;
   }
 
-  // Kiểm tra nếu dữ liệu là object có `data` (kiểu mới)
+  // Nếu redis lưu thẳng mảng thì parsed là array
+  // Nếu redis lưu object {data: [...]}, thì lấy parsed.data
   const ordersArray = Array.isArray(parsed) ? parsed : parsed?.data;
 
   if (!Array.isArray(ordersArray)) {
     return null;
   }
 
-  const data = ordersArray.filter((order) =>
-    [prop1, prop2].includes(order.status)
+  const data = ordersArray.filter(
+    (order) => [prop1, prop2].includes(order.status) && order.userId === userId
   );
 
   return data.length > 0 ? data : null;
 };
 
 export const filterOrdersFromCache = async ({
+  userId,
   keyword,
   getFieldValue,
   page,
   pageSize,
+  cacheKeyPrefix = "orders:default",
   message,
 }) => {
   const currentPage = Number(page);
   const currentPageSize = Number(pageSize);
   const lowerKeyword = keyword?.toLowerCase?.() || "";
 
-  const allDataCacheKey = `orders:tests:status:accept_planning:all`;
+  // Dùng prefix để tạo key cache
+  const allDataCacheKey = `${cacheKeyPrefix}:all`;
 
   // Lấy cache
   let allOrders = await redisCache.get(allDataCacheKey);
   if (!allOrders) {
     allOrders = await Order.findAll({
-      where: { status: { [Op.in]: ["accept", "planning"] } },
+      where: { userId, status: { [Op.in]: ["accept", "planning"] } },
       include: [
         { model: Customer, attributes: ["customerName", "companyName"] },
         {
@@ -135,7 +145,7 @@ export const filterOrdersFromCache = async ({
           model: Box,
           as: "box",
           attributes: {
-            exclude: ["boxId", "createdAt", "updatedAt", "orderId"], //loai bo cac thuoc tinh nay
+            exclude: ["boxId", "createdAt", "updatedAt", "orderId"],
           },
         },
       ],

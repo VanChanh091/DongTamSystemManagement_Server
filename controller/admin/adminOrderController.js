@@ -4,6 +4,7 @@ import Customer from "../../models/customer/customer.js";
 import Product from "../../models/product/product.js";
 import Box from "../../models/order/box.js";
 import { deleteKeysByPattern } from "../../utils/helper/adminHelper.js";
+import User from "../../models/user/user.js";
 
 const redisCache = new Redis();
 
@@ -19,6 +20,7 @@ export const getOrderPending = async (req, res) => {
         },
         { model: Product },
         { model: Box, as: "box" },
+        { model: User, attributes: ["fullName"] },
       ],
       order: [["createdAt", "DESC"]],
     });

@@ -45,6 +45,9 @@ Order.belongsTo(Product, { foreignKey: "productId" });
 Order.hasOne(Box, { foreignKey: "orderId", as: "box", onDelete: "CASCADE" });
 Box.belongsTo(Order, { foreignKey: "orderId" });
 
+User.hasMany(Order, { foreignKey: "userId", onDelete: "CASCADE" });
+Order.belongsTo(User, { foreignKey: "userId" });
+
 //planning
 Order.hasMany(PlanningPaper, { foreignKey: "orderId" }); //hasMany to create timeOverflow planning
 PlanningPaper.belongsTo(Order, {

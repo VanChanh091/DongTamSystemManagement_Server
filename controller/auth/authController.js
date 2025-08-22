@@ -103,7 +103,7 @@ export const login = asyncHandler(async (req, res) => {
   return res.status(201).json({
     message: "Đăng nhập thành công",
     user: {
-      id: existUser.id,
+      userId: existUser.userId,
       email: existUser.email,
       role: existUser.role,
       permissions: existUser.permissions,
