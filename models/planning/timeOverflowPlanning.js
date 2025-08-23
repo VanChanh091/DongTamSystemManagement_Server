@@ -14,7 +14,7 @@ const timeOverflowPlanning = sequelize.define(
     overflowTimeRunning: { type: DataTypes.TIME },
     machine: { type: DataTypes.STRING },
     status: {
-      type: DataTypes.ENUM("planning", "complete"),
+      type: DataTypes.ENUM("planning", "lackOfQty", "complete"),
       allowNull: false,
       defaultValue: "planning",
     },

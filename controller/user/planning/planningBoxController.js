@@ -501,56 +501,43 @@ const calculateTimeForOnePlanning = async ({
   totalTimeWorking,
   transaction,
 }) => {
-  const { planningBoxId, runningPlan, sortPlanning, Order } = planning;
+  const { planningBoxId, sortPlanning, Order } = planning;
   const isMayIn = machine.toLowerCase().includes("máy in");
-  const runningPlanFromOrder = Order?.quantityCustomer || 0;
+
+  // ✅ chỉ dùng quantityCustomer làm runningPlan
+  const runningPlan = Order?.quantityCustomer || 0;
 
   console.log("\n==============================");
   console.log(`📦 Bắt đầu tính cho planningBoxId: ${planningBoxId}`);
   console.log(`🔹 Máy: ${machine}`);
-  console.log(`🔹 runningPlan (form Order): ${runningPlanFromOrder}`);
+  console.log(`🔹 runningPlan (Order.quantityCustomer): ${runningPlan}`);
   console.log(`🔹 Giờ bắt đầu: ${formatTimeToHHMMSS(currentTime)}`);
 
   const productionMinutes = calculateProductionMinutes({
-    runningPlan: runningPlanFromOrder,
+    runningPlan,
     Order,
     machineInfo,
     isMayIn,
   });
   console.log(`⏱️ productionMinutes: ${productionMinutes} phút`);
 
-  // Lấy ca và đảm bảo start/end cùng ngày với currentDay
+  // --- logic giữ nguyên ---
   const { startOfWorkTime: rawStart, endOfWorkTime: rawEnd } = getWorkShift(
     currentDay,
     timeStart,
     totalTimeWorking
   );
-  // đảm bảo start/end nằm trên cùng 'currentDay'
   const startOfWorkTime = setTimeOnDay(currentDay, rawStart);
   const endOfWorkTime = setTimeOnDay(currentDay, rawEnd);
-
-  console.log(`🕒 endOfWorkTime:   ${formatTimeToHHMMSS(endOfWorkTime)}`);
-
-  // Nếu currentTime có ngày khác (ví dụ parseTimeOnly trả về 'today'), ép nó về cùng ngày currentDay
   currentTime = setTimeOnDay(currentDay, currentTime);
 
   if (currentTime < startOfWorkTime) {
-    console.log(
-      "⚠️ Giờ hiện tại < giờ bắt đầu ca → đặt lại về startOfWorkTime (giữ ngày)"
-    );
-    // đặt lại giờ bằng startOfWorkTime nhưng vẫn đảm bảo ngày = currentDay
     currentTime = setTimeOnDay(currentDay, startOfWorkTime);
   }
 
-  // Nếu đã vượt hết ca -> sang ngày tiếp theo: set ngày + set startTime trên ngày mới, rồi xử lý lại
   if (currentTime >= endOfWorkTime) {
-    console.log(
-      "⚠️ Giờ hiện tại >= giờ kết thúc ca → chuyển sang ngày hôm sau"
-    );
     const nextDay = addDays(currentDay, 1);
     const nextStart = setTimeOnDay(nextDay, timeStart);
-
-    // Đệ quy: tính lại planning trên ngày tiếp theo bắt đầu từ start của ca
     return await calculateTimeForOnePlanning({
       planning,
       machine,
@@ -571,26 +558,13 @@ const calculateTimeForOnePlanning = async ({
 
   const tempEndTime = addMinutes(currentTime, productionMinutes);
   const extraBreak = isDuringBreak(currentTime, tempEndTime);
-  console.log(`☕ extraBreak: ${extraBreak} phút`);
-
   const predictedEndTime = addMinutes(
     currentTime,
     productionMinutes + extraBreak
   );
-  console.log(
-    `🔚 predictedEndTime: ${formatTimeToHHMMSS(predictedEndTime)} (ngày ${
-      currentDay.toISOString().split("T")[0]
-    })`
-  );
-
-  // default (nếu không overflow) — nhưng sẽ override nếu overflow
-  result.timeRunning = formatTimeToHHMMSS(predictedEndTime);
 
   if (predictedEndTime > endOfWorkTime) {
-    console.log("🚨 Có overflow sang ngày hôm sau!");
     hasOverFlow = true;
-
-    // timeRunning trong ngày này = giờ kết thúc ca
     result.timeRunning = formatTimeToHHMMSS(endOfWorkTime);
 
     const overflowData = await handleOverflow({
@@ -603,43 +577,36 @@ const calculateTimeForOnePlanning = async ({
       machine,
       transaction,
     });
-    console.log(`📅 Overflow sang ngày: ${overflowData.overflowDayStart}`);
-    console.log(`⏰ Bắt đầu lại lúc: ${overflowData.overflowTimeRunning}`);
 
     Object.assign(result, overflowData);
 
-    // SET currentDay và currentTime dựa trên overflowData (quan trọng: gán ngày trước, rồi gán time với ngày đó)
     currentDay = new Date(overflowData.overflowDayStart);
-    const nextStartFromOverflow = setTimeOnDay(
-      currentDay,
-      overflowData.overflowTimeRunning
-    );
-    currentTime = nextStartFromOverflow;
+    currentTime = setTimeOnDay(currentDay, overflowData.overflowTimeRunning);
   } else {
     result.timeRunning = formatTimeToHHMMSS(predictedEndTime);
     currentTime = predictedEndTime;
-    console.log("✅ Hoàn tất trong ca làm việc, không overflow");
 
     await timeOverflowPlanning.destroy({
-      where: { planningBoxId },
+      where: { planningBoxId, machine },
       transaction,
     });
   }
 
+  // ✅ update hasOverFlow theo quantityCustomer
   await PlanningBox.update(
     { hasOverFlow: hasOverFlow && runningPlan > 0 },
     { where: { planningBoxId }, transaction }
   );
 
+  // tính waste
   const wasteBoxValue = await calculateWasteBoxValue({
     machine,
-    runningPlan: runningPlanFromOrder,
+    runningPlan,
     Order,
     isMayIn,
     transaction,
   });
   if (wasteBoxValue !== null) {
-    console.log(`♻️ wasteBox: ${Math.round(wasteBoxValue)}`);
     result.wasteBox = Math.round(wasteBoxValue);
   }
 
@@ -693,7 +660,11 @@ const handleOverflow = async ({
     addMinutes(parseTimeOnly(timeStart), overflowMinutes)
   );
 
-  await timeOverflowPlanning.destroy({ where: { planningBoxId }, transaction });
+  await timeOverflowPlanning.destroy({
+    where: { planningBoxId, machine },
+    transaction,
+  });
+
   await timeOverflowPlanning.create(
     {
       planningBoxId,

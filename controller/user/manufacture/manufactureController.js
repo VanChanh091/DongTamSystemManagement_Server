@@ -564,16 +564,7 @@ export const addReportBox = async (req, res) => {
       include: [
         {
           model: PlanningBox,
-          attributes: ["runningPlan", "hasOverFlow"],
-          include: [
-            {
-              model: timeOverflowPlanning,
-              as: "timeOverFlow",
-              attributes: {
-                exclude: ["createdAt", "updatedAt"],
-              },
-            },
-          ],
+          include: [{ model: timeOverflowPlanning, as: "timeOverFlow" }],
         },
       ],
       transaction,
@@ -593,15 +584,21 @@ export const addReportBox = async (req, res) => {
 
     const runningPlan = planning.PlanningBox.runningPlan || 0;
 
+    const timeOverFlow =
+      Array.isArray(planning.PlanningBox.timeOverFlow) &&
+      planning.PlanningBox.timeOverFlow.length > 0
+        ? planning.PlanningBox.timeOverFlow[0]
+        : planning.PlanningBox.timeOverFlow;
+
+    //fix here
     const isOverflowReport =
       planning.PlanningBox.hasOverFlow &&
       planning.PlanningBox.timeOverFlow &&
-      new Date(dayCompleted) >=
-        new Date(planning.PlanningBox.timeOverFlow.overflowDayStart);
+      new Date(dayCompleted) >= new Date(timeOverFlow.overflowDayStart);
 
     if (isOverflowReport) {
       const overflow = await timeOverflowPlanning.findOne({
-        where: { planningBoxId: planningBoxId },
+        where: { planningBoxId, machine },
         transaction,
         lock: transaction.LOCK.UPDATE,
       });
