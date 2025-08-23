@@ -352,13 +352,8 @@ export const getPlanningByMachine = async (req, res) => {
 //sort planning
 const getPlanningByMachineSorted = async (machine) => {
   try {
-    const whereCondition = {
-      chooseMachine: machine,
-      status: { [Op.in]: ["planning", "lackQty", "complete"] },
-    };
-
     const data = await PlanningPaper.findAll({
-      where: whereCondition,
+      where: { chooseMachine: machine },
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {
@@ -407,7 +402,8 @@ const getPlanningByMachineSorted = async (machine) => {
     const now = truncateToDate(new Date());
 
     const validData = data.filter((planning) => {
-      if (["planning", "lackQty"].includes(planning.status)) return true;
+      if (["planning", "lackQty", "producing"].includes(planning.status))
+        return true;
 
       if (planning.status === "complete") {
         const dayCompleted = new Date(planning.dayCompleted);

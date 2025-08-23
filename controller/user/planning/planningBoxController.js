@@ -81,10 +81,7 @@ const getPlanningByMachineSorted = async (machine) => {
     include: [
       {
         model: planningBoxMachineTime,
-        where: {
-          machine: machine,
-          status: ["planning", "lackOfQty", "complete"],
-        },
+        where: { machine: machine },
         as: "boxTimes",
         attributes: { exclude: ["createdAt", "updatedAt"] },
       },
@@ -154,7 +151,7 @@ const getPlanningByMachineSorted = async (machine) => {
     const boxTimes = planning.boxTimes || [];
 
     const hasValidStatus = boxTimes.some((bt) =>
-      ["planning", "lackOfQty"].includes(bt.status)
+      ["planning", "lackOfQty", "producing"].includes(bt.status)
     );
 
     const hasRecentComplete = boxTimes.some((bt) => {

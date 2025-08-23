@@ -55,22 +55,6 @@ export const getPlanningPaperByField = async (req, res, field) => {
     const orderInclude = {
       model: Order,
       required: true,
-      // attributes: {
-      //   exclude: [
-      //     "dayReceiveOrder",
-      //     "acreage",
-      //     "dvt",
-      //     "price",
-      //     "pricePaper",
-      //     "discount",
-      //     "profit",
-      //     "totalPrice",
-      //     "vat",
-      //     "rejectReason",
-      //     "createdAt",
-      //     "updatedAt",
-      //   ],
-      // },
       attributes: ["flute"],
       include: [
         {

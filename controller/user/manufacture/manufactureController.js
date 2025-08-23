@@ -1,4 +1,5 @@
 import Redis from "ioredis";
+import machineLabels from "../../../configs/machineLabels.js";
 import PlanningPaper from "../../../models/planning/planningPaper.js";
 import timeOverflowPlanning from "../../../models/planning/timeOverFlowPlanning.js";
 import Customer from "../../../models/customer/customer.js";
@@ -23,7 +24,7 @@ export const getPlanningPaper = async (req, res) => {
   try {
     const cacheKey = `planning:machine:${machine}`;
 
-    //refresh cache
+    // refresh cache
     if (refresh === "true") {
       await redisCache.del(cacheKey);
     }
@@ -33,9 +34,10 @@ export const getPlanningPaper = async (req, res) => {
       let cachedPlannings = JSON.parse(cachedData);
 
       const filtered = cachedPlannings.filter((item) => {
-        const matchStatus = ["planning", "lackQty"].includes(item.status);
+        const matchStatus = ["planning", "lackQty", "producing"].includes(
+          item.status
+        );
         const hasDayStart = item.dayStart !== null;
-
         return matchStatus && hasDayStart;
       });
 
@@ -45,22 +47,14 @@ export const getPlanningPaper = async (req, res) => {
       });
     }
 
-    const whereCondition = {
-      chooseMachine: machine,
-      status: { [Op.in]: ["planning", "lackQty", "complete"] },
-      dayStart: { [Op.ne]: null },
-    };
-
     const planning = await PlanningPaper.findAll({
-      where: whereCondition,
+      where: { chooseMachine: machine, dayStart: { [Op.ne]: null } },
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {
           model: timeOverflowPlanning,
           as: "timeOverFlow",
-          attributes: {
-            exclude: ["createdAt", "updatedAt"],
-          },
+          attributes: { exclude: ["createdAt", "updatedAt"] },
         },
         {
           model: Order,
@@ -86,9 +80,7 @@ export const getPlanningPaper = async (req, res) => {
             {
               model: Box,
               as: "box",
-              attributes: {
-                exclude: ["createdAt", "updatedAt"],
-              },
+              attributes: { exclude: ["createdAt", "updatedAt"] },
             },
           ],
         },
@@ -96,13 +88,14 @@ export const getPlanningPaper = async (req, res) => {
       order: [["sortPlanning", "ASC"]],
     });
 
-    //lọc đơn complete trong 1 ngày
+    // Lọc đơn complete chỉ giữ lại trong 1 ngày
     const truncateToDate = (date) =>
       new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const now = truncateToDate(new Date());
 
     const validData = planning.filter((item) => {
-      if (["planning", "lackQty"].includes(item.status)) return true;
+      if (["planning", "lackQty", "producing"].includes(item.status))
+        return true;
 
       if (item.status === "complete") {
         const dayCompleted = new Date(item.dayCompleted);
@@ -113,6 +106,7 @@ export const getPlanningPaper = async (req, res) => {
 
         return expiredDate >= now;
       }
+      return false;
     });
 
     const allPlannings = [];
@@ -122,25 +116,19 @@ export const getPlanningPaper = async (req, res) => {
         timeRunning: planning.timeRunning,
         dayStart: planning.dayStart,
       };
-
-      // Chỉ push nếu dayStart khác null
-      if (original.dayStart !== null) {
-        allPlannings.push(original);
-      }
+      allPlannings.push(original);
 
       if (planning.timeOverFlow) {
         const overflowDayStart = planning.timeOverFlow.overflowDayStart;
         const overflowTime = planning.timeOverFlow.overflowTimeRunning;
         const dayCompletedOverflow = planning.timeOverFlow.overflowDayCompleted;
 
-        const overflowPlanning = {
+        allPlannings.push({
           ...original,
           dayStart: overflowDayStart,
           dayCompleted: dayCompletedOverflow,
           timeRunning: overflowTime,
-        };
-
-        allPlannings.push(overflowPlanning);
+        });
       }
     });
 
@@ -180,13 +168,6 @@ export const addReportPaper = async (req, res) => {
       await transaction.rollback();
       return res.status(404).json({ message: "Planning not found" });
     }
-
-    const machineLabels = {
-      "Máy 1350": "machine1350",
-      "Máy 1900": "machine1900",
-      "Máy 2 Lớp": "machine2Layer",
-      "Máy Quấn Cuồn": "MachineRollPaper",
-    };
 
     const machine = planning.chooseMachine;
     const machineLabel = machineLabels[machine];
@@ -297,6 +278,74 @@ export const addReportPaper = async (req, res) => {
   }
 };
 
+//confirm producing paper
+export const confirmProducingPaper = async (req, res) => {
+  const { planningId } = req.query;
+  const { role, permissions: userPermissions } = req.user;
+
+  if (!planningId) {
+    return res
+      .status(400)
+      .json({ message: "Missing planningId query parameter" });
+  }
+
+  const transaction = await PlanningPaper.sequelize.transaction();
+  try {
+    const planning = await PlanningPaper.findOne({
+      where: { planningId },
+      transaction,
+      lock: transaction.LOCK.UPDATE, // lock để tránh race condition
+    });
+    if (!planning) {
+      return res.status(404).json({ message: "Planning not found" });
+    }
+
+    // check permission
+    const machine = planning.chooseMachine;
+    const machineLabel = machineLabels[machine];
+
+    if (role !== "admin" && role !== "manager") {
+      if (!userPermissions.includes(machineLabel)) {
+        await transaction.rollback();
+        return res.status(403).json({
+          message: `Access denied: You don't have permission to report for machine ${machine}`,
+        });
+      }
+    }
+
+    // Check if the planning is already completed
+    if (planning.status === "complete") {
+      return res.status(400).json({ message: "Planning already completed" });
+    }
+
+    // Check if there's another planning in 'producing' status for the same machine
+    const existingProducing = await PlanningPaper.findOne({
+      where: { chooseMachine: machine, status: "producing" },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (existingProducing && existingProducing.planningId !== planningId) {
+      await existingProducing.update({ status: "planning" }, { transaction });
+    }
+
+    await planning.update({ status: "producing" }, { transaction });
+
+    //clear cache
+    await transaction.commit();
+    await redisCache.del(`planning:machine:${machine}`);
+
+    res.status(200).json({
+      message: "Confirm producing paper successfully",
+      data: planning,
+    });
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Error confirming producing paper:", error);
+    res.status(400).json({ message: "Server error" });
+  }
+};
+
 //===============================MANUFACTURE BOX=====================================
 
 //get all planning box
@@ -312,6 +361,7 @@ export const getPlanningBox = async (req, res) => {
   try {
     const cacheKey = `planning:box:machine:${machine}`;
 
+    // refresh cache
     if (refresh === "true") {
       await redisCache.del(cacheKey);
     }
@@ -322,7 +372,7 @@ export const getPlanningBox = async (req, res) => {
 
       const filtered = cachedPlannings.filter((item) => {
         const hasValidStatus = item.boxTimes.some((boxTimes) =>
-          ["planning", "lackOfQty"].includes(boxTimes.status)
+          ["planning", "lackOfQty", "producing"].includes(boxTimes.status)
         );
         const hasDayStart = item.dayStart !== null;
 
@@ -353,11 +403,7 @@ export const getPlanningBox = async (req, res) => {
       include: [
         {
           model: planningBoxMachineTime,
-          where: {
-            machine: machine,
-            status: { [Op.in]: ["planning", "lackQty", "complete"] },
-            dayStart: { [Op.ne]: null },
-          },
+          where: { machine: machine, dayStart: { [Op.ne]: null } },
           as: "boxTimes",
           attributes: { exclude: ["createdAt", "updatedAt"] },
         },
@@ -434,7 +480,7 @@ export const getPlanningBox = async (req, res) => {
       const boxTimes = planning.boxTimes || [];
 
       const hasValidStatus = boxTimes.some((bt) =>
-        ["planning", "lackOfQty"].includes(bt.status)
+        ["planning", "lackOfQty", "producing"].includes(bt.status)
       );
 
       const hasRecentComplete = boxTimes.some((bt) => {
@@ -499,7 +545,6 @@ export const getPlanningBox = async (req, res) => {
 export const addReportBox = async (req, res) => {
   const { planningBoxId, machine } = req.query;
   const { qtyProduced, rpWasteLoss, dayCompleted, shiftManagement } = req.body;
-  const { role, permissions: userPermissions } = req.user;
 
   if (
     !planningBoxId ||
@@ -623,5 +668,80 @@ export const addReportBox = async (req, res) => {
     await transaction.rollback();
     console.error("Error add Report Production:", error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+//confirm producing box
+export const confirmProducingBox = async (req, res) => {
+  const { planningBoxId, machine } = req.query;
+  const { role, permissions: userPermissions } = req.user;
+
+  if (!planningBoxId) {
+    return res
+      .status(400)
+      .json({ message: "Missing planningBoxId query parameter" });
+  }
+
+  const transaction = await PlanningBox.sequelize.transaction();
+  try {
+    // Lấy planning cần update
+    const planning = await planningBoxMachineTime.findOne({
+      where: { planningBoxId, machine },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+      skipLocked: true,
+    });
+
+    if (!planning) {
+      await transaction.rollback();
+      return res.status(404).json({ message: "Planning not found" });
+    }
+
+    // check permission
+    const machineLabel = machineLabels[machine];
+    if (role !== "admin" && role !== "manager") {
+      if (!userPermissions.includes(machineLabel)) {
+        await transaction.rollback();
+        return res.status(403).json({
+          message: `Access denied: You don't have permission to report for machine ${machine}`,
+        });
+      }
+    }
+
+    // Check if already complete
+    if (planning.status === "complete") {
+      await transaction.rollback();
+      return res.status(400).json({ message: "Planning already completed" });
+    }
+
+    // Reset những thằng đang "producing"
+    await planningBoxMachineTime.update(
+      { status: "planning" },
+      {
+        where: {
+          machine,
+          status: "producing",
+          planningBoxId: { [Op.ne]: planningBoxId },
+        },
+        transaction,
+      }
+    );
+
+    // Update sang producing
+    await planning.update({ status: "producing" }, { transaction });
+
+    await transaction.commit();
+
+    // Clear cache sau khi commit
+    await redisCache.del(`planning:box:machine:${machine}`);
+
+    return res.status(200).json({
+      message: "Confirm producing box successfully",
+      data: planning,
+    });
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Error confirming producing box:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };

@@ -53,7 +53,7 @@ const PlanningPaper = sequelize.define(
     shiftProduction: { type: DataTypes.ENUM("Ca 1", "Ca 2", "Ca 3") },
     shiftManagement: { type: DataTypes.STRING },
     status: {
-      type: DataTypes.ENUM("planning", "complete", "lackQty"),
+      type: DataTypes.ENUM("planning", "complete", "lackQty", "producing"),
       allowNull: false,
       defaultValue: "planning",
     },

@@ -5,6 +5,8 @@ import {
   addReportPaper,
   getPlanningPaper,
   getPlanningBox,
+  confirmProducingPaper,
+  confirmProducingBox,
 } from "../../controller/user/manufacture/manufactureController.js";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware.js";
 
@@ -23,6 +25,17 @@ router.post(
   ]),
   addReportPaper
 );
+router.post(
+  "/producingPaper",
+  authenticate,
+  authorizeAnyPermission([
+    "machine1350",
+    "machine1900",
+    "machine2Layer",
+    "MachineRollPaper",
+  ]),
+  confirmProducingPaper
+);
 
 //=========================BOX=========================
 router.get("/planningBox", authenticate, getPlanningBox);
@@ -31,6 +44,12 @@ router.post(
   authenticate,
   authorizeAnyPermission(["step2Production"]),
   addReportBox
+);
+router.post(
+  "/producingBox",
+  authenticate,
+  authorizeAnyPermission(["step2Production"]),
+  confirmProducingBox
 );
 
 export default router;
