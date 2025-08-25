@@ -580,6 +580,8 @@ const calculateTimeForOnePlanning = async ({
 
     Object.assign(result, overflowData);
 
+    result.hasOverFlow = true;
+
     currentDay = new Date(overflowData.overflowDayStart);
     currentTime = setTimeOnDay(currentDay, overflowData.overflowTimeRunning);
   } else {

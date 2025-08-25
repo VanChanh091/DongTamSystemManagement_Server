@@ -590,7 +590,7 @@ export const addReportBox = async (req, res) => {
         ? planning.PlanningBox.timeOverFlow[0]
         : planning.PlanningBox.timeOverFlow;
 
-    //fix here
+    //condition
     const isOverflowReport =
       planning.PlanningBox.hasOverFlow &&
       planning.PlanningBox.timeOverFlow &&
