@@ -3,6 +3,7 @@ import Order from "../../../models/order/order.js";
 import { Op } from "sequelize";
 import Customer from "../../../models/customer/customer.js";
 import Box from "../../../models/order/box.js";
+import User from "../../../models/user/user.js";
 import Product from "../../../models/product/product.js";
 import {
   createDataTable,
@@ -19,13 +20,15 @@ const redisCache = new Redis();
 
 //get order status accept and planning
 export const getOrderAcceptAndPlanning = async (req, res) => {
-  try {
-    const { userId } = req.user;
-    const { page, pageSize, refresh = false } = req.query;
-    const currentPage = Number(page);
-    const currentPageSize = Number(pageSize);
+  const { userId, role } = req.user;
+  const { page, pageSize, refresh = false, ownOnly = false } = req.query;
+  const currentPage = Number(page);
+  const currentPageSize = Number(pageSize);
 
-    const cacheKey = `orders:${userId}:accept_planning:page:${currentPage}`;
+  try {
+    const keyRole =
+      role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
+    const cacheKey = `orders:${keyRole}:accept_planning:page:${currentPage}`;
 
     if (refresh == "true") {
       await redisCache.del(cacheKey);
@@ -41,7 +44,8 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
         redisCache,
         "accept",
         "planning",
-        userId
+        userId,
+        role
       );
 
       if (filteredData) {
@@ -56,17 +60,24 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
       }
     }
 
-    const offset = (currentPage - 1) * currentPageSize;
+    let whereCondition = { status: { [Op.in]: ["accept", "planning"] } };
+    if (role == "admin") {
+    } else if (role == "manager") {
+      if (ownOnly == "true") {
+        whereCondition = { userId, ...whereCondition };
+      }
+    } else {
+      whereCondition = { userId, ...whereCondition };
+    }
 
-    const totalOrders = await Order.count({
-      where: { status: { [Op.in]: ["accept", "planning"] } },
-    });
-
+    const totalOrders = await Order.count({ where: whereCondition });
     const totalPages = Math.ceil(totalOrders / currentPageSize);
+    const offset = (currentPage - 1) * currentPageSize;
 
     //find data from db
     const data = await Order.findAll({
-      where: { userId, status: { [Op.in]: ["accept", "planning"] } },
+      where: whereCondition,
+      attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         { model: Customer, attributes: ["customerName", "companyName"] },
         {
@@ -78,6 +89,7 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
           as: "box",
           attributes: { exclude: ["createdAt", "updatedAt"] },
         },
+        { model: User, attributes: ["fullName"] },
       ],
       order: [["createdAt", "DESC"]],
       offset,
@@ -112,16 +124,17 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
 
 //get by customer name
 export const getOrderByCustomerName = async (req, res) => {
-  const { userId } = req.user;
+  const { userId, role } = req.user;
   const { name, page, pageSize } = req.query;
 
   const result = await filterOrdersFromCache({
     userId,
+    role,
     keyword: name,
     getFieldValue: (order) => order?.Customer?.customerName,
     page,
     pageSize,
-    cacheKeyPrefix: `orders:${userId}:accept_planning`,
+    cacheKeyPrefix: `orders:accept_planning`,
     message: "Get orders by customer name from filtered cache",
   });
 
@@ -130,16 +143,17 @@ export const getOrderByCustomerName = async (req, res) => {
 
 //get by product name
 export const getOrderByProductName = async (req, res) => {
-  const { userId } = req.user;
+  const { userId, role } = req.user;
   const { productName, page, pageSize } = req.query;
 
   const result = await filterOrdersFromCache({
     userId,
+    role,
     keyword: productName,
     getFieldValue: (order) => order?.Product?.productName,
     page,
     pageSize,
-    cacheKeyPrefix: `orders:${userId}:accept_planning`,
+    cacheKeyPrefix: `orders:accept_planning`,
     message: "Get orders by product name from filtered cache",
   });
 
@@ -148,16 +162,17 @@ export const getOrderByProductName = async (req, res) => {
 
 //get by QC box
 export const getOrderByQcBox = async (req, res) => {
-  const { userId } = req.user;
+  const { userId, role } = req.user;
   const { QcBox, page, pageSize } = req.query;
 
   const result = await filterOrdersFromCache({
     userId,
+    role,
     keyword: QcBox,
     getFieldValue: (order) => order?.QC_box,
     page,
     pageSize,
-    cacheKeyPrefix: `orders:${userId}:accept_planning`,
+    cacheKeyPrefix: `orders:accept_planning`,
     message: "Get orders by QC box from filtered cache",
   });
 
@@ -166,26 +181,34 @@ export const getOrderByQcBox = async (req, res) => {
 
 //get by price
 export const getOrderByPrice = async (req, res) => {
-  const { userId } = req.user;
+  const { userId, role } = req.user;
   const { price, page, pageSize } = req.query;
   const currentPage = Number(page);
   const currentPageSize = Number(pageSize);
   const targetPrice = parseFloat(price);
 
-  const allDataCacheKey = `orders:${userId}:accept_planning:all`;
+  const keyRole =
+    role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
+  const allDataCacheKey = `orders:accept_planning:${keyRole}`;
 
   let allOrders = await redisCache.get(allDataCacheKey);
   let fromCache = true;
 
   if (!allOrders) {
     fromCache = false;
+
+    const whereCondition = {
+      status: { [Op.in]: ["accept", "planning"] },
+    };
+
+    // User thường thì filter thêm userId
+    if (role !== "admin" && role !== "manager") {
+      whereCondition.userId = userId;
+    }
+
     // Query DB có điều kiện lọc price luôn
     allOrders = await Order.findAll({
-      where: {
-        userId,
-        status: { [Op.in]: ["accept", "planning"] },
-        price: targetPrice, // lọc trực tiếp ở DB
-      },
+      where: { ...whereCondition, price: targetPrice },
       include: [
         { model: Customer, attributes: ["customerName", "companyName"] },
         {
@@ -226,7 +249,7 @@ export const getOrderByPrice = async (req, res) => {
     );
   } else {
     allOrders = JSON.parse(allOrders);
-    // Lọc trong cache
+    // Lọc price trong cache
     allOrders = allOrders.filter((order) => {
       const orderPrice = parseFloat(order?.price);
       return !isNaN(orderPrice) && orderPrice === targetPrice;
@@ -253,15 +276,17 @@ export const getOrderByPrice = async (req, res) => {
 
 //get order pending and reject
 export const getOrderPendingAndReject = async (req, res) => {
-  const { userId } = req.user;
-  const { refresh = false } = req.query;
+  const { userId, role } = req.user;
+  const { refresh = false, ownOnly = false } = req.query;
 
   if (!userId) {
     return res.status(400).json({ message: "Missing userId" });
   }
 
   try {
-    const cacheKey = `orders:${userId}:pending_reject`;
+    const keyRole =
+      role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
+    const cacheKey = `orders:${keyRole}:pending_reject`;
 
     if (refresh == "true") {
       await redisCache.del(cacheKey);
@@ -272,7 +297,8 @@ export const getOrderPendingAndReject = async (req, res) => {
       redisCache,
       "pending",
       "reject",
-      userId
+      userId,
+      role
     );
 
     if (cachedResult) {
@@ -283,8 +309,19 @@ export const getOrderPendingAndReject = async (req, res) => {
       });
     }
 
+    let whereCondition = { status: { [Op.in]: ["pending", "reject"] } };
+    if (role == "admin") {
+    } else if (role == "manager") {
+      if (ownOnly == "true") {
+        whereCondition = { userId, ...whereCondition };
+      }
+    } else {
+      whereCondition = { userId, ...whereCondition };
+    }
+
     const data = await Order.findAll({
-      where: { userId, status: { [Op.in]: ["pending", "reject"] } },
+      where: whereCondition,
+      attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {
           model: Customer,
@@ -301,6 +338,7 @@ export const getOrderPendingAndReject = async (req, res) => {
             exclude: ["createdAt", "updatedAt"],
           },
         },
+        { model: User, attributes: ["fullName"] },
       ],
       order: [["createdAt", "DESC"]],
     });

@@ -82,7 +82,8 @@ export const cachedStatus = async (
   redisCache,
   prop1,
   prop2,
-  userId
+  userId,
+  role
 ) => {
   const cachedKey = cachedName;
   const cachedData = await redisCache.get(cachedKey);
@@ -107,15 +108,22 @@ export const cachedStatus = async (
     return null;
   }
 
-  const data = ordersArray.filter(
-    (order) => [prop1, prop2].includes(order.status) && order.userId === userId
-  );
+  let data;
+  if (role === "admin" || role === "manager") {
+    data = ordersArray.filter((order) => [prop1, prop2].includes(order.status));
+  } else {
+    data = ordersArray.filter(
+      (order) =>
+        [prop1, prop2].includes(order.status) && order.userId === userId
+    );
+  }
 
   return data.length > 0 ? data : null;
 };
 
 export const filterOrdersFromCache = async ({
   userId,
+  role,
   keyword,
   getFieldValue,
   page,
@@ -128,13 +136,21 @@ export const filterOrdersFromCache = async ({
   const lowerKeyword = keyword?.toLowerCase?.() || "";
 
   // Dùng prefix để tạo key cache
-  const allDataCacheKey = `${cacheKeyPrefix}:all`;
+  const keyRole =
+    role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
+  const allDataCacheKey = `${cacheKeyPrefix}:${keyRole}`;
 
   // Lấy cache
   let allOrders = await redisCache.get(allDataCacheKey);
   if (!allOrders) {
+    const whereCondition = { status: { [Op.in]: ["accept", "planning"] } };
+
+    if (role !== "admin" && role !== "manager") {
+      whereCondition.userId = userId;
+    }
+
     allOrders = await Order.findAll({
-      where: { userId, status: { [Op.in]: ["accept", "planning"] } },
+      where: whereCondition,
       include: [
         { model: Customer, attributes: ["customerName", "companyName"] },
         {
