@@ -35,7 +35,15 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5000", //FE DEV
+      "http://dongtam.company.local:5000", //domain name when running on internal server
+    ],
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use("/uploads", express.static("uploads")); //set up to upload product image
 
@@ -58,7 +66,7 @@ sequelize
 
 app.use(authenticate);
 
-server.listen(port, (err) => {
+server.listen(port, "0.0.0.0", (err) => {
   if (err) {
     console.log(err);
   }
