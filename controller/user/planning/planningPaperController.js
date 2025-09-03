@@ -89,9 +89,7 @@ export const planningOrder = async (req, res) => {
     });
 
     if (!wasteNorm || !waveCoeff) {
-      throw new Error(
-        `WasteNorm or WaveCrestCoefficient not found for machine: ${chooseMachine}`
-      );
+      throw new Error(`WasteNorm or WaveCrestCoefficient not found for machine: ${chooseMachine}`);
     }
 
     // 3) Parse cấu trúc giấy thành mảng lớp
@@ -119,9 +117,7 @@ export const planningOrder = async (req, res) => {
     const layers = parseStructure(structStr);
 
     // 4) Xác định loại sóng từ đơn hàng (flute: "5EB" => ["E", "B"])
-    const waveTypes = (order.flute.match(/[EBC]/gi) || []).map((s) =>
-      s.toUpperCase()
-    );
+    const waveTypes = (order.flute.match(/[EBC]/gi) || []).map((s) => s.toUpperCase());
     const roundSmart = (num) => Math.round(num * 100) / 100;
 
     // 5) Hàm tính phế liệu paper
@@ -147,8 +143,7 @@ export const planningOrder = async (req, res) => {
 
           const fluteTh = parseFloat(L.code.replace(/\D+/g, "")) / 1000;
           const prev = layers[i - 1];
-          const linerBefore =
-            prev && prev.kind === "liner" ? prev.thickness / 1000 : 0;
+          const linerBefore = prev && prev.kind === "liner" ? prev.thickness / 1000 : 0;
 
           let coef = 0;
           if (letter === "E") {
@@ -159,8 +154,7 @@ export const planningOrder = async (req, res) => {
           }
 
           const loss =
-            gkTh * wasteNorm.waveCrest * linerBefore +
-            gkTh * wasteNorm.waveCrest * fluteTh * coef;
+            gkTh * wasteNorm.waveCrest * linerBefore + gkTh * wasteNorm.waveCrest * fluteTh * coef;
 
           flute[letter] += loss;
         }
@@ -169,8 +163,7 @@ export const planningOrder = async (req, res) => {
       // 5.1) Lớp liner cuối cùng
       const lastLiner = [...layers].reverse().find((l) => l.kind === "liner");
       if (lastLiner) {
-        softLiner =
-          gkTh * wasteNorm.waveCrestSoft * (lastLiner.thickness / 1000);
+        softLiner = gkTh * wasteNorm.waveCrestSoft * (lastLiner.thickness / 1000);
       }
 
       // 5.2) Tính hao phí, dao, tổng hao hụt
@@ -185,9 +178,7 @@ export const planningOrder = async (req, res) => {
           (wasteNorm.lossInProcess / 100);
       }
       if (wasteNorm.waveCrestSoft > 0) {
-        knife =
-          (bottom / wasteNorm.waveCrestSoft) *
-          wasteNorm.lossInSheetingAndSlitting;
+        knife = (bottom / wasteNorm.waveCrestSoft) * wasteNorm.lossInSheetingAndSlitting;
       }
       const totalLoss = flute.E + flute.B + flute.C + haoPhi + knife + bottom;
 
@@ -291,10 +282,7 @@ export const planningOrder = async (req, res) => {
 
     // 11) Xoá cache
     await redisCache.del(`planning:machine:${chooseMachine}`);
-    await deleteKeysByPattern(
-      redisCache,
-      `orders:userId:status:accept_planning:*`
-    );
+    await deleteKeysByPattern(redisCache, `orders:userId:status:accept_planning:*`);
 
     // 12) Trả kết quả
     return res.status(201).json({
@@ -314,9 +302,7 @@ export const getPlanningByMachine = async (req, res) => {
   const { machine, refresh = false } = req.query;
 
   if (!machine) {
-    return res
-      .status(400)
-      .json({ message: "Missing 'machine' query parameter" });
+    return res.status(400).json({ message: "Missing 'machine' query parameter" });
   }
 
   try {
@@ -397,13 +383,11 @@ const getPlanningByMachineSorted = async (machine) => {
     });
 
     //lọc đơn complete trong 3 ngày
-    const truncateToDate = (date) =>
-      new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const truncateToDate = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const now = truncateToDate(new Date());
 
     const validData = data.filter((planning) => {
-      if (["planning", "lackQty", "producing"].includes(planning.status))
-        return true;
+      if (["planning", "lackQty", "producing"].includes(planning.status)) return true;
 
       if (planning.status === "complete") {
         const dayCompleted = new Date(planning.dayCompleted);
@@ -501,9 +485,7 @@ export const changeMachinePlanning = async (req, res) => {
   const { planningIds, newMachine } = req.body;
   try {
     if (!Array.isArray(planningIds) || planningIds.length === 0) {
-      return res
-        .status(400)
-        .json({ message: "Missing or invalid planningIds" });
+      return res.status(400).json({ message: "Missing or invalid planningIds" });
     }
 
     const plannings = await PlanningPaper.findAll({
@@ -626,8 +608,7 @@ export const getPlanningByCustomerName = async (req, res) =>
   getPlanningPaperByField(req, res, "customerName");
 
 //get by flute
-export const getPlanningByFlute = async (req, res) =>
-  getPlanningPaperByField(req, res, "flute");
+export const getPlanningByFlute = async (req, res) => getPlanningPaperByField(req, res, "flute");
 
 //get by ghepKho
 export const getPlanningByGhepKho = async (req, res) =>
@@ -638,9 +619,7 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
   const { planningIds, newStatus } = req.body;
   try {
     if (!Array.isArray(planningIds) || planningIds.length === 0) {
-      return res
-        .status(400)
-        .json({ message: "Missing or invalid planningIds" });
+      return res.status(400).json({ message: "Missing or invalid planningIds" });
     }
 
     const plannings = await PlanningPaper.findAll({
@@ -728,6 +707,7 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
   }
 };
 
+//update index & time running
 export const updateIndex_TimeRunning = async (req, res) => {
   const { machine } = req.query;
   const { updateIndex, dayStart, timeStart, totalTimeWorking } = req.body;
@@ -742,15 +722,24 @@ export const updateIndex_TimeRunning = async (req, res) => {
   try {
     // 1. Cập nhật sortPlanning
     for (const item of updateIndex) {
-      await PlanningPaper.update(
-        { sortPlanning: item.sortPlanning },
-        { where: { planningId: item.planningId }, transaction }
-      );
+      if (!item.sortPlanning) continue;
+
+      const planningPaper = await PlanningPaper.findOne({
+        where: {
+          planningId: item.planningId,
+          status: { [Op.ne]: "complete" }, //không cập nhật đơn đã complete
+        },
+      });
+
+      if (planningPaper) {
+        await planningPaper.update({ sortPlanning: item.sortPlanning }, { transaction });
+      }
     }
+
     // 2. Lấy lại danh sách planning đã được update
     const sortedPlannings = await PlanningPaper.findAll({
       where: { planningId: updateIndex.map((i) => i.planningId) },
-      include: [{ model: Order }],
+      include: [{ model: Order }, { model: timeOverflowPlanning, as: "timeOverFlow" }],
       order: [["sortPlanning", "ASC"]],
       transaction,
     });
@@ -763,12 +752,12 @@ export const updateIndex_TimeRunning = async (req, res) => {
     if (!machineInfo) throw new Error("Machine not found");
 
     const updatedPlannings = await calculateTimeRunningPlannings({
-      machine,
+      plannings: sortedPlannings,
       machineInfo: machineInfo,
+      machine,
       dayStart,
       timeStart,
       totalTimeWorking,
-      plannings: sortedPlannings,
       transaction,
     });
 
@@ -798,20 +787,72 @@ export const updateIndex_TimeRunning = async (req, res) => {
 
 const calculateTimeRunningPlannings = async ({
   plannings,
-  machine,
   machineInfo,
-  timeStart,
+  machine,
   dayStart,
+  timeStart,
   totalTimeWorking,
   transaction,
 }) => {
   const updated = [];
-  let currentTime = null;
-  let currentDay = new Date(dayStart);
-  let lastGhepKho = null;
+  let currentTime, currentDay, lastGhepKho;
 
+  // ✅ Ưu tiên lấy đơn complete từ FE gửi xuống
+  const feComplete = plannings
+    .filter((p) => p.status === "complete")
+    .sort((a, b) => new Date(b.dayStart) - new Date(a.dayStart))[0];
+
+  if (feComplete) {
+    if (feComplete.hasOverFlow) {
+      const overflowRecord = await timeOverflowPlanning.findOne({
+        where: { planningId: feComplete.planningId },
+        transaction,
+      });
+
+      if (overflowRecord && overflowRecord.overflowTimeRunning && overflowRecord.overflowDayStart) {
+        // Sử dụng overflow day + time làm con trỏ
+        currentDay = new Date(overflowRecord.overflowDayStart);
+        currentTime = combineDateAndHHMMSS(currentDay, overflowRecord.overflowTimeRunning);
+        lastGhepKho = feComplete.ghepKho ?? null;
+      } else if (feComplete.dayStart && feComplete.timeRunning) {
+        // fallback: nếu không tìm thấy record overflow trong DB, dùng dayStart/timeRunning từ FE
+        currentDay = new Date(feComplete.dayStart);
+        currentTime = combineDateAndHHMMSS(currentDay, feComplete.timeRunning);
+        lastGhepKho = feComplete.ghepKho ?? null;
+      } else {
+        // fallback cuối cùng: dùng logic cũ lấy cursor từ DB
+        const initCursor = await getInitialCursor({
+          machine,
+          dayStart,
+          timeStart,
+          transaction,
+        });
+        currentTime = initCursor.currentTime;
+        currentDay = initCursor.currentDay;
+        lastGhepKho = initCursor.lastGhepKho;
+      }
+    } else {
+      // Không có overflow → dùng dayStart + timeRunning từ FE
+      currentDay = new Date(feComplete.dayStart);
+      currentTime = combineDateAndHHMMSS(currentDay, feComplete.timeRunning);
+      lastGhepKho = feComplete.ghepKho ?? null;
+    }
+  } else {
+    const initCursor = await getInitialCursor({
+      machine,
+      dayStart,
+      timeStart,
+      transaction,
+    });
+    currentTime = initCursor.currentTime;
+    currentDay = initCursor.currentDay;
+    lastGhepKho = initCursor.lastGhepKho;
+  }
+
+  // ✅ Bỏ qua các đơn complete trong vòng lặp (chỉ tính planning)
   for (let i = 0; i < plannings.length; i++) {
     const planning = plannings[i];
+    if (planning.status === "complete") continue;
 
     const data = await calculateTimeForOnePlanning({
       planning,
@@ -826,7 +867,6 @@ const calculateTimeRunningPlannings = async ({
       isFirst: i === 0,
     });
 
-    // ✅ Cập nhật thời gian cho đơn kế tiếp
     currentTime = data.nextTime;
     currentDay = data.nextDay;
     lastGhepKho = data.ghepKho;
@@ -856,7 +896,7 @@ const calculateTimeForOnePlanning = async ({
   const performance = machineInfo.machinePerformance;
   const totalLength = runningPlan / numberChild;
 
-  const isSameSize = !isFirst && ghepKho === lastGhepKho;
+  const isSameSize = lastGhepKho != null && ghepKho === lastGhepKho;
 
   const changeTime =
     machine === "Máy Quấn Cuồn"
@@ -868,9 +908,7 @@ const calculateTimeForOnePlanning = async ({
       : machineInfo.timeChangeSize;
 
   //công thức
-  const productionMinutes = Math.ceil(
-    (changeTime + totalLength / speed) / (performance / 100)
-  );
+  const productionMinutes = Math.ceil((changeTime + totalLength / speed) / (performance / 100));
 
   // ✅ Tính thời gian bắt đầu và kết thúc ca làm việc cho currentDay
   let startOfWorkTime = new Date(currentDay);
@@ -898,9 +936,7 @@ const calculateTimeForOnePlanning = async ({
   const extraBreak = isDuringBreak(currentTime, tempEndTime);
 
   let predictedEndTime = new Date(currentTime);
-  predictedEndTime.setMinutes(
-    predictedEndTime.getMinutes() + productionMinutes + extraBreak
-  );
+  predictedEndTime.setMinutes(predictedEndTime.getMinutes() + productionMinutes + extraBreak);
 
   let currentPlanningDayStart = currentDay.toISOString().split("T")[0];
   let timeRunningForPlanning = formatTimeToHHMMSS(predictedEndTime);
@@ -923,9 +959,7 @@ const calculateTimeForOnePlanning = async ({
     overflowStartTime.setDate(overflowStartTime.getDate() + 1);
 
     let actualOverflowEndTime = new Date(overflowStartTime);
-    actualOverflowEndTime.setMinutes(
-      actualOverflowEndTime.getMinutes() + totalOverflowMinutes
-    );
+    actualOverflowEndTime.setMinutes(actualOverflowEndTime.getMinutes() + totalOverflowMinutes);
 
     overflowTimeRunning = formatTimeToHHMMSS(actualOverflowEndTime);
     overflowMinutes = `${Math.round(totalOverflowMinutes)} phút`;
@@ -952,14 +986,16 @@ const calculateTimeForOnePlanning = async ({
     await timeOverflowPlanning.destroy({ where: { planningId }, transaction });
   }
 
-  await PlanningPaper.update(
-    {
-      dayStart: currentPlanningDayStart,
-      timeRunning: timeRunningForPlanning,
-      hasOverFlow,
-    },
-    { where: { planningId }, transaction }
-  );
+  if (planning.status !== "complete") {
+    await PlanningPaper.update(
+      {
+        dayStart: currentPlanningDayStart,
+        timeRunning: timeRunningForPlanning,
+        hasOverFlow,
+      },
+      { where: { planningId }, transaction }
+    );
+  }
 
   const result = {
     planningId,
@@ -973,33 +1009,26 @@ const calculateTimeForOnePlanning = async ({
     result.overflowMinutes = overflowMinutes;
   }
 
-  // console.log("🔍 Chi tiết tính toán đơn hàng:");
-  // console.log({
-  //   planningId,
-  //   ghepKho,
-  //   lastGhepKho,
-  //   isSameSize,
-  //   timeStart,
-  //   totalTimeWorking,
-  //   changeTime: `${changeTime} phút`,
-  //   productionTime: `${productionMinutes} phút`,
-  //   breakTime: `${extraBreak} phút`,
-  //   predictedEndTime: formatTimeToHHMMSS(predictedEndTime),
-  //   endOfWorkTime: formatTimeToHHMMSS(endOfWorkTime),
-  //   hasOverFlow,
-  //   ...(hasOverFlow && {
-  //     overflowDayStart,
-  //     overflowTimeRunning,
-  //     overflowMinutes,
-  //   }),
-  // });
+  // if (planning.status !== "complete") {
+  //   console.log("🔍 [Tính toán đơn hàng]:", {
+  //     planningId,
+  //     status: planning.status,
+  //     lastGhepKho,
+  //     isSameSize,
+  //     changeTime: `${changeTime} phút`,
+  //     productionTime: `${productionMinutes} phút`,
+  //     breakTime: `${extraBreak} phút`,
+  //     predictedEndTime: formatTimeToHHMMSS(predictedEndTime),
+  //     endOfWorkTime: formatTimeToHHMMSS(endOfWorkTime),
+  //     hasOverFlow,
+  //     overflowDayStart: hasOverFlow ? overflowDayStart : null,
+  //     overflowTimeRunning: hasOverFlow ? overflowTimeRunning : null,
+  //     overflowMinutes: hasOverFlow ? overflowMinutes : null,
+  //     timeRunningForPlanning,
+  //   });
+  // }
 
-  return {
-    result,
-    nextTime: currentTime,
-    nextDay: currentDay,
-    ghepKho,
-  };
+  return { result, nextTime: currentTime, nextDay: currentDay, ghepKho };
 };
 
 const parseTimeOnly = (timeStr) => {
@@ -1014,9 +1043,7 @@ const parseTimeOnly = (timeStr) => {
 
 const formatTimeToHHMMSS = (date) => {
   const pad = (n) => n.toString().padStart(2, "0");
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(
-    date.getSeconds()
-  )}`;
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 };
 
 const getSpeed = (flute, machineName, machineInfo) => {
@@ -1025,9 +1052,7 @@ const getSpeed = (flute, machineName, machineInfo) => {
   if (machineName === "Máy Quấn Cuồn") return machineInfo.paperRollSpeed;
   const speed = machineInfo[`speed${numberLayer}Layer`];
   if (!speed) {
-    throw new Error(
-      `❌ Không tìm thấy tốc độ cho flute=${flute}, machine=${machineName}`
-    );
+    throw new Error(`❌ Không tìm thấy tốc độ cho flute=${flute}, machine=${machineName}`);
   }
   return speed;
 };
@@ -1063,4 +1088,70 @@ const isDuringBreak = (start, end) => {
   }
 
   return totalBreak;
+};
+
+const combineDateAndHHMMSS = (dateObj, hhmmss) => {
+  const [h, m, s = 0] = hhmmss.split(":").map(Number);
+  const d = new Date(dateObj);
+  d.setHours(h, m, s || 0, 0);
+  return d;
+};
+
+const getInitialCursor = async ({ machine, dayStart, timeStart, transaction }) => {
+  const day = new Date(dayStart);
+  const dayStr = day.toISOString().split("T")[0];
+
+  // 1) base = dayStart + timeStart
+  let base = parseTimeOnly(timeStart);
+  base.setFullYear(day.getFullYear(), day.getMonth(), day.getDate());
+
+  let currentTime = base;
+  let currentDay = new Date(day);
+  let lastGhepKho = null;
+
+  // -----------------------------
+  // A) Lấy đơn complete trong cùng ngày
+  const lastComplete = await PlanningPaper.findOne({
+    where: { chooseMachine: machine, status: "complete", dayStart: dayStr },
+    order: [["timeRunning", "DESC"]],
+    attributes: ["timeRunning", "ghepKho"],
+    transaction,
+  });
+
+  if (lastComplete?.timeRunning) {
+    const t = combineDateAndHHMMSS(currentDay, lastComplete.timeRunning);
+    if (t > currentTime) {
+      currentTime = t;
+      lastGhepKho = lastComplete.ghepKho ?? lastGhepKho;
+    }
+  }
+
+  // -----------------------------
+  // B) Lấy overflow từ hôm trước hoặc hôm nay
+  const lastOverflow = await timeOverflowPlanning.findOne({
+    include: [
+      {
+        model: PlanningPaper,
+        attributes: ["status", "ghepKho", "chooseMachine"],
+        where: { chooseMachine: machine, status: "complete" },
+        required: true,
+      },
+    ],
+    order: [
+      ["overflowDayStart", "DESC"],
+      ["overflowTimeRunning", "DESC"],
+    ],
+    transaction,
+  });
+
+  if (lastOverflow?.overflowTimeRunning) {
+    const overflowDay = new Date(lastOverflow.overflowDayStart);
+    const time = combineDateAndHHMMSS(overflowDay, lastOverflow.overflowTimeRunning);
+    if (time > currentTime) {
+      currentTime = time;
+      lastGhepKho = lastOverflow.planning?.ghepKho ?? lastGhepKho;
+    }
+  }
+
+  return { currentTime, currentDay, lastGhepKho };
 };

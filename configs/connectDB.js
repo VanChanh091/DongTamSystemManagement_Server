@@ -21,23 +21,19 @@ if (process.env.NODE_ENV === "development") {
 }
 
 // Khởi tạo Sequelize với thông tin kết nối MySQL
-const sequelize = new Sequelize(
-  dbConfig.database,
-  dbConfig.username,
-  dbConfig.password,
-  {
-    host: dbConfig.host,
-    dialect: "mysql",
-    port: 3306,
-    timezone: "+07:00",
-    logging: false,
-  }
-);
+const sequelize = new Sequelize(dbConfig.database, dbConfig.username, dbConfig.password, {
+  host: dbConfig.host,
+  dialect: "mysql",
+  port: 3306,
+  timezone: "+07:00",
+  logging: false,
+});
 
 const connectDB = async () => {
   try {
     await sequelize.authenticate();
     console.log("✅ Kết nối MySQL thành công!");
+    console.log(`✅ Đang chạy ở môi trường ${process.env.NODE_ENV}!`);
   } catch (error) {
     console.error("❌ Lỗi kết nối MySQL:", error);
     process.exit(1);

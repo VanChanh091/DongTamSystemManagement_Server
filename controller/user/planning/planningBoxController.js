@@ -27,9 +27,7 @@ export const getPlanningBox = async (req, res) => {
   const { machine, refresh = false } = req.query;
 
   if (!machine) {
-    return res
-      .status(400)
-      .json({ message: "Missing 'machine' query parameter" });
+    return res.status(400).json({ message: "Missing 'machine' query parameter" });
   }
 
   try {
@@ -63,182 +61,184 @@ export const getPlanningBox = async (req, res) => {
 
 //sort planning
 const getPlanningByMachineSorted = async (machine) => {
-  const data = await PlanningBox.findAll({
-    attributes: {
-      exclude: [
-        "hasIn",
-        "hasBe",
-        "hasXa",
-        "hasDan",
-        "hasCanLan",
-        "hasCatKhe",
-        "hasCanMang",
-        "hasDongGhim",
-        "createdAt",
-        "updatedAt",
-      ],
-    },
-    include: [
-      {
-        model: planningBoxMachineTime,
-        where: { machine: machine },
-        as: "boxTimes",
-        attributes: { exclude: ["createdAt", "updatedAt"] },
+  try {
+    const data = await PlanningBox.findAll({
+      attributes: {
+        exclude: [
+          "hasIn",
+          "hasBe",
+          "hasXa",
+          "hasDan",
+          "hasCanLan",
+          "hasCatKhe",
+          "hasCanMang",
+          "hasDongGhim",
+          "createdAt",
+          "updatedAt",
+        ],
       },
-      {
-        model: planningBoxMachineTime,
-        as: "allBoxTimes",
-        where: {
-          machine: { [Op.ne]: machine },
+      include: [
+        {
+          model: planningBoxMachineTime,
+          where: { machine: machine },
+          as: "boxTimes",
+          attributes: { exclude: ["createdAt", "updatedAt"] },
         },
-        attributes: {
-          exclude: [
-            "timeRunning",
-            "dayStart",
-            "dayCompleted",
-            "wasteBox",
-            "shiftManagement",
-            "status",
-            "sortPlanning",
-            "createdAt",
-            "updatedAt",
-            "rpWasteLoss",
+        {
+          model: planningBoxMachineTime,
+          as: "allBoxTimes",
+          where: {
+            machine: { [Op.ne]: machine },
+          },
+          attributes: {
+            exclude: [
+              "timeRunning",
+              "dayStart",
+              "dayCompleted",
+              "wasteBox",
+              "shiftManagement",
+              "status",
+              "sortPlanning",
+              "createdAt",
+              "updatedAt",
+              "rpWasteLoss",
+            ],
+          },
+        },
+        {
+          model: timeOverflowPlanning,
+          as: "timeOverFlow",
+          required: false,
+          where: { machine: machine },
+          attributes: { exclude: ["createdAt", "updatedAt"] },
+        },
+        {
+          model: Order,
+          attributes: [
+            "orderId",
+            "dayReceiveOrder",
+            "flute",
+            "QC_box",
+            "numberChild",
+            "dateRequestShipping",
+            "customerId",
+            "productId",
+            "quantityCustomer",
+          ],
+          include: [
+            {
+              model: Customer,
+              attributes: ["customerName", "companyName"],
+            },
+            {
+              model: Box,
+              as: "box",
+              attributes: { exclude: ["createdAt", "updatedAt"] },
+            },
           ],
         },
-      },
-      {
-        model: timeOverflowPlanning,
-        as: "timeOverFlow",
-        required: false,
-        where: { machine: machine },
-        attributes: { exclude: ["createdAt", "updatedAt"] },
-      },
-      {
-        model: Order,
-        attributes: [
-          "orderId",
-          "dayReceiveOrder",
-          "flute",
-          "QC_box",
-          "numberChild",
-          "dateRequestShipping",
-          "customerId",
-          "productId",
-          "quantityCustomer",
-        ],
-        include: [
-          {
-            model: Customer,
-            attributes: ["customerName", "companyName"],
-          },
-          {
-            model: Box,
-            as: "box",
-            attributes: { exclude: ["createdAt", "updatedAt"] },
-          },
-        ],
-      },
-    ],
-  });
-
-  //lọc đơn complete trong 3 ngày
-  const truncateToDate = (date) =>
-    new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-  const now = truncateToDate(new Date());
-
-  const validData = data.filter((planning) => {
-    const boxTimes = planning.boxTimes || [];
-
-    const hasValidStatus = boxTimes.some((bt) =>
-      ["planning", "lackOfQty", "producing"].includes(bt.status)
-    );
-
-    const hasRecentComplete = boxTimes.some((bt) => {
-      if (bt.status !== "complete" || !bt.dayCompleted) return false;
-
-      const dayCompleted = new Date(bt.dayCompleted);
-      if (isNaN(dayCompleted)) return false;
-
-      const expiredDate = truncateToDate(dayCompleted);
-      expiredDate.setDate(expiredDate.getDate() + 3);
-
-      return expiredDate >= now;
+      ],
     });
 
-    return hasValidStatus || hasRecentComplete;
-  });
+    //lọc đơn complete trong 3 ngày
+    const truncateToDate = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
-  // 3. Phân loại withSort và noSort
-  const withSort = validData.filter((item) =>
-    item.boxTimes?.some((bt) => bt.sortPlanning !== null)
-  );
-  const noSort = validData.filter(
-    (item) => !item.boxTimes?.some((bt) => bt.sortPlanning !== null)
-  );
+    const now = truncateToDate(new Date());
 
-  // Sắp xếp withSort theo sortPlanning (dùng sortPlanning đầu tiên trong boxTimes)
-  withSort.sort((a, b) => {
-    const sortA =
-      a.boxTimes?.find((bt) => bt.sortPlanning !== null)?.sortPlanning ?? 0;
-    const sortB =
-      b.boxTimes?.find((bt) => bt.sortPlanning !== null)?.sortPlanning ?? 0;
-    return sortA - sortB;
-  });
+    const validData = data.filter((planning) => {
+      const boxTimes = planning.boxTimes || [];
 
-  // Sắp xếp noSort theo flute (ưu tiên sóng)
-  noSort.sort((a, b) => {
-    const wavePriorityMap = { C: 3, B: 2, E: 1 };
+      const hasValidStatus = boxTimes.some((bt) =>
+        ["planning", "lackOfQty", "producing"].includes(bt.status)
+      );
 
-    const getWavePriorityList = (flute) => {
-      if (!flute) return [];
-      return flute
-        .toUpperCase()
-        .replace(/[^A-Z]/g, "")
-        .split("")
-        .map((w) => wavePriorityMap[w] || 0);
-    };
+      const hasRecentComplete = boxTimes.some((bt) => {
+        if (bt.status !== "complete" || !bt.dayCompleted) return false;
 
-    const waveA = getWavePriorityList(a.Order?.flute);
-    const waveB = getWavePriorityList(b.Order?.flute);
+        const dayCompleted = new Date(bt.dayCompleted);
+        if (isNaN(dayCompleted)) return false;
 
-    for (let i = 0; i < Math.max(waveA.length, waveB.length); i++) {
-      const priA = waveA[i] ?? 0;
-      const priB = waveB[i] ?? 0;
-      if (priB !== priA) return priB - priA;
-    }
+        const expiredDate = truncateToDate(dayCompleted);
+        expiredDate.setDate(expiredDate.getDate() + 3);
 
-    return 0;
-  });
-
-  const sortedPlannings = [...withSort, ...noSort];
-
-  // 4. Gộp đơn overflow nếu có
-  const allPlannings = [];
-  sortedPlannings.forEach((planning) => {
-    const original = {
-      ...planning.toJSON(),
-      dayStart: planning.dayStart,
-    };
-    allPlannings.push(original);
-
-    if (planning.timeOverFlow && planning.timeOverFlow.length > 0) {
-      planning.timeOverFlow.forEach((of) => {
-        const overflowPlanning = {
-          ...original,
-          boxTimes: (planning.boxTimes || []).map((bt) => ({
-            ...bt.dataValues,
-            dayStart: of.overflowDayStart,
-            dayCompleted: of.overflowDayCompleted,
-            timeRunning: of.overflowTimeRunning,
-          })),
-        };
-        allPlannings.push(overflowPlanning);
+        return expiredDate >= now;
       });
-    }
-  });
 
-  return allPlannings;
+      return hasValidStatus || hasRecentComplete;
+    });
+
+    // 3. Phân loại withSort và noSort
+    const withSort = validData.filter((item) =>
+      item.boxTimes?.some((bt) => bt.sortPlanning !== null)
+    );
+    const noSort = validData.filter(
+      (item) => !item.boxTimes?.some((bt) => bt.sortPlanning !== null)
+    );
+
+    // Sắp xếp withSort theo sortPlanning (dùng sortPlanning đầu tiên trong boxTimes)
+    withSort.sort((a, b) => {
+      const sortA = a.boxTimes?.find((bt) => bt.sortPlanning !== null)?.sortPlanning ?? 0;
+      const sortB = b.boxTimes?.find((bt) => bt.sortPlanning !== null)?.sortPlanning ?? 0;
+      return sortA - sortB;
+    });
+
+    // Sắp xếp noSort theo flute (ưu tiên sóng)
+    noSort.sort((a, b) => {
+      const wavePriorityMap = { C: 3, B: 2, E: 1 };
+
+      const getWavePriorityList = (flute) => {
+        if (!flute) return [];
+        return flute
+          .toUpperCase()
+          .replace(/[^A-Z]/g, "")
+          .split("")
+          .map((w) => wavePriorityMap[w] || 0);
+      };
+
+      const waveA = getWavePriorityList(a.Order?.flute);
+      const waveB = getWavePriorityList(b.Order?.flute);
+
+      for (let i = 0; i < Math.max(waveA.length, waveB.length); i++) {
+        const priA = waveA[i] ?? 0;
+        const priB = waveB[i] ?? 0;
+        if (priB !== priA) return priB - priA;
+      }
+
+      return 0;
+    });
+
+    const sortedPlannings = [...withSort, ...noSort];
+
+    // 4. Gộp đơn overflow nếu có
+    const allPlannings = [];
+    sortedPlannings.forEach((planning) => {
+      const original = {
+        ...planning.toJSON(),
+        dayStart: planning.dayStart,
+      };
+      allPlannings.push(original);
+
+      if (planning.timeOverFlow && planning.timeOverFlow.length > 0) {
+        planning.timeOverFlow.forEach((of) => {
+          const overflowPlanning = {
+            ...original,
+            boxTimes: (planning.boxTimes || []).map((bt) => ({
+              ...bt.toJSON(),
+              dayStart: of.overflowDayStart,
+              dayCompleted: of.overflowDayCompleted,
+              timeRunning: of.overflowTimeRunning,
+            })),
+          };
+          allPlannings.push(overflowPlanning);
+        });
+      }
+    });
+
+    return allPlannings;
+  } catch (error) {
+    console.error("Error fetching planning by machine:", error);
+    throw error;
+  }
 };
 
 //get by orderId
@@ -297,12 +297,10 @@ export const getPlanningBoxByCusName = async (req, res) =>
   getPlanningBoxByField(req, res, "customerName");
 
 //get by flute
-export const getPlanningBoxByFlute = async (req, res) =>
-  getPlanningBoxByField(req, res, "flute");
+export const getPlanningBoxByFlute = async (req, res) => getPlanningBoxByField(req, res, "flute");
 
 //get by ghepKho
-export const getPlanningBoxByQcBox = async (req, res) =>
-  getPlanningBoxByField(req, res, "QC_box");
+export const getPlanningBoxByQcBox = async (req, res) => getPlanningBoxByField(req, res, "QC_box");
 
 export const acceptLackQtyBox = async (req, res) => {
   const { planningBoxIds, newStatus, machine } = req.body;
@@ -357,8 +355,7 @@ export const acceptLackQtyBox = async (req, res) => {
 
 //update index planning
 export const updateIndex_TimeRunningBox = async (req, res) => {
-  const { machine, updateIndex, dayStart, timeStart, totalTimeWorking } =
-    req.body;
+  const { machine, updateIndex, dayStart, timeStart, totalTimeWorking } = req.body;
   if (!Array.isArray(updateIndex) || updateIndex.length === 0) {
     return res.status(400).json({ message: "Missing or invalid updateIndex" });
   }
@@ -367,12 +364,40 @@ export const updateIndex_TimeRunningBox = async (req, res) => {
   const cachedKey = `planning:box:machine:${machine}`;
 
   try {
-    await updateSortPlanning(machine, updateIndex, transaction);
-    const sortedPlannings = await getSortedPlannings(
-      machine,
-      updateIndex.map((i) => i.planningBoxId),
-      transaction
-    );
+    // 1. Cập nhật sortPlanning
+    for (const item of updateIndex) {
+      if (!item.sortPlanning) continue;
+
+      const boxTime = await planningBoxMachineTime.findOne({
+        where: {
+          planningBoxId: item.planningBoxId,
+          machine,
+          status: { [Op.ne]: "complete" }, //không cập nhật đơn đã complete
+        },
+        transaction,
+      });
+
+      if (boxTime) {
+        await boxTime.update({ sortPlanning: item.sortPlanning }, { transaction });
+      }
+    }
+
+    // 2. Lấy lại danh sách planning đã được update
+    const sortedPlannings = await PlanningBox.findAll({
+      where: { planningBoxId: updateIndex.map((i) => i.planningBoxId) },
+      include: [
+        { model: timeOverflowPlanning, as: "timeOverFlow" },
+        { model: planningBoxMachineTime, as: "boxTimes", where: { machine } },
+        {
+          model: Order,
+          include: { model: Box, as: "box", attributes: ["inMatTruoc", "inMatSau"] },
+        },
+      ],
+      order: [[{ model: planningBoxMachineTime, as: "boxTimes" }, "sortPlanning", "ASC"]],
+      transaction,
+    });
+
+    // 3. Tính toán thời gian chạy cho từng planning
     const machineInfo = await MachineBox.findOne({
       where: { machineName: machine },
       transaction,
@@ -380,24 +405,22 @@ export const updateIndex_TimeRunningBox = async (req, res) => {
     if (!machineInfo) throw new Error("Machine not found");
 
     const updatedPlannings = await calculateTimeRunningPlannings({
+      plannings: sortedPlannings,
+      machineInfo: machineInfo,
       machine,
-      machineInfo,
       dayStart,
       timeStart,
       totalTimeWorking,
-      plannings: sortedPlannings,
       transaction,
     });
 
     await transaction.commit();
     await redisCache.del(cachedKey);
 
-    req.io
-      .to(`machine_${machine.toLowerCase().replace(/\s+/g, "_")}`)
-      .emit("planningBoxUpdated", {
-        machine,
-        message: `Kế hoạch của ${machine} đã được cập nhật.`,
-      });
+    req.io.to(`machine_${machine.toLowerCase().replace(/\s+/g, "_")}`).emit("planningBoxUpdated", {
+      machine,
+      message: `Kế hoạch của ${machine} đã được cập nhật.`,
+    });
 
     return res.status(200).json({
       message: "✅ Cập nhật sortPlanning + tính thời gian thành công",
@@ -406,54 +429,8 @@ export const updateIndex_TimeRunningBox = async (req, res) => {
   } catch (error) {
     await transaction.rollback();
     console.error("❌ Update failed:", error);
-    return res
-      .status(500)
-      .json({ message: "❌ Lỗi khi cập nhật", error: error.message });
+    return res.status(500).json({ message: "❌ Lỗi khi cập nhật", error: error.message });
   }
-};
-
-// Cập nhật sortPlanning
-const updateSortPlanning = async (machine, updateIndex, transaction) => {
-  for (const item of updateIndex) {
-    const boxTime = await planningBoxMachineTime.findOne({
-      where: { planningBoxId: item.planningBoxId, machine },
-      transaction,
-    });
-    if (boxTime) {
-      await boxTime.update(
-        { sortPlanning: item.sortPlanning },
-        { transaction }
-      );
-    } else {
-      console.warn("❌ Không tìm thấy boxTime:", item);
-    }
-  }
-};
-
-// Lấy lại danh sách planning đã update
-const getSortedPlannings = async (machine, planningBoxIds, transaction) => {
-  return PlanningBox.findAll({
-    where: { planningBoxId: planningBoxIds },
-    include: [
-      { model: timeOverflowPlanning, as: "timeOverFlow" },
-      { model: planningBoxMachineTime, as: "boxTimes", where: { machine } },
-      {
-        model: Order,
-        include: [
-          { model: Customer, attributes: ["customerName", "companyName"] },
-          { model: Box, as: "box" },
-        ],
-      },
-    ],
-    order: [
-      [
-        { model: planningBoxMachineTime, as: "boxTimes" },
-        "sortPlanning",
-        "ASC",
-      ],
-    ],
-    transaction,
-  });
 };
 
 // Tính thời gian cho danh sách planning
@@ -466,15 +443,72 @@ const calculateTimeRunningPlannings = async ({
   plannings,
   transaction,
 }) => {
-  // đảm bảo currentDay là Date và currentTime có ngày = dayStart
-  let currentDay = new Date(dayStart);
-  let currentTime = setTimeOnDay(currentDay, timeStart);
-
   const updated = [];
+  let currentTime, currentDay;
+
+  // ✅ Ưu tiên lấy đơn complete từ FE gửi xuống
+  const feComplete = plannings
+    .filter((p) => p.boxTimes && p.boxTimes[0] && p.boxTimes[0].status === "complete")
+    .sort((a, b) => new Date(b.boxTimes[0].dayStart) - new Date(a.boxTimes[0].dayStart))[0];
+
+  if (feComplete) {
+    const feBox = feComplete.boxTimes[0];
+
+    if (feComplete.hasOverFlow) {
+      // Lấy overflow mới nhất cho planning này & machine
+      const overflowRecord = await timeOverflowPlanning.findOne({
+        where: { planningBoxId: feComplete.planningBoxId, machine },
+        transaction,
+      });
+
+      if (overflowRecord && overflowRecord.overflowDayStart && overflowRecord.overflowTimeRunning) {
+        currentDay = new Date(overflowRecord.overflowDayStart);
+        currentTime = combineDateAndHHMMSS(currentDay, overflowRecord.overflowTimeRunning);
+      } else if (feBox && feBox.dayStart && feBox.timeRunning) {
+        currentDay = new Date(feBox.dayStart);
+        currentTime = combineDateAndHHMMSS(currentDay, feBox.timeRunning);
+      } else if (feComplete.dayStart && feComplete.timeRunning) {
+        currentDay = new Date(feComplete.dayStart);
+        currentTime = combineDateAndHHMMSS(currentDay, feComplete.timeRunning);
+      } else {
+        const initCursor = await getInitialCursor({
+          machine,
+          dayStart,
+          timeStart,
+          transaction,
+        });
+        currentTime = initCursor.currentTime;
+        currentDay = initCursor.currentDay;
+      }
+    } else {
+      // không overflow -> ưu tiên boxTime, fallback planning
+      if (feBox && feBox.dayStart && feBox.timeRunning) {
+        currentDay = new Date(feBox.dayStart);
+        currentTime = combineDateAndHHMMSS(currentDay, feBox.timeRunning);
+      } else {
+        currentDay = new Date(feComplete.dayStart);
+        currentTime = combineDateAndHHMMSS(currentDay, feComplete.timeRunning);
+      }
+    }
+  } else {
+    // fallback: lấy con trỏ từ DB
+    const initCursor = await getInitialCursor({
+      machine,
+      dayStart,
+      timeStart,
+      transaction,
+    });
+    currentTime = initCursor.currentTime;
+    currentDay = initCursor.currentDay;
+  }
 
   for (const planning of plannings) {
+    const boxTime = planning.boxTimes && planning.boxTimes[0] ? planning.boxTimes[0] : null;
+
+    if (boxTime && boxTime.status === "complete") continue;
+
     const data = await calculateTimeForOnePlanning({
-      planning,
+      planning: planning,
       machine,
       machineInfo,
       currentTime,
@@ -485,6 +519,7 @@ const calculateTimeRunningPlannings = async ({
     });
     currentTime = data.nextTime;
     currentDay = data.nextDay;
+
     updated.push(data.result);
   }
   return updated;
@@ -501,17 +536,20 @@ const calculateTimeForOnePlanning = async ({
   totalTimeWorking,
   transaction,
 }) => {
-  const { planningBoxId, sortPlanning, Order } = planning;
-  const isMayIn = machine.toLowerCase().includes("máy in");
+  const { planningBoxId, sortPlanning, Order, status } = planning;
+  const isMayIn = machine.includes("Máy In");
+
+  //chặn update đơn complete
+  if (status === "complete") {
+    return {
+      result: { planningBoxId, skipped: true, status },
+      nextTime: currentTime,
+      nextDay: currentDay,
+    };
+  }
 
   // ✅ chỉ dùng quantityCustomer làm runningPlan
   const runningPlan = Order?.quantityCustomer || 0;
-
-  console.log("\n==============================");
-  console.log(`📦 Bắt đầu tính cho planningBoxId: ${planningBoxId}`);
-  console.log(`🔹 Máy: ${machine}`);
-  console.log(`🔹 runningPlan (Order.quantityCustomer): ${runningPlan}`);
-  console.log(`🔹 Giờ bắt đầu: ${formatTimeToHHMMSS(currentTime)}`);
 
   const productionMinutes = calculateProductionMinutes({
     runningPlan,
@@ -519,7 +557,6 @@ const calculateTimeForOnePlanning = async ({
     machineInfo,
     isMayIn,
   });
-  console.log(`⏱️ productionMinutes: ${productionMinutes} phút`);
 
   // --- logic giữ nguyên ---
   const { startOfWorkTime: rawStart, endOfWorkTime: rawEnd } = getWorkShift(
@@ -558,10 +595,7 @@ const calculateTimeForOnePlanning = async ({
 
   const tempEndTime = addMinutes(currentTime, productionMinutes);
   const extraBreak = isDuringBreak(currentTime, tempEndTime);
-  const predictedEndTime = addMinutes(
-    currentTime,
-    productionMinutes + extraBreak
-  );
+  const predictedEndTime = addMinutes(currentTime, productionMinutes + extraBreak);
 
   if (predictedEndTime > endOfWorkTime) {
     hasOverFlow = true;
@@ -588,10 +622,7 @@ const calculateTimeForOnePlanning = async ({
     result.timeRunning = formatTimeToHHMMSS(predictedEndTime);
     currentTime = predictedEndTime;
 
-    await timeOverflowPlanning.destroy({
-      where: { planningBoxId, machine },
-      transaction,
-    });
+    await timeOverflowPlanning.destroy({ where: { planningBoxId, machine }, transaction });
   }
 
   // ✅ update hasOverFlow theo quantityCustomer
@@ -617,32 +648,48 @@ const calculateTimeForOnePlanning = async ({
     { where: { planningBoxId, machine }, transaction }
   );
 
+  // ================== LOG CHI TIẾT ==================
+  console.log(
+    "PlanningBox",
+    JSON.stringify(
+      {
+        machine,
+        status: planning.status,
+        runningPlan,
+        sortPlanning,
+        totalTimeWorking,
+        shift: {
+          startOfWorkTime: formatTimeToHHMMSS(startOfWorkTime),
+          endOfWorkTime: formatTimeToHHMMSS(endOfWorkTime),
+        },
+        productionMinutes,
+        breakMinutes: extraBreak,
+        result,
+      },
+      null,
+      2
+    )
+  );
+  console.log("========================================");
+
   return { result, nextTime: currentTime, nextDay: currentDay };
 };
 
 // Tính phút sản xuất (có log)
-const calculateProductionMinutes = ({
-  runningPlan,
-  Order,
-  machineInfo,
-  isMayIn,
-}) => {
+const calculateProductionMinutes = ({ runningPlan, Order, machineInfo, isMayIn }) => {
   if (runningPlan <= 0) return 0;
   const numberChild = Order?.numberChild || 1;
   const totalLength = runningPlan / numberChild;
-  const speed = totalLength / (machineInfo.speedOfMachine / 60);
+  const totalTime = totalLength / (machineInfo.speedOfMachine / 60);
 
-  console.log(`📏 numberChild: ${numberChild}`);
-  console.log(`🚀 speed tính theo phút: ${speed}`);
+  const box = Order?.box.dataValues;
 
-  if (isMayIn && Order?.box?.dataValues) {
-    const { inMatTruoc = 0, inMatSau = 0 } = Order.box.dataValues;
+  if (isMayIn && box) {
+    const { inMatTruoc = 0, inMatSau = 0 } = box;
     console.log(`🎨 inMatTruoc: ${inMatTruoc}, inMatSau: ${inMatSau}`);
-    return Math.ceil(
-      machineInfo.timeToProduct * (inMatTruoc + inMatSau) + speed
-    );
+    return Math.ceil(machineInfo.timeToProduct * (inMatTruoc + inMatSau) + totalTime);
   }
-  return Math.ceil(machineInfo.timeToProduct + speed);
+  return Math.ceil(machineInfo.timeToProduct + totalTime);
 };
 
 // Xử lý overflow
@@ -686,13 +733,7 @@ const handleOverflow = async ({
 };
 
 // Tính waste
-const calculateWasteBoxValue = async ({
-  machine,
-  runningPlan,
-  Order,
-  isMayIn,
-  transaction,
-}) => {
+const calculateWasteBoxValue = async ({ machine, runningPlan, Order, isMayIn, transaction }) => {
   if (runningPlan <= 0) return null;
   const wasteNorm = await WasteNormBox.findOne({
     where: { machineName: machine },
@@ -700,13 +741,11 @@ const calculateWasteBoxValue = async ({
   });
   if (!wasteNorm) return null;
 
-  const {
-    colorNumberOnProduct = 0,
-    paperNumberOnProduct = 0,
-    totalLossOnTotalQty = 0,
-  } = wasteNorm;
-  if (isMayIn && Order?.box?.dataValues) {
-    const { inMatTruoc = 0, inMatSau = 0 } = Order.box.dataValues;
+  const { colorNumberOnProduct = 0, paperNumberOnProduct = 0, totalLossOnTotalQty = 0 } = wasteNorm;
+  const box = Order?.box.dataValues;
+
+  if (isMayIn && box) {
+    const { inMatTruoc = 0, inMatSau = 0 } = box;
     return (
       colorNumberOnProduct * inMatTruoc +
       colorNumberOnProduct * inMatSau +
@@ -714,4 +753,69 @@ const calculateWasteBoxValue = async ({
     );
   }
   return paperNumberOnProduct + runningPlan * (totalLossOnTotalQty / 100);
+};
+
+const combineDateAndHHMMSS = (dateObj, hhmmss) => {
+  const [h, m, s = 0] = hhmmss.split(":").map(Number);
+  const d = new Date(dateObj);
+  d.setHours(h, m, s || 0, 0);
+  return d;
+};
+
+const getInitialCursor = async ({ machine, dayStart, timeStart, transaction }) => {
+  const day = new Date(dayStart);
+  const dayStr = day.toISOString().split("T")[0];
+
+  // 1) base = dayStart + timeStart
+  let base = parseTimeOnly(timeStart);
+  base.setFullYear(day.getFullYear(), day.getMonth(), day.getDate());
+
+  let currentTime = base;
+  let currentDay = new Date(day);
+
+  // A) Lấy đơn complete trong cùng ngày
+  const lastComplete = await planningBoxMachineTime.findOne({
+    where: { machine: machine, status: "complete", dayStart: dayStr },
+    order: [["timeRunning", "DESC"]],
+    attributes: ["timeRunning"],
+    transaction,
+  });
+
+  if (lastComplete?.timeRunning) {
+    const time = combineDateAndHHMMSS(currentDay, lastComplete.timeRunning);
+    if (time > currentTime) {
+      currentTime = time;
+    }
+  }
+
+  // B) Lấy overflow từ hôm trước hoặc hôm nay
+  const lastOverflow = await timeOverflowPlanning.findOne({
+    include: [
+      {
+        model: PlanningBox,
+        include: {
+          model: planningBoxMachineTime,
+          as: "boxTimes",
+          where: { machine: machine, status: "complete" },
+          attributes: ["status", "machine"],
+          required: true,
+        },
+      },
+    ],
+    order: [
+      ["overflowDayStart", "DESC"],
+      ["overflowTimeRunning", "DESC"],
+    ],
+    transaction,
+  });
+
+  if (lastOverflow?.overflowTimeRunning) {
+    const overflowDay = new Date(lastOverflow.overflowDayStart);
+    const time = combineDateAndHHMMSS(overflowDay, lastOverflow.overflowTimeRunning);
+    if (time > currentTime) {
+      currentTime = time;
+    }
+  }
+
+  return { currentTime, currentDay };
 };
