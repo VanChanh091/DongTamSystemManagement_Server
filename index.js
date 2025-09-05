@@ -39,7 +39,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:5000", //FE DEV
-      "http://dongtam.company.local:5000", //domain name when running on internal server
+      "http://192.168.1.200:5000", //domain name when running on internal server
     ],
     credentials: true,
   })
@@ -71,5 +71,4 @@ server.listen(port, "0.0.0.0", (err) => {
     console.log(err);
   }
   connectDB();
-  console.log(`Server is running at http://localhost:${port}`);
 });
