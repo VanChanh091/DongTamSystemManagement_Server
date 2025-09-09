@@ -226,9 +226,7 @@ export const createCustomer = async (req, res) => {
     await transaction.commit();
     await redisClient.del("customers:all");
 
-    res
-      .status(201)
-      .json({ message: "Customer created successfully", data: newCustomer });
+    res.status(201).json({ message: "Customer created successfully", data: newCustomer });
   } catch (err) {
     await transaction.rollback();
     console.error("Update customer failed:", err);

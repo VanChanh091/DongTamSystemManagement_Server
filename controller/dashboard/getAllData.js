@@ -6,9 +6,11 @@ import Customer from "../../models/customer/customer.js";
 import Box from "../../models/order/box.js";
 import Product from "../../models/product/product.js";
 import User from "../../models/user/user.js";
-import { Op, where } from "sequelize";
+import { Op } from "sequelize";
 
 const redisCache = new Redis();
+
+//=============================PAPER===================================
 
 export const getAllDataPaper = async (req, res) => {
   const { page, pageSize, refresh = false } = req.query;
@@ -109,4 +111,11 @@ export const getAllDataPaper = async (req, res) => {
     console.error("Error add Report Production:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
+};
+
+//==============================BOX====================================
+
+export const getAllDataBox = async (req, res) => {
+  try {
+  } catch (error) {}
 };

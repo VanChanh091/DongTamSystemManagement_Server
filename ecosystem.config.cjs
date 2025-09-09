@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 module.exports = {
   apps: [
     {
@@ -5,18 +7,20 @@ module.exports = {
       script: "index.js",
       exec_mode: "cluster", // cluster mode để cân bằng tải
       autorestart: true,
-      watch: false, // tắt watch trong production
-      max_memory_restart: "500M", // restart khi vượt 500MB RAM
-      instances: process.env.NODE_ENV === "development" ? 1 : "max", // chạy với số core CPU được cấp
+      watch: false,
+      max_memory_restart: "500M",
+      // instances: "max", // chạy với số core CPU được cấp
+      instances: 1, 
 
-      env_development: {
-        NODE_ENV: "development",
-        PORT: 5000,
-      },
-      env_production: {
-        NODE_ENV: "production",
-        PORT: 5000,
-      },
+      //     env_development: {
+      //   NODE_ENV: "development",
+      //   PORT: 5000,
+      // },
+
+      // env_production: {
+      //   NODE_ENV: "production",
+      //   PORT: 5000,
+      // },
 
       // Log files (PM2 sẽ lưu trong C:\\Users\userName\.pm2\logs\)
       error_file: "./logs/err/dongtam-api-error.log",
