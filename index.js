@@ -39,7 +39,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:5000", //FE DEV
-      "http://192.168.1.200:5000", //domain name when running on internal server
+      "http://192.168.1.150:5000", //domain name when running on internal server
     ],
     credentials: true,
   })

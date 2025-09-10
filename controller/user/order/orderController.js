@@ -26,8 +26,7 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
   const currentPageSize = Number(pageSize);
 
   try {
-    const keyRole =
-      role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
+    const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
     const cacheKey = `orders:${keyRole}:accept_planning:page:${currentPage}`;
 
     if (refresh == "true") {
@@ -39,14 +38,7 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
     if (cachedData) {
       const parsed = JSON.parse(cachedData);
 
-      const filteredData = await cachedStatus(
-        cacheKey,
-        redisCache,
-        "accept",
-        "planning",
-        userId,
-        role
-      );
+      const filteredData = await cachedStatus(parsed, "accept", "planning", userId, role);
 
       if (filteredData) {
         console.log("✅ Get Order from cache");
@@ -187,8 +179,7 @@ export const getOrderByPrice = async (req, res) => {
   const currentPageSize = Number(pageSize);
   const targetPrice = parseFloat(price);
 
-  const keyRole =
-    role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
+  const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
   const allDataCacheKey = `orders:accept_planning:${keyRole}`;
 
   let allOrders = await redisCache.get(allDataCacheKey);
@@ -241,12 +232,7 @@ export const getOrderByPrice = async (req, res) => {
       ],
       order: [["createdAt", "DESC"]],
     });
-    await redisCache.set(
-      allDataCacheKey,
-      JSON.stringify(fullOrders),
-      "EX",
-      3600
-    );
+    await redisCache.set(allDataCacheKey, JSON.stringify(fullOrders), "EX", 3600);
   } else {
     allOrders = JSON.parse(allOrders);
     // Lọc price trong cache
@@ -262,9 +248,7 @@ export const getOrderByPrice = async (req, res) => {
   const paginatedOrders = allOrders.slice(offset, offset + currentPageSize);
 
   return res.status(200).json({
-    message: fromCache
-      ? "Get orders by price from filtered cache"
-      : "Get orders by price from DB",
+    message: fromCache ? "Get orders by price from filtered cache" : "Get orders by price from DB",
     data: paginatedOrders,
     totalOrders,
     totalPages,
@@ -284,8 +268,7 @@ export const getOrderPendingAndReject = async (req, res) => {
   }
 
   try {
-    const keyRole =
-      role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
+    const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
     const cacheKey = `orders:${keyRole}:pending_reject`;
 
     if (refresh == "true") {
@@ -358,13 +341,7 @@ export const getOrderPendingAndReject = async (req, res) => {
 //add order
 export const addOrder = async (req, res) => {
   const { userId } = req.user;
-  const {
-    prefix = "CUSTOM",
-    customerId,
-    productId,
-    box,
-    ...orderData
-  } = req.body;
+  const { prefix = "CUSTOM", customerId, productId, box, ...orderData } = req.body;
   try {
     if (!userId) return res.status(400).json({ message: "Missing userId" });
 
@@ -390,9 +367,7 @@ export const addOrder = async (req, res) => {
         await createDataTable(newOrderId, Box, box);
       } catch (error) {
         console.error("Error creating related data:", error);
-        return res
-          .status(500)
-          .json({ message: "Failed to create related data" });
+        return res.status(500).json({ message: "Failed to create related data" });
       }
     }
 

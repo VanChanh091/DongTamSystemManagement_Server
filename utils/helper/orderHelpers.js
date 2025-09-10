@@ -35,10 +35,7 @@ export const generateOrderId = async (prefix) => {
 
   let number = 1;
   if (lastOrder && lastOrder.orderId) {
-    const lastNumber = parseInt(
-      lastOrder.orderId.slice(sanitizedPrefix.length),
-      10
-    );
+    const lastNumber = parseInt(lastOrder.orderId.slice(sanitizedPrefix.length), 10);
     if (!isNaN(lastNumber)) {
       number = lastNumber + 1;
     }
@@ -77,29 +74,7 @@ export const updateChildOrder = async (id, model, data) => {
   }
 };
 
-export const cachedStatus = async (
-  cachedName,
-  redisCache,
-  prop1,
-  prop2,
-  userId,
-  role
-) => {
-  const cachedKey = cachedName;
-  const cachedData = await redisCache.get(cachedKey);
-
-  if (!cachedData) {
-    return null;
-  }
-
-  let parsed;
-  try {
-    parsed = JSON.parse(cachedData);
-  } catch (error) {
-    console.error("Error parsing cached data:", error);
-    return null;
-  }
-
+export const cachedStatus = async (parsed, prop1, prop2, userId, role) => {
   // Nếu redis lưu thẳng mảng thì parsed là array
   // Nếu redis lưu object {data: [...]}, thì lấy parsed.data
   const ordersArray = Array.isArray(parsed) ? parsed : parsed?.data;
@@ -113,8 +88,7 @@ export const cachedStatus = async (
     data = ordersArray.filter((order) => [prop1, prop2].includes(order.status));
   } else {
     data = ordersArray.filter(
-      (order) =>
-        [prop1, prop2].includes(order.status) && order.userId === userId
+      (order) => [prop1, prop2].includes(order.status) && order.userId === userId
     );
   }
 
@@ -136,8 +110,7 @@ export const filterOrdersFromCache = async ({
   const lowerKeyword = keyword?.toLowerCase?.() || "";
 
   // Dùng prefix để tạo key cache
-  const keyRole =
-    role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
+  const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
   const allDataCacheKey = `${cacheKeyPrefix}:${keyRole}`;
 
   // Lấy cache
@@ -181,10 +154,7 @@ export const filterOrdersFromCache = async ({
   const totalOrders = filteredOrders.length;
   const totalPages = Math.ceil(totalOrders / currentPageSize);
   const offset = (currentPage - 1) * currentPageSize;
-  const paginatedOrders = filteredOrders.slice(
-    offset,
-    offset + currentPageSize
-  );
+  const paginatedOrders = filteredOrders.slice(offset, offset + currentPageSize);
 
   return {
     message,

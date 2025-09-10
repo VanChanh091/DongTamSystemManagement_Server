@@ -15,9 +15,7 @@ const PlanningPaper = sequelize.define(
       get() {
         const rawValue = this.getDataValue("dayCompleted");
         if (!rawValue) return null;
-        return new Date(
-          rawValue.getTime() - rawValue.getTimezoneOffset() * 60000
-        ).toISOString();
+        return new Date(rawValue.getTime() - rawValue.getTimezoneOffset() * 60000).toISOString();
       },
     },
     timeRunning: { type: DataTypes.TIME },
@@ -42,12 +40,7 @@ const PlanningPaper = sequelize.define(
     totalLoss: { type: DataTypes.DOUBLE },
     qtyWasteNorm: { type: DataTypes.DOUBLE },
     chooseMachine: {
-      type: DataTypes.ENUM(
-        "Máy 1350",
-        "Máy 1900",
-        "Máy 2 Lớp",
-        "Máy Quấn Cuồn"
-      ),
+      type: DataTypes.ENUM("Máy 1350", "Máy 1900", "Máy 2 Lớp", "Máy Quấn Cuồn"),
       allowNull: false,
     },
     shiftProduction: { type: DataTypes.ENUM("Ca 1", "Ca 2", "Ca 3") },
