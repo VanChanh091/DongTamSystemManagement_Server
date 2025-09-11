@@ -43,7 +43,7 @@ export const getAllCustomer = async (req, res) => {
       });
     }
 
-    const data = await Customer.findAll();
+    const data = await Customer.findAll({ attributes: { exclude: ["createdAt", "updatedAt"] } });
 
     await redisClient.set(cacheKey, JSON.stringify(data), "EX", 3600);
 

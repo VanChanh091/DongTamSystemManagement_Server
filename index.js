@@ -60,6 +60,7 @@ app.use("/api/manufacture", manufactureRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 
 sequelize
+  // .sync({ alter: true })
   .sync()
   .then(() => console.log("✅ Database & tables synchronized"))
   .catch((err) => console.error("❌ Error syncing database:", err));

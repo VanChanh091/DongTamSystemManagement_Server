@@ -1,14 +1,13 @@
-import { DataTypes } from "sequelize";
+import { DataTypes, NOW } from "sequelize";
 import { sequelize } from "../../configs/connectDB.js";
 
 const Customer = sequelize.define(
   "Customer",
   {
     customerId: {
-      type: DataTypes.STRING(10),
+      type: DataTypes.STRING(14),
       allowNull: false,
       primaryKey: true,
-      unique: true,
     },
     customerName: { type: DataTypes.STRING, allowNull: false },
     companyName: { type: DataTypes.STRING, allowNull: false },
@@ -16,6 +15,8 @@ const Customer = sequelize.define(
     shippingAddress: { type: DataTypes.STRING, allowNull: false },
     mst: { type: DataTypes.STRING },
     phone: { type: DataTypes.STRING },
+    contactPerson: { type: DataTypes.STRING },
+    dayCreated: { type: DataTypes.DATE },
     cskh: { type: DataTypes.STRING, allowNull: false },
   },
   { timestamps: true }
