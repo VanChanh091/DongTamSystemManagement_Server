@@ -111,10 +111,12 @@ export const filterOrdersFromCache = async ({
 
   // Dùng prefix để tạo key cache
   const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
-  const allDataCacheKey = `${cacheKeyPrefix}:${keyRole}`;
+  const allDataCacheKey = `${cacheKeyPrefix}:${keyRole}`; //orders:accept_planning:all
 
   // Lấy cache
   let allOrders = await redisCache.get(allDataCacheKey);
+  let sourceMessage = "";
+
   if (!allOrders) {
     const whereCondition = { status: { [Op.in]: ["accept", "planning"] } };
 
@@ -142,8 +144,10 @@ export const filterOrdersFromCache = async ({
     });
 
     await redisCache.set(allDataCacheKey, JSON.stringify(allOrders), "EX", 900);
+    sourceMessage = "Get all orders from DB";
   } else {
     allOrders = JSON.parse(allOrders);
+    sourceMessage = message;
   }
 
   // Lọc
@@ -157,9 +161,52 @@ export const filterOrdersFromCache = async ({
   const paginatedOrders = filteredOrders.slice(offset, offset + currentPageSize);
 
   return {
-    message,
+    message: sourceMessage,
     data: paginatedOrders,
     totalOrders,
+    totalPages,
+    currentPage,
+  };
+};
+
+export const filterCustomersFromCache = async ({
+  keyword,
+  getFieldValue,
+  page,
+  pageSize,
+  message,
+}) => {
+  const currentPage = Number(page);
+  const currentPageSize = Number(pageSize);
+  const lowerKeyword = keyword?.toLowerCase?.() || "";
+
+  const cacheKey = "customers:search:all";
+
+  let allCustomers = await redisCache.get(cacheKey);
+  let sourceMessage = "";
+
+  if (!allCustomers) {
+    allCustomers = await Customer.findAll({ attributes: { exclude: ["createdAt", "updatedAt"] } });
+    await redisCache.set(cacheKey, JSON.stringify(allCustomers), "EX", 900);
+    sourceMessage = "Get customers from DB";
+  } else {
+    allCustomers = JSON.parse(allCustomers);
+    sourceMessage = message;
+  }
+
+  const filteredCustomers = allCustomers.filter((customer) =>
+    getFieldValue(customer)?.toLowerCase?.().includes(lowerKeyword)
+  );
+
+  const totalCustomers = filteredCustomers.length;
+  const totalPages = Math.ceil(totalCustomers / currentPageSize);
+  const offset = (currentPage - 1) * currentPageSize;
+  const paginatedCustomers = filteredCustomers.slice(offset, offset + currentPageSize);
+
+  return {
+    message: sourceMessage,
+    data: paginatedCustomers,
+    totalCustomers,
     totalPages,
     currentPage,
   };

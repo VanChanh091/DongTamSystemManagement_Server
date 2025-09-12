@@ -1,53 +1,70 @@
 import Redis from "ioredis";
 import Customer from "../../../models/customer/customer.js";
-import { Op, fn, col, where } from "sequelize";
+import { Op } from "sequelize";
 import { generateNextId } from "../../../utils/helper/generateNextId.js";
 import { sequelize } from "../../../configs/connectDB.js";
+import { filterCustomersFromCache } from "../../../utils/helper/orderHelpers.js";
 
 const redisClient = new Redis();
 
-const cacheRedis = async (colData, params) => {
-  const cacheKey = "customers:all";
-  const cachedData = await redisClient.get(cacheKey);
-
-  if (cachedData) {
-    const parsedData = JSON.parse(cachedData);
-    const product = parsedData.filter((item) =>
-      item[colData]?.toLowerCase().includes(params.toLowerCase())
-    );
-
-    if (product.length > 0) {
-      return product;
-    }
-  }
-
-  return null;
-};
-
 // get all
 export const getAllCustomer = async (req, res) => {
-  const { refresh = false } = req.query;
-  try {
-    const cacheKey = "customers:all";
+  const { page = 1, pageSize = 20, refresh = false, noPaging = false } = req.query;
+  const currentPage = Number(page);
+  const currentPageSize = Number(pageSize);
+  const noPagingMode = noPaging === "true";
 
-    if (refresh == "true") {
-      await redisClient.del(cacheKey);
+  const cacheKey = noPaging === "true" ? "customers:all" : `customers:all:page:${currentPage}`;
+
+  try {
+    if (refresh === "true") {
+      if (noPaging === "true") {
+        await redisClient.del(cacheKey);
+      } else {
+        const keys = await redisClient.keys("customers:all:page:*");
+        if (keys.length > 0) {
+          await redisClient.del(keys);
+        }
+      }
     }
 
     const cachedData = await redisClient.get(cacheKey);
     if (cachedData) {
       console.log("✅ Data Customer from Redis");
-      return res.status(200).json({
-        message: "Get all customers from cache",
-        data: JSON.parse(cachedData),
+      const parsed = JSON.parse(cachedData);
+      return res.status(200).json({ ...parsed, message: "Get all customers from cache" });
+    }
+
+    let data, totalCustomers, totalPages;
+
+    if (noPagingMode) {
+      data = await Customer.findAll({
+        attributes: { exclude: ["createdAt", "updatedAt"] },
+      });
+      totalCustomers = data.length;
+      totalPages = 1;
+    } else {
+      totalCustomers = await Customer.count();
+      totalPages = Math.ceil(totalCustomers / currentPageSize);
+      const offset = (currentPage - 1) * currentPageSize;
+      data = await Customer.findAll({
+        attributes: { exclude: ["createdAt", "updatedAt"] },
+        offset,
+        limit: currentPageSize,
       });
     }
 
-    const data = await Customer.findAll({ attributes: { exclude: ["createdAt", "updatedAt"] } });
+    const responseData = {
+      message: "get all customers successfully",
+      data,
+      totalCustomers,
+      totalPages,
+      currentPage: noPagingMode ? 1 : currentPage,
+    };
 
-    await redisClient.set(cacheKey, JSON.stringify(data), "EX", 3600);
+    await redisClient.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
 
-    res.status(200).json({ message: "get all customers successfully", data });
+    res.status(200).json(responseData);
   } catch (err) {
     console.error("get all customer failed:", err);
     res.status(500).json({ message: "get all customers failed", err });
@@ -56,147 +73,116 @@ export const getAllCustomer = async (req, res) => {
 
 // get by id
 export const getById = async (req, res) => {
-  const { id } = req.params;
+  const { customerId, page, pageSize } = req.query;
 
   try {
-    const cachedResult = await cacheRedis("customerId", id);
-
-    if (cachedResult) {
-      console.log("✅ Get customer from cache");
-      return res.status(200).json({
-        message: "Get customer from cache",
-        data: cachedResult,
-      });
-    }
-
-    // Nếu không có cache thì lấy từ DB
-    const customer = await Customer.findAll({
-      where: where(fn("LOWER", col("customerId")), {
-        [Op.like]: `%${id.toLowerCase()}%`,
-      }),
+    const result = await filterCustomersFromCache({
+      keyword: customerId,
+      getFieldValue: (customer) => customer?.customerId,
+      page,
+      pageSize,
+      message: "get all customerName from cache",
     });
 
-    if (!customer) {
-      return res.status(404).json({ message: "Customer not found" });
-    }
-
-    res.status(200).json({
-      message: "Get customer from DB",
-      data: customer,
-    });
+    res.status(200).json(result);
   } catch (err) {
     console.error("Failed to get customer by customerId:", err);
-    res.status(500).json({
-      message: "Failed to get customer by customerId",
-      err,
-    });
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 
 //get by name
 export const getByCustomerName = async (req, res) => {
-  const { name } = req.params;
+  const { name, page, pageSize } = req.query;
   try {
-    const cachedResult = await cacheRedis("customerName", name);
-
-    if (cachedResult) {
-      console.log("✅ Get customer from cache");
-      return res.status(200).json({
-        message: "Get customer from cache",
-        data: cachedResult,
-      });
-    }
-
-    // Nếu không có cache thì lấy từ DB
-    const customer = await Customer.findAll({
-      where: where(fn("LOWER", col("customerName")), {
-        [Op.like]: `%${name.toLowerCase()}%`,
-      }),
+    const result = await filterCustomersFromCache({
+      keyword: name,
+      getFieldValue: (customer) => customer?.customerName,
+      page,
+      pageSize,
+      message: "get all customerName from cache",
     });
 
-    if (!customer) {
-      return res.status(404).json({ message: "Customer not found" });
-    }
-
-    res.status(200).json({ customer });
+    res.status(200).json(result);
   } catch (err) {
     console.error("Failed to get customer by name:", err);
-    res.status(500).json({
-      message: "Failed to get customers by name",
-      err,
-    });
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 
 //get by cskh
 export const getByCSKH = async (req, res) => {
-  const { cskh } = req.params;
+  const { cskh, page, pageSize } = req.query;
   try {
-    const cachedResult = await cacheRedis("cskh", cskh);
-
-    if (cachedResult) {
-      console.log("✅ Get customer from cache");
-      return res.status(200).json({
-        message: "Get customer from cache",
-        data: cachedResult,
-      });
-    }
-
-    // Nếu không có cache thì lấy từ DB
-    const customer = await Customer.findAll({
-      where: where(fn("LOWER", col("cskh")), {
-        [Op.like]: `%${cskh.toLowerCase()}%`,
-      }),
+    const result = await filterCustomersFromCache({
+      keyword: cskh,
+      getFieldValue: (customer) => customer?.cskh,
+      page,
+      pageSize,
+      message: "get all customerName from cache",
     });
 
-    if (!customer) {
-      return res.status(404).json({ message: "Customer not found" });
-    }
-
-    res.status(200).json({ customer });
+    res.status(200).json(result);
   } catch (err) {
     console.error("Failed to get customer by cskh:", err);
-    res.status(500).json({
-      message: "Failed to get customers by cskh",
-      err,
-    });
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 
 //get by sdt
 export const getBySDT = async (req, res) => {
-  const { sdt } = req.params;
+  const { phone, page, pageSize } = req.query;
+
+  const currentPage = Number(page) || 1;
+  const currentPageSize = Number(pageSize) || 10;
+  const targetPhone = phone?.trim();
+  const cacheKey = "customers:search:all";
+
   try {
-    const cachedResult = await cacheRedis("phone", sdt);
+    let allCustomers;
+    let fromCache = true;
 
-    if (cachedResult) {
-      console.log("✅ Get customer from cache");
-      return res.status(200).json({
-        message: "Get customer from cache",
-        data: cachedResult,
+    let cached = await redisClient.get(cacheKey);
+
+    if (!cached) {
+      fromCache = false;
+
+      // Query đúng SDT
+      const customersFromDB = await Customer.findAll({
+        attributes: { exclude: ["createdAt", "updatedAt"] },
+        where: { phone: { [Op.eq]: phone } },
       });
+
+      // Cache toàn bộ customers để lần sau filter
+      const fullCustomers = await Customer.findAll({
+        attributes: { exclude: ["createdAt", "updatedAt"] },
+      });
+      await redisClient.set(cacheKey, JSON.stringify(fullCustomers), "EX", 600);
+
+      allCustomers = customersFromDB;
+    } else {
+      allCustomers = JSON.parse(cached).filter(
+        (customer) => customer?.phone?.trim() === targetPhone
+      );
     }
 
-    // Nếu không có cache thì lấy từ DB
-    const customer = await Customer.findOne({
-      where: {
-        phone: {
-          [Op.eq]: sdt,
-        },
-      },
+    const totalCustomers = allCustomers.length;
+    const totalPages = Math.ceil(totalCustomers / currentPageSize);
+    const offset = (currentPage - 1) * currentPageSize;
+    const paginatedCustomers = allCustomers.slice(offset, offset + currentPageSize);
+
+    return res.status(200).json({
+      message: fromCache
+        ? "Get customer by SDT from filtered cache"
+        : "Get customer by SDT from DB",
+      data: paginatedCustomers,
+      totalCustomers,
+      totalPages,
+      currentPage,
     });
-
-    if (!customer) {
-      return res.status(404).json({ message: "Customer not found" });
-    }
-
-    res.status(200).json({ customer });
   } catch (err) {
     console.error("Failed to get customer by phone:", err);
-    res.status(500).json({
-      message: "Failed to get customers by phone",
-      err,
-    });
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 
@@ -236,17 +222,21 @@ export const createCustomer = async (req, res) => {
 
 // update
 export const updateCustomer = async (req, res) => {
-  const { id } = req.params;
+  const { customerId } = req.query;
   const { ...customerData } = req.body;
+
   try {
-    const customer = await Customer.findOne({ where: { customerId: id } });
+    const customer = await Customer.findOne({ where: { customerId: customerId } });
     if (!customer) {
       return res.status(404).json({ message: "Customer not found" });
     }
 
     await customer.update(customerData);
 
-    await redisClient.del("customers:all");
+    const keys = await redisClient.keys("customers:all:page:*");
+    if (keys.length > 0) {
+      await redisClient.del(keys);
+    }
 
     res.status(201).json({
       message: "Customer updated successfully",
@@ -263,17 +253,21 @@ export const updateCustomer = async (req, res) => {
 
 // delete
 export const deleteCustomer = async (req, res) => {
+  const { customerId } = req.query;
+
   try {
-    const { id } = req.params;
     const deletedCustomer = await Customer.destroy({
-      where: { customerId: id },
+      where: { customerId: customerId },
     });
 
     if (!deletedCustomer) {
       return res.status(404).json({ message: "Customer not found" });
     }
 
-    await redisClient.del("customers:all");
+    const keys = await redisClient.keys("customers:all:page:*");
+    if (keys.length > 0) {
+      await redisClient.del(keys);
+    }
 
     res.status(201).json({ message: "Customer deleted successfully" });
   } catch (err) {

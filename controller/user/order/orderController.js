@@ -27,7 +27,7 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
 
   try {
     const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
-    const cacheKey = `orders:${keyRole}:accept_planning:page:${currentPage}`;
+    const cacheKey = `orders:${keyRole}:accept_planning:page:${currentPage}`; //orders:admin:accept_planning:page:1
 
     if (refresh == "true") {
       await redisCache.del(cacheKey);

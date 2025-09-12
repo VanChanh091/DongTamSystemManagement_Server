@@ -15,27 +15,12 @@ import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware.j
 const router = Router();
 
 router.get("/", authenticate, getAllCustomer);
-router.get("/:id", authenticate, getById);
-router.get("/byName/:name", authenticate, getByCustomerName);
-router.get("/cskh/:cskh", authenticate, getByCSKH);
-router.get("/phone/:sdt", authenticate, getBySDT);
-router.post(
-  "/",
-  authenticate,
-  authorizeAnyPermission(["sale"]),
-  createCustomer
-);
-router.put(
-  "/:id",
-  authenticate,
-  authorizeAnyPermission(["sale"]),
-  updateCustomer
-);
-router.delete(
-  "/:id",
-  authenticate,
-  authorizeAnyPermission(["sale"]),
-  deleteCustomer
-);
+router.get("/byCustomerId", authenticate, getById);
+router.get("/byName", authenticate, getByCustomerName);
+router.get("/byCskh", authenticate, getByCSKH);
+router.get("/byPhone", authenticate, getBySDT);
+router.post("/", authenticate, authorizeAnyPermission(["sale"]), createCustomer);
+router.put("/customerUp", authenticate, authorizeAnyPermission(["sale"]), updateCustomer);
+router.delete("/customerDel", authenticate, authorizeAnyPermission(["sale"]), deleteCustomer);
 
 export default router;
