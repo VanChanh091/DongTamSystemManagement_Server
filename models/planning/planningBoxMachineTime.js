@@ -14,9 +14,7 @@ const PlanningBoxTime = sequelize.define("PlanningBoxTime", {
     get() {
       const rawValue = this.getDataValue("dayCompleted");
       if (!rawValue) return null;
-      return new Date(
-        rawValue.getTime() - rawValue.getTimezoneOffset() * 60000
-      ).toISOString();
+      return new Date(rawValue.getTime() - rawValue.getTimezoneOffset() * 60000).toISOString();
     },
   },
   wasteBox: { type: DataTypes.DOUBLE },

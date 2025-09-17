@@ -217,7 +217,6 @@ export const planningOrder = async (req, res) => {
 
     // 8) Nếu đơn hàng có làm thùng, tạo thêm kế hoạch lam-thung (waiting)
     const box = order.box;
-
     if (order.isBox) {
       boxPlan = await PlanningBox.create({
         planningId: paperPlan.planningId,
@@ -764,8 +763,8 @@ export const updateIndex_TimeRunning = async (req, res) => {
     await transaction.commit();
     await redisCache.del(cachedKey);
 
+    //socket
     const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
-
     req.io.to(roomName).emit("planningPaperUpdated", {
       machine,
       message: `Kế hoạch của ${machine} đã được cập nhật.`,

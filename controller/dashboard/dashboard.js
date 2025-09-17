@@ -19,7 +19,7 @@ export const getAllDataPaper = async (req, res) => {
   const currentPage = Number(page);
   const currentPageSize = Number(pageSize);
 
-  const cacheKey = "data:paper:all";
+  const cacheKey = `data:paper:all:${currentPage}`;
 
   try {
     if (refresh === "true") {
@@ -113,7 +113,7 @@ export const getAllDataBox = async (req, res) => {
   const currentPage = Number(page);
   const currentPageSize = Number(pageSize);
 
-  const cacheKey = `data:box:all:${currentPage}:${currentPageSize}`;
+  const cacheKey = `data:box:all:${currentPage}`;
 
   try {
     if (refresh === "true") {

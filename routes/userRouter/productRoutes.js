@@ -30,11 +30,6 @@ router.put(
   authorizeAnyPermission(["sale"]),
   updateProduct
 );
-router.delete(
-  "/:id",
-  authenticate,
-  authorizeAnyPermission(["sale"]),
-  deleteProduct
-);
+router.delete("/:id", authenticate, authorizeAnyPermission(["sale"]), deleteProduct);
 
 export default router;

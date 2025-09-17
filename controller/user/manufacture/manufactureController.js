@@ -8,6 +8,8 @@ import Order from "../../../models/order/order.js";
 import { Op } from "sequelize";
 import PlanningBox from "../../../models/planning/planningBox.js";
 import planningBoxMachineTime from "../../../models/planning/planningBoxMachineTime.js";
+import ReportPlanningPaper from "../../../models/report/reportPlanningPaper.js";
+import ReportPlanningBox from "../../../models/report/reportPlanningBox.js";
 
 const redisCache = new Redis();
 
@@ -34,9 +36,7 @@ export const getPlanningPaper = async (req, res) => {
       let cachedPlannings = JSON.parse(cachedData);
 
       const filtered = cachedPlannings.filter((item) => {
-        const matchStatus = ["planning", "lackQty", "producing"].includes(
-          item.status
-        );
+        const matchStatus = ["planning", "lackQty", "producing"].includes(item.status);
         const hasDayStart = item.dayStart !== null;
         return matchStatus && hasDayStart;
       });
@@ -89,13 +89,11 @@ export const getPlanningPaper = async (req, res) => {
     });
 
     // Lọc đơn complete chỉ giữ lại trong 1 ngày
-    const truncateToDate = (date) =>
-      new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const truncateToDate = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const now = truncateToDate(new Date());
 
     const validData = planning.filter((item) => {
-      if (["planning", "lackQty", "producing"].includes(item.status))
-        return true;
+      if (["planning", "lackQty", "producing"].includes(item.status)) return true;
 
       if (item.status === "complete") {
         const dayCompleted = new Date(item.dayCompleted);
@@ -183,20 +181,20 @@ export const addReportPaper = async (req, res) => {
     }
 
     // 2. Cộng dồn số lượng mới vào số đã có
-    const newQtyProduced =
-      Number(planning.qtyProduced || 0) + Number(qtyProduced || 0);
-    const newQtyWasteNorm =
-      Number(planning.qtyWasteNorm || 0) + Number(qtyWasteNorm || 0);
+    const newQtyProduced = Number(planning.qtyProduced || 0) + Number(qtyProduced || 0);
+    const newQtyWasteNorm = Number(planning.qtyWasteNorm || 0) + Number(qtyWasteNorm || 0);
 
     const isOverflowReport =
       planning.hasOverFlow &&
       planning.timeOverFlow &&
-      new Date(dayCompleted) >=
-        new Date(planning.timeOverFlow.overflowDayStart);
+      new Date(dayCompleted) >= new Date(planning.timeOverFlow.overflowDayStart);
 
-    if (isOverflowReport) {
-      const overflow = await timeOverflowPlanning.findOne({
-        where: { planningId: planningId },
+    let overflow, dayReportValue;
+
+    //get timeOverflowPlanning
+    if (planning.hasOverFlow) {
+      overflow = await timeOverflowPlanning.findOne({
+        where: { planningId },
         transaction,
         lock: transaction.LOCK.UPDATE,
       });
@@ -205,9 +203,10 @@ export const addReportPaper = async (req, res) => {
         await transaction.rollback();
         return res.status(404).json({ message: "Overflow plan not found" });
       }
+    }
 
-      overflow.overflowDayCompleted = new Date(dayCompleted);
-      overflow.save();
+    if (isOverflowReport) {
+      await overflow.update({ overflowDayCompleted: new Date(dayCompleted) }, { transaction });
 
       await planning.update(
         {
@@ -218,12 +217,7 @@ export const addReportPaper = async (req, res) => {
         { transaction }
       );
 
-      if (newQtyProduced >= planning.runningPlan) {
-        await planning.update({ status: "complete" }, { transaction });
-        await overflow.update({ status: "complete" }, { transaction });
-      } else {
-        await planning.update({ status: "lackQty" }, { transaction });
-      }
+      dayReportValue = overflow.getDataValue("overflowDayCompleted");
     } else {
       await planning.update(
         {
@@ -235,12 +229,31 @@ export const addReportPaper = async (req, res) => {
         { transaction }
       );
 
-      if (newQtyProduced >= planning.runningPlan) {
-        await planning.update({ status: "complete" }, { transaction });
-      } else {
-        await planning.update({ status: "lackQty" }, { transaction });
-      }
+      dayReportValue = planning.getDataValue("dayCompleted");
     }
+
+    //compare qtyProduced vs runningPlan
+    if (newQtyProduced >= planning.runningPlan) {
+      await planning.update({ status: "complete" }, { transaction });
+      if (isOverflowReport) {
+        await overflow.update({ status: "complete" }, { transaction });
+      }
+    } else {
+      await planning.update({ status: "lackQty" }, { transaction });
+    }
+
+    //3. tạo report theo số lần báo cáo
+    await ReportPlanningPaper.create(
+      {
+        planningId,
+        dayReport: dayReportValue,
+        qtyProduced: qtyProduced,
+        qtyWasteNorm: qtyWasteNorm,
+        shiftProduction: otherData.shiftProduction,
+        shiftManagement: otherData.shiftManagement,
+      },
+      { transaction }
+    );
 
     // 4. Kiểm tra đã đủ sản lượng chưa
     if (newQtyProduced >= planning.runningPlan) {
@@ -251,10 +264,7 @@ export const addReportPaper = async (req, res) => {
         return res.status(404).json({ message: "PlanningBox not found" });
       }
 
-      await planningBox.update(
-        { runningPlan: newQtyProduced },
-        { transaction }
-      );
+      await planningBox.update({ runningPlan: newQtyProduced }, { transaction });
     }
 
     //5. Commit + clear cache
@@ -284,9 +294,7 @@ export const confirmProducingPaper = async (req, res) => {
   const { role, permissions: userPermissions } = req.user;
 
   if (!planningId) {
-    return res
-      .status(400)
-      .json({ message: "Missing planningId query parameter" });
+    return res.status(400).json({ message: "Missing planningId query parameter" });
   }
 
   const transaction = await PlanningPaper.sequelize.transaction();
@@ -353,9 +361,7 @@ export const getPlanningBox = async (req, res) => {
   const { machine, refresh = false } = req.query;
 
   if (!machine) {
-    return res
-      .status(400)
-      .json({ message: "Missing 'machine' query parameter" });
+    return res.status(400).json({ message: "Missing 'machine' query parameter" });
   }
 
   try {
@@ -461,18 +467,11 @@ export const getPlanningBox = async (req, res) => {
           ],
         },
       ],
-      order: [
-        [
-          { model: planningBoxMachineTime, as: "boxTimes" },
-          "sortPlanning",
-          "ASC",
-        ],
-      ],
+      order: [[{ model: planningBoxMachineTime, as: "boxTimes" }, "sortPlanning", "ASC"]],
     });
 
     //lọc đơn complete trong 1 ngày
-    const truncateToDate = (date) =>
-      new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const truncateToDate = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
     const now = truncateToDate(new Date());
 
@@ -546,13 +545,7 @@ export const addReportBox = async (req, res) => {
   const { planningBoxId, machine } = req.query;
   const { qtyProduced, rpWasteLoss, dayCompleted, shiftManagement } = req.body;
 
-  if (
-    !planningBoxId ||
-    !qtyProduced ||
-    !dayCompleted ||
-    !rpWasteLoss ||
-    !shiftManagement
-  ) {
+  if (!planningBoxId || !qtyProduced || !dayCompleted || !rpWasteLoss || !shiftManagement) {
     return res.status(400).json({ message: "Missing required fields" });
   }
 
@@ -577,12 +570,8 @@ export const addReportBox = async (req, res) => {
     }
 
     // 2. Cộng dồn số lượng mới vào số đã có
-    const newQtyProduced =
-      Number(planning.qtyProduced || 0) + Number(qtyProduced || 0);
-    const newQtyWasteNorm =
-      Number(planning.rpWasteLoss || 0) + Number(rpWasteLoss || 0);
-
-    const runningPlan = planning.PlanningBox.runningPlan || 0;
+    const newQtyProduced = Number(planning.qtyProduced || 0) + Number(qtyProduced || 0);
+    const newQtyWasteNorm = Number(planning.rpWasteLoss || 0) + Number(rpWasteLoss || 0);
 
     const timeOverFlow =
       Array.isArray(planning.PlanningBox.timeOverFlow) &&
@@ -596,7 +585,10 @@ export const addReportBox = async (req, res) => {
       planning.PlanningBox.timeOverFlow &&
       new Date(dayCompleted) >= new Date(timeOverFlow.overflowDayStart);
 
-    if (isOverflowReport) {
+    let overflow, dayReportValue;
+
+    //get timeOverflowPlanning
+    if (planning.hasOverFlow) {
       const overflow = await timeOverflowPlanning.findOne({
         where: { planningBoxId, machine },
         transaction,
@@ -607,9 +599,10 @@ export const addReportBox = async (req, res) => {
         await transaction.rollback();
         return res.status(404).json({ message: "Overflow plan not found" });
       }
+    }
 
-      overflow.overflowDayCompleted = new Date(dayCompleted);
-      overflow.save();
+    if (isOverflowReport) {
+      await overflow.update({ overflowDayCompleted: new Date(dayCompleted) }, { transaction });
 
       await planning.update(
         {
@@ -620,12 +613,7 @@ export const addReportBox = async (req, res) => {
         { transaction }
       );
 
-      if (newQtyProduced >= runningPlan) {
-        await overflow.update({ status: "complete" }, { transaction });
-        await planning.update({ status: "complete" }, { transaction });
-      } else {
-        await planning.update({ status: "lackOfQty" }, { transaction });
-      }
+      dayReportValue = overflow.getDataValue("overflowDayCompleted");
     } else {
       //Cập nhật kế hoạch với số liệu mới
       await planning.update(
@@ -638,14 +626,34 @@ export const addReportBox = async (req, res) => {
         { transaction }
       );
 
-      if (newQtyProduced >= runningPlan) {
-        await planning.update({ status: "complete" }, { transaction });
-      } else {
-        await planning.update({ status: "lackOfQty" }, { transaction });
-      }
+      dayReportValue = planning.getDataValue("dayCompleted");
     }
 
-    // 5. Commit + clear cache
+    //compare qtyProduced vs runningPlan
+    const runningPlan = planning.PlanningBox.runningPlan || 0;
+
+    if (newQtyProduced >= runningPlan) {
+      await planning.update({ status: "complete" }, { transaction });
+      if (isOverflowReport) {
+        await overflow.update({ status: "complete" }, { transaction });
+      }
+    } else {
+      await planning.update({ status: "lackOfQty" }, { transaction });
+    }
+
+    // 3. tạo report theo số lần báo cáo
+    await ReportPlanningBox.create(
+      {
+        planningBoxId,
+        dayReport: dayReportValue,
+        qtyProduced: qtyProduced,
+        wasteLoss: rpWasteLoss,
+        shiftManagement: shiftManagement,
+      },
+      { transaction }
+    );
+
+    // 4. Commit + clear cache
     await transaction.commit();
     await redisCache.del(`planning:box:machine:${machine}`);
 
@@ -674,9 +682,7 @@ export const confirmProducingBox = async (req, res) => {
   const { role, permissions: userPermissions } = req.user;
 
   if (!planningBoxId) {
-    return res
-      .status(400)
-      .json({ message: "Missing planningBoxId query parameter" });
+    return res.status(400).json({ message: "Missing planningBoxId query parameter" });
   }
 
   const transaction = await PlanningBox.sequelize.transaction();

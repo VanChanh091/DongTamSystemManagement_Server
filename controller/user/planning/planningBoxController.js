@@ -5,7 +5,7 @@ import Customer from "../../../models/customer/customer.js";
 import Box from "../../../models/order/box.js";
 import PlanningBox from "../../../models/planning/planningBox.js";
 import timeOverflowPlanning from "../../../models/planning/timeOverFlowPlanning.js";
-import planningBoxMachineTime from "../../../models/planning/planningBoxMachineTime.js";
+import PlanningBoxTime from "../../../models/planning/planningBoxMachineTime.js";
 import MachineBox from "../../../models/admin/machineBox.js";
 import WasteNormBox from "../../../models/admin/wasteNormBox.js";
 import {
@@ -79,13 +79,13 @@ const getPlanningByMachineSorted = async (machine) => {
       },
       include: [
         {
-          model: planningBoxMachineTime,
+          model: PlanningBoxTime,
           where: { machine: machine },
           as: "boxTimes",
           attributes: { exclude: ["createdAt", "updatedAt"] },
         },
         {
-          model: planningBoxMachineTime,
+          model: PlanningBoxTime,
           as: "allBoxTimes",
           where: {
             machine: { [Op.ne]: machine },
@@ -310,7 +310,7 @@ export const acceptLackQtyBox = async (req, res) => {
   }
 
   try {
-    const plannings = await planningBoxMachineTime.findAll({
+    const plannings = await PlanningBoxTime.findAll({
       where: {
         planningBoxId: {
           [Op.in]: planningBoxIds,
@@ -368,7 +368,7 @@ export const updateIndex_TimeRunningBox = async (req, res) => {
     for (const item of updateIndex) {
       if (!item.sortPlanning) continue;
 
-      const boxTime = await planningBoxMachineTime.findOne({
+      const boxTime = await PlanningBoxTime.findOne({
         where: {
           planningBoxId: item.planningBoxId,
           machine,
@@ -387,13 +387,13 @@ export const updateIndex_TimeRunningBox = async (req, res) => {
       where: { planningBoxId: updateIndex.map((i) => i.planningBoxId) },
       include: [
         { model: timeOverflowPlanning, as: "timeOverFlow" },
-        { model: planningBoxMachineTime, as: "boxTimes", where: { machine } },
+        { model: PlanningBoxTime, as: "boxTimes", where: { machine } },
         {
           model: Order,
           include: { model: Box, as: "box", attributes: ["inMatTruoc", "inMatSau"] },
         },
       ],
-      order: [[{ model: planningBoxMachineTime, as: "boxTimes" }, "sortPlanning", "ASC"]],
+      order: [[{ model: PlanningBoxTime, as: "boxTimes" }, "sortPlanning", "ASC"]],
       transaction,
     });
 
@@ -417,7 +417,9 @@ export const updateIndex_TimeRunningBox = async (req, res) => {
     await transaction.commit();
     await redisCache.del(cachedKey);
 
-    req.io.to(`machine_${machine.toLowerCase().replace(/\s+/g, "_")}`).emit("planningBoxUpdated", {
+    //socket
+    const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
+    req.io.to(roomName).emit("planningBoxUpdated", {
       machine,
       message: `Kế hoạch của ${machine} đã được cập nhật.`,
     });
@@ -643,7 +645,7 @@ const calculateTimeForOnePlanning = async ({
     result.wasteBox = Math.round(wasteBoxValue);
   }
 
-  await planningBoxMachineTime.update(
+  await PlanningBoxTime.update(
     { ...result, sortPlanning },
     { where: { planningBoxId, machine }, transaction }
   );
@@ -774,7 +776,7 @@ const getInitialCursor = async ({ machine, dayStart, timeStart, transaction }) =
   let currentDay = new Date(day);
 
   // A) Lấy đơn complete trong cùng ngày
-  const lastComplete = await planningBoxMachineTime.findOne({
+  const lastComplete = await PlanningBoxTime.findOne({
     where: { machine: machine, status: "complete", dayStart: dayStr },
     order: [["timeRunning", "DESC"]],
     attributes: ["timeRunning"],
@@ -794,7 +796,7 @@ const getInitialCursor = async ({ machine, dayStart, timeStart, transaction }) =
       {
         model: PlanningBox,
         include: {
-          model: planningBoxMachineTime,
+          model: PlanningBoxTime,
           as: "boxTimes",
           where: { machine: machine, status: "complete" },
           attributes: ["status", "machine"],

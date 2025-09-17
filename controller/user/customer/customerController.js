@@ -35,21 +35,19 @@ export const getAllCustomer = async (req, res) => {
       return res.status(200).json({ ...parsed, message: "Get all customers from cache" });
     }
 
-    let data, totalCustomers, totalPages;
+    let data, totalPages;
+    const totalCustomers = await Customer.count();
 
     if (noPagingMode) {
+      totalPages = 1;
       data = await Customer.findAll({
         attributes: { exclude: ["createdAt", "updatedAt"] },
       });
-      totalCustomers = data.length;
-      totalPages = 1;
     } else {
-      totalCustomers = await Customer.count();
       totalPages = Math.ceil(totalCustomers / currentPageSize);
-      const offset = (currentPage - 1) * currentPageSize;
       data = await Customer.findAll({
         attributes: { exclude: ["createdAt", "updatedAt"] },
-        offset,
+        offset: (currentPage - 1) * currentPageSize,
         limit: currentPageSize,
       });
     }

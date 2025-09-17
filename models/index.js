@@ -10,6 +10,8 @@ import PlanningBoxTime from "./planning/planningBoxMachineTime.js";
 import PlanningPaper from "./planning/planningPaper.js";
 import timeOverflowPlanning from "./planning/timeOverFlowPlanning.js";
 import Product from "./product/product.js";
+import ReportPlanningBox from "./report/reportPlanningBox.js";
+import ReportPlanningPaper from "./report/reportPlanningPaper.js";
 import User from "./user/user.js";
 
 const models = {
@@ -24,6 +26,10 @@ const models = {
   PlanningBox,
   timeOverflowPlanning,
   PlanningBoxTime,
+
+  //report
+  ReportPlanningPaper,
+  ReportPlanningBox,
 
   //admin
   MachinePaper,
@@ -41,16 +47,23 @@ Order.belongsTo(Customer, { foreignKey: "customerId" });
 Product.hasMany(Order, { foreignKey: "productId", onDelete: "CASCADE" });
 Order.belongsTo(Product, { foreignKey: "productId" });
 
-//Order
+//order
 Order.hasOne(Box, { foreignKey: "orderId", as: "box", onDelete: "CASCADE" });
 Box.belongsTo(Order, { foreignKey: "orderId" });
 
+//user
 User.hasMany(Order, { foreignKey: "userId", onDelete: "CASCADE" });
 Order.belongsTo(User, { foreignKey: "userId" });
 
-//planning
+//planning paper
 Order.hasMany(PlanningPaper, { foreignKey: "orderId" }); //hasMany to create timeOverflow planning
 PlanningPaper.belongsTo(Order, {
+  foreignKey: "orderId",
+  onDelete: "CASCADE",
+});
+
+Order.hasMany(PlanningBox, { foreignKey: "orderId" });
+PlanningBox.belongsTo(Order, {
   foreignKey: "orderId",
   onDelete: "CASCADE",
 });
@@ -59,22 +72,33 @@ PlanningPaper.belongsTo(Order, {
 PlanningPaper.hasOne(PlanningBox, { foreignKey: "planningId" });
 PlanningBox.belongsTo(PlanningPaper, { foreignKey: "planningId" });
 
-Order.hasMany(PlanningBox, { foreignKey: "orderId" });
-PlanningBox.belongsTo(Order, {
-  foreignKey: "orderId",
-  onDelete: "CASCADE",
-});
-
 PlanningBox.hasMany(PlanningBoxTime, {
   foreignKey: "planningBoxId",
   as: "boxTimes",
 });
+PlanningBoxTime.belongsTo(PlanningBox, { foreignKey: "planningBoxId" });
+
 //created to get all box times
 PlanningBox.hasMany(PlanningBoxTime, {
   foreignKey: "planningBoxId",
   as: "allBoxTimes",
 });
 PlanningBoxTime.belongsTo(PlanningBox, { foreignKey: "planningBoxId" });
+
+//report
+PlanningPaper.hasMany(ReportPlanningPaper, {
+  foreignKey: "planningId",
+  as: "reportPaper",
+  onDelete: "CASCADE",
+});
+ReportPlanningPaper.belongsTo(PlanningPaper, { foreignKey: "planningId" });
+
+PlanningBox.hasMany(ReportPlanningBox, {
+  foreignKey: "planningBoxId",
+  as: "reportBox",
+  onDelete: "CASCADE",
+});
+ReportPlanningBox.belongsTo(PlanningBox, { foreignKey: "planningBoxId" });
 
 //timeOverflowPlanning
 PlanningPaper.hasOne(timeOverflowPlanning, {

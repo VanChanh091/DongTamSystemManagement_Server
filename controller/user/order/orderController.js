@@ -347,7 +347,7 @@ export const addOrder = async (req, res) => {
 
     const validation = await validateCustomerAndProduct(customerId, productId);
     if (!validation.success) {
-      return res.status(500).json({ message: validation.message });
+      return res.status(400).json({ message: validation.message });
     }
 
     const newOrderId = await generateOrderId(prefix);
