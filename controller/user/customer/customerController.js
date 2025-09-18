@@ -14,7 +14,8 @@ export const getAllCustomer = async (req, res) => {
   const currentPageSize = Number(pageSize);
   const noPagingMode = noPaging === "true";
 
-  const cacheKey = noPaging === "true" ? "customers:all" : `customers:all:page:${currentPage}`;
+  const cacheKey =
+    noPaging === "true" ? "customers:all" : `customers:all:page:${currentPage}`;
 
   try {
     if (refresh === "true") {

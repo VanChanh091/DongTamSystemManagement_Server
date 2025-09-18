@@ -11,6 +11,27 @@ import ReportPlanningBox from "../../../models/report/reportPlanningBox.js";
 
 const redisCache = new Redis();
 
+//export excel
+export const exportExcelReportPlanning = async (req, res) => {};
+
+export const getReportBoxByField = async (req, res) => {
+  const { machine } = req.query;
+  const value = req.query[field];
+
+  if (!machine || !value) {
+    return res.status(400).json({
+      message: "Thiếu machine hoặc giá trị tìm kiếm",
+    });
+  }
+  try {
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+//===============================REPORT PAPER=====================================
+
 //get all report planning paper
 export const getReportPlanningPaper = async (req, res) => {
   const { machine, refresh = false, page = 1, pageSize = 20 } = req.query;
@@ -117,10 +138,18 @@ export const getReportPlanningPaper = async (req, res) => {
 
     res.status(200).json(responseData);
   } catch (error) {
-    console.error("get all customer failed:", error);
-    res.status(500).json({ message: "get all customers failed", error });
+    console.error("get all reportPaper failed:", error);
+    res.status(500).json({ message: "get all reportPaper failed", error });
   }
 };
+
+//get by customer
+//get by dayReported
+//get by qtyReported
+//get by ghepKho
+//get by shiftManagement
+
+//===============================REPORT BOX=====================================
 
 //get all report planning box
 export const getReportPlanningBox = async (req, res) => {
@@ -142,7 +171,9 @@ export const getReportPlanningBox = async (req, res) => {
     if (cachedData) {
       console.log("✅ Data Report Planning Box from Redis");
       const parsed = JSON.parse(cachedData);
-      return res.status(200).json({ ...parsed, message: "Get all report planning box from cache" });
+      return res
+        .status(200)
+        .json({ ...parsed, message: "Get all report planning box from cache" });
     }
 
     const totalOrders = await ReportPlanningBox.count();
@@ -176,6 +207,27 @@ export const getReportPlanningBox = async (req, res) => {
               attributes: { exclude: ["createdAt", "updatedAt"] },
             },
             {
+              model: PlanningBoxTime,
+              as: "allBoxTimes",
+              where: {
+                machine: { [Op.ne]: machine },
+              },
+              attributes: {
+                exclude: [
+                  "timeRunning",
+                  "dayStart",
+                  "dayCompleted",
+                  "wasteBox",
+                  "shiftManagement",
+                  "status",
+                  "sortPlanning",
+                  "createdAt",
+                  "updatedAt",
+                  "rpWasteLoss",
+                ],
+              },
+            },
+            {
               model: Order,
               attributes: {
                 exclude: [
@@ -191,7 +243,6 @@ export const getReportPlanningBox = async (req, res) => {
                   "updatedAt",
                   "lengthPaperCustomer",
                   "paperSizeCustomer",
-                  "quantityCustomer",
                   "day",
                   "matE",
                   "matB",
@@ -232,7 +283,13 @@ export const getReportPlanningBox = async (req, res) => {
 
     res.status(200).json(responseData);
   } catch (error) {
-    console.error("get all customer failed:", error);
-    res.status(500).json({ message: "get all customers failed", error });
+    console.error("get all reportBox failed:", error);
+    res.status(500).json({ message: "get all reportBox failed", error });
   }
 };
+
+//get by customer
+//get by dayReported
+// //get by qtyReported
+//get by QC_Box
+//get by shiftManagement

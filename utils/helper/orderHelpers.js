@@ -25,11 +25,7 @@ export const generateOrderId = async (prefix) => {
   const sanitizedPrefix = prefix.trim().replace(/\s+/g, "");
 
   const lastOrder = await Order.findOne({
-    where: {
-      orderId: {
-        [Op.like]: `${sanitizedPrefix}%`,
-      },
-    },
+    where: { orderId: { [Op.like]: `${sanitizedPrefix}%` } },
     order: [["orderId", "DESC"]],
   });
 
@@ -48,10 +44,7 @@ export const generateOrderId = async (prefix) => {
 export const createDataTable = async (id, model, data) => {
   try {
     if (data) {
-      await model.create({
-        orderId: id,
-        ...data,
-      });
+      await model.create({ orderId: id, ...data });
     }
   } catch (error) {
     console.error(`Create table ${model} error:`, error);
@@ -182,32 +175,39 @@ export const filterCustomersFromCache = async ({
 
   const cacheKey = "customers:search:all";
 
-  let allCustomers = await redisCache.get(cacheKey);
-  let sourceMessage = "";
+  try {
+    let allCustomers = await redisCache.get(cacheKey);
+    let sourceMessage = "";
 
-  if (!allCustomers) {
-    allCustomers = await Customer.findAll({ attributes: { exclude: ["createdAt", "updatedAt"] } });
-    await redisCache.set(cacheKey, JSON.stringify(allCustomers), "EX", 900);
-    sourceMessage = "Get customers from DB";
-  } else {
-    allCustomers = JSON.parse(allCustomers);
-    sourceMessage = message;
+    if (!allCustomers) {
+      allCustomers = await Customer.findAll({
+        attributes: { exclude: ["createdAt", "updatedAt"] },
+      });
+      await redisCache.set(cacheKey, JSON.stringify(allCustomers), "EX", 900);
+      sourceMessage = "Get customers from DB";
+    } else {
+      allCustomers = JSON.parse(allCustomers);
+      sourceMessage = message;
+    }
+
+    const filteredCustomers = allCustomers.filter((customer) =>
+      getFieldValue(customer)?.toLowerCase?.().includes(lowerKeyword)
+    );
+
+    const totalCustomers = filteredCustomers.length;
+    const totalPages = Math.ceil(totalCustomers / currentPageSize);
+    const offset = (currentPage - 1) * currentPageSize;
+    const paginatedCustomers = filteredCustomers.slice(offset, offset + currentPageSize);
+
+    return {
+      message: sourceMessage,
+      data: paginatedCustomers,
+      totalCustomers,
+      totalPages,
+      currentPage,
+    };
+  } catch (error) {
+    console.error("get all customer failed:", error);
+    res.status(500).json({ message: "get all customers failed", error });
   }
-
-  const filteredCustomers = allCustomers.filter((customer) =>
-    getFieldValue(customer)?.toLowerCase?.().includes(lowerKeyword)
-  );
-
-  const totalCustomers = filteredCustomers.length;
-  const totalPages = Math.ceil(totalCustomers / currentPageSize);
-  const offset = (currentPage - 1) * currentPageSize;
-  const paginatedCustomers = filteredCustomers.slice(offset, offset + currentPageSize);
-
-  return {
-    message: sourceMessage,
-    data: paginatedCustomers,
-    totalCustomers,
-    totalPages,
-    currentPage,
-  };
 };

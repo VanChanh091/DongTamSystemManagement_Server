@@ -588,8 +588,8 @@ export const addReportBox = async (req, res) => {
     let overflow, dayReportValue;
 
     //get timeOverflowPlanning
-    if (planning.hasOverFlow) {
-      const overflow = await timeOverflowPlanning.findOne({
+    if (planning.PlanningBox.hasOverFlow) {
+      overflow = await timeOverflowPlanning.findOne({
         where: { planningBoxId, machine },
         transaction,
         lock: transaction.LOCK.UPDATE,
