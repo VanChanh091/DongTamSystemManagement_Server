@@ -28,7 +28,9 @@ export const getPlanningPaperByField = async (req, res, field) => {
       const filtered = parsed.filter((item) => {
         const order = item.Order;
         if (field === "customerName") {
-          return order?.Customer?.customerName?.toLowerCase().includes(value.toLowerCase());
+          return order?.Customer?.customerName
+            ?.toLowerCase()
+            .includes(value.toLowerCase());
         } else if (field === "flute") {
           return order?.flute?.toLowerCase().includes(value.toLowerCase());
         } else if (field === "ghepKho") {
@@ -115,7 +117,9 @@ export const getPlanningBoxByField = async (req, res, field) => {
       const filtered = parsed.filter((item) => {
         const order = item.Order;
         if (field === "customerName") {
-          return order?.Customer?.customerName?.toLowerCase().includes(value.toLowerCase());
+          return order?.Customer?.customerName
+            ?.toLowerCase()
+            .includes(value.toLowerCase());
         } else if (field === "flute") {
           return order?.flute?.toLowerCase().includes(value.toLowerCase());
         } else if (field === "QC_box") {
@@ -246,7 +250,9 @@ export const isDuringBreak = (start, end) => {
 
 export const setTimeOnDay = (dayDate, timeStrOrDate) => {
   const t =
-    typeof timeStrOrDate === "string" ? parseTimeOnly(timeStrOrDate) : new Date(timeStrOrDate);
+    typeof timeStrOrDate === "string"
+      ? parseTimeOnly(timeStrOrDate)
+      : new Date(timeStrOrDate);
   t.setFullYear(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate());
   return t;
 };

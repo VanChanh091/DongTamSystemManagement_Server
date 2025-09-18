@@ -169,8 +169,8 @@ export const filterCustomersFromCache = async ({
   pageSize,
   message,
 }) => {
-  const currentPage = Number(page);
-  const currentPageSize = Number(pageSize);
+  const currentPage = Number(page) || 1;
+  const currentPageSize = Number(pageSize) || 20;
   const lowerKeyword = keyword?.toLowerCase?.() || "";
 
   const cacheKey = "customers:search:all";
@@ -180,9 +180,7 @@ export const filterCustomersFromCache = async ({
     let sourceMessage = "";
 
     if (!allCustomers) {
-      allCustomers = await Customer.findAll({
-        attributes: { exclude: ["createdAt", "updatedAt"] },
-      });
+      allCustomers = await Customer.findAll();
       await redisCache.set(cacheKey, JSON.stringify(allCustomers), "EX", 900);
       sourceMessage = "Get customers from DB";
     } else {
@@ -208,6 +206,6 @@ export const filterCustomersFromCache = async ({
     };
   } catch (error) {
     console.error("get all customer failed:", error);
-    res.status(500).json({ message: "get all customers failed", error });
+    throw new Error("get all customers failed");
   }
 };

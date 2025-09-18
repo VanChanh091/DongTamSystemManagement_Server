@@ -8,31 +8,17 @@ import ReportPlanningPaper from "../../../models/report/reportPlanningPaper.js";
 import PlanningBoxTime from "../../../models/planning/planningBoxMachineTime.js";
 import PlanningBox from "../../../models/planning/planningBox.js";
 import ReportPlanningBox from "../../../models/report/reportPlanningBox.js";
+import { filterReportByField } from "../../../utils/helper/reportHelper.js";
 
 const redisCache = new Redis();
 
 //export excel
 export const exportExcelReportPlanning = async (req, res) => {};
 
-export const getReportBoxByField = async (req, res) => {
-  const { machine } = req.query;
-  const value = req.query[field];
-
-  if (!machine || !value) {
-    return res.status(400).json({
-      message: "Thiếu machine hoặc giá trị tìm kiếm",
-    });
-  }
-  try {
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Lỗi server" });
-  }
-};
-
 //===============================REPORT PAPER=====================================
 
 //get all report planning paper
+
 export const getReportPlanningPaper = async (req, res) => {
   const { machine, refresh = false, page = 1, pageSize = 20 } = req.query;
   const currentPage = Number(page);
@@ -143,11 +129,115 @@ export const getReportPlanningPaper = async (req, res) => {
   }
 };
 
-//get by customer
+//get by customerName
+export const getReportByCustomerName = async (req, res) => {
+  const { customerName, machine, page = 1, pageSize = 20, refresh = false } = req.query;
+
+  try {
+    const result = await filterReportByField({
+      keyword: customerName,
+      machine,
+      getFieldValue: (report) => report?.Planning?.Order?.Customer?.customerName,
+      page,
+      pageSize,
+      message: "get all customerName from cache",
+      refresh: refresh,
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Failed to get customerName:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 //get by dayReported
+export const getReportByDayReported = async (req, res) => {
+  const { dayReported, machine, page = 1, pageSize = 20, refresh = false } = req.query;
+
+  try {
+    const result = await filterReportByField({
+      keyword: dayReported,
+      machine,
+      getFieldValue: (report) => report?.dayReport,
+      page,
+      pageSize,
+      message: "get all dayReported from cache",
+      refresh: refresh,
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Failed to get dayReported:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 //get by qtyReported
+export const getReportByQtyReported = async (req, res) => {
+  const { qtyProduced, machine, page = 1, pageSize = 20, refresh = false } = req.query;
+
+  try {
+    const result = await filterReportByField({
+      keyword: qtyProduced,
+      machine,
+      getFieldValue: (report) => report?.qtyProduced,
+      page,
+      pageSize,
+      message: "get all qtyReported from cache",
+      refresh: refresh,
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Failed to get qtyReported:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 //get by ghepKho
+export const getReportByGhepKho = async (req, res) => {
+  const { ghepKho, machine, page = 1, pageSize = 20, refresh = false } = req.query;
+
+  try {
+    const result = await filterReportByField({
+      keyword: ghepKho,
+      machine,
+      getFieldValue: (report) => report?.Planning?.ghepKho,
+      page,
+      pageSize,
+      message: "get all ghepKho from cache",
+      refresh: refresh,
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Failed to get ghepKho:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 //get by shiftManagement
+export const getReportByShiftManagement = async (req, res) => {
+  const { shiftManagement, machine, page = 1, pageSize = 20, refresh = false } = req.query;
+
+  try {
+    const result = await filterReportByField({
+      keyword: shiftManagement,
+      machine,
+      getFieldValue: (report) => report?.shiftManagement,
+      page,
+      pageSize,
+      message: "get all shiftManagement from cache",
+      refresh: refresh,
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Failed to get shiftManagement:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
 
 //===============================REPORT BOX=====================================
 
@@ -171,9 +261,7 @@ export const getReportPlanningBox = async (req, res) => {
     if (cachedData) {
       console.log("✅ Data Report Planning Box from Redis");
       const parsed = JSON.parse(cachedData);
-      return res
-        .status(200)
-        .json({ ...parsed, message: "Get all report planning box from cache" });
+      return res.status(200).json({ ...parsed, message: "Get all report planning box from cache" });
     }
 
     const totalOrders = await ReportPlanningBox.count();
@@ -288,7 +376,7 @@ export const getReportPlanningBox = async (req, res) => {
   }
 };
 
-//get by customer
+//get by customerName
 //get by dayReported
 // //get by qtyReported
 //get by QC_Box
