@@ -1,11 +1,16 @@
 import { Router } from "express";
 import authenticate from "../../middlewares/authMiddleware.js";
 import {
-  getReportByCustomerName,
-  getReportByDayReported,
-  getReportByGhepKho,
-  getReportByQtyReported,
-  getReportByShiftManagement,
+  getReportBoxByCustomerName,
+  getReportBoxByDayReported,
+  getReportBoxByQcBox,
+  getReportBoxByQtyReported,
+  getReportBoxByShiftManagement,
+  getReportPaperByCustomerName,
+  getReportPaperByDayReported,
+  getReportPaperByGhepKho,
+  getReportPaperByQtyReported,
+  getReportPaperByShiftManagement,
   getReportPlanningBox,
   getReportPlanningPaper,
 } from "../../controller/user/report/reportPlanningController.js";
@@ -14,13 +19,18 @@ const router = Router();
 
 //==================Report Planning Paper=====================
 router.get("/reportPaper", authenticate, getReportPlanningPaper);
-router.get("/getCustomerName", authenticate, getReportByCustomerName);
-router.get("/getDayReported", authenticate, getReportByDayReported);
-router.get("/getQtyReported", authenticate, getReportByQtyReported);
-router.get("/getGhepKho", authenticate, getReportByGhepKho);
-router.get("/getShiftManagement", authenticate, getReportByShiftManagement);
+router.get("/reportPaper/getCustomerName", authenticate, getReportPaperByCustomerName);
+router.get("/reportPaper/getDayReported", authenticate, getReportPaperByDayReported);
+router.get("/reportPaper/getQtyReported", authenticate, getReportPaperByQtyReported);
+router.get("/reportPaper/getGhepKho", authenticate, getReportPaperByGhepKho);
+router.get("/reportPaper/getShiftManagement", authenticate, getReportPaperByShiftManagement);
 
 //==================Report Planning Box=====================
 router.get("/reportBox", authenticate, getReportPlanningBox);
+router.get("/reportBox/getCustomerName", authenticate, getReportBoxByCustomerName);
+router.get("/reportBox/getDayReported", authenticate, getReportBoxByDayReported);
+router.get("/reportBox/getQtyReported", authenticate, getReportBoxByQtyReported);
+router.get("/reportBox/getQcBox", authenticate, getReportBoxByQcBox);
+router.get("/reportBox/getShiftManagement", authenticate, getReportBoxByShiftManagement);
 
 export default router;

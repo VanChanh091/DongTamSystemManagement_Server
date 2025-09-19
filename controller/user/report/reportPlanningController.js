@@ -18,7 +18,6 @@ export const exportExcelReportPlanning = async (req, res) => {};
 //===============================REPORT PAPER=====================================
 
 //get all report planning paper
-
 export const getReportPlanningPaper = async (req, res) => {
   const { machine, refresh = false, page = 1, pageSize = 20 } = req.query;
   const currentPage = Number(page);
@@ -130,7 +129,7 @@ export const getReportPlanningPaper = async (req, res) => {
 };
 
 //get by customerName
-export const getReportByCustomerName = async (req, res) => {
+export const getReportPaperByCustomerName = async (req, res) => {
   const { customerName, machine, page = 1, pageSize = 20, refresh = false } = req.query;
 
   try {
@@ -152,7 +151,7 @@ export const getReportByCustomerName = async (req, res) => {
 };
 
 //get by dayReported
-export const getReportByDayReported = async (req, res) => {
+export const getReportPaperByDayReported = async (req, res) => {
   const { dayReported, machine, page = 1, pageSize = 20, refresh = false } = req.query;
 
   try {
@@ -174,7 +173,7 @@ export const getReportByDayReported = async (req, res) => {
 };
 
 //get by qtyReported
-export const getReportByQtyReported = async (req, res) => {
+export const getReportPaperByQtyReported = async (req, res) => {
   const { qtyProduced, machine, page = 1, pageSize = 20, refresh = false } = req.query;
 
   try {
@@ -196,7 +195,7 @@ export const getReportByQtyReported = async (req, res) => {
 };
 
 //get by ghepKho
-export const getReportByGhepKho = async (req, res) => {
+export const getReportPaperByGhepKho = async (req, res) => {
   const { ghepKho, machine, page = 1, pageSize = 20, refresh = false } = req.query;
 
   try {
@@ -218,7 +217,7 @@ export const getReportByGhepKho = async (req, res) => {
 };
 
 //get by shiftManagement
-export const getReportByShiftManagement = async (req, res) => {
+export const getReportPaperByShiftManagement = async (req, res) => {
   const { shiftManagement, machine, page = 1, pageSize = 20, refresh = false } = req.query;
 
   try {
@@ -377,7 +376,116 @@ export const getReportPlanningBox = async (req, res) => {
 };
 
 //get by customerName
+export const getReportBoxByCustomerName = async (req, res) => {
+  const { customerName, machine, page = 1, pageSize = 20, refresh = false } = req.query;
+
+  try {
+    const result = await filterReportByField({
+      keyword: customerName,
+      machine,
+      getFieldValue: (report) => report?.PlanningBox?.Order?.Customer?.customerName,
+      page,
+      pageSize,
+      message: "get all customerName from cache",
+      refresh: refresh,
+      isBox: true,
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Failed to get customerName:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 //get by dayReported
+export const getReportBoxByDayReported = async (req, res) => {
+  const { dayReported, machine, page = 1, pageSize = 20, refresh = false } = req.query;
+
+  try {
+    const result = await filterReportByField({
+      keyword: dayReported,
+      machine,
+      getFieldValue: (report) => report?.dayReport,
+      page,
+      pageSize,
+      message: "get all dayReported from cache",
+      refresh: refresh,
+      isBox: true,
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Failed to get dayReported:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 // //get by qtyReported
+export const getReportBoxByQtyReported = async (req, res) => {
+  const { qtyProduced, machine, page = 1, pageSize = 20, refresh = false } = req.query;
+
+  try {
+    const result = await filterReportByField({
+      keyword: qtyProduced,
+      machine,
+      getFieldValue: (report) => report?.qtyProduced,
+      page,
+      pageSize,
+      message: "get all qtyProduced from cache",
+      refresh: refresh,
+      isBox: true,
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Failed to get qtyProduced:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 //get by QC_Box
+export const getReportBoxByQcBox = async (req, res) => {
+  const { QcBox, machine, page = 1, pageSize = 20, refresh = false } = req.query;
+
+  try {
+    const result = await filterReportByField({
+      keyword: QcBox,
+      machine,
+      getFieldValue: (report) => report?.PlanningBox?.Order?.QC_box,
+      page,
+      pageSize,
+      message: "get all QcBox from cache",
+      refresh: refresh,
+      isBox: true,
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Failed to get QcBox:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 //get by shiftManagement
+export const getReportBoxByShiftManagement = async (req, res) => {
+  const { shiftManagement, machine, page = 1, pageSize = 20, refresh = false } = req.query;
+
+  try {
+    const result = await filterReportByField({
+      keyword: shiftManagement,
+      machine,
+      getFieldValue: (report) => report?.shiftManagement,
+      page,
+      pageSize,
+      message: "get all shiftManagement from cache",
+      refresh: refresh,
+      isBox: true,
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Failed to get shiftManagement:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};

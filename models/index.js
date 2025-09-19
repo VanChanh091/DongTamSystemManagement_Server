@@ -52,29 +52,24 @@ Order.hasOne(Box, { foreignKey: "orderId", as: "box", onDelete: "CASCADE" });
 Box.belongsTo(Order, { foreignKey: "orderId" });
 
 //user
-User.hasMany(Order, { foreignKey: "userId", onDelete: "CASCADE" });
+User.hasMany(Order, { foreignKey: "userId" });
 Order.belongsTo(User, { foreignKey: "userId" });
 
 //planning paper
 Order.hasMany(PlanningPaper, { foreignKey: "orderId" }); //hasMany to create timeOverflow planning
-PlanningPaper.belongsTo(Order, {
-  foreignKey: "orderId",
-  onDelete: "CASCADE",
-});
+PlanningPaper.belongsTo(Order, { foreignKey: "orderId" });
 
 Order.hasMany(PlanningBox, { foreignKey: "orderId" });
-PlanningBox.belongsTo(Order, {
-  foreignKey: "orderId",
-  onDelete: "CASCADE",
-});
+PlanningBox.belongsTo(Order, { foreignKey: "orderId" });
 
 //planning box
-PlanningPaper.hasOne(PlanningBox, { foreignKey: "planningId" });
+PlanningPaper.hasOne(PlanningBox, { foreignKey: "planningId", onDelete: "CASCADE" });
 PlanningBox.belongsTo(PlanningPaper, { foreignKey: "planningId" });
 
 PlanningBox.hasMany(PlanningBoxTime, {
   foreignKey: "planningBoxId",
   as: "boxTimes",
+  onDelete: "CASCADE",
 });
 PlanningBoxTime.belongsTo(PlanningBox, { foreignKey: "planningBoxId" });
 
@@ -82,6 +77,7 @@ PlanningBoxTime.belongsTo(PlanningBox, { foreignKey: "planningBoxId" });
 PlanningBox.hasMany(PlanningBoxTime, {
   foreignKey: "planningBoxId",
   as: "allBoxTimes",
+  onDelete: "CASCADE",
 });
 PlanningBoxTime.belongsTo(PlanningBox, { foreignKey: "planningBoxId" });
 
