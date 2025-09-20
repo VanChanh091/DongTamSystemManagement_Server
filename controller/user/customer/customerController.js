@@ -14,8 +14,7 @@ export const getAllCustomer = async (req, res) => {
   const currentPageSize = Number(pageSize);
   const noPagingMode = noPaging === "true";
 
-  const cacheKey =
-    noPaging === "true" ? "customers:all" : `customers:all:page:${currentPage}`;
+  const cacheKey = noPaging === "true" ? "customers:all" : `customers:all:page:${currentPage}`;
 
   try {
     if (refresh === "true") {
@@ -210,6 +209,7 @@ export const createCustomer = async (req, res) => {
 
     await transaction.commit();
     await redisClient.del("customers:all");
+    await redisClient.del("customers:search:all");
 
     res.status(201).json({ message: "Customer created successfully", data: newCustomer });
   } catch (err) {
@@ -236,6 +236,7 @@ export const updateCustomer = async (req, res) => {
     if (keys.length > 0) {
       await redisClient.del(keys);
     }
+    await redisClient.del("customers:search:all");
 
     res.status(201).json({
       message: "Customer updated successfully",
@@ -265,8 +266,10 @@ export const deleteCustomer = async (req, res) => {
 
     const keys = await redisClient.keys("customers:all:page:*");
     if (keys.length > 0) {
+      keyword;
       await redisClient.del(keys);
     }
+    await redisClient.del("customers:search:all");
 
     res.status(201).json({ message: "Customer deleted successfully" });
   } catch (err) {

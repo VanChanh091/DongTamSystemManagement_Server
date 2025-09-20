@@ -144,9 +144,11 @@ export const filterOrdersFromCache = async ({
   }
 
   // Lọc
-  const filteredOrders = allOrders.filter((order) =>
-    getFieldValue(order)?.toLowerCase?.().includes(lowerKeyword)
-  );
+  const filteredOrders = allOrders.filter((order) => {
+    const fieldValue = getFieldValue(order);
+    if (fieldValue == null) return false;
+    return String(fieldValue).toLocaleLowerCase().includes(lowerKeyword);
+  });
 
   const totalOrders = filteredOrders.length;
   const totalPages = Math.ceil(totalOrders / currentPageSize);

@@ -175,85 +175,24 @@ export const getOrderByQcBox = async (req, res) => {
 export const getOrderByPrice = async (req, res) => {
   const { userId, role } = req.user;
   const { price, page, pageSize } = req.query;
-  const currentPage = Number(page);
-  const currentPageSize = Number(pageSize);
-  const targetPrice = parseFloat(price);
 
-  const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
-  const allDataCacheKey = `orders:accept_planning:${keyRole}`;
-
-  let allOrders = await redisCache.get(allDataCacheKey);
-  let fromCache = true;
-
-  if (!allOrders) {
-    fromCache = false;
-
-    const whereCondition = {
-      status: { [Op.in]: ["accept", "planning"] },
-    };
-
-    // User thường thì filter thêm userId
-    if (role !== "admin" && role !== "manager") {
-      whereCondition.userId = userId;
-    }
-
-    // Query DB có điều kiện lọc price luôn
-    allOrders = await Order.findAll({
-      where: { ...whereCondition, price: targetPrice },
-      include: [
-        { model: Customer, attributes: ["customerName", "companyName"] },
-        {
-          model: Product,
-          attributes: ["typeProduct", "productName", "maKhuon"],
-        },
-        {
-          model: Box,
-          as: "box",
-          attributes: { exclude: ["createdAt", "updatedAt"] },
-        },
-      ],
-      order: [["createdAt", "DESC"]],
+  try {
+    const result = await filterOrdersFromCache({
+      userId,
+      role,
+      keyword: price,
+      getFieldValue: (order) => order?.price,
+      page,
+      pageSize,
+      cacheKeyPrefix: `orders:accept_planning`,
+      message: "Get orders by price from filtered cache",
     });
 
-    // Cache full data (không lọc price) cho lần sau
-    const fullOrders = await Order.findAll({
-      where: { userId, status: { [Op.in]: ["accept", "planning"] } },
-      include: [
-        { model: Customer, attributes: ["customerName", "companyName"] },
-        {
-          model: Product,
-          attributes: ["typeProduct", "productName", "maKhuon"],
-        },
-        {
-          model: Box,
-          as: "box",
-          attributes: { exclude: ["createdAt", "updatedAt"] },
-        },
-      ],
-      order: [["createdAt", "DESC"]],
-    });
-    await redisCache.set(allDataCacheKey, JSON.stringify(fullOrders), "EX", 3600);
-  } else {
-    allOrders = JSON.parse(allOrders);
-    // Lọc price trong cache
-    allOrders = allOrders.filter((order) => {
-      const orderPrice = parseFloat(order?.price);
-      return !isNaN(orderPrice) && orderPrice === targetPrice;
-    });
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("Failed to get by price:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
-
-  const totalOrders = allOrders.length;
-  const totalPages = Math.ceil(totalOrders / currentPageSize);
-  const offset = (currentPage - 1) * currentPageSize;
-  const paginatedOrders = allOrders.slice(offset, offset + currentPageSize);
-
-  return res.status(200).json({
-    message: fromCache ? "Get orders by price from filtered cache" : "Get orders by price from DB",
-    data: paginatedOrders,
-    totalOrders,
-    totalPages,
-    currentPage,
-  });
 };
 
 //===============================PENDING AND REJECT=====================================
