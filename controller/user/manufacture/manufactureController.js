@@ -1,15 +1,16 @@
 import Redis from "ioredis";
+import { Op } from "sequelize";
 import machineLabels from "../../../configs/machineLabels.js";
 import PlanningPaper from "../../../models/planning/planningPaper.js";
 import timeOverflowPlanning from "../../../models/planning/timeOverFlowPlanning.js";
 import Customer from "../../../models/customer/customer.js";
 import Box from "../../../models/order/box.js";
 import Order from "../../../models/order/order.js";
-import { Op } from "sequelize";
 import PlanningBox from "../../../models/planning/planningBox.js";
 import planningBoxMachineTime from "../../../models/planning/planningBoxMachineTime.js";
 import ReportPlanningPaper from "../../../models/report/reportPlanningPaper.js";
 import ReportPlanningBox from "../../../models/report/reportPlanningBox.js";
+import { createReportPlanning } from "../../../utils/helper/reportHelper.js";
 
 const redisCache = new Redis();
 
@@ -243,17 +244,15 @@ export const addReportPaper = async (req, res) => {
     }
 
     //3. tạo report theo số lần báo cáo
-    await ReportPlanningPaper.create(
-      {
-        planningId,
-        dayReport: dayReportValue,
-        qtyProduced: qtyProduced,
-        qtyWasteNorm: qtyWasteNorm,
-        shiftProduction: otherData.shiftProduction,
-        shiftManagement: otherData.shiftManagement,
-      },
-      { transaction }
-    );
+    await createReportPlanning({
+      planning: planning.toJSON(),
+      model: ReportPlanningPaper,
+      qtyProduced,
+      qtyWasteNorm,
+      dayReportValue,
+      otherData,
+      transaction,
+    });
 
     // 4. Kiểm tra đã đủ sản lượng chưa
     if (newQtyProduced >= planning.runningPlan) {
@@ -642,16 +641,16 @@ export const addReportBox = async (req, res) => {
     }
 
     // 3. tạo report theo số lần báo cáo
-    await ReportPlanningBox.create(
-      {
-        planningBoxId,
-        dayReport: dayReportValue,
-        qtyProduced: qtyProduced,
-        wasteLoss: rpWasteLoss,
-        shiftManagement: shiftManagement,
-      },
-      { transaction }
-    );
+    await createReportPlanning({
+      planning: planning.toJSON(),
+      model: ReportPlanningBox,
+      qtyProduced: qtyProduced,
+      qtyWasteNorm: rpWasteLoss,
+      dayReportValue: dayReportValue,
+      shiftManagementBox: shiftManagement,
+      transaction,
+      isBox: true,
+    });
 
     // 4. Commit + clear cache
     await transaction.commit();

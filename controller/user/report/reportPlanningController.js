@@ -1,5 +1,6 @@
 import Redis from "ioredis";
 import { Op } from "sequelize";
+import ExcelJS from "exceljs";
 import Order from "../../../models/order/order.js";
 import Box from "../../../models/order/box.js";
 import Customer from "../../../models/customer/customer.js";
@@ -9,11 +10,10 @@ import PlanningBoxTime from "../../../models/planning/planningBoxMachineTime.js"
 import PlanningBox from "../../../models/planning/planningBox.js";
 import ReportPlanningBox from "../../../models/report/reportPlanningBox.js";
 import { filterReportByField } from "../../../utils/helper/reportHelper.js";
+import { mapReportPaperRow, reportPaperColumns } from "./mapping/reportPaperRowAndColumn.js";
+import { mapReportBoxRow, reportBoxColumns } from "./mapping/reportBoxRowAndColumn.js";
 
 const redisCache = new Redis();
-
-//export excel
-export const exportExcelReportPlanning = async (req, res) => {};
 
 //===============================REPORT PAPER=====================================
 
@@ -487,5 +487,314 @@ export const getReportBoxByShiftManagement = async (req, res) => {
   } catch (error) {
     console.error("Failed to get shiftManagement:", error);
     res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+//===============================EXPORT EXCEL=====================================
+
+//export excel paper
+export const exportExcelReportPaper = async (req, res) => {
+  const { fromDate, toDate, planningIds, machine } = req.body;
+
+  try {
+    let whereCondition = {};
+
+    if (planningIds && planningIds.length > 0) {
+      whereCondition.planningId = planningIds;
+    } else if (fromDate && toDate) {
+      const start = new Date(fromDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(toDate);
+      end.setHours(23, 59, 59, 999);
+
+      whereCondition.dayReport = { [Op.between]: [start, end] };
+    }
+
+    const data = await ReportPlanningPaper.findAll({
+      where: whereCondition,
+      attributes: { exclude: ["createdAt", "updatedAt"] },
+      include: [
+        {
+          model: PlanningPaper,
+          where: { chooseMachine: machine },
+          attributes: {
+            exclude: [
+              "createdAt",
+              "updatedAt",
+              "dayCompleted",
+              "shiftProduction",
+              "shiftProduction",
+              "shiftManagement",
+              "status",
+              "hasOverFlow",
+              "sortPlanning",
+            ],
+          },
+          include: [
+            {
+              model: Order,
+              attributes: {
+                exclude: [
+                  "acreage",
+                  "dvt",
+                  "price",
+                  "pricePaper",
+                  "discount",
+                  "profit",
+                  "vat",
+                  "rejectReason",
+                  "createdAt",
+                  "updatedAt",
+                  "lengthPaperCustomer",
+                  "paperSizeCustomer",
+                  "quantityCustomer",
+                  "day",
+                  "matE",
+                  "matB",
+                  "matC",
+                  "songE",
+                  "songB",
+                  "songC",
+                  "songE2",
+                  "lengthPaperManufacture",
+                  "status",
+                ],
+              },
+              include: [
+                { model: Customer, attributes: ["customerName", "companyName"] },
+                {
+                  model: Box,
+                  as: "box",
+                  attributes: { exclude: ["createdAt", "updatedAt"] },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      order: [["dayReport", "ASC"]],
+    });
+
+    // ✅ Tạo workbook
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Báo cáo sản xuất giấy tấm");
+
+    // ✅ Tạo header
+    worksheet.columns = reportPaperColumns;
+
+    //auto resize width
+    worksheet.columns.forEach((column) => {
+      let maxLength = 0;
+      column.eachCell({ includeEmpty: true }, (cell) => {
+        // Nếu là Date thì convert sang string để đo length
+        let cellValue = "";
+        if (cell.value instanceof Date) {
+          cellValue = cell.value.toLocaleString("vi-VN");
+        } else {
+          cellValue = cell.value ? cell.value.toString() : "";
+        }
+        maxLength = Math.max(maxLength, cellValue.length);
+      });
+      column.width = maxLength < 10 ? 10 : maxLength + 2;
+    });
+
+    // ✅ Đổ dữ liệu
+    data.forEach((item, index) => {
+      worksheet.addRow(mapReportPaperRow(item, index));
+    });
+
+    // ✅ Style header
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF0070C0" },
+      };
+      cell.alignment = { vertical: "middle", horizontal: "center" };
+    });
+
+    const now = new Date();
+    const dateStr = now.toISOString().split("T")[0];
+
+    // ✅ Xuất file
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", `attachment; filename=report-paper-${dateStr}.xlsx`);
+
+    await workbook.xlsx.write(res);
+
+    res.end();
+  } catch (error) {
+    console.error("Export Excel error:", error);
+    res.status(500).json({ message: "Lỗi xuất Excel" });
+  }
+};
+
+//export excel box
+export const exportExcelReportBox = async (req, res) => {
+  const { fromDate, toDate, planningIds, machine } = req.body;
+
+  try {
+    let whereCondition = {};
+
+    if (planningIds && planningIds.length > 0) {
+      whereCondition.planningId = planningIds;
+    } else if (fromDate && toDate) {
+      const start = new Date(fromDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(toDate);
+      end.setHours(23, 59, 59, 999);
+
+      whereCondition.dayReport = { [Op.between]: [start, end] };
+    }
+
+    const data = await ReportPlanningBox.findAll({
+      where: whereCondition,
+      attributes: { exclude: ["createdAt", "updatedAt"] },
+      include: [
+        {
+          model: PlanningBox,
+          attributes: {
+            exclude: [
+              "hasIn",
+              "hasBe",
+              "hasXa",
+              "hasDan",
+              "hasCanLan",
+              "hasCatKhe",
+              "hasCanMang",
+              "hasDongGhim",
+              "createdAt",
+              "updatedAt",
+            ],
+          },
+          include: [
+            {
+              model: PlanningBoxTime,
+              where: { machine: machine },
+              as: "boxTimes",
+              attributes: { exclude: ["createdAt", "updatedAt"] },
+            },
+            {
+              model: PlanningBoxTime,
+              as: "allBoxTimes",
+              where: {
+                machine: { [Op.ne]: machine },
+              },
+              attributes: {
+                exclude: [
+                  "timeRunning",
+                  "dayStart",
+                  "dayCompleted",
+                  "wasteBox",
+                  "shiftManagement",
+                  "status",
+                  "sortPlanning",
+                  "createdAt",
+                  "updatedAt",
+                  "rpWasteLoss",
+                ],
+              },
+            },
+            {
+              model: Order,
+              attributes: {
+                exclude: [
+                  "acreage",
+                  "dvt",
+                  "price",
+                  "pricePaper",
+                  "discount",
+                  "profit",
+                  "vat",
+                  "rejectReason",
+                  "createdAt",
+                  "updatedAt",
+                  "lengthPaperCustomer",
+                  "paperSizeCustomer",
+                  "day",
+                  "matE",
+                  "matB",
+                  "matC",
+                  "songE",
+                  "songB",
+                  "songC",
+                  "songE2",
+                  "lengthPaperManufacture",
+                  "status",
+                ],
+              },
+              include: [
+                { model: Customer, attributes: ["customerName", "companyName"] },
+                {
+                  model: Box,
+                  as: "box",
+                  attributes: { exclude: ["createdAt", "updatedAt"] },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    // ✅ Tạo workbook
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Báo cáo sản xuất thùng");
+
+    // ✅ Tạo header
+    worksheet.columns = reportBoxColumns;
+
+    //auto resize width
+    worksheet.columns.forEach((column) => {
+      let maxLength = 0;
+      column.eachCell({ includeEmpty: true }, (cell) => {
+        // Nếu là Date thì convert sang string để đo length
+        let cellValue = "";
+        if (cell.value instanceof Date) {
+          cellValue = cell.value.toLocaleString("vi-VN");
+        } else {
+          cellValue = cell.value ? cell.value.toString() : "";
+        }
+        maxLength = Math.max(maxLength, cellValue.length);
+      });
+      column.width = maxLength < 10 ? 10 : maxLength + 2;
+    });
+
+    // ✅ Đổ dữ liệu
+    data.forEach((item, index) => {
+      worksheet.addRow(mapReportBoxRow(item, index));
+    });
+
+    // ✅ Style header
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF0070C0" },
+      };
+      cell.alignment = { vertical: "middle", horizontal: "center" };
+    });
+
+    const now = new Date();
+    const dateStr = now.toISOString().split("T")[0];
+
+    // ✅ Xuất file
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", `attachment; filename=report-box-${dateStr}.xlsx`);
+
+    await workbook.xlsx.write(res);
+
+    res.end();
+  } catch (error) {
+    console.error("Export Excel error:", error);
+    res.status(500).json({ message: "Lỗi xuất Excel" });
   }
 };

@@ -12,9 +12,10 @@ const ReportPlanningBox = sequelize.define("ReportPlanningBox", {
       return new Date(rawValue.getTime() - rawValue.getTimezoneOffset() * 60000).toISOString();
     },
   },
-  qtyProduced: { type: DataTypes.INTEGER },
-  wasteLoss: { type: DataTypes.DOUBLE },
-  shiftManagement: { type: DataTypes.STRING },
+  qtyProduced: { type: DataTypes.INTEGER, allowNull: false },
+  lackOfQty: { type: DataTypes.INTEGER, allowNull: false },
+  wasteLoss: { type: DataTypes.DOUBLE, allowNull: false },
+  shiftManagement: { type: DataTypes.STRING, allowNull: false },
 });
 
 export default ReportPlanningBox;

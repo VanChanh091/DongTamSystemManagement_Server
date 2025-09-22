@@ -232,3 +232,72 @@ const findAllReportBox = async ({ isBox, machine }) => {
     throw new Error("Không lấy được data");
   }
 };
+
+export const createReportPlanning = async ({
+  planning,
+  model,
+  qtyProduced,
+  qtyWasteNorm,
+  dayReportValue,
+  shiftManagementBox = "",
+  otherData,
+  transaction,
+  isBox = false,
+}) => {
+  const whereCondition = isBox
+    ? {
+        planningBoxId: planning.PlanningBox.planningBoxId,
+      }
+    : {
+        planningId: planning.planningId,
+      };
+
+  const producedSoFar =
+    (await model.sum("qtyProduced", {
+      where: whereCondition,
+      transaction,
+    })) || 0;
+
+  // Cộng thêm sản lượng lần này
+  const totalProduced = producedSoFar + Number(qtyProduced || 0);
+
+  // Tính số lượng còn thiếu
+  let lackOfQtyValue = isBox
+    ? planning.PlanningBox.runningPlan - totalProduced
+    : planning.runningPlan - totalProduced;
+
+  let report;
+  if (isBox) {
+    report = await model.create(
+      {
+        planningBoxId: planning.PlanningBox.planningBoxId,
+        dayReport: dayReportValue,
+        qtyProduced: qtyProduced,
+        lackOfQty: lackOfQtyValue,
+        wasteLoss: qtyWasteNorm,
+        shiftManagement: shiftManagementBox,
+      },
+      { transaction }
+    );
+  } else {
+    report = await model.create(
+      {
+        planningId: planning.planningId,
+        dayReport: dayReportValue,
+        qtyProduced: qtyProduced,
+        lackOfQty: lackOfQtyValue,
+        qtyWasteNorm: qtyWasteNorm,
+        shiftProduction: otherData.shiftProduction,
+        shiftManagement: otherData.shiftManagement,
+      },
+      { transaction }
+    );
+  }
+
+  return {
+    report,
+    producedSoFar,
+    totalProduced,
+    lackOfQtyValue,
+  };
+};

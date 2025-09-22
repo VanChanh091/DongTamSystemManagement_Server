@@ -1,6 +1,8 @@
 import { Router } from "express";
 import authenticate from "../../middlewares/authMiddleware.js";
 import {
+  exportExcelReportBox,
+  exportExcelReportPaper,
   getReportBoxByCustomerName,
   getReportBoxByDayReported,
   getReportBoxByQcBox,
@@ -32,5 +34,9 @@ router.get("/reportBox/getDayReported", authenticate, getReportBoxByDayReported)
 router.get("/reportBox/getQtyReported", authenticate, getReportBoxByQtyReported);
 router.get("/reportBox/getQcBox", authenticate, getReportBoxByQcBox);
 router.get("/reportBox/getShiftManagement", authenticate, getReportBoxByShiftManagement);
+
+//==================EXPORT EXCEL=====================
+router.post("/exportExcelPaper", authenticate, exportExcelReportPaper);
+router.post("/exportExcelBox", authenticate, exportExcelReportBox);
 
 export default router;

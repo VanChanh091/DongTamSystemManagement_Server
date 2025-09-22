@@ -211,3 +211,25 @@ export const filterCustomersFromCache = async ({
     throw new Error("get all customers failed");
   }
 };
+
+export function formatterStructureOrder(planningCell) {
+  const parts = [
+    planningCell.dayReplace,
+    planningCell.songEReplace,
+    planningCell.matEReplace,
+    planningCell.songBReplace,
+    planningCell.matBReplace,
+    planningCell.songCReplace,
+    planningCell.matCReplace,
+    planningCell.songE2Replace,
+  ];
+
+  const formattedParts = [];
+  for (const part of parts) {
+    if (part && String(part).trim() !== "") {
+      formattedParts.push(part);
+    }
+  }
+
+  return formattedParts.join("/");
+}

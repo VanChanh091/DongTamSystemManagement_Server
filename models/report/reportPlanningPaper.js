@@ -13,6 +13,7 @@ const ReportPlanningPaper = sequelize.define("ReportPlanningPaper", {
     },
   },
   qtyProduced: { type: DataTypes.INTEGER, allowNull: false },
+  lackOfQty: { type: DataTypes.INTEGER, allowNull: false },
   qtyWasteNorm: { type: DataTypes.DOUBLE, allowNull: false },
   shiftProduction: { type: DataTypes.ENUM("Ca 1", "Ca 2", "Ca 3") },
   shiftManagement: { type: DataTypes.STRING, allowNull: false },
