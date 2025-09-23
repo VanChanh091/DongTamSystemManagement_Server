@@ -1,3 +1,5 @@
+import { machine } from "os";
+import { MACHINE_FIELD_MAP } from "../../../../configs/machineLabels.js";
 import { formatterStructureOrder } from "../../../../utils/helper/orderHelpers.js";
 
 export const reportBoxColumns = [
@@ -9,66 +11,106 @@ export const reportBoxColumns = [
   { header: "Ngày Báo Cáo", key: "dayReported", style: { numFmt: "dd/mm/yyyy hh:mm" } },
   { header: "Kết Cấu Đặt Hàng", key: "structure" },
   { header: "Sóng", key: "flute" },
-  { header: "Dao Xả", key: "daoXa" },
+  { header: "QC Thùng", key: "QcBox" },
   { header: "Dài", key: "length" },
   { header: "Khổ", key: "size" },
   { header: "Số Con", key: "child" },
-  { header: "Khổ Cấp Giấy", key: "khoCapGiay" },
   { header: "SL Đơn Hàng", key: "quantityOrd" },
-  { header: "Kế Hoạch Chạy", key: "runningPlanProd" },
-  { header: "SL Báo Cáo", key: "qtyReported" },
+  { header: "SL Giấy Tấm", key: "runningPlans" },
+  { header: "Thời Gian Chạy", key: "timeRunnings" },
+  { header: "In", key: "qtyPrinted" },
+  { header: "Cấn Lằn", key: "qtyCanLan" },
+  { header: "Cán Màng", key: "qtyCanMang" },
+  { header: "Xả", key: "qtyXa" },
+  { header: "Cắt Khe", key: "qtyCatKhe" },
+  { header: "Bế", key: "qtyBe" },
+  { header: "Dán", key: "qtyDan" },
+  { header: "Đóng Ghim", key: "qtyDongGhim" },
   { header: "Thiếu/Đủ SL", key: "lackOfQty" },
-  { header: "Thời Gian Chạy", key: "timeRunningProd" },
-  { header: "HD Đặc Biệt", key: "HD_special" },
-  { header: "Doanh thu", key: "totalPrice" },
-  { header: "Đáy", key: "bottom" },
-  { header: "Sóng E", key: "fluteE" },
-  { header: "Sóng B", key: "fluteB" },
-  { header: "Sóng C", key: "fluteC" },
-  { header: "Dao", key: "knife" },
-  { header: "Tổng PL", key: "totalLoss" },
-  { header: "PL Báo Cáo", key: "qtyWasteRp" },
-  { header: "Ca Sản Xuất", key: "shiftProduct" },
+  { header: "In Mặt Trước", key: "inMatTruoc" },
+  { header: "In Mặt Sau", key: "inMatSau" },
+  { header: "Dán 1 Mảnh", key: "dan_1_Manh" },
+  { header: "Dán 2 Mảnh", key: "dan_2_Manh" },
+  { header: "ĐGhim 1 Mảnh", key: "dongGhim1Manh" },
+  { header: "ĐGhim 2 Mảnh", key: "dongGhim2Manh" },
+  { header: "Định Mức PL", key: "dmWasteLoss" },
+  { header: "PL Báo Cáo", key: "wasteLossRp" },
   { header: "Trưởng Máy", key: "shiftManager" },
   { header: "Loại Máy", key: "machine" },
-  { header: "Làm Thùng?", key: "hasMadeBox" },
 ];
 
+const getMachineQty = (machine, planningBox, item) => {
+  let qty = null;
+
+  // Ưu tiên tìm trong boxTimes (máy đã chạy báo cáo)
+  const foundBoxTime = planningBox.boxTimes?.find((bt) => bt.machine === machine);
+  if (foundBoxTime) {
+    qty = item.qtyProduced;
+  } else {
+    const foundAll = planningBox.allBoxTimes?.find((bt) => bt.machine === machine);
+    qty = foundAll?.qtyProduced || 0;
+  }
+
+  return qty;
+};
+
 export const mapReportBoxRow = (item, index) => {
-  const orderCell = item.Planning.Order;
-  const planningCell = item.Planning;
+  const planningBox = item.PlanningBox;
+  const order = planningBox?.Order || {};
+  const customer = order?.Customer || {};
+  const box = order?.box || {};
+
+  const qtyFields = {
+    qtyPrinted: 0,
+    qtyCanLan: 0,
+    qtyCanMang: 0,
+    qtyXa: 0,
+    qtyCatKhe: 0,
+    qtyBe: 0,
+    qtyDan: 0,
+    qtyDongGhim: 0,
+  };
+
+  // Map giá trị động theo machine
+  Object.entries(MACHINE_FIELD_MAP).forEach(([mName, field]) => {
+    qtyFields[field] = getMachineQty(mName, planningBox, item);
+  });
 
   return {
     index: index + 1,
-    orderId: orderCell.orderId,
-    customerName: orderCell.Customer.customerName,
-    dateShipping: new Date(orderCell.dateRequestShipping),
-    dayStartProduction: new Date(planningCell.dayStart),
+
+    // Thông tin đơn hàng
+    orderId: order.orderId,
+    customerName: customer.customerName || "",
+    dateShipping: order.dateRequestShipping,
+    dayStartProduction: planningBox.boxTimes?.[0]?.dayStart || null,
     dayReported: new Date(item.dayReport),
-    structure: formatterStructureOrder(planningCell),
-    flute: orderCell.flute,
-    daoXa: orderCell.daoXa,
-    length: planningCell.lengthPaperPlanning,
-    size: planningCell.sizePaperPLaning,
-    child: orderCell.numberChild,
-    khoCapGiay: planningCell.ghepKho,
-    quantityOrd: orderCell.quantityManufacture,
-    runningPlanProd: planningCell.runningPlan,
-    qtyReported: item.qtyProduced,
+    structure: formatterStructureOrder(planningBox), //
+
+    // Thông số sản xuất
+    flute: order.flute,
+    QcBox: order.QC_box,
+    length: planningBox.length,
+    size: planningBox.size,
+    child: order.numberChild,
+    quantityOrd: order.quantityCustomer,
+    runningPlans: planningBox.runningPlan,
+    timeRunnings: planningBox.boxTimes?.[0]?.timeRunning || null,
+
+    ...qtyFields,
+
     lackOfQty: item.lackOfQty,
-    timeRunningProd: planningCell.timeRunning,
-    HD_special: orderCell.instructSpecial,
-    totalPrice: orderCell.totalPrice,
-    bottom: planningCell.bottom,
-    fluteE: planningCell.fluteE,
-    fluteB: planningCell.fluteB,
-    fluteC: planningCell.fluteC,
-    knife: planningCell.knife,
-    totalLoss: planningCell.totalLoss,
-    qtyWasteRp: planningCell.qtyWasteNorm,
-    shiftProduct: item.shiftProduction,
-    shiftManager: item.shiftManagement,
-    machine: planningCell.chooseMachine,
-    hasMadeBox: planningCell.hasBox ? "Có" : "",
+    inMatTruoc: box.inMatTruoc,
+    inMatSau: box.inMatSau,
+    dan_1_Manh: box.dan_1_Manh ? "Có" : "",
+    dan_2_Manh: box.dan_2_Manh ? "Có" : "",
+    dongGhim1Manh: box.dongGhim1Manh ? "Có" : "",
+    dongGhim2Manh: box.dan_2_Manh ? "Có" : "",
+    dmWasteLoss: planningBox.boxTimes?.[0]?.wasteBox || null,
+    wasteLossRp: item.wasteLoss,
+
+    // Ca trưởng máy
+    shiftManager: item.shiftManagement || "",
+    machine: planningBox.boxTimes?.[0]?.machine || null,
   };
 };

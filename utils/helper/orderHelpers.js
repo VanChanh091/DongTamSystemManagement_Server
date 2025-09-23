@@ -212,16 +212,16 @@ export const filterCustomersFromCache = async ({
   }
 };
 
-export function formatterStructureOrder(planningCell) {
+export function formatterStructureOrder(cell) {
   const parts = [
-    planningCell.dayReplace,
-    planningCell.songEReplace,
-    planningCell.matEReplace,
-    planningCell.songBReplace,
-    planningCell.matBReplace,
-    planningCell.songCReplace,
-    planningCell.matCReplace,
-    planningCell.songE2Replace,
+    cell.dayReplace || cell.day,
+    cell.songEReplace || cell.songE,
+    cell.matEReplace || cell.matE,
+    cell.songBReplace || cell.songB,
+    cell.matBReplace || cell.matB,
+    cell.songCReplace || cell.songC,
+    cell.matCReplace || cell.matC,
+    cell.songE2Replace || cell.songE2,
   ];
 
   const formattedParts = [];

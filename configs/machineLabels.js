@@ -5,4 +5,15 @@ const machineLabels = {
   "Máy Quấn Cuồn": "MachineRollPaper",
 };
 
-export default machineLabels;
+const MACHINE_FIELD_MAP = {
+  "Máy In": "qtyPrinted",
+  "Máy Cấn Lằn": "qtyCanLan",
+  "Máy Cán Màng": "qtyCanMang",
+  "Máy Xả": "qtyXa",
+  "Máy Cắt Khẻ": "qtyCatKhe",
+  "Máy Bế": "qtyBe",
+  "Máy Dán": "qtyDan",
+  "Máy Đóng Ghim": "qtyDongGhim",
+};
+
+export { machineLabels, MACHINE_FIELD_MAP };

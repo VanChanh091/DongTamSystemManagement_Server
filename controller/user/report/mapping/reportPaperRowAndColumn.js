@@ -35,8 +35,8 @@ export const reportPaperColumns = [
 ];
 
 export const mapReportPaperRow = (item, index) => {
-  const orderCell = item.Planning.Order;
-  const planningCell = item.Planning;
+  const orderCell = item.Planning.Order || {};
+  const planningCell = item.Planning || {};
 
   return {
     index: index + 1,

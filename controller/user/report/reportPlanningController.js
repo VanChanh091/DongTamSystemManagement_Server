@@ -494,13 +494,13 @@ export const getReportBoxByShiftManagement = async (req, res) => {
 
 //export excel paper
 export const exportExcelReportPaper = async (req, res) => {
-  const { fromDate, toDate, planningIds, machine } = req.body;
+  const { fromDate, toDate, reportPaperId, machine } = req.body;
 
   try {
     let whereCondition = {};
 
-    if (planningIds && planningIds.length > 0) {
-      whereCondition.planningId = planningIds;
+    if (reportPaperId && reportPaperId.length > 0) {
+      whereCondition.reportPaperId = reportPaperId;
     } else if (fromDate && toDate) {
       const start = new Date(fromDate);
       start.setHours(0, 0, 0, 0);
@@ -575,35 +575,19 @@ export const exportExcelReportPaper = async (req, res) => {
       order: [["dayReport", "ASC"]],
     });
 
-    // ✅ Tạo workbook
+    // Tạo workbook
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Báo cáo sản xuất giấy tấm");
 
-    // ✅ Tạo header
+    // Tạo header
     worksheet.columns = reportPaperColumns;
 
-    //auto resize width
-    worksheet.columns.forEach((column) => {
-      let maxLength = 0;
-      column.eachCell({ includeEmpty: true }, (cell) => {
-        // Nếu là Date thì convert sang string để đo length
-        let cellValue = "";
-        if (cell.value instanceof Date) {
-          cellValue = cell.value.toLocaleString("vi-VN");
-        } else {
-          cellValue = cell.value ? cell.value.toString() : "";
-        }
-        maxLength = Math.max(maxLength, cellValue.length);
-      });
-      column.width = maxLength < 10 ? 10 : maxLength + 2;
-    });
-
-    // ✅ Đổ dữ liệu
+    // Đổ dữ liệu
     data.forEach((item, index) => {
       worksheet.addRow(mapReportPaperRow(item, index));
     });
 
-    // ✅ Style header
+    // Style header
     worksheet.getRow(1).eachCell((cell) => {
       cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
       cell.fill = {
@@ -617,12 +601,15 @@ export const exportExcelReportPaper = async (req, res) => {
     const now = new Date();
     const dateStr = now.toISOString().split("T")[0];
 
-    // ✅ Xuất file
+    // Xuất file
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
-    res.setHeader("Content-Disposition", `attachment; filename=report-paper-${dateStr}.xlsx`);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=report-paper-${machine}-${dateStr}.xlsx`
+    );
 
     await workbook.xlsx.write(res);
 
@@ -635,13 +622,13 @@ export const exportExcelReportPaper = async (req, res) => {
 
 //export excel box
 export const exportExcelReportBox = async (req, res) => {
-  const { fromDate, toDate, planningIds, machine } = req.body;
+  const { fromDate, toDate, reportBoxId, machine } = req.body;
 
   try {
     let whereCondition = {};
 
-    if (planningIds && planningIds.length > 0) {
-      whereCondition.planningId = planningIds;
+    if (reportBoxId && reportBoxId.length > 0) {
+      whereCondition.reportBoxId = reportBoxId;
     } else if (fromDate && toDate) {
       const start = new Date(fromDate);
       start.setHours(0, 0, 0, 0);
@@ -741,35 +728,19 @@ export const exportExcelReportBox = async (req, res) => {
       ],
     });
 
-    // ✅ Tạo workbook
+    // Tạo workbook
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Báo cáo sản xuất thùng");
 
-    // ✅ Tạo header
+    // Tạo header
     worksheet.columns = reportBoxColumns;
 
-    //auto resize width
-    worksheet.columns.forEach((column) => {
-      let maxLength = 0;
-      column.eachCell({ includeEmpty: true }, (cell) => {
-        // Nếu là Date thì convert sang string để đo length
-        let cellValue = "";
-        if (cell.value instanceof Date) {
-          cellValue = cell.value.toLocaleString("vi-VN");
-        } else {
-          cellValue = cell.value ? cell.value.toString() : "";
-        }
-        maxLength = Math.max(maxLength, cellValue.length);
-      });
-      column.width = maxLength < 10 ? 10 : maxLength + 2;
-    });
-
-    // ✅ Đổ dữ liệu
+    // Đổ dữ liệu
     data.forEach((item, index) => {
       worksheet.addRow(mapReportBoxRow(item, index));
     });
 
-    // ✅ Style header
+    // Style header
     worksheet.getRow(1).eachCell((cell) => {
       cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
       cell.fill = {
@@ -780,15 +751,13 @@ export const exportExcelReportBox = async (req, res) => {
       cell.alignment = { vertical: "middle", horizontal: "center" };
     });
 
-    const now = new Date();
-    const dateStr = now.toISOString().split("T")[0];
+    console.log(machine);
 
-    // ✅ Xuất file
+    // Xuất file
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
-    res.setHeader("Content-Disposition", `attachment; filename=report-box-${dateStr}.xlsx`);
 
     await workbook.xlsx.write(res);
 
