@@ -238,6 +238,28 @@ export const getReportPaperByShiftManagement = async (req, res) => {
   }
 };
 
+//get by orderId
+export const getReportPaperByOrderId = async (req, res) => {
+  const { orderId, machine, page = 1, pageSize = 20, refresh = false } = req.query;
+
+  try {
+    const result = await filterReportByField({
+      keyword: orderId,
+      machine,
+      getFieldValue: (report) => report?.Planning?.Order?.orderId,
+      page,
+      pageSize,
+      message: "get all orderId from cache",
+      refresh: refresh,
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Failed to get orderId:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 //===============================REPORT BOX=====================================
 
 //get all report planning box
@@ -486,6 +508,29 @@ export const getReportBoxByShiftManagement = async (req, res) => {
     res.status(200).json(result);
   } catch (error) {
     console.error("Failed to get shiftManagement:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+//get by orderId
+export const getReportBoxByOrderId = async (req, res) => {
+  const { orderId, machine, page = 1, pageSize = 20, refresh = false } = req.query;
+
+  try {
+    const result = await filterReportByField({
+      keyword: orderId,
+      machine,
+      getFieldValue: (report) => report?.PlanningBox?.Order?.orderId,
+      page,
+      pageSize,
+      message: "get all orderId from cache",
+      refresh: refresh,
+      isBox: true,
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Failed to get orderId:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

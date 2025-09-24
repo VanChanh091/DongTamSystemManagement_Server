@@ -48,9 +48,7 @@ export const getOtpCode = asyncHandler(async (req, res) => {
   // Send OTP email
   handleSendEmail(email, otp);
 
-  return res
-    .status(201)
-    .json({ message: `Mã OTP đã được gửi đến bạn, mã OTP là ${otp}` });
+  return res.status(201).json({ message: `Mã OTP đã được gửi đến bạn, mã OTP là ${otp}` });
 });
 
 export const register = asyncHandler(async (req, res) => {
@@ -134,9 +132,7 @@ export const changePassword = asyncHandler(async (req, res) => {
   // Tìm email trong Redis
   const redisData = await redis.get(`user:${email}`);
   if (!redisData) {
-    return res
-      .status(401)
-      .json({ message: "Email đã hết hạn hoặc không hợp lệ" });
+    return res.status(401).json({ message: "Email đã hết hạn hoặc không hợp lệ" });
   }
 
   if (newPassword !== confirmNewPW) {

@@ -140,9 +140,7 @@ export const getUserByPermission = async (req, res) => {
         ? user.permissions
         : JSON.parse(user.permissions || "[]");
 
-      return perms.some((perm) =>
-        lowerPermissions.includes(perm.toLowerCase())
-      );
+      return perms.some((perm) => lowerPermissions.includes(perm.toLowerCase()));
     });
 
     const sanitizedUsers = matchedUsers

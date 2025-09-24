@@ -556,7 +556,10 @@ export const addReportBox = async (req, res) => {
       include: [
         {
           model: PlanningBox,
-          include: [{ model: timeOverflowPlanning, as: "timeOverFlow" }],
+          include: [
+            { model: timeOverflowPlanning, as: "timeOverFlow" },
+            { model: Order, attributes: ["quantityCustomer"] },
+          ],
         },
       ],
       transaction,
@@ -629,7 +632,7 @@ export const addReportBox = async (req, res) => {
     }
 
     //compare qtyProduced vs runningPlan
-    const runningPlan = planning.PlanningBox.runningPlan || 0;
+    const runningPlan = planning.PlanningBox?.Order?.quantityCustomer || 0;
 
     if (newQtyProduced >= runningPlan) {
       await planning.update({ status: "complete" }, { transaction });
