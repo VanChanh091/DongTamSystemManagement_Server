@@ -1,4 +1,4 @@
-import { DataTypes, NOW } from "sequelize";
+import { DataTypes } from "sequelize";
 import { sequelize } from "../../configs/connectDB.js";
 
 const Customer = sequelize.define(
@@ -17,6 +17,9 @@ const Customer = sequelize.define(
     phone: { type: DataTypes.STRING },
     contactPerson: { type: DataTypes.STRING },
     dayCreated: { type: DataTypes.DATE },
+    debtLimit: { type: DataTypes.DOUBLE },
+    timePayment: { type: DataTypes.DATE },
+    rateCustomer: { type: DataTypes.STRING },
     cskh: { type: DataTypes.STRING, allowNull: false },
   },
   { timestamps: true }

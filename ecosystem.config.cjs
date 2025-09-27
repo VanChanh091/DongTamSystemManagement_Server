@@ -9,8 +9,8 @@ module.exports = {
       autorestart: true,
       watch: false,
       max_memory_restart: "500M",
-      // instances: "max", // chạy với số core CPU được cấp
-      instances: 1,
+      instances: "max", // chạy với số core CPU được cấp
+      // instances: 1,
 
       //     env_development: {
       //   NODE_ENV: "development",

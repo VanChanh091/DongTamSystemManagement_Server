@@ -3,7 +3,6 @@ import cors from "cors";
 import dotenv from "dotenv";
 import http from "http";
 
-import { initSocket } from "./socket/socket.js";
 import { connectDB, sequelize } from "./configs/connectDB.js";
 import authenticate from "./middlewares/authMiddleware.js";
 import {
@@ -21,6 +20,7 @@ import {
 
 //create table
 import "./models/index.js";
+import { initSocket } from "./utils/socket/socket.js";
 
 const app = express();
 
