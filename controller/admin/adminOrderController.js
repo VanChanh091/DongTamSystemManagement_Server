@@ -5,6 +5,7 @@ import Product from "../../models/product/product.js";
 import Box from "../../models/order/box.js";
 import { deleteKeysByPattern } from "../../utils/helper/adminHelper.js";
 import User from "../../models/user/user.js";
+import { Sequelize } from "sequelize";
 
 const redisCache = new Redis();
 
@@ -13,16 +14,24 @@ export const getOrderPending = async (req, res) => {
   try {
     const data = await Order.findAll({
       where: { status: "pending" },
+      attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
+        { model: Customer, attributes: ["customerName", "companyName"] },
         {
-          model: Customer,
-          attributes: ["customerName", "companyName"],
+          model: Product,
+          attributes: ["typeProduct", "productName", "maKhuon", "productImage"],
         },
-        { model: Product },
         { model: Box, as: "box" },
         { model: User, attributes: ["fullName"] },
       ],
-      order: [["createdAt", "DESC"]],
+      order: [
+        //lấy 3 số đầu tiên -> ép chuỗi thành số để so sánh -> sort
+        [
+          Sequelize.literal(`CAST(SUBSTRING_INDEX(\`Order\`.\`orderId\`, '/', 1) AS UNSIGNED)`),
+          "ASC",
+        ],
+        [Sequelize.col("Order.createdAt"), "ASC"], // nếu trùng thì sort theo ngày tạo (tạo trước lên trên)
+      ],
     });
     res.json({ message: "get all order have status:pending", data });
   } catch (error) {
@@ -31,7 +40,7 @@ export const getOrderPending = async (req, res) => {
   }
 };
 
-//update status
+//accept or reject order
 export const updateStatusAdmin = async (req, res) => {
   const { id } = req.query;
   const { newStatus, rejectReason } = req.body;
@@ -50,12 +59,23 @@ export const updateStatusAdmin = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    order.status = newStatus;
+    const customer = await Customer.findOne({ where: { customerId: order.customerId } });
+    if (!customer) {
+      return res.status(404).json({ message: "customer not found" });
+    }
 
+    const newDebt = Number(customer.debtCurrent || 0) + Number(order.totalPrice || 0);
+
+    order.status = newStatus;
     if (newStatus === "reject") {
       order.rejectReason = rejectReason || "";
     } else {
       order.rejectReason = null;
+
+      if (newDebt > customer.debtLimit) {
+        return res.status(400).json({ message: "Debt limit exceeded" });
+      }
+      await customer.update({ debtCurrent: newDebt });
     }
 
     await order.save();

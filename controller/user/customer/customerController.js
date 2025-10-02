@@ -38,6 +38,7 @@ export const getAllCustomer = async (req, res) => {
     let data, totalPages;
     const totalCustomers = await Customer.count();
 
+    //noPagingMode to find customer for order
     if (noPagingMode) {
       totalPages = 1;
       data = await Customer.findAll({
@@ -49,6 +50,7 @@ export const getAllCustomer = async (req, res) => {
         attributes: { exclude: ["createdAt", "updatedAt"] },
         offset: (currentPage - 1) * currentPageSize,
         limit: currentPageSize,
+        order: [["createdAt", "ASC"]],
       });
     }
 
@@ -266,7 +268,6 @@ export const deleteCustomer = async (req, res) => {
 
     const keys = await redisClient.keys("customers:all:page:*");
     if (keys.length > 0) {
-      keyword;
       await redisClient.del(keys);
     }
     await redisClient.del("customers:search:all");

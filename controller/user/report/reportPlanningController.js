@@ -109,6 +109,7 @@ export const getReportPlanningPaper = async (req, res) => {
       ],
       offset,
       limit: currentPageSize,
+      order: [["createdAt", "DESC"]],
     });
 
     const responseData = {
@@ -311,7 +312,7 @@ export const getReportPlanningBox = async (req, res) => {
           include: [
             {
               model: PlanningBoxTime,
-              where: { machine: machine },
+              where: { machine: machine }, //tìm machine thỏa điều kiện
               as: "boxTimes",
               attributes: { exclude: ["createdAt", "updatedAt"] },
             },
@@ -319,7 +320,7 @@ export const getReportPlanningBox = async (req, res) => {
               model: PlanningBoxTime,
               as: "allBoxTimes",
               where: {
-                machine: { [Op.ne]: machine },
+                machine: { [Op.ne]: machine }, //lọc machine ra khỏi danh sách
               },
               attributes: {
                 exclude: [

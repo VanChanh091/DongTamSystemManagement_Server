@@ -17,6 +17,7 @@ const Customer = sequelize.define(
     phone: { type: DataTypes.STRING },
     contactPerson: { type: DataTypes.STRING },
     dayCreated: { type: DataTypes.DATE },
+    debtCurrent: { type: DataTypes.DOUBLE },
     debtLimit: { type: DataTypes.DOUBLE },
     timePayment: { type: DataTypes.DATE },
     rateCustomer: { type: DataTypes.STRING },

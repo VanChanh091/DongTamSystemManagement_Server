@@ -34,6 +34,7 @@ const Order = sequelize.define(
     dateRequestShipping: { type: DataTypes.DATE, allowNull: false },
     totalPrice: { type: DataTypes.DOUBLE },
     vat: { type: DataTypes.INTEGER },
+    totalPriceVAT: { type: DataTypes.DOUBLE },
     instructSpecial: { type: DataTypes.STRING },
     isBox: { type: DataTypes.BOOLEAN, defaultValue: false, allowNull: false },
     status: {

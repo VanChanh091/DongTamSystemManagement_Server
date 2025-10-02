@@ -1,6 +1,6 @@
 import Redis from "ioredis";
 import Order from "../../../models/order/order.js";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 import Customer from "../../../models/customer/customer.js";
 import Box from "../../../models/order/box.js";
 import User from "../../../models/user/user.js";
@@ -232,8 +232,8 @@ export const getOrderPendingAndReject = async (req, res) => {
     }
 
     let whereCondition = { status: { [Op.in]: ["pending", "reject"] } };
-    if (role == "admin") {
-    } else if (role == "manager") {
+
+    if (role == "admin" || role == "manager") {
       if (ownOnly == "true") {
         whereCondition = { userId, ...whereCondition };
       }
@@ -281,14 +281,15 @@ export const getOrderPendingAndReject = async (req, res) => {
 export const addOrder = async (req, res) => {
   const { userId } = req.user;
   const { prefix = "CUSTOM", customerId, productId, box, ...orderData } = req.body;
-  try {
-    if (!userId) return res.status(400).json({ message: "Missing userId" });
 
+  if (!userId) return res.status(400).json({ message: "Missing userId" });
+  try {
     const validation = await validateCustomerAndProduct(customerId, productId);
     if (!validation.success) {
       return res.status(400).json({ message: validation.message });
     }
 
+    //create id + number auto increase
     const newOrderId = await generateOrderId(prefix);
 
     //create order
