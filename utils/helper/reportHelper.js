@@ -240,18 +240,22 @@ export const createReportPlanning = async ({
   qtyWasteNorm,
   dayReportValue,
   shiftManagementBox = "",
+  machine = "",
   otherData,
   transaction,
   isBox = false,
 }) => {
+  //condition to get id
   const whereCondition = isBox
     ? {
         planningBoxId: planning.PlanningBox.planningBoxId,
+        machine: machine,
       }
     : {
         planningId: planning.planningId,
       };
 
+  //total qtyProduced
   const producedSoFar =
     (await model.sum("qtyProduced", {
       where: whereCondition,
@@ -268,6 +272,7 @@ export const createReportPlanning = async ({
 
   let report;
   if (isBox) {
+    //box
     report = await model.create(
       {
         planningBoxId: planning.PlanningBox.planningBoxId,
@@ -276,10 +281,12 @@ export const createReportPlanning = async ({
         lackOfQty: lackOfQtyValue,
         wasteLoss: qtyWasteNorm,
         shiftManagement: shiftManagementBox,
+        machine: machine,
       },
       { transaction }
     );
   } else {
+    // paper
     report = await model.create(
       {
         planningId: planning.planningId,

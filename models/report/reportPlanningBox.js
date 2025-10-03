@@ -16,6 +16,7 @@ const ReportPlanningBox = sequelize.define("ReportPlanningBox", {
   lackOfQty: { type: DataTypes.INTEGER, allowNull: false },
   wasteLoss: { type: DataTypes.DOUBLE, allowNull: false },
   shiftManagement: { type: DataTypes.STRING, allowNull: false },
+  machine: { type: DataTypes.STRING, allowNull: false },
 });
 
 export default ReportPlanningBox;

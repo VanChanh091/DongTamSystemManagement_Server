@@ -1,6 +1,6 @@
 import Redis from "ioredis";
 import Product from "../../../models/product/product.js";
-import { Op, fn, col, where } from "sequelize";
+import { Op, fn, col, where, Sequelize } from "sequelize";
 import { generateNextId } from "../../../utils/helper/generateNextId.js";
 import {
   convertToWebp,
@@ -51,14 +51,17 @@ export const getAllProduct = async (req, res) => {
       });
     }
 
-    const data = await Product.findAll();
+    const data = await Product.findAll({
+      order: [
+        //lấy 4 số cuối -> ép chuỗi thành số để so sánh -> sort
+        [Sequelize.literal(`CAST(RIGHT(\`Product\`.\`productId\`, 4) AS UNSIGNED)`), "ASC"],
+      ],
+    });
 
     await redisCache.del(cacheKey);
     await redisCache.set(cacheKey, JSON.stringify(data), "EX", 3600);
 
-    return res
-      .status(200)
-      .json({ message: "Get all orders successfully", data });
+    return res.status(200).json({ message: "Get all orders successfully", data });
   } catch (error) {
     console.error("Get all products error:", error);
     res.status(500).json({ error: error.message });
@@ -91,9 +94,7 @@ export const getProductById = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    return res
-      .status(201)
-      .json({ message: "Get product successfully", data: product });
+    return res.status(201).json({ message: "Get product successfully", data: product });
   } catch (error) {
     console.error("Get product by ID error:", error);
     res.status(500).json({ error: error.message });
@@ -124,9 +125,7 @@ export const getProductByName = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    return res
-      .status(200)
-      .json({ message: "Get product successfully", data: products });
+    return res.status(200).json({ message: "Get product successfully", data: products });
   } catch (error) {
     console.error("Get product by name error:", error);
     res.status(500).json({ error: error.message });
@@ -136,12 +135,30 @@ export const getProductByName = async (req, res) => {
 //add product
 export const addProduct = async (req, res) => {
   const { prefix = "CUSTOM", product } = req.body;
-  const parsedProduct =
-    typeof product === "string" ? JSON.parse(product) : product;
+  const parsedProduct = typeof product === "string" ? JSON.parse(product) : product;
 
-  const transaction = await sequelize.transaction();
+  const transaction = await Product.sequelize.transaction();
 
   try {
+    const sanitizedPrefix = prefix.trim().replace(/\s+/g, "").toUpperCase();
+
+    // 🔍 Check prefix đã tồn tại chưa
+    const prefixExists = await Product.findOne({
+      where: {
+        productId: {
+          [Op.like]: `${sanitizedPrefix}%`,
+        },
+      },
+      transaction,
+    });
+
+    if (prefixExists) {
+      await transaction.rollback();
+      return res.status(400).json({
+        message: `Prefix '${sanitizedPrefix}' đã tồn tại, vui lòng chọn prefix khác`,
+      });
+    }
+
     const products = await Product.findAll({
       attributes: ["productId"],
       transaction,
@@ -149,7 +166,6 @@ export const addProduct = async (req, res) => {
 
     //custom productId
     const allProductIds = products.map((p) => p.productId);
-    const sanitizedPrefix = prefix.trim().replace(/\s+/g, "").toUpperCase();
     const newProductId = generateNextId(allProductIds, sanitizedPrefix, 4);
 
     if (req.file) {
@@ -187,8 +203,7 @@ export const addProduct = async (req, res) => {
 //update product
 export const updateProduct = async (req, res) => {
   const { id } = req.query;
-  const productData =
-    typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+  const productData = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
 
   try {
     const existingProduct = await Product.findByPk(id);
@@ -201,11 +216,7 @@ export const updateProduct = async (req, res) => {
     if (req.file) {
       if (req.file) {
         const webpBuffer = await convertToWebp(req.file.buffer);
-        const result = await uploadImageToCloudinary(
-          webpBuffer,
-          "products",
-          id
-        );
+        const result = await uploadImageToCloudinary(webpBuffer, "products", id);
         productData.productImage = result.secure_url;
       }
     }

@@ -651,6 +651,7 @@ export const addReportBox = async (req, res) => {
       qtyWasteNorm: rpWasteLoss,
       dayReportValue: dayReportValue,
       shiftManagementBox: shiftManagement,
+      machine: planning.machine,
       transaction,
       isBox: true,
     });

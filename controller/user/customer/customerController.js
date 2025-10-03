@@ -1,6 +1,6 @@
 import Redis from "ioredis";
 import Customer from "../../../models/customer/customer.js";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 import { generateNextId } from "../../../utils/helper/generateNextId.js";
 import { sequelize } from "../../../configs/connectDB.js";
 import { filterCustomersFromCache } from "../../../utils/helper/orderHelpers.js";
@@ -47,10 +47,13 @@ export const getAllCustomer = async (req, res) => {
     } else {
       totalPages = Math.ceil(totalCustomers / currentPageSize);
       data = await Customer.findAll({
-        attributes: { exclude: ["createdAt", "updatedAt"] },
+        attributes: { exclude: ["updatedAt"] },
         offset: (currentPage - 1) * currentPageSize,
         limit: currentPageSize,
-        order: [["createdAt", "ASC"]],
+        order: [
+          //lấy 4 số cuối -> ép chuỗi thành số để so sánh -> sort
+          [Sequelize.literal(`CAST(RIGHT(\`Customer\`.\`customerId\`, 4) AS UNSIGNED)`), "ASC"],
+        ],
       });
     }
 

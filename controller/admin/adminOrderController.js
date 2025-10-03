@@ -5,7 +5,7 @@ import Product from "../../models/product/product.js";
 import Box from "../../models/order/box.js";
 import { deleteKeysByPattern } from "../../utils/helper/adminHelper.js";
 import User from "../../models/user/user.js";
-import { Sequelize } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 
 const redisCache = new Redis();
 

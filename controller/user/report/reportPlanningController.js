@@ -109,7 +109,7 @@ export const getReportPlanningPaper = async (req, res) => {
       ],
       offset,
       limit: currentPageSize,
-      order: [["createdAt", "DESC"]],
+      order: [["dayReport", "DESC"]],
     });
 
     const responseData = {
@@ -291,6 +291,7 @@ export const getReportPlanningBox = async (req, res) => {
     const offset = (currentPage - 1) * currentPageSize;
 
     const data = await ReportPlanningBox.findAll({
+      where: { machine: machine },
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {
@@ -379,6 +380,7 @@ export const getReportPlanningBox = async (req, res) => {
       ],
       offset,
       limit: currentPageSize,
+      order: [["dayReport", "DESC"]],
     });
 
     const responseData = {

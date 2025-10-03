@@ -43,10 +43,10 @@ export const getOrderAccept = async (req, res) => {
           model: Customer,
           attributes: ["customerName", "companyName"],
         },
-        { model: Product },
+        { model: Product, where: { typeProduct: { [Op.ne]: "Phí Khác" } } },
         { model: Box, as: "box" },
       ],
-      order: [["createdAt", "DESC"]],
+      order: [["dateRequestShipping", "DESC"]],
     });
 
     await redisCache.set(cacheKey, JSON.stringify(data), "EX", 3600);
@@ -89,9 +89,7 @@ export const planningOrder = async (req, res) => {
     });
 
     if (!wasteNorm || !waveCoeff) {
-      throw new Error(
-        `WasteNorm or WaveCrestCoefficient not found for machine: ${chooseMachine}`
-      );
+      throw new Error(`WasteNorm or WaveCrestCoefficient not found for machine: ${chooseMachine}`);
     }
 
     // 3) Parse cấu trúc giấy thành mảng lớp
@@ -156,8 +154,7 @@ export const planningOrder = async (req, res) => {
           }
 
           const loss =
-            gkTh * wasteNorm.waveCrest * linerBefore +
-            gkTh * wasteNorm.waveCrest * fluteTh * coef;
+            gkTh * wasteNorm.waveCrest * linerBefore + gkTh * wasteNorm.waveCrest * fluteTh * coef;
 
           flute[letter] += loss;
         }
@@ -385,8 +382,7 @@ const getPlanningByMachineSorted = async (machine) => {
     });
 
     //lọc đơn complete trong 3 ngày
-    const truncateToDate = (date) =>
-      new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const truncateToDate = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const now = truncateToDate(new Date());
 
     const validData = data.filter((planning) => {
@@ -611,8 +607,7 @@ export const getPlanningByCustomerName = async (req, res) =>
   getPlanningPaperByField(req, res, "customerName");
 
 //get by flute
-export const getPlanningByFlute = async (req, res) =>
-  getPlanningPaperByField(req, res, "flute");
+export const getPlanningByFlute = async (req, res) => getPlanningPaperByField(req, res, "flute");
 
 //get by ghepKho
 export const getPlanningByGhepKho = async (req, res) =>
@@ -813,17 +808,10 @@ const calculateTimeRunningPlannings = async ({
         transaction,
       });
 
-      if (
-        overflowRecord &&
-        overflowRecord.overflowTimeRunning &&
-        overflowRecord.overflowDayStart
-      ) {
+      if (overflowRecord && overflowRecord.overflowTimeRunning && overflowRecord.overflowDayStart) {
         // Sử dụng overflow day + time làm con trỏ
         currentDay = new Date(overflowRecord.overflowDayStart);
-        currentTime = combineDateAndHHMMSS(
-          currentDay,
-          overflowRecord.overflowTimeRunning
-        );
+        currentTime = combineDateAndHHMMSS(currentDay, overflowRecord.overflowTimeRunning);
         lastGhepKho = feComplete.ghepKho ?? null;
       } else if (feComplete.dayStart && feComplete.timeRunning) {
         // fallback: nếu không tìm thấy record overflow trong DB, dùng dayStart/timeRunning từ FE
@@ -919,9 +907,7 @@ const calculateTimeForOnePlanning = async ({
       : machineInfo.timeChangeSize;
 
   //công thức
-  const productionMinutes = Math.ceil(
-    (changeTime + totalLength / speed) / (performance / 100)
-  );
+  const productionMinutes = Math.ceil((changeTime + totalLength / speed) / (performance / 100));
 
   // ✅ Tính thời gian bắt đầu và kết thúc ca làm việc cho currentDay
   let startOfWorkTime = new Date(currentDay);
@@ -949,9 +935,7 @@ const calculateTimeForOnePlanning = async ({
   const extraBreak = isDuringBreak(currentTime, tempEndTime);
 
   let predictedEndTime = new Date(currentTime);
-  predictedEndTime.setMinutes(
-    predictedEndTime.getMinutes() + productionMinutes + extraBreak
-  );
+  predictedEndTime.setMinutes(predictedEndTime.getMinutes() + productionMinutes + extraBreak);
 
   let currentPlanningDayStart = currentDay.toISOString().split("T")[0];
   let timeRunningForPlanning = formatTimeToHHMMSS(predictedEndTime);
@@ -974,9 +958,7 @@ const calculateTimeForOnePlanning = async ({
     overflowStartTime.setDate(overflowStartTime.getDate() + 1);
 
     let actualOverflowEndTime = new Date(overflowStartTime);
-    actualOverflowEndTime.setMinutes(
-      actualOverflowEndTime.getMinutes() + totalOverflowMinutes
-    );
+    actualOverflowEndTime.setMinutes(actualOverflowEndTime.getMinutes() + totalOverflowMinutes);
 
     overflowTimeRunning = formatTimeToHHMMSS(actualOverflowEndTime);
     overflowMinutes = `${Math.round(totalOverflowMinutes)} phút`;
@@ -1069,9 +1051,7 @@ const getSpeed = (flute, machineName, machineInfo) => {
   if (machineName === "Máy Quấn Cuồn") return machineInfo.paperRollSpeed;
   const speed = machineInfo[`speed${numberLayer}Layer`];
   if (!speed) {
-    throw new Error(
-      `❌ Không tìm thấy tốc độ cho flute=${flute}, machine=${machineName}`
-    );
+    throw new Error(`❌ Không tìm thấy tốc độ cho flute=${flute}, machine=${machineName}`);
   }
   return speed;
 };
