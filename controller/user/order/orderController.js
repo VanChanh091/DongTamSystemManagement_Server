@@ -83,7 +83,26 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
         },
         { model: User, attributes: ["fullName"] },
       ],
-      order: [["createdAt", "DESC"]],
+      order: [
+        //1. sort theo accept -> planning
+        [
+          Sequelize.literal(`
+            CASE 
+              WHEN status = 'accept' THEN 0
+              WHEN status = 'planning' THEN 1
+              ELSE 2
+            END
+          `),
+          "ASC",
+        ],
+        //2. nếu trùng orderId thì sort theo dateRequestShipping
+        ["dateRequestShipping", "DESC"],
+        //3. sort theo 3 số đầu của orderId
+        [
+          Sequelize.literal(`CAST(SUBSTRING_INDEX(\`Order\`.\`orderId\`, '/', 1) AS UNSIGNED)`),
+          "ASC",
+        ],
+      ],
       offset,
       limit: currentPageSize,
     });
@@ -262,7 +281,26 @@ export const getOrderPendingAndReject = async (req, res) => {
         },
         { model: User, attributes: ["fullName"] },
       ],
-      order: [["createdAt", "DESC"]],
+      order: [
+        //1. sort theo reject -> pending
+        [
+          Sequelize.literal(`
+            CASE 
+              WHEN status = 'reject' THEN 0
+              WHEN status = 'pending' THEN 1
+              ELSE 2
+            END
+          `),
+          "ASC",
+        ],
+        //2. nếu trùng orderId thì sort theo dateRequestShipping
+        ["dateRequestShipping", "DESC"],
+        //3. sort theo 3 số đầu của orderId
+        [
+          Sequelize.literal(`CAST(SUBSTRING_INDEX(\`Order\`.\`orderId\`, '/', 1) AS UNSIGNED)`),
+          "ASC",
+        ],
+      ],
     });
 
     await redisCache.set(cacheKey, JSON.stringify(data), "EX", 3600);

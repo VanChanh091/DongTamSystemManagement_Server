@@ -59,9 +59,20 @@ export const updateStatusAdmin = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    const customer = await Customer.findOne({ where: { customerId: order.customerId } });
+    const customer = await Customer.findOne({
+      attributes: ["customerId", "debtCurrent"],
+      where: { customerId: order.customerId },
+    });
     if (!customer) {
       return res.status(404).json({ message: "customer not found" });
+    }
+
+    const product = await Product.findOne({
+      attributes: ["productId", "typeProduct"],
+      where: { productId: order.productId },
+    });
+    if (!product) {
+      return res.status(404).json({ message: "product not found" });
     }
 
     const newDebt = Number(customer.debtCurrent || 0) + Number(order.totalPrice || 0);
@@ -76,6 +87,10 @@ export const updateStatusAdmin = async (req, res) => {
         return res.status(400).json({ message: "Debt limit exceeded" });
       }
       await customer.update({ debtCurrent: newDebt });
+
+      if (product.typeProduct == "Phí Khác") {
+        order.status = "planning";
+      }
     }
 
     await order.save();

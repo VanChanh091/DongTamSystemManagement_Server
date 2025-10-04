@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 import Order from "../../../models/order/order.js";
 import Customer from "../../../models/customer/customer.js";
 import Product from "../../../models/product/product.js";
@@ -46,7 +46,15 @@ export const getOrderAccept = async (req, res) => {
         { model: Product, where: { typeProduct: { [Op.ne]: "Phí Khác" } } },
         { model: Box, as: "box" },
       ],
-      order: [["dateRequestShipping", "DESC"]],
+      order: [
+        //2. nếu trùng orderId thì sort theo dateRequestShipping
+        ["dateRequestShipping", "DESC"],
+        //3. sort theo 3 số đầu của orderId
+        [
+          Sequelize.literal(`CAST(SUBSTRING_INDEX(\`Order\`.\`orderId\`, '/', 1) AS UNSIGNED)`),
+          "ASC",
+        ],
+      ],
     });
 
     await redisCache.set(cacheKey, JSON.stringify(data), "EX", 3600);
