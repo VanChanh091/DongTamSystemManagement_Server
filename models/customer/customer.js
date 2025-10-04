@@ -13,6 +13,7 @@ const Customer = sequelize.define(
     companyName: { type: DataTypes.STRING, allowNull: false },
     companyAddress: { type: DataTypes.STRING, allowNull: false },
     shippingAddress: { type: DataTypes.STRING, allowNull: false },
+    distance: { type: DataTypes.DOUBLE },
     mst: { type: DataTypes.STRING },
     phone: { type: DataTypes.STRING },
     contactPerson: { type: DataTypes.STRING },

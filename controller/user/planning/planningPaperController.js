@@ -613,7 +613,7 @@ export const getPlanningByFlute = async (req, res) => getPlanningPaperByField(re
 export const getPlanningByGhepKho = async (req, res) =>
   getPlanningPaperByField(req, res, "ghepKho");
 
-//pause planning
+//pause or accept planning
 export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
   const { planningIds, newStatus } = req.body;
   try {
@@ -643,9 +643,22 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
           if (order) {
             order.status = newStatus;
             await order.save();
+
+            //trừ công nợ khi dừng máy
+            const customer = await Customer.findOne({
+              attributes: ["customerId", "debtCurrent"],
+              where: { customerId: order.customerId },
+            });
+            if (customer) {
+              let debtAfter = (customer.debtCurrent || 0) - order.totalPrice;
+              if (debtAfter < 0) debtAfter = 0; //tránh âm tiền
+
+              customer.debtCurrent = debtAfter;
+              await customer.save();
+            }
           }
 
-          // Xoá dữ liệu phụ thuộc bằng tay
+          // Xoá dữ liệu phụ thuộc
           const dependents = await PlanningBox.findAll({
             where: { planningId: planning.planningId },
           });
@@ -670,7 +683,6 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
         }
 
         planning.status = newStatus;
-
         await planning.save();
 
         if (planning.hasOverFlow) {
