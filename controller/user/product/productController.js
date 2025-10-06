@@ -8,127 +8,113 @@ import {
   uploadImageToCloudinary,
 } from "../../../utils/image/converToWebp.js";
 import cloudinary from "../../../configs/connectCloudinary.js";
-import { sequelize } from "../../../configs/connectDB.js";
+import { filterProductsFromCache } from "../../../utils/helper/orderHelpers.js";
 
 const redisCache = new Redis();
 
-const cacheRedis = async (colData, params) => {
-  const cacheKey = "products:all";
-  const cachedData = await redisCache.get(cacheKey);
-
-  if (cachedData) {
-    const parsedData = JSON.parse(cachedData);
-
-    const product = parsedData.filter((item) =>
-      item[colData]?.toLowerCase().includes(params.toLowerCase())
-    );
-
-    if (product.length > 0) {
-      return product;
-    }
-  }
-
-  return null;
-};
-
 //get all product
 export const getAllProduct = async (req, res) => {
-  const { refresh = false } = req.query;
-  try {
-    const cacheKey = "products:all";
+  const { page = 1, pageSize = 20, refresh = false, noPaging = false } = req.query;
+  const currentPage = Number(page);
+  const currentPageSize = Number(pageSize);
+  const noPagingMode = noPaging === "true";
 
-    if (refresh == "true") {
-      await redisCache.del(cacheKey);
+  const cacheKey = noPaging === "true" ? "product:all" : `product:all:page:${currentPage}`;
+
+  try {
+    if (refresh === "true") {
+      if (noPaging === "true") {
+        await redisCache.del(cacheKey);
+      } else {
+        const keys = await redisCache.keys("product:all:page:*");
+        if (keys.length > 0) {
+          await redisCache.del(...keys);
+        }
+      }
     }
 
     const cachedData = await redisCache.get(cacheKey);
-
     if (cachedData) {
       console.log("✅ Data Product from Redis");
-      return res.status(200).json({
-        message: "Get all products from cache",
-        data: JSON.parse(cachedData),
+      const parsed = JSON.parse(cachedData);
+      return res.status(200).json({ ...parsed, message: "Get all products from cache" });
+    }
+
+    let data, totalPages;
+    const totalProducts = await Product.count();
+
+    if (noPagingMode) {
+      totalPages = 1;
+      data = await Product.findAll({
+        attributes: { exclude: ["createdAt", "updatedAt"] },
+      });
+    } else {
+      totalPages = Math.ceil(totalProducts / currentPageSize);
+      data = await Product.findAll({
+        attributes: { exclude: ["createdAt", "updatedAt"] },
+        offset: (currentPage - 1) * currentPageSize,
+        limit: currentPageSize,
+        order: [
+          //lấy 4 số cuối -> ép chuỗi thành số để so sánh -> sort
+          [Sequelize.literal(`CAST(RIGHT(\`Product\`.\`productId\`, 4) AS UNSIGNED)`), "ASC"],
+        ],
       });
     }
 
-    const data = await Product.findAll({
-      order: [
-        //lấy 4 số cuối -> ép chuỗi thành số để so sánh -> sort
-        [Sequelize.literal(`CAST(RIGHT(\`Product\`.\`productId\`, 4) AS UNSIGNED)`), "ASC"],
-      ],
-    });
+    const responseData = {
+      message: "get all products successfully",
+      data,
+      totalProducts,
+      totalPages,
+      currentPage: noPagingMode ? 1 : currentPage,
+    };
 
-    await redisCache.del(cacheKey);
-    await redisCache.set(cacheKey, JSON.stringify(data), "EX", 3600);
+    await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
 
-    return res.status(200).json({ message: "Get all orders successfully", data });
+    res.status(200).json(responseData);
   } catch (error) {
-    console.error("Get all products error:", error);
-    res.status(500).json({ error: error.message });
+    console.error("get all product failed:", error);
+    res.status(500).json({ message: "get all product failed", error });
   }
 };
 
 //get product by id
 export const getProductById = async (req, res) => {
-  const { id } = req.query;
+  const { productId, page, pageSize } = req.query;
 
   try {
-    const cachedResult = await cacheRedis("productId", id);
-
-    if (cachedResult) {
-      console.log("✅ Get product from cache");
-      return res.status(200).json({
-        message: "Get product from cache",
-        data: cachedResult,
-      });
-    }
-
-    // Nếu không có cache thì lấy từ DB
-    const product = await Product.findAll({
-      where: where(fn("LOWER", col("productId")), {
-        [Op.like]: `%${id.toUpperCase()}%`,
-      }),
+    const result = await filterProductsFromCache({
+      keyword: productId,
+      getFieldValue: (product) => product.productId,
+      page,
+      pageSize,
+      message: "get all productId from cache",
     });
 
-    if (!product) {
-      return res.status(404).json({ message: "Product not found" });
-    }
-
-    return res.status(201).json({ message: "Get product successfully", data: product });
-  } catch (error) {
-    console.error("Get product by ID error:", error);
-    res.status(500).json({ error: error.message });
+    res.status(200).json(result);
+  } catch (err) {
+    console.error("Failed to get product by productId:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 
 //get product by name
 export const getProductByName = async (req, res) => {
-  const { name } = req.query;
+  const { productName, page, pageSize } = req.query;
 
   try {
-    const cachedResult = await cacheRedis("productName", name);
-
-    if (cachedResult) {
-      console.log("✅ Get product from cache");
-      return res.status(200).json({
-        message: "Get product from cache",
-        data: cachedResult,
-      });
-    }
-
-    // Nếu không có cache thì lấy từ DB
-    const products = await Product.findAll({
-      where: { productName: { [Op.like]: `%${name}%` } },
+    const result = await filterProductsFromCache({
+      keyword: productName,
+      getFieldValue: (product) => product?.productName,
+      page,
+      pageSize,
+      message: "get all productName from cache",
     });
 
-    if (!products || products.length === 0) {
-      return res.status(404).json({ message: "Product not found" });
-    }
-
-    return res.status(200).json({ message: "Get product successfully", data: products });
-  } catch (error) {
-    console.error("Get product by name error:", error);
-    res.status(500).json({ error: error.message });
+    res.status(200).json(result);
+  } catch (err) {
+    console.error("Failed to get product by productName:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 

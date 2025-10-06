@@ -14,8 +14,8 @@ import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware.j
 const router = Router();
 
 router.get("/", authenticate, getAllProduct);
-router.get("/productId", authenticate, getProductById);
-router.get("/productName", authenticate, getProductByName);
+router.get("/byProductId", authenticate, getProductById);
+router.get("/byName", authenticate, getProductByName);
 router.post(
   "/",
   authenticate,

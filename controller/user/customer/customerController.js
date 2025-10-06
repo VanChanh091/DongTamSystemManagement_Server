@@ -23,7 +23,7 @@ export const getAllCustomer = async (req, res) => {
       } else {
         const keys = await redisClient.keys("customers:all:page:*");
         if (keys.length > 0) {
-          await redisClient.del(keys);
+          await redisClient.del(...keys);
         }
       }
     }
@@ -47,7 +47,7 @@ export const getAllCustomer = async (req, res) => {
     } else {
       totalPages = Math.ceil(totalCustomers / currentPageSize);
       data = await Customer.findAll({
-        attributes: { exclude: ["updatedAt"] },
+        attributes: { exclude: ["createdAt", "updatedAt"] },
         offset: (currentPage - 1) * currentPageSize,
         limit: currentPageSize,
         order: [
@@ -84,7 +84,7 @@ export const getById = async (req, res) => {
       getFieldValue: (customer) => customer?.customerId,
       page,
       pageSize,
-      message: "get all customerName from cache",
+      message: "get all customerId from cache",
     });
 
     res.status(200).json(result);

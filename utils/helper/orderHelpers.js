@@ -187,7 +187,7 @@ export const filterCustomersFromCache = async ({
       sourceMessage = "Get customers from DB";
     } else {
       allCustomers = JSON.parse(allCustomers);
-      sourceMessage = message;
+      sourceMessage = message || "Get customers from cache";
     }
 
     const filteredCustomers = allCustomers.filter((customer) =>
@@ -207,8 +207,56 @@ export const filterCustomersFromCache = async ({
       currentPage,
     };
   } catch (error) {
-    console.error("get all customer failed:", error);
-    throw new Error("get all customers failed");
+    console.error("get customer by property failed:", error);
+    throw new Error("get customers by property failed");
+  }
+};
+
+export const filterProductsFromCache = async ({
+  keyword,
+  getFieldValue,
+  page,
+  pageSize,
+  message,
+}) => {
+  const currentPage = Number(page) || 1;
+  const currentPageSize = Number(pageSize) || 20;
+  const lowerKeyword = keyword?.toLowerCase?.() || "";
+
+  const cacheKey = "products:search:all";
+
+  try {
+    let allProducts = await redisCache.get(cacheKey);
+    let sourceMessage = "";
+
+    if (!allProducts) {
+      allProducts = await Product.findAll();
+      await redisCache.set(cacheKey, JSON.stringify(allProducts), "EX", 900);
+      sourceMessage = "Get products from DB";
+    } else {
+      allProducts = JSON.parse(allProducts);
+      sourceMessage = message || "Get products from cache";
+    }
+
+    const filteredProducts = allProducts.filter((product) =>
+      getFieldValue(product)?.toLowerCase?.().includes(lowerKeyword)
+    );
+
+    const totalProducts = filteredProducts.length;
+    const totalPages = Math.ceil(totalProducts / currentPageSize);
+    const offset = (currentPage - 1) * currentPageSize;
+    const paginatedProducts = filteredProducts.slice(offset, offset + currentPageSize);
+
+    return {
+      message: sourceMessage,
+      data: paginatedProducts,
+      totalProducts,
+      totalPages,
+      currentPage,
+    };
+  } catch (error) {
+    console.error("get products by property failed:", error);
+    throw new Error("get products by property failed");
   }
 };
 
