@@ -1,6 +1,6 @@
 import Redis from "ioredis";
 import Product from "../../../models/product/product.js";
-import { Op, fn, col, where, Sequelize } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 import { generateNextId } from "../../../utils/helper/generateNextId.js";
 import {
   convertToWebp,

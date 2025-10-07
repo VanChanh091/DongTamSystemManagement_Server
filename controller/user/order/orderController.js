@@ -95,13 +95,13 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
           `),
           "ASC",
         ],
-        //2. nếu trùng orderId thì sort theo dateRequestShipping
-        ["dateRequestShipping", "DESC"],
-        //3. sort theo 3 số đầu của orderId
+        //2. sort theo 3 số đầu của orderId
         [
           Sequelize.literal(`CAST(SUBSTRING_INDEX(\`Order\`.\`orderId\`, '/', 1) AS UNSIGNED)`),
           "ASC",
         ],
+        //3. nếu trùng orderId thì sort theo dateRequestShipping
+        ["dateRequestShipping", "ASC"],
       ],
       offset,
       limit: currentPageSize,
@@ -293,13 +293,13 @@ export const getOrderPendingAndReject = async (req, res) => {
           `),
           "ASC",
         ],
-        //2. nếu trùng orderId thì sort theo dateRequestShipping
-        ["dateRequestShipping", "DESC"],
-        //3. sort theo 3 số đầu của orderId
+        //2. sort theo 3 số đầu của orderId
         [
           Sequelize.literal(`CAST(SUBSTRING_INDEX(\`Order\`.\`orderId\`, '/', 1) AS UNSIGNED)`),
           "ASC",
         ],
+        //3. nếu trùng orderId thì sort theo dateRequestShipping
+        ["dateRequestShipping", "ASC"],
       ],
     });
 
