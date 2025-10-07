@@ -1,7 +1,7 @@
 export const generateNextId = (allIds, prefix, num) => {
   let maxNumber = 0;
   allIds.forEach((ids) => {
-    const match = ids.match(/\d+$/); // Tìm số ở cuối ID
+    const match = ids.slice(-4).match(/\d{1,4}$/); // Tìm số ở cuối ID
     if (match) {
       const number = parseInt(match[0], 10);
       if (!isNaN(number) && number > maxNumber) {
