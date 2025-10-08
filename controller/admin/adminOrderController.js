@@ -3,9 +3,8 @@ import Order from "../../models/order/order.js";
 import Customer from "../../models/customer/customer.js";
 import Product from "../../models/product/product.js";
 import Box from "../../models/order/box.js";
-import { deleteKeysByPattern } from "../../utils/helper/adminHelper.js";
 import User from "../../models/user/user.js";
-import { Op, Sequelize } from "sequelize";
+import { Sequelize } from "sequelize";
 
 const redisCache = new Redis();
 
@@ -46,60 +45,68 @@ export const updateStatusAdmin = async (req, res) => {
   const { newStatus, rejectReason } = req.body;
 
   try {
-    const pendingRejectCacheKey = `orders:userId:status:pending_reject`;
-    const acceptPlanningCachePattern = `orders:userId:status:accept_planning:*`;
     const acceptCacheKey = "orders:userId:status:accept";
 
     if (!["accept", "reject"].includes(newStatus)) {
       return res.status(400).json({ message: "Invalid status" });
     }
 
-    const order = await Order.findByPk(id);
+    // const order = await Order.findByPk(id);
+    const order = await Order.findOne({
+      where: { orderId: id },
+      attributes: [
+        "orderId",
+        "totalPrice",
+        "status",
+        "rejectReason",
+        "customerId",
+        "productId",
+        "userId",
+      ],
+      include: [
+        {
+          model: Customer,
+          attributes: ["customerId", "debtCurrent", "debtLimit"],
+        },
+        {
+          model: Product,
+          attributes: ["productId", "typeProduct"],
+        },
+        { model: Box, as: "box" },
+        { model: User, attributes: ["fullName"] },
+      ],
+    });
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    const customer = await Customer.findOne({
-      attributes: ["customerId", "debtCurrent"],
-      where: { customerId: order.customerId },
-    });
-    if (!customer) {
-      return res.status(404).json({ message: "customer not found" });
-    }
-
-    const product = await Product.findOne({
-      attributes: ["productId", "typeProduct"],
-      where: { productId: order.productId },
-    });
-    if (!product) {
-      return res.status(404).json({ message: "product not found" });
-    }
+    const customer = order.Customer;
+    const product = order.Product;
 
     const newDebt = Number(customer.debtCurrent || 0) + Number(order.totalPrice || 0);
 
-    order.status = newStatus;
-    if (newStatus === "reject") {
-      order.rejectReason = rejectReason || "";
-    } else {
-      order.rejectReason = null;
+    console.log(`newDebt: ${newDebt}`);
+    console.log(`debtLimit: ${customer.debtLimit}`);
 
+    if (newStatus === "reject") {
+      order.set({ status: newStatus, rejectReason: rejectReason || "" });
+    } else {
+      //calculate debt limit of customer
       if (newDebt > customer.debtLimit) {
         return res.status(400).json({ message: "Debt limit exceeded" });
       }
       await customer.update({ debtCurrent: newDebt });
 
-      if (product.typeProduct == "Phí Khác") {
-        order.status = "planning";
-      }
+      //check type product
+      order.set({
+        status: product.typeProduct == "Phí Khác" ? "planning" : newStatus,
+        rejectReason: null,
+      });
     }
 
     await order.save();
 
-    // Xóa cache theo logic
-    await redisCache.del(pendingRejectCacheKey);
-
     if (newStatus === "accept") {
-      await deleteKeysByPattern(redisCache, acceptPlanningCachePattern);
       await redisCache.del(acceptCacheKey);
     }
 

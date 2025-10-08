@@ -5,7 +5,6 @@ import Customer from "../../../models/customer/customer.js";
 import Product from "../../../models/product/product.js";
 import Box from "../../../models/order/box.js";
 import PlanningPaper from "../../../models/planning/planningPaper.js";
-import { deleteKeysByPattern } from "../../../utils/helper/adminHelper.js";
 import { getPlanningPaperByField } from "../../../utils/helper/planningHelper.js";
 import MachinePaper from "../../../models/admin/machinePaper.js";
 import timeOverflowPlanning from "../../../models/planning/timeOverFlowPlanning.js";
@@ -38,13 +37,32 @@ export const getOrderAccept = async (req, res) => {
 
     const data = await Order.findAll({
       where: { status: "accept" },
+      attributes: {
+        exclude: [
+          "lengthPaperCustomer",
+          "paperSizeCustomer",
+          "quantityCustomer",
+          "acreage",
+          "dvt",
+          "price",
+          "pricePaper",
+          "discount",
+          "profit",
+          "vat",
+          "totalPriceVAT",
+          "rejectReason",
+          "createdAt",
+          "updatedAt",
+        ],
+      },
       include: [
         {
           model: Customer,
           attributes: ["customerName", "companyName"],
         },
-        { model: Product, where: { typeProduct: { [Op.ne]: "Phí Khác" } } },
-        { model: Box, as: "box" },
+        { model: Product, attributes: ["typeProduct", "productName"] },
+        { model: Box, as: "box", attributes: ["boxId"] },
+        { model: PlanningPaper, attributes: ["planningId", "runningPlan"] },
       ],
       order: [
         //2. nếu trùng orderId thì sort theo dateRequestShipping
@@ -79,16 +97,39 @@ export const planningOrder = async (req, res) => {
     // 1) Lấy thông tin Order kèm các quan hệ
     const order = await Order.findOne({
       where: { orderId },
+      attributes: {
+        exclude: [
+          "lengthPaperCustomer",
+          "paperSizeCustomer",
+          "quantityCustomer",
+          "acreage",
+          "dvt",
+          "price",
+          "pricePaper",
+          "discount",
+          "profit",
+          "vat",
+          "totalPriceVAT",
+          "rejectReason",
+          "createdAt",
+          "updatedAt",
+        ],
+      },
       include: [
-        { model: Customer, attributes: ["customerName", "companyName"] },
-        { model: Product },
-        { model: Box, as: "box" },
+        {
+          model: Customer,
+          attributes: ["customerName", "companyName"],
+        },
+        { model: Product, attributes: ["typeProduct", "productName"] },
+        { model: Box, as: "box", attributes: ["boxId"] },
+        { model: PlanningPaper, attributes: ["planningId", "runningPlan"] },
       ],
     });
     if (!order) return res.status(404).json({ message: "Order not found" });
 
+    const { chooseMachine, runningPlan } = planningData;
+
     // 2) Lấy thông số định mức và hệ số sóng cho máy đã chọn
-    const { chooseMachine } = planningData;
     const wasteNorm = await WasteNormPaper.findOne({
       where: { machineName: chooseMachine },
     });
@@ -284,14 +325,22 @@ export const planningOrder = async (req, res) => {
     }
 
     // 10) Cập nhật trạng thái đơn hàng
-    order.status = newStatus;
-    await order.save();
+    const totalRunningPlanOld = order.Plannings?.reduce(
+      (sum, p) => sum + (Number(p.runningPlan) || 0),
+      0
+    );
+    console.log(`totalRunningPlanOld: ${totalRunningPlanOld}`);
 
-    // 11) Xoá cache
+    const newTotalRunningPlan = totalRunningPlanOld + Number(runningPlan || 0);
+    console.log(`newTotalRunningPlan: ${newTotalRunningPlan}`);
+
+    if (newTotalRunningPlan >= order.quantityManufacture) {
+      order.status = newStatus;
+      await order.save();
+    }
+
     await redisCache.del(`planning:machine:${chooseMachine}`);
-    await deleteKeysByPattern(redisCache, `orders:userId:status:accept_planning:*`);
 
-    // 12) Trả kết quả
     return res.status(201).json({
       message: "Đã tạo kế hoạch thành công.",
       planning: [paperPlan, boxPlan].filter(Boolean),
@@ -373,6 +422,18 @@ const getPlanningByMachineSorted = async (machine) => {
               "lengthPaperCustomer",
               "paperSizeCustomer",
               "quantityCustomer",
+              "day",
+              "matE",
+              "matB",
+              "matC",
+              "songE",
+              "songB",
+              "songC",
+              "songE2",
+              "numberChild",
+              "lengthPaperManufacture",
+              "paperSizeManufacture",
+              "status",
             ],
           },
           include: [
@@ -621,9 +682,9 @@ export const getPlanningByFlute = async (req, res) => getPlanningPaperByField(re
 export const getPlanningByGhepKho = async (req, res) =>
   getPlanningPaperByField(req, res, "ghepKho");
 
-//pause or accept planning
+//pause or accept lack of qty
 export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
-  const { planningIds, newStatus } = req.body;
+  const { planningIds, newStatus, rejectReason } = req.body;
   try {
     if (!Array.isArray(planningIds) || planningIds.length === 0) {
       return res.status(400).json({ message: "Missing or invalid planningIds" });
@@ -640,8 +701,6 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
       return res.status(404).json({ message: "No planning found" });
     }
 
-    const chooseMachine = plannings[0]?.chooseMachine ?? null;
-
     if (newStatus !== "complete") {
       for (const planning of plannings) {
         if (planning.orderId) {
@@ -649,20 +708,23 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
             where: { orderId: planning.orderId },
           });
           if (order) {
-            order.status = newStatus;
-            await order.save();
+            if (newStatus == "accept") {
+              await order.update({ status: newStatus });
+            } else {
+              await order.update({ status: newStatus, rejectReason: rejectReason });
 
-            //trừ công nợ khi dừng máy
-            const customer = await Customer.findOne({
-              attributes: ["customerId", "debtCurrent"],
-              where: { customerId: order.customerId },
-            });
-            if (customer) {
-              let debtAfter = (customer.debtCurrent || 0) - order.totalPrice;
-              if (debtAfter < 0) debtAfter = 0; //tránh âm tiền
+              //trừ công nợ khi dừng máy
+              const customer = await Customer.findOne({
+                attributes: ["customerId", "debtCurrent"],
+                where: { customerId: order.customerId },
+              });
+              if (customer) {
+                let debtAfter = (customer.debtCurrent || 0) - order.totalPrice;
+                if (debtAfter < 0) debtAfter = 0; //tránh âm tiền
 
-              customer.debtCurrent = debtAfter;
-              await customer.save();
+                customer.debtCurrent = debtAfter;
+                await customer.save();
+              }
             }
           }
 
@@ -682,7 +744,7 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
         }
       }
     } else {
-      // 2) Nếu là hoàn thành
+      // 2) Nếu là hoàn thành -> accept lack of qty
       for (const planning of plannings) {
         if (planning.sortPlanning === null) {
           return res.status(400).json({
@@ -712,10 +774,6 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
         });
       }
     }
-
-    // 6) Xóa cache
-    await redisCache.del(`planning:machine:${chooseMachine}`);
-    await redisCache.del("orders:userId:status:pending_reject");
 
     res.status(200).json({
       message: `Update status planning successfully.`,

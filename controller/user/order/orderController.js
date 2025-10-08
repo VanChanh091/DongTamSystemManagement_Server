@@ -353,8 +353,7 @@ export const addOrder = async (req, res) => {
     const cacheKey = `orders:${userId}:pending_reject`;
     await redisCache.del(cacheKey);
 
-    // res.status(201).json({ order: newOrder, notification: notificationResult });
-    res.status(201).json({ order: newOrder });
+    res.status(201).json({ order: newOrder, orderId: newOrderId });
   } catch (error) {
     console.error("Create order error:", error);
     res.status(500).json({ error: error.message });

@@ -12,16 +12,6 @@ module.exports = {
       instances: "max", // chạy với số core CPU được cấp
       // instances: 1,
 
-      //     env_development: {
-      //   NODE_ENV: "development",
-      //   PORT: 5000,
-      // },
-
-      // env_production: {
-      //   NODE_ENV: "production",
-      //   PORT: 5000,
-      // },
-
       // Log files (PM2 sẽ lưu trong C:\\Users\userName\.pm2\logs\)
       error_file: "./logs/err/dongtam-api-error.log",
       out_file: "./logs/out/dongtam-api-out.log",
@@ -40,4 +30,6 @@ module.exports = {
       rotateModule: true,
     },
   },
+
+  // pm2 link 8kuqyuz73f2rpgv oedvy3xrrrvqf4d
 };

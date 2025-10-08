@@ -31,6 +31,7 @@ const PlanningPaper = sequelize.define(
     sizePaperPLaning: { type: DataTypes.DOUBLE, allowNull: false },
     runningPlan: { type: DataTypes.INTEGER, allowNull: false },
     qtyProduced: { type: DataTypes.INTEGER },
+    numberChild: { type: DataTypes.INTEGER, allowNull: false },
     ghepKho: { type: DataTypes.INTEGER },
     bottom: { type: DataTypes.DOUBLE },
     fluteE: { type: DataTypes.DOUBLE },

@@ -3,13 +3,7 @@ export const deleteKeysByPattern = async (redisClient, pattern) => {
   let cursor = "0";
 
   do {
-    const [nextCursor, keys] = await redisClient.scan(
-      cursor,
-      "MATCH",
-      pattern,
-      "COUNT",
-      100
-    );
+    const [nextCursor, keys] = await redisClient.scan(cursor, "MATCH", pattern, "COUNT", 100);
     cursor = nextCursor;
 
     if (keys.length > 0) {
