@@ -49,7 +49,6 @@ export const getOrderAccept = async (req, res) => {
           "discount",
           "profit",
           "vat",
-          "totalPriceVAT",
           "rejectReason",
           "createdAt",
           "updatedAt",
@@ -121,7 +120,7 @@ export const planningOrder = async (req, res) => {
           attributes: ["customerName", "companyName"],
         },
         { model: Product, attributes: ["typeProduct", "productName"] },
-        { model: Box, as: "box", attributes: ["boxId"] },
+        { model: Box, as: "box" },
         { model: PlanningPaper, attributes: ["planningId", "runningPlan"] },
       ],
     });
@@ -267,30 +266,35 @@ export const planningOrder = async (req, res) => {
     // 8) Nếu đơn hàng có làm thùng, tạo thêm kế hoạch lam-thung (waiting)
     const box = order.box;
     if (order.isBox) {
-      boxPlan = await PlanningBox.create({
-        planningId: paperPlan.planningId,
-        orderId,
+      //check if orderId is exited in PlanningBox
+      const existedOrderId = await PlanningBox.findOne({ where: { orderId: orderId } });
 
-        day: paperPlan.dayReplace,
-        matE: paperPlan.matEReplace,
-        matB: paperPlan.matBReplace,
-        matC: paperPlan.matCReplace,
-        songE: paperPlan.songEReplace,
-        songB: paperPlan.songBReplace,
-        songC: paperPlan.songCReplace,
-        songE2: paperPlan.songE2Replace,
-        length: paperPlan.lengthPaperPlanning,
-        size: paperPlan.sizePaperPLaning,
+      if (!existedOrderId) {
+        boxPlan = await PlanningBox.create({
+          planningId: paperPlan.planningId,
+          orderId,
 
-        hasIn: !!(box.inMatTruoc || box.inMatSau),
-        hasCanLan: !!box.canLan,
-        hasBe: !!box.be,
-        hasXa: !!box.Xa,
-        hasDan: !!(box.dan_1_Manh || box.dan_2_Manh),
-        hasCatKhe: !!box.catKhe,
-        hasCanMang: !!box.canMang,
-        hasDongGhim: !!(box.dongGhim1Manh || box.dongGhim2Manh),
-      });
+          day: paperPlan.dayReplace,
+          matE: paperPlan.matEReplace,
+          matB: paperPlan.matBReplace,
+          matC: paperPlan.matCReplace,
+          songE: paperPlan.songEReplace,
+          songB: paperPlan.songBReplace,
+          songC: paperPlan.songCReplace,
+          songE2: paperPlan.songE2Replace,
+          length: paperPlan.lengthPaperPlanning,
+          size: paperPlan.sizePaperPLaning,
+
+          hasIn: !!(box.inMatTruoc || box.inMatSau),
+          hasCanLan: !!box.canLan,
+          hasBe: !!box.be,
+          hasXa: !!box.Xa,
+          hasDan: !!(box.dan_1_Manh || box.dan_2_Manh),
+          hasCatKhe: !!box.catKhe,
+          hasCanMang: !!box.canMang,
+          hasDongGhim: !!(box.dongGhim1Manh || box.dongGhim2Manh),
+        });
+      }
     }
 
     //9) dựa vào các hasIn, hasBe, hasXa... để tạo ra planning box time
@@ -329,10 +333,8 @@ export const planningOrder = async (req, res) => {
       (sum, p) => sum + (Number(p.runningPlan) || 0),
       0
     );
-    console.log(`totalRunningPlanOld: ${totalRunningPlanOld}`);
 
     const newTotalRunningPlan = totalRunningPlanOld + Number(runningPlan || 0);
-    console.log(`newTotalRunningPlan: ${newTotalRunningPlan}`);
 
     if (newTotalRunningPlan >= order.quantityManufacture) {
       order.status = newStatus;
@@ -740,6 +742,7 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
             await box.destroy();
           }
 
+          //xóa planning paper
           await planning.destroy();
         }
       }
