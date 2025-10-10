@@ -239,6 +239,19 @@ export const addReportPaper = async (req, res) => {
       if (isOverflowReport) {
         await overflow.update({ status: "complete" }, { transaction });
       }
+
+      //Cập nhật số lượng cho planning box
+      const planningBox = await PlanningBox.findOne({ where: { orderId: planning.orderId } });
+      if (!planningBox) {
+        await transaction.rollback();
+        return res.status(404).json({ message: "PlanningBox not found" });
+      }
+
+      //cộng gộp sl của đơn hàng đó
+      const newQtyProducedBox = Number(planningBox.runningPlan || 0) + Number(newQtyProduced || 0);
+      console.log(newQtyProducedBox);
+
+      await planningBox.update({ runningPlan: newQtyProducedBox }, { transaction });
     } else {
       await planning.update({ status: "lackQty" }, { transaction });
     }
@@ -254,19 +267,7 @@ export const addReportPaper = async (req, res) => {
       transaction,
     });
 
-    // 4. Kiểm tra đã đủ sản lượng chưa
-    if (newQtyProduced >= planning.runningPlan) {
-      //Cập nhật số lượng cho planning box
-      const planningBox = await PlanningBox.findOne({ where: { planningId } });
-      if (!planningBox) {
-        await transaction.rollback();
-        return res.status(404).json({ message: "PlanningBox not found" });
-      }
-
-      await planningBox.update({ runningPlan: newQtyProduced }, { transaction });
-    }
-
-    //5. Commit + clear cache
+    //4. Commit + clear cache
     await transaction.commit();
     await redisCache.del(`planning:machine:${machine}`);
 
