@@ -35,7 +35,7 @@ const PlanningBoxTime = sequelize.define("PlanningBoxTime", {
   },
   shiftManagement: { type: DataTypes.STRING },
   status: {
-    type: DataTypes.ENUM("planning", "lackOfQty", "complete", "producing"),
+    type: DataTypes.ENUM("planning", "lackOfQty", "complete", "producing", "stop"),
     allowNull: false,
     defaultValue: "planning",
   },
