@@ -687,11 +687,12 @@ export const getPlanningByGhepKho = async (req, res) =>
 //pause or accept lack of qty
 export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
   const { planningIds, newStatus, rejectReason } = req.body;
-  try {
-    if (!Array.isArray(planningIds) || planningIds.length === 0) {
-      return res.status(400).json({ message: "Missing or invalid planningIds" });
-    }
 
+  if (!Array.isArray(planningIds) || planningIds.length === 0) {
+    return res.status(400).json({ message: "Missing or invalid planningIds" });
+  }
+
+  try {
     const plannings = await PlanningPaper.findAll({
       where: {
         planningId: {
@@ -699,6 +700,7 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
         },
       },
     });
+
     if (plannings.length === 0) {
       return res.status(404).json({ message: "No planning found" });
     }
@@ -709,10 +711,12 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
           const order = await Order.findOne({
             where: { orderId: planning.orderId },
           });
+
           if (order) {
             if (newStatus == "accept") {
               await order.update({ status: newStatus });
             } else {
+              //reject
               await order.update({ status: newStatus, rejectReason: rejectReason });
 
               //trừ công nợ khi dừng máy
@@ -720,6 +724,7 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
                 attributes: ["customerId", "debtCurrent"],
                 where: { customerId: order.customerId },
               });
+
               if (customer) {
                 let debtAfter = (customer.debtCurrent || 0) - order.totalPrice;
                 if (debtAfter < 0) debtAfter = 0; //tránh âm tiền

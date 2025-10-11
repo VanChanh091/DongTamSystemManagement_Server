@@ -1,4 +1,5 @@
 import Redis from "ioredis";
+import ExcelJS from "exceljs";
 import Customer from "../../../models/customer/customer.js";
 import { Op, Sequelize } from "sequelize";
 import { generateNextId } from "../../../utils/helper/generateNextId.js";
@@ -279,5 +280,71 @@ export const deleteCustomer = async (req, res) => {
   } catch (err) {
     console.error("Delete customer failed:", err);
     res.status(500).json({ message: "Delete customer failed", err });
+  }
+};
+
+//export excel
+export const exportExcelCustomer = async (req, res) => {
+  const { fromDate, toDate, reportPaperId, machine } = req.body;
+
+  try {
+    let whereCondition = {};
+
+    // if (reportPaperId && reportPaperId.length > 0) {
+    //   whereCondition.reportPaperId = reportPaperId;
+    // } else if (fromDate && toDate) {
+    //   const start = new Date(fromDate);
+    //   start.setHours(0, 0, 0, 0);
+    //   const end = new Date(toDate);
+    //   end.setHours(23, 59, 59, 999);
+
+    //   whereCondition.dayReport = { [Op.between]: [start, end] };
+    // }
+
+    const data = await Customer.findAll({
+      where: whereCondition,
+      attributes: { exclude: ["createdAt", "updatedAt"] },
+      // order: [["dayReport", "ASC"]],
+    });
+
+    // Tạo workbook
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Danh sách khách hàng");
+
+    // Tạo header
+    worksheet.columns = reportPaperColumns;
+
+    // Đổ dữ liệu
+    data.forEach((item, index) => {
+      worksheet.addRow(mapReportPaperRow(item, index));
+    });
+
+    // Style header
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF0070C0" },
+      };
+      cell.alignment = { vertical: "middle", horizontal: "center" };
+    });
+
+    const now = new Date();
+    const dateStr = now.toISOString().split("T")[0];
+
+    // Xuất file
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", `attachment; filename=customer-${dateStr}.xlsx`);
+
+    await workbook.xlsx.write(res);
+
+    res.end();
+  } catch (error) {
+    console.error("Export Excel error:", error);
+    res.status(500).json({ message: "Lỗi xuất Excel" });
   }
 };

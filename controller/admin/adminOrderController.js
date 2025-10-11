@@ -80,26 +80,21 @@ export const updateStatusAdmin = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    const customer = order.Customer;
-    const product = order.Product;
-
-    const newDebt = Number(customer.debtCurrent || 0) + Number(order.totalPrice || 0);
-
-    console.log(`newDebt: ${newDebt}`);
-    console.log(`debtLimit: ${customer.debtLimit}`);
+    // const customer = order.Customer;
+    // const newDebt = Number(customer.debtCurrent || 0) + Number(order.totalPrice || 0);
 
     if (newStatus === "reject") {
       order.set({ status: newStatus, rejectReason: rejectReason || "" });
     } else {
       //calculate debt limit of customer
-      if (newDebt > customer.debtLimit) {
-        return res.status(400).json({ message: "Debt limit exceeded" });
-      }
-      await customer.update({ debtCurrent: newDebt });
+      // if (newDebt > customer.debtLimit) {
+      //   return res.status(400).json({ message: "Debt limit exceeded" });
+      // }
+      // await customer.update({ debtCurrent: newDebt });
 
       //check type product
       order.set({
-        status: product.typeProduct == "Phí Khác" ? "planning" : newStatus,
+        status: order.Product.typeProduct == "Phí Khác" ? "planning" : newStatus,
         rejectReason: null,
       });
     }
