@@ -3,6 +3,7 @@ import authenticate from "../../middlewares/authMiddleware.js";
 import {
   addProduct,
   deleteProduct,
+  exportExcelProduct,
   getAllProduct,
   getProductById,
   getProductByName,
@@ -16,6 +17,8 @@ const router = Router();
 router.get("/", authenticate, getAllProduct);
 router.get("/byProductId", authenticate, getProductById);
 router.get("/byName", authenticate, getProductByName);
+
+router.post("/exportExcel", authenticate, exportExcelProduct);
 router.post(
   "/",
   authenticate,

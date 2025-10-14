@@ -5,6 +5,7 @@ import { Op, Sequelize } from "sequelize";
 import { generateNextId } from "../../../utils/helper/generateNextId.js";
 import { sequelize } from "../../../configs/connectDB.js";
 import { filterCustomersFromCache } from "../../../utils/helper/orderHelpers.js";
+import { customerColumns, mappingCustomerRow } from "./mapping/customerRowAndColumn.js";
 
 const redisClient = new Redis();
 
@@ -285,38 +286,43 @@ export const deleteCustomer = async (req, res) => {
 
 //export excel
 export const exportExcelCustomer = async (req, res) => {
-  const { fromDate, toDate, reportPaperId, machine } = req.body;
+  const { fromDate, toDate, all = false } = req.body;
 
   try {
     let whereCondition = {};
 
-    // if (reportPaperId && reportPaperId.length > 0) {
-    //   whereCondition.reportPaperId = reportPaperId;
-    // } else if (fromDate && toDate) {
-    //   const start = new Date(fromDate);
-    //   start.setHours(0, 0, 0, 0);
-    //   const end = new Date(toDate);
-    //   end.setHours(23, 59, 59, 999);
+    if (all === "true") {
+      // xuất toàn bộ -> để whereCondition = {}
+    } else if (fromDate && toDate) {
+      const start = new Date(fromDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(toDate);
+      end.setHours(23, 59, 59, 999);
 
-    //   whereCondition.dayReport = { [Op.between]: [start, end] };
-    // }
+      whereCondition.timePayment = { [Op.between]: [start, end] };
+    }
 
     const data = await Customer.findAll({
       where: whereCondition,
       attributes: { exclude: ["createdAt", "updatedAt"] },
-      // order: [["dayReport", "ASC"]],
+      order: [
+        //lấy 4 số cuối -> ép chuỗi thành số để so sánh -> sort
+        [Sequelize.literal(`CAST(RIGHT(\`Customer\`.\`customerId\`, 4) AS UNSIGNED)`), "ASC"],
+      ],
     });
+
+    console.log(data);
 
     // Tạo workbook
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Danh sách khách hàng");
 
     // Tạo header
-    worksheet.columns = reportPaperColumns;
+    worksheet.columns = customerColumns;
 
     // Đổ dữ liệu
     data.forEach((item, index) => {
-      worksheet.addRow(mapReportPaperRow(item, index));
+      worksheet.addRow(mappingCustomerRow(item, index));
     });
 
     // Style header

@@ -8,7 +8,9 @@ import {
   uploadImageToCloudinary,
 } from "../../../utils/image/converToWebp.js";
 import cloudinary from "../../../configs/connectCloudinary.js";
+import ExcelJS from "exceljs";
 import { filterProductsFromCache } from "../../../utils/helper/orderHelpers.js";
+import { mappingProductRow, productColumns } from "./mapping/productRowAndColumn.js";
 
 const redisCache = new Redis();
 
@@ -246,5 +248,69 @@ export const deleteProduct = async (req, res) => {
   } catch (err) {
     console.error("Delete product error:", err);
     res.status(500).json({ message: "Delete product failed", err });
+  }
+};
+
+//export excel
+export const exportExcelProduct = async (req, res) => {
+  const { typeProduct, all = false } = req.body;
+
+  try {
+    let whereCondition = {};
+
+    if (all === "true") {
+      // xuất toàn bộ -> để whereCondition = {}
+    } else if (typeProduct) {
+      whereCondition.typeProduct = typeProduct;
+    }
+
+    const data = await Product.findAll({
+      where: whereCondition,
+      attributes: { exclude: ["createdAt", "updatedAt"] },
+      order: [
+        //lấy 4 số cuối -> ép chuỗi thành số để so sánh -> sort
+        [Sequelize.literal(`CAST(RIGHT(\`Product\`.\`productId\`, 4) AS UNSIGNED)`), "ASC"],
+      ],
+    });
+
+    // Tạo workbook
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Danh sách sản phẩm");
+
+    // Tạo header
+    worksheet.columns = productColumns;
+
+    // Đổ dữ liệu
+    data.forEach((item, index) => {
+      worksheet.addRow(mappingProductRow(item, index));
+    });
+
+    // Style header
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF0070C0" },
+      };
+      cell.alignment = { vertical: "middle", horizontal: "center" };
+    });
+
+    const now = new Date();
+    const dateStr = now.toISOString().split("T")[0];
+
+    // Xuất file
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", `attachment; filename=product-${dateStr}.xlsx`);
+
+    await workbook.xlsx.write(res);
+
+    res.end();
+  } catch (error) {
+    console.error("Export Excel error:", error);
+    res.status(500).json({ message: "Lỗi xuất Excel" });
   }
 };
