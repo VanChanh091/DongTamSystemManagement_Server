@@ -7,6 +7,7 @@ const PlanningBoxTime = sequelize.define("PlanningBoxTime", {
     autoIncrement: true,
     primaryKey: true,
   },
+  runningPlan: { type: DataTypes.INTEGER },
   timeRunning: { type: DataTypes.TIME },
   dayStart: { type: DataTypes.DATE },
   dayCompleted: {

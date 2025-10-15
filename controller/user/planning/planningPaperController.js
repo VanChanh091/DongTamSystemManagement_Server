@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-import { Op, Sequelize } from "sequelize";
+import { Op, or, Sequelize } from "sequelize";
 import Order from "../../../models/order/order.js";
 import Customer from "../../../models/customer/customer.js";
 import Product from "../../../models/product/product.js";
@@ -64,13 +64,11 @@ export const getOrderAccept = async (req, res) => {
         { model: PlanningPaper, attributes: ["planningId", "runningPlan"] },
       ],
       order: [
-        //2. nếu trùng orderId thì sort theo dateRequestShipping
-        ["dateRequestShipping", "DESC"],
-        //3. sort theo 3 số đầu của orderId
         [
           Sequelize.literal(`CAST(SUBSTRING_INDEX(\`Order\`.\`orderId\`, '/', 1) AS UNSIGNED)`),
           "ASC",
         ],
+        ["dateRequestShipping", "ASC"],
       ],
     });
 
@@ -713,13 +711,19 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
           });
 
           if (order) {
-            if (newStatus == "accept") {
-              await order.update({ status: newStatus });
-            } else {
-              //reject
-              await order.update({ status: newStatus, rejectReason: rejectReason });
+            //case: cancel planning -> status:reject order
+            //if qtyProduced = 0 -> status:reject order -> delete planning paper&box -> minus debt of customer
+            if (newStatus === "reject") {
+              if (planning.qtyProduced > 0) {
+                return res.status(400).json({
+                  message: `Không thể hủy đơn ${planning.planningId} vì đã có sản lượng.`,
+                });
+              }
 
-              //trừ công nợ khi dừng máy
+              // Trả order về reject
+              await order.update({ status: newStatus, rejectReason });
+
+              // Trừ công nợ khách hàng
               const customer = await Customer.findOne({
                 attributes: ["customerId", "debtCurrent"],
                 where: { customerId: order.customerId },
@@ -729,30 +733,61 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
                 let debtAfter = (customer.debtCurrent || 0) - order.totalPrice;
                 if (debtAfter < 0) debtAfter = 0; //tránh âm tiền
 
-                customer.debtCurrent = debtAfter;
-                await customer.save();
+                await customer.update({ debtCurrent: debtAfter });
+              }
+
+              // Xoá dữ liệu phụ thuộc
+              const dependents = await PlanningBox.findAll({
+                where: { planningId: planning.planningId },
+              });
+
+              for (const box of dependents) {
+                await planningBoxMachineTime.destroy({
+                  where: { planningBoxId: box.planningBoxId },
+                });
+                await box.destroy();
+              }
+
+              //xóa planning paper
+              await planning.destroy();
+            }
+            //case pause planning -> status:accept or stop order
+            //if qtyProduced = 0 -> delete planning paper&box -> status:accept order
+            //if qtyProduced > 0 -> status:stop order -> status:stop planning paper&box
+            else if (newStatus === "stop") {
+              const dependents = await PlanningBox.findAll({
+                where: { planningId: planning.planningId },
+              });
+
+              if (planning.qtyProduced > 0) {
+                await order.update({ status: newStatus, rejectReason: rejectReason });
+                await planning.update({ status: newStatus });
+
+                for (const box of dependents) {
+                  await planningBoxMachineTime.update(
+                    { status: newStatus },
+                    { where: { planningBoxId: box.planningBoxId } }
+                  );
+                }
+              } else {
+                await order.update({ status: "accept" });
+
+                for (const box of dependents) {
+                  await planningBoxMachineTime.destroy({
+                    where: { planningBoxId: box.planningBoxId },
+                  });
+                  await box.destroy();
+                }
+
+                //xóa planning paper
+                await planning.destroy();
               }
             }
           }
-
-          // Xoá dữ liệu phụ thuộc
-          const dependents = await PlanningBox.findAll({
-            where: { planningId: planning.planningId },
-          });
-
-          for (const box of dependents) {
-            await planningBoxMachineTime.destroy({
-              where: { planningBoxId: box.planningBoxId },
-            });
-            await box.destroy();
-          }
-
-          //xóa planning paper
-          await planning.destroy();
         }
       }
     } else {
-      // 2) Nếu là hoàn thành -> accept lack of qty
+      // complete -> accept lack of qty
       for (const planning of plannings) {
         if (planning.sortPlanning === null) {
           return res.status(400).json({

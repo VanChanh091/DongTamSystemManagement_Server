@@ -9,7 +9,7 @@ const PlanningBox = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
-    runningPlan: { type: DataTypes.INTEGER },
+    qtyPaper: { type: DataTypes.INTEGER },
     day: { type: DataTypes.STRING },
     matE: { type: DataTypes.STRING },
     matB: { type: DataTypes.STRING },

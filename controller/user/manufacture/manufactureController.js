@@ -185,6 +185,11 @@ export const addReportPaper = async (req, res) => {
     const newQtyProduced = Number(planning.qtyProduced || 0) + Number(qtyProduced || 0);
     const newQtyWasteNorm = Number(planning.qtyWasteNorm || 0) + Number(qtyWasteNorm || 0);
 
+    const newRunningPlan = Math.max(
+      Number(planning.runningPlan || 0) - Number(qtyProduced || 0),
+      0
+    );
+
     const isOverflowReport =
       planning.hasOverFlow &&
       planning.timeOverFlow &&
@@ -213,6 +218,7 @@ export const addReportPaper = async (req, res) => {
         {
           qtyProduced: newQtyProduced,
           qtyWasteNorm: newQtyWasteNorm,
+          runningPlan: newRunningPlan,
           ...otherData,
         },
         { transaction }
@@ -224,6 +230,7 @@ export const addReportPaper = async (req, res) => {
         {
           qtyProduced: newQtyProduced,
           qtyWasteNorm: newQtyWasteNorm,
+          runningPlan: newRunningPlan,
           dayCompleted: new Date(dayCompleted),
           ...otherData,
         },
@@ -234,24 +241,32 @@ export const addReportPaper = async (req, res) => {
     }
 
     //compare qtyProduced vs runningPlan
-    if (newQtyProduced >= planning.runningPlan) {
+    if (newRunningPlan <= 0) {
       await planning.update({ status: "complete" }, { transaction });
       if (isOverflowReport) {
         await overflow.update({ status: "complete" }, { transaction });
       }
 
       //Cập nhật số lượng cho planning box
-      const planningBox = await PlanningBox.findOne({ where: { orderId: planning.orderId } });
+      const planningBox = await PlanningBox.findOne({
+        where: { orderId: planning.orderId },
+        include: [
+          {
+            model: planningBoxMachineTime,
+            as: "boxTimes",
+            attributes: { exclude: ["createdAt", "updatedAt"] },
+          },
+        ],
+      });
       if (!planningBox) {
-        await transaction.rollback();
         return res.status(404).json({ message: "PlanningBox not found" });
       }
 
       //cộng gộp sl của đơn hàng đó
-      const newQtyProducedBox = Number(planningBox.runningPlan || 0) + Number(newQtyProduced || 0);
-      console.log(newQtyProducedBox);
-
-      await planningBox.update({ runningPlan: newQtyProducedBox }, { transaction });
+      await planningBox.update({ qtyPaper: newQtyProduced }, { transaction });
+      await planningBox.boxTimes.forEach(async (boxTime) => {
+        await boxTime.update({ runningPlan: newQtyProduced }, { transaction });
+      });
     } else {
       await planning.update({ status: "lackQty" }, { transaction });
     }

@@ -38,7 +38,7 @@ const Order = sequelize.define(
     instructSpecial: { type: DataTypes.STRING },
     isBox: { type: DataTypes.BOOLEAN, defaultValue: false, allowNull: false },
     status: {
-      type: DataTypes.ENUM("pending", "accept", "reject", "planning"),
+      type: DataTypes.ENUM("pending", "accept", "reject", "planning", "stop"),
       allowNull: false,
       defaultValue: "pending",
     },
