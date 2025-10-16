@@ -651,28 +651,28 @@ const calculateTimeForOnePlanning = async ({
   );
 
   // ================== LOG CHI TIẾT ==================
-  console.log(
-    "PlanningBox",
-    JSON.stringify(
-      {
-        machine,
-        status: planning.status,
-        runningPlan,
-        sortPlanning,
-        totalTimeWorking,
-        shift: {
-          startOfWorkTime: formatTimeToHHMMSS(startOfWorkTime),
-          endOfWorkTime: formatTimeToHHMMSS(endOfWorkTime),
-        },
-        productionMinutes,
-        breakMinutes: extraBreak,
-        result,
-      },
-      null,
-      2
-    )
-  );
-  console.log("========================================");
+  // console.log(
+  //   "PlanningBox",
+  //   JSON.stringify(
+  //     {
+  //       machine,
+  //       status: planning.status,
+  //       runningPlan,
+  //       sortPlanning,
+  //       totalTimeWorking,
+  //       shift: {
+  //         startOfWorkTime: formatTimeToHHMMSS(startOfWorkTime),
+  //         endOfWorkTime: formatTimeToHHMMSS(endOfWorkTime),
+  //       },
+  //       productionMinutes,
+  //       breakMinutes: extraBreak,
+  //       result,
+  //     },
+  //     null,
+  //     2
+  //   )
+  // );
+  // console.log("========================================");
 
   return { result, nextTime: currentTime, nextDay: currentDay };
 };
@@ -688,7 +688,6 @@ const calculateProductionMinutes = ({ runningPlan, Order, machineInfo, isMayIn }
 
   if (isMayIn && box) {
     const { inMatTruoc = 0, inMatSau = 0 } = box;
-    console.log(`🎨 inMatTruoc: ${inMatTruoc}, inMatSau: ${inMatSau}`);
     return Math.ceil(machineInfo.timeToProduct * (inMatTruoc + inMatSau) + totalTime);
   }
   return Math.ceil(machineInfo.timeToProduct + totalTime);

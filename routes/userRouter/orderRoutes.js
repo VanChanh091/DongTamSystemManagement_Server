@@ -3,12 +3,9 @@ import {
   addOrder,
   deleteOrder,
   updateOrder,
-  getOrderByPrice,
-  getOrderByQcBox,
-  getOrderByCustomerName,
-  getOrderByProductName,
   getOrderPendingAndReject,
   getOrderAcceptAndPlanning,
+  getOrderByField,
 } from "../../controller/user/order/orderController.js";
 import authenticate from "../../middlewares/authMiddleware.js";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware.js";
@@ -27,42 +24,9 @@ router.get(
   authorizeAnyPermission(["sale"]),
   getOrderAcceptAndPlanning
 );
-router.get(
-  "/qcBox",
-  authenticate,
-  authorizeAnyPermission(["sale"]),
-  getOrderByQcBox
-);
-router.get(
-  "/price",
-  authenticate,
-  authorizeAnyPermission(["sale"]),
-  getOrderByPrice
-);
-router.get(
-  "/customerName",
-  authenticate,
-  authorizeAnyPermission(["sale"]),
-  getOrderByCustomerName
-);
-router.get(
-  "/productName",
-  authenticate,
-  authorizeAnyPermission(["sale"]),
-  getOrderByProductName
-);
+router.get("/filter", authenticate, authorizeAnyPermission(["sale"]), getOrderByField);
 router.post("/", authenticate, authorizeAnyPermission(["sale"]), addOrder);
-router.put(
-  "/orders",
-  authenticate,
-  authorizeAnyPermission(["sale"]),
-  updateOrder
-);
-router.delete(
-  "/orders",
-  authenticate,
-  authorizeAnyPermission(["sale"]),
-  deleteOrder
-);
+router.put("/orders", authenticate, authorizeAnyPermission(["sale"]), updateOrder);
+router.delete("/orders", authenticate, authorizeAnyPermission(["sale"]), deleteOrder);
 
 export default router;

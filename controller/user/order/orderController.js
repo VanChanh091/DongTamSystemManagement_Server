@@ -5,14 +5,13 @@ import Customer from "../../../models/customer/customer.js";
 import Box from "../../../models/order/box.js";
 import User from "../../../models/user/user.js";
 import Product from "../../../models/product/product.js";
+import { cachedStatus, filterOrdersFromCache } from "../../../utils/helper/orderHelpers.js";
 import {
-  createDataTable,
-  generateOrderId,
-  updateChildOrder,
-  validateCustomerAndProduct,
-  cachedStatus,
-  filterOrdersFromCache,
-} from "../../../utils/helper/orderHelpers.js";
+  getOrderByStatus,
+  createOrderService,
+  deleteOrderService,
+  updateOrderService,
+} from "../../../service/orderService.js";
 
 const redisCache = new Redis();
 
@@ -29,103 +28,33 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
     const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
     const cacheKey = `orders:${keyRole}:accept_planning:page:${currentPage}`; //orders:admin:accept_planning:page:1
 
-    if (refresh == "true") {
-      await redisCache.del(cacheKey);
-    }
+    if (refresh == "true") await redisCache.del(cacheKey);
 
     // Lấy data đã lọc từ cachedStatus
     const cachedData = await redisCache.get(cacheKey);
     if (cachedData) {
       const parsed = JSON.parse(cachedData);
-
-      const filteredData = await cachedStatus(parsed, "accept", "planning", userId, role);
-
-      if (filteredData) {
-        console.log("✅ Get Order from cache");
-        return res.status(200).json({
-          message: "Get Order from cache",
-          data: filteredData,
-          totalOrders: parsed.totalOrders,
-          totalPages: parsed.totalPages,
-          currentPage: parsed.currentPage,
-        });
-      }
+      return res.status(200).json({
+        message: "Get Order from cache",
+        ...parsed,
+      });
     }
 
-    let whereCondition = { status: { [Op.in]: ["accept", "planning"] } };
-    if (role == "admin") {
-    } else if (role == "manager") {
-      if (ownOnly == "true") {
-        whereCondition = { userId, ...whereCondition };
-      }
-    } else {
-      whereCondition = { userId, ...whereCondition };
-    }
-
-    const totalOrders = await Order.count({ where: whereCondition });
-    const totalPages = Math.ceil(totalOrders / currentPageSize);
-    const offset = (currentPage - 1) * currentPageSize;
-
-    //find data from db
-    const data = await Order.findAll({
-      where: whereCondition,
-      attributes: { exclude: ["createdAt", "updatedAt"] },
-      include: [
-        { model: Customer, attributes: ["customerName", "companyName"] },
-        {
-          model: Product,
-          attributes: ["typeProduct", "productName", "maKhuon"],
-        },
-        {
-          model: Box,
-          as: "box",
-          attributes: { exclude: ["createdAt", "updatedAt"] },
-        },
-        { model: User, attributes: ["fullName"] },
-      ],
-      order: [
-        //1. sort theo accept -> planning
-        [
-          Sequelize.literal(`
-            CASE 
-              WHEN status = 'accept' THEN 0
-              WHEN status = 'planning' THEN 1
-              ELSE 2
-            END
-          `),
-          "ASC",
-        ],
-        //2. sort theo 3 số đầu của orderId
-        [
-          Sequelize.literal(`CAST(SUBSTRING_INDEX(\`Order\`.\`orderId\`, '/', 1) AS UNSIGNED)`),
-          "ASC",
-        ],
-        //3. nếu trùng orderId thì sort theo dateRequestShipping
-        ["dateRequestShipping", "ASC"],
-      ],
-      offset,
-      limit: currentPageSize,
+    const result = await getOrderByStatus({
+      statusList: ["accept", "planning"],
+      userId,
+      role,
+      page: currentPage,
+      pageSize: currentPageSize,
+      ownOnly,
+      isPaging: true,
     });
 
-    // Lưu cache gồm: data + meta info
-    await redisCache.set(
-      cacheKey,
-      JSON.stringify({
-        data,
-        totalOrders,
-        totalPages,
-        currentPage,
-      }),
-      "EX",
-      1800
-    );
+    await redisCache.set(cacheKey, JSON.stringify(result), "EX", 1800);
 
     res.status(200).json({
       message: "Get all orders from DB with status: accept and planning",
-      data,
-      totalOrders,
-      totalPages,
-      currentPage,
+      ...result,
     });
   } catch (error) {
     console.error("Error in getOrderAcceptAndPlanning:", error);
@@ -133,84 +62,37 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
   }
 };
 
-//get by customer name
-export const getOrderByCustomerName = async (req, res) => {
+export const getOrderByField = async (req, res) => {
   const { userId, role } = req.user;
-  const { name, page, pageSize } = req.query;
+  const { field, keyword, page, pageSize } = req.query;
 
-  const result = await filterOrdersFromCache({
-    userId,
-    role,
-    keyword: name,
-    getFieldValue: (order) => order?.Customer?.customerName,
-    page,
-    pageSize,
-    cacheKeyPrefix: `orders:accept_planning`,
-    message: "Get orders by customer name from filtered cache",
-  });
+  const fieldMap = {
+    customerName: (order) => order?.Customer?.customerName,
+    productName: (order) => order?.Product?.productName,
+    qcBox: (order) => order?.QC_box,
+    price: (order) => order?.price,
+  };
 
-  return res.status(200).json(result);
-};
-
-//get by product name
-export const getOrderByProductName = async (req, res) => {
-  const { userId, role } = req.user;
-  const { productName, page, pageSize } = req.query;
-
-  const result = await filterOrdersFromCache({
-    userId,
-    role,
-    keyword: productName,
-    getFieldValue: (order) => order?.Product?.productName,
-    page,
-    pageSize,
-    cacheKeyPrefix: `orders:accept_planning`,
-    message: "Get orders by product name from filtered cache",
-  });
-
-  return res.status(200).json(result);
-};
-
-//get by QC box
-export const getOrderByQcBox = async (req, res) => {
-  const { userId, role } = req.user;
-  const { QcBox, page, pageSize } = req.query;
-
-  const result = await filterOrdersFromCache({
-    userId,
-    role,
-    keyword: QcBox,
-    getFieldValue: (order) => order?.QC_box,
-    page,
-    pageSize,
-    cacheKeyPrefix: `orders:accept_planning`,
-    message: "Get orders by QC box from filtered cache",
-  });
-
-  return res.status(200).json(result);
-};
-
-//get by price
-export const getOrderByPrice = async (req, res) => {
-  const { userId, role } = req.user;
-  const { price, page, pageSize } = req.query;
+  if (!fieldMap[field]) {
+    return res.status(400).json({ message: "Invalid field parameter" });
+  }
 
   try {
     const result = await filterOrdersFromCache({
       userId,
       role,
-      keyword: price,
-      getFieldValue: (order) => order?.price,
+      keyword,
+      getFieldValue: fieldMap[field],
       page,
       pageSize,
       cacheKeyPrefix: `orders:accept_planning`,
-      message: "Get orders by price from filtered cache",
+      message: `Get orders by ${field} from filtered cache`,
     });
 
     return res.status(200).json(result);
   } catch (error) {
-    console.error("Failed to get by price:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    console.error(`Failed to get orders by ${field}:`, error);
+    return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
@@ -229,9 +111,7 @@ export const getOrderPendingAndReject = async (req, res) => {
     const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
     const cacheKey = `orders:${keyRole}:pending_reject`;
 
-    if (refresh == "true") {
-      await redisCache.del(cacheKey);
-    }
+    if (refresh == "true") await redisCache.del(cacheKey);
 
     const cachedResult = await cachedStatus(
       cacheKey,
@@ -243,71 +123,25 @@ export const getOrderPendingAndReject = async (req, res) => {
     );
 
     if (cachedResult) {
-      console.log("✅ Get Order from cache");
       return res.status(200).json({
         message: "Get Order from cache",
         data: cachedResult,
       });
     }
 
-    let whereCondition = { status: { [Op.in]: ["pending", "reject"] } };
-
-    if (role == "admin" || role == "manager") {
-      if (ownOnly == "true") {
-        whereCondition = { userId, ...whereCondition };
-      }
-    } else {
-      whereCondition = { userId, ...whereCondition };
-    }
-
-    const data = await Order.findAll({
-      where: whereCondition,
-      attributes: { exclude: ["createdAt", "updatedAt"] },
-      include: [
-        {
-          model: Customer,
-          attributes: ["customerName", "companyName"],
-        },
-        {
-          model: Product,
-          attributes: ["typeProduct", "productName", "maKhuon"],
-        },
-        {
-          model: Box,
-          as: "box",
-          attributes: {
-            exclude: ["createdAt", "updatedAt"],
-          },
-        },
-        { model: User, attributes: ["fullName"] },
-      ],
-      order: [
-        //1. sort theo reject -> pending
-        [
-          Sequelize.literal(`
-            CASE 
-              WHEN status = 'reject' THEN 0
-              WHEN status = 'pending' THEN 1
-              ELSE 2
-            END
-          `),
-          "ASC",
-        ],
-        //2. sort theo 3 số đầu của orderId
-        [
-          Sequelize.literal(`CAST(SUBSTRING_INDEX(\`Order\`.\`orderId\`, '/', 1) AS UNSIGNED)`),
-          "ASC",
-        ],
-        //3. nếu trùng orderId thì sort theo dateRequestShipping
-        ["dateRequestShipping", "ASC"],
-      ],
+    const result = await getOrderByStatus({
+      statusList: ["pending", "reject"],
+      userId,
+      role,
+      ownOnly,
+      isPaging: false,
     });
 
-    await redisCache.set(cacheKey, JSON.stringify(data), "EX", 3600);
+    await redisCache.set(cacheKey, JSON.stringify(result), "EX", 3600);
 
     res.status(200).json({
       message: "Get all orders from DB with status: pending and reject",
-      data,
+      ...result,
     });
   } catch (error) {
     console.error("Error in getOrderPendingAndReject:", error);
@@ -318,41 +152,17 @@ export const getOrderPendingAndReject = async (req, res) => {
 //add order
 export const addOrder = async (req, res) => {
   const { userId } = req.user;
-  const { prefix = "CUSTOM", customerId, productId, box, ...orderData } = req.body;
+  const { prefix, customerId, productId, box, ...orderData } = req.body;
 
-  if (!userId) return res.status(400).json({ message: "Missing userId" });
   try {
-    const validation = await validateCustomerAndProduct(customerId, productId);
-    if (!validation.success) {
-      return res.status(400).json({ message: validation.message });
-    }
-
-    //create id + number auto increase
-    const newOrderId = await generateOrderId(prefix);
-
-    //create order
-    const newOrder = await Order.create({
-      orderId: newOrderId,
-      customerId: customerId,
-      productId: productId,
+    const { newOrder, newOrderId } = await createOrderService({
       userId,
+      prefix,
+      customerId,
+      productId,
+      box,
       ...orderData,
     });
-
-    //create table data
-    if (newOrder.isBox === true) {
-      try {
-        await createDataTable(newOrderId, Box, box);
-      } catch (error) {
-        console.error("Error creating related data:", error);
-        return res.status(500).json({ message: "Failed to create related data" });
-      }
-    }
-
-    //delete redis
-    const cacheKey = `orders:${userId}:pending_reject`;
-    await redisCache.del(cacheKey);
-
     res.status(201).json({ order: newOrder, orderId: newOrderId });
   } catch (error) {
     console.error("Create order error:", error);
@@ -367,33 +177,8 @@ export const updateOrder = async (req, res) => {
   const { userId } = req.user;
 
   try {
-    if (!userId) {
-      return res.status(400).json({ message: "Missing userId" });
-    }
-
-    const order = await Order.findOne({ where: { orderId } });
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
-    }
-
-    await order.update({
-      ...orderData,
-    });
-
-    if (order.isBox === true) {
-      await updateChildOrder(orderId, Box, box);
-    } else {
-      await Box.destroy({ where: { orderId } });
-    }
-
-    // Xóa cache liên quan user này
-    const cacheKey = `orders:${userId}:pending_reject`;
-    await redisCache.del(cacheKey);
-
-    res.status(200).json({
-      message: "Order updated successfully",
-      order,
-    });
+    await updateOrderService({ userId, orderId, box, ...orderData });
+    res.status(200).json({ message: "Order updated successfully" });
   } catch (error) {
     console.error("update order failed:", error);
     res.status(500).json({
@@ -409,22 +194,7 @@ export const deleteOrder = async (req, res) => {
   const { userId } = req.user;
 
   try {
-    if (!userId) {
-      return res.status(400).json({ message: "Missing userId" });
-    }
-
-    const deletedOrder = await Order.destroy({
-      where: { orderId: id },
-    });
-
-    if (!deletedOrder) {
-      return res.status(404).json({ message: "Order delete failed" });
-    }
-
-    // Xóa cache liên quan user này
-    const cacheKey = `orders:${userId}:pending_reject`;
-    await redisCache.del(cacheKey);
-
+    await deleteOrderService({ orderId: id, userId });
     res.status(200).json({ message: "Order deleted successfully" });
   } catch (error) {
     console.error("Delete order failed:", error);
