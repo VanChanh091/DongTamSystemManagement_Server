@@ -61,7 +61,7 @@ export const getOrderAccept = async (req, res) => {
         },
         { model: Product, attributes: ["typeProduct", "productName"] },
         { model: Box, as: "box", attributes: ["boxId"] },
-        { model: PlanningPaper, attributes: ["planningId", "runningPlan"] },
+        { model: PlanningPaper, attributes: ["planningId", "qtyProduced"] },
       ],
       order: [
         [
@@ -98,7 +98,6 @@ export const planningOrder = async (req, res) => {
         exclude: [
           "lengthPaperCustomer",
           "paperSizeCustomer",
-          "quantityCustomer",
           "acreage",
           "dvt",
           "price",
@@ -297,8 +296,6 @@ export const planningOrder = async (req, res) => {
 
     //9) dựa vào các hasIn, hasBe, hasXa... để tạo ra planning box time
     if (boxPlan) {
-      const machineTimes = [];
-
       const machineMap = {
         hasIn: "Máy In",
         hasCanLan: "Máy Cấn Lằn",
@@ -310,16 +307,13 @@ export const planningOrder = async (req, res) => {
         hasDongGhim: "Máy Đóng Ghim",
       };
 
-      for (const [flag, machineName] of Object.entries(machineMap)) {
-        const isMachineUsed = boxPlan[flag] === true;
-
-        if (isMachineUsed) {
-          machineTimes.push({
-            planningBoxId: boxPlan.planningBoxId,
-            machine: machineName,
-          });
-        }
-      }
+      const machineTimes = Object.entries(machineMap)
+        .filter(([flag]) => boxPlan[flag] === true)
+        .map(([_, machineName]) => ({
+          planningBoxId: boxPlan.planningBoxId,
+          machine: machineName,
+          runningPlan: order.quantityCustomer,
+        }));
 
       if (machineTimes.length > 0) {
         await planningBoxMachineTime.bulkCreate(machineTimes);

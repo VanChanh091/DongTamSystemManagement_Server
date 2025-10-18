@@ -1,10 +1,4 @@
 import Redis from "ioredis";
-import Order from "../../../models/order/order.js";
-import { Op, Sequelize } from "sequelize";
-import Customer from "../../../models/customer/customer.js";
-import Box from "../../../models/order/box.js";
-import User from "../../../models/user/user.js";
-import Product from "../../../models/product/product.js";
 import { cachedStatus, filterOrdersFromCache } from "../../../utils/helper/orderHelpers.js";
 import {
   getOrderByStatus,

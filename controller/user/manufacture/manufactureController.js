@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-import { Op } from "sequelize";
+import { Op, where } from "sequelize";
 import { machineLabels } from "../../../configs/machineLabels.js";
 import PlanningPaper from "../../../models/planning/planningPaper.js";
 import timeOverflowPlanning from "../../../models/planning/timeOverFlowPlanning.js";
@@ -158,7 +158,10 @@ export const addReportPaper = async (req, res) => {
     // 1. Tìm kế hoạch hiện tại
     const planning = await PlanningPaper.findOne({
       where: { planningId },
-      include: [{ model: timeOverflowPlanning, as: "timeOverFlow" }],
+      include: [
+        { model: timeOverflowPlanning, as: "timeOverFlow" },
+        { model: Order, attributes: ["quantityManufacture"] },
+      ],
       transaction,
       lock: transaction.LOCK.UPDATE,
     });
@@ -185,10 +188,8 @@ export const addReportPaper = async (req, res) => {
     const newQtyProduced = Number(planning.qtyProduced || 0) + Number(qtyProduced || 0);
     const newQtyWasteNorm = Number(planning.qtyWasteNorm || 0) + Number(qtyWasteNorm || 0);
 
-    const newRunningPlan = Math.max(
-      Number(planning.runningPlan || 0) - Number(qtyProduced || 0),
-      0
-    );
+    //cập nhật lại runningPlan cho planningPaper
+    const newRunningPlan = Math.max(planning.runningPlan - Number(qtyProduced || 0), 0);
 
     const isOverflowReport =
       planning.hasOverFlow &&
@@ -250,25 +251,34 @@ export const addReportPaper = async (req, res) => {
       //Cập nhật số lượng cho planning box
       const planningBox = await PlanningBox.findOne({
         where: { orderId: planning.orderId },
-        include: [
-          {
-            model: planningBoxMachineTime,
-            as: "boxTimes",
-            attributes: { exclude: ["createdAt", "updatedAt"] },
-          },
-        ],
       });
       if (!planningBox) {
         return res.status(404).json({ message: "PlanningBox not found" });
       }
 
       //cộng gộp sl của đơn hàng đó
-      await planningBox.update({ qtyPaper: newQtyProduced }, { transaction });
-      await planningBox.boxTimes.forEach(async (boxTime) => {
-        await boxTime.update({ runningPlan: newQtyProduced }, { transaction });
-      });
+      const updatedQty = Number(planningBox.qtyPaper || 0) + Number(newQtyProduced || 0);
+      await planningBox.update({ qtyPaper: updatedQty }, { transaction });
     } else {
       await planning.update({ status: "lackQty" }, { transaction });
+    }
+
+    //fix here
+    //check qty to planning order
+    const allPlans = await PlanningPaper.findAll({
+      where: { orderId: planning.orderId },
+      attributes: ["qtyProduced"],
+      transaction,
+    });
+
+    const totalQtyProduced = allPlans.reduce((sum, p) => sum + Number(p.qtyProduced || 0), 0);
+    const qtyManufacture = planning.Order?.quantityManufacture || 0;
+
+    if (totalQtyProduced >= qtyManufacture) {
+      await Order.update(
+        { status: "planning" },
+        { where: { orderId: planning.orderId }, transaction }
+      );
     }
 
     //3. tạo report theo số lần báo cáo
@@ -591,6 +601,10 @@ export const addReportBox = async (req, res) => {
     const newQtyProduced = Number(planning.qtyProduced || 0) + Number(qtyProduced || 0);
     const newQtyWasteNorm = Number(planning.rpWasteLoss || 0) + Number(rpWasteLoss || 0);
 
+    const qtyCustomer = planning.PlanningBox?.Order?.quantityCustomer || 0;
+
+    const newRunningPlan = Math.max(qtyCustomer - Number(newQtyProduced || 0), 0);
+
     const timeOverFlow =
       Array.isArray(planning.PlanningBox.timeOverFlow) &&
       planning.PlanningBox.timeOverFlow.length > 0
@@ -627,6 +641,7 @@ export const addReportBox = async (req, res) => {
           qtyProduced: newQtyProduced,
           rpWasteLoss: newQtyWasteNorm,
           shiftManagement: shiftManagement,
+          runningPlan: newRunningPlan,
         },
         { transaction }
       );
@@ -640,6 +655,7 @@ export const addReportBox = async (req, res) => {
           qtyProduced: newQtyProduced,
           rpWasteLoss: newQtyWasteNorm,
           shiftManagement: shiftManagement,
+          runningPlan: newRunningPlan,
         },
         { transaction }
       );
@@ -647,10 +663,8 @@ export const addReportBox = async (req, res) => {
       dayReportValue = planning.getDataValue("dayCompleted");
     }
 
-    //compare qtyProduced vs runningPlan
-    const runningPlan = planning.PlanningBox?.Order?.quantityCustomer || 0;
-
-    if (newQtyProduced >= runningPlan) {
+    //condition to complete
+    if (newRunningPlan <= 0) {
       await planning.update({ status: "complete" }, { transaction });
       if (isOverflowReport) {
         await overflow.update({ status: "complete" }, { transaction });
@@ -685,7 +699,7 @@ export const addReportBox = async (req, res) => {
         qtyWasteNorm: newQtyWasteNorm,
         dayCompleted,
         shiftManagement,
-        status: newQtyProduced >= runningPlan ? "complete" : "lackQty",
+        status: newQtyProduced >= qtyCustomer ? "complete" : "lackQty",
       },
     });
   } catch (error) {
