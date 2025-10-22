@@ -27,20 +27,10 @@ const router = Router();
 
 //=========================WAITING FOR PLANNING=========================
 router.get("/", authenticate, authorizeAnyPermission(["plan"]), getOrderAccept);
-router.post(
-  "/planningOrder",
-  authenticate,
-  authorizeAnyPermission(["plan"]),
-  planningOrder
-);
+router.post("/planningOrder", authenticate, authorizeAnyPermission(["plan"]), planningOrder);
 
 //=========================PLANNING PAPER=========================
-router.get(
-  "/byMachinePaper",
-  authenticate,
-  authorizeAnyPermission(["plan"]),
-  getPlanningByMachine
-);
+router.get("/byMachinePaper", authenticate, authorizeAnyPermission(["plan"]), getPlanningByMachine);
 router.post(
   "/updateIndex_TimeRunningPaper",
   authenticate,
@@ -67,12 +57,7 @@ router.get(
   authorizeAnyPermission(["plan"]),
   getPlanningByCustomerName
 );
-router.get(
-  "/getFlutePaper",
-  authenticate,
-  authorizeAnyPermission(["plan"]),
-  getPlanningByFlute
-);
+router.get("/getFlutePaper", authenticate, authorizeAnyPermission(["plan"]), getPlanningByFlute);
 router.get(
   "/getGhepKhoPaper",
   authenticate,
@@ -87,24 +72,14 @@ router.get(
 );
 
 //=========================PLANNING BOX=========================
-router.get(
-  "/byMachineBox",
-  authenticate,
-  authorizeAnyPermission(["plan"]),
-  getPlanningBox
-);
+router.get("/byMachineBox", authenticate, authorizeAnyPermission(["plan"]), getPlanningBox);
 router.post(
   "/updateIndex_TimeRunningBox",
   authenticate,
   authorizeAnyPermission(["plan"]),
   updateIndex_TimeRunningBox
 );
-router.put(
-  "/acceptLackQtyBox",
-  authenticate,
-  authorizeAnyPermission(["plan"]),
-  acceptLackQtyBox
-);
+router.put("/acceptLackQtyBox", authenticate, authorizeAnyPermission(["plan"]), acceptLackQtyBox);
 
 //get properties of planning box
 router.get(
@@ -119,17 +94,7 @@ router.get(
   authorizeAnyPermission(["plan"]),
   getPlanningBoxByCusName
 );
-router.get(
-  "/getFluteBox",
-  authenticate,
-  authorizeAnyPermission(["plan"]),
-  getPlanningBoxByFlute
-);
-router.get(
-  "/getQcBox",
-  authenticate,
-  authorizeAnyPermission(["plan"]),
-  getPlanningBoxByQcBox
-);
+router.get("/getFluteBox", authenticate, authorizeAnyPermission(["plan"]), getPlanningBoxByFlute);
+router.get("/getQcBox", authenticate, authorizeAnyPermission(["plan"]), getPlanningBoxByQcBox);
 
 export default router;

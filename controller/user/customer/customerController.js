@@ -9,7 +9,7 @@ import { customerColumns, mappingCustomerRow } from "./mapping/customerRowAndCol
 
 const redisClient = new Redis();
 
-// get all
+//get all
 export const getAllCustomer = async (req, res) => {
   const { page = 1, pageSize = 20, refresh = false, noPaging = false } = req.query;
   const currentPage = Number(page);
@@ -76,118 +76,34 @@ export const getAllCustomer = async (req, res) => {
   }
 };
 
-// get by id
-export const getById = async (req, res) => {
-  const { customerId, page, pageSize } = req.query;
+//get by field
+export const getCustomerByField = async (req, res) => {
+  const { field, keyword, page, pageSize } = req.query;
+
+  const fieldMap = {
+    customerId: (customer) => customer?.customerId,
+    customerName: (customer) => customer?.customerName,
+    cskh: (customer) => customer?.cskh,
+    phone: (customer) => customer?.phone,
+  };
+
+  if (!fieldMap[field]) {
+    return res.status(400).json({ message: "Invalid field parameter" });
+  }
 
   try {
     const result = await filterCustomersFromCache({
-      keyword: customerId,
-      getFieldValue: (customer) => customer?.customerId,
+      keyword: keyword,
+      getFieldValue: fieldMap[field],
       page,
       pageSize,
-      message: "get all customerId from cache",
+      message: `get all by ${field} from filtered cache`,
     });
 
-    res.status(200).json(result);
-  } catch (err) {
-    console.error("Failed to get customer by customerId:", err);
-    res.status(500).json({ message: "Server error", error: err.message });
-  }
-};
-
-//get by name
-export const getByCustomerName = async (req, res) => {
-  const { name, page, pageSize } = req.query;
-  try {
-    const result = await filterCustomersFromCache({
-      keyword: name,
-      getFieldValue: (customer) => customer?.customerName,
-      page,
-      pageSize,
-      message: "get all customerName from cache",
-    });
-
-    res.status(200).json(result);
-  } catch (err) {
-    console.error("Failed to get customer by name:", err);
-    res.status(500).json({ message: "Server error", error: err.message });
-  }
-};
-
-//get by cskh
-export const getByCSKH = async (req, res) => {
-  const { cskh, page, pageSize } = req.query;
-  try {
-    const result = await filterCustomersFromCache({
-      keyword: cskh,
-      getFieldValue: (customer) => customer?.cskh,
-      page,
-      pageSize,
-      message: "get all customerName from cache",
-    });
-
-    res.status(200).json(result);
-  } catch (err) {
-    console.error("Failed to get customer by cskh:", err);
-    res.status(500).json({ message: "Server error", error: err.message });
-  }
-};
-
-//get by sdt
-export const getBySDT = async (req, res) => {
-  const { phone, page, pageSize } = req.query;
-
-  const currentPage = Number(page) || 1;
-  const currentPageSize = Number(pageSize) || 10;
-  const targetPhone = phone?.trim();
-  const cacheKey = "customers:search:all";
-
-  try {
-    let allCustomers;
-    let fromCache = true;
-
-    let cached = await redisClient.get(cacheKey);
-
-    if (!cached) {
-      fromCache = false;
-
-      // Query đúng SDT
-      const customersFromDB = await Customer.findAll({
-        attributes: { exclude: ["createdAt", "updatedAt"] },
-        where: { phone: { [Op.eq]: phone } },
-      });
-
-      // Cache toàn bộ customers để lần sau filter
-      const fullCustomers = await Customer.findAll({
-        attributes: { exclude: ["createdAt", "updatedAt"] },
-      });
-      await redisClient.set(cacheKey, JSON.stringify(fullCustomers), "EX", 600);
-
-      allCustomers = customersFromDB;
-    } else {
-      allCustomers = JSON.parse(cached).filter(
-        (customer) => customer?.phone?.trim() === targetPhone
-      );
-    }
-
-    const totalCustomers = allCustomers.length;
-    const totalPages = Math.ceil(totalCustomers / currentPageSize);
-    const offset = (currentPage - 1) * currentPageSize;
-    const paginatedCustomers = allCustomers.slice(offset, offset + currentPageSize);
-
-    return res.status(200).json({
-      message: fromCache
-        ? "Get customer by SDT from filtered cache"
-        : "Get customer by SDT from DB",
-      data: paginatedCustomers,
-      totalCustomers,
-      totalPages,
-      currentPage,
-    });
-  } catch (err) {
-    console.error("Failed to get customer by phone:", err);
-    res.status(500).json({ message: "Server error", error: err.message });
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error(`Failed to get customers by ${field}:`, error);
+    return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
@@ -215,7 +131,7 @@ export const createCustomer = async (req, res) => {
     );
 
     await transaction.commit();
-    await redisClient.del("customers:all");
+    await redisClient.del("customers:all:page:*");
     await redisClient.del("customers:search:all");
 
     res.status(201).json({ message: "Customer created successfully", data: newCustomer });

@@ -8,6 +8,7 @@ module.exports = {
       exec_mode: "cluster", // cluster mode để cân bằng tải
       autorestart: true,
       watch: false,
+      merge_logs: true,
       max_memory_restart: "500M",
       instances: "max", // chạy với số core CPU được cấp
       // instances: 1,

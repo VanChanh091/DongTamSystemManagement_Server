@@ -4,10 +4,7 @@ import {
   deleteCustomer,
   exportExcelCustomer,
   getAllCustomer,
-  getByCSKH,
-  getByCustomerName,
-  getById,
-  getBySDT,
+  getCustomerByField,
   updateCustomer,
 } from "../../controller/user/customer/customerController.js";
 import authenticate from "../../middlewares/authMiddleware.js";
@@ -16,10 +13,7 @@ import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware.j
 const router = Router();
 
 router.get("/", authenticate, getAllCustomer);
-router.get("/byCustomerId", authenticate, getById);
-router.get("/byName", authenticate, getByCustomerName);
-router.get("/byCskh", authenticate, getByCSKH);
-router.get("/byPhone", authenticate, getBySDT);
+router.get("/filter", authenticate, getCustomerByField);
 
 router.post("/exportExcel", authenticate, exportExcelCustomer);
 router.post("/", authenticate, authorizeAnyPermission(["sale"]), createCustomer);

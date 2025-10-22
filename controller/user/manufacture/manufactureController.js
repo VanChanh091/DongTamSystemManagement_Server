@@ -109,6 +109,18 @@ export const getPlanningPaper = async (req, res) => {
     });
 
     const allPlannings = [];
+    const overflowRemoveFields = [
+      "runningPlan",
+      "quantityManufacture",
+      "bottom",
+      "fluteE",
+      "fluteB",
+      "fluteC",
+      "knife",
+      "totalLoss",
+      "instructSpecial",
+    ];
+
     validData.forEach((planning) => {
       const original = {
         ...planning.toJSON(),
@@ -118,16 +130,21 @@ export const getPlanningPaper = async (req, res) => {
       allPlannings.push(original);
 
       if (planning.timeOverFlow) {
-        const overflowDayStart = planning.timeOverFlow.overflowDayStart;
-        const overflowTime = planning.timeOverFlow.overflowTimeRunning;
-        const dayCompletedOverflow = planning.timeOverFlow.overflowDayCompleted;
+        const overflow = { ...planning.toJSON() };
 
-        allPlannings.push({
-          ...original,
-          dayStart: overflowDayStart,
-          dayCompleted: dayCompletedOverflow,
-          timeRunning: overflowTime,
-        });
+        overflow.isOverflow = true;
+        overflow.dayStart = planning.timeOverFlow.overflowDayStart;
+        overflow.timeRunning = planning.timeOverFlow.overflowTimeRunning;
+        overflow.dayCompleted = planning.timeOverFlow.overflowDayCompleted;
+
+        overflowRemoveFields.forEach((f) => delete overflow[f]);
+        if (overflow.Order) {
+          ["quantityManufacture", "totalPrice", "totalPriceVAT"].forEach(
+            (item) => delete overflow.Order[item]
+          );
+        }
+
+        allPlannings.push(overflow);
       }
     });
 

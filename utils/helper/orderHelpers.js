@@ -147,7 +147,7 @@ export const filterOrdersFromCache = async ({
   const filteredOrders = allOrders.filter((order) => {
     const fieldValue = getFieldValue(order);
     if (fieldValue == null) return false;
-    return String(fieldValue).toLocaleLowerCase().includes(lowerKeyword);
+    return String(fieldValue).toLowerCase().includes(lowerKeyword);
   });
 
   const totalOrders = filteredOrders.length;
@@ -177,39 +177,36 @@ export const filterCustomersFromCache = async ({
 
   const cacheKey = "customers:search:all";
 
-  try {
-    let allCustomers = await redisCache.get(cacheKey);
-    let sourceMessage = "";
+  let allCustomers = await redisCache.get(cacheKey);
+  let sourceMessage = "";
 
-    if (!allCustomers) {
-      allCustomers = await Customer.findAll();
-      await redisCache.set(cacheKey, JSON.stringify(allCustomers), "EX", 900);
-      sourceMessage = "Get customers from DB";
-    } else {
-      allCustomers = JSON.parse(allCustomers);
-      sourceMessage = message || "Get customers from cache";
-    }
-
-    const filteredCustomers = allCustomers.filter((customer) =>
-      getFieldValue(customer)?.toLowerCase?.().includes(lowerKeyword)
-    );
-
-    const totalCustomers = filteredCustomers.length;
-    const totalPages = Math.ceil(totalCustomers / currentPageSize);
-    const offset = (currentPage - 1) * currentPageSize;
-    const paginatedCustomers = filteredCustomers.slice(offset, offset + currentPageSize);
-
-    return {
-      message: sourceMessage,
-      data: paginatedCustomers,
-      totalCustomers,
-      totalPages,
-      currentPage,
-    };
-  } catch (error) {
-    console.error("get customer by property failed:", error);
-    throw new Error("get customers by property failed");
+  if (!allCustomers) {
+    allCustomers = await Customer.findAll();
+    await redisCache.set(cacheKey, JSON.stringify(allCustomers), "EX", 900);
+    sourceMessage = "Get customers from DB";
+  } else {
+    allCustomers = JSON.parse(allCustomers);
+    sourceMessage = message || "Get customers from cache";
   }
+
+  const filteredCustomers = allCustomers.filter((customer) => {
+    const fieldValue = getFieldValue(customer);
+    if (fieldValue == null) return false;
+    return String(fieldValue).toLowerCase().includes(lowerKeyword);
+  });
+
+  const totalCustomers = filteredCustomers.length;
+  const totalPages = Math.ceil(totalCustomers / currentPageSize);
+  const offset = (currentPage - 1) * currentPageSize;
+  const paginatedCustomers = filteredCustomers.slice(offset, offset + currentPageSize);
+
+  return {
+    message: sourceMessage,
+    data: paginatedCustomers,
+    totalCustomers,
+    totalPages,
+    currentPage,
+  };
 };
 
 export const filterProductsFromCache = async ({
