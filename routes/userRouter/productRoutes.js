@@ -5,8 +5,7 @@ import {
   deleteProduct,
   exportExcelProduct,
   getAllProduct,
-  getProductById,
-  getProductByName,
+  getProductByField,
   updateProduct,
 } from "../../controller/user/product/productController.js";
 import upload from "../../utils/image/uploadImage.js";
@@ -15,8 +14,7 @@ import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware.j
 const router = Router();
 
 router.get("/", authenticate, getAllProduct);
-router.get("/byProductId", authenticate, getProductById);
-router.get("/byName", authenticate, getProductByName);
+router.get("/filter", authenticate, getProductByField);
 
 router.post("/exportExcel", authenticate, exportExcelProduct);
 router.post(

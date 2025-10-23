@@ -1,16 +1,16 @@
 import Redis from "ioredis";
 import Product from "../../../models/product/product.js";
+import cloudinary from "../../../configs/connectCloudinary.js";
 import { Op, Sequelize } from "sequelize";
 import { generateNextId } from "../../../utils/helper/generateNextId.js";
+import { filterProductsFromCache } from "../../../utils/helper/orderHelpers.js";
+import { mappingProductRow, productColumns } from "./mapping/productRowAndColumn.js";
 import {
   convertToWebp,
   getCloudinaryPublicId,
   uploadImageToCloudinary,
 } from "../../../utils/image/converToWebp.js";
-import cloudinary from "../../../configs/connectCloudinary.js";
-import ExcelJS from "exceljs";
-import { filterProductsFromCache } from "../../../utils/helper/orderHelpers.js";
-import { mappingProductRow, productColumns } from "./mapping/productRowAndColumn.js";
+import { exportExcelResponse } from "../../../utils/helper/excelExporter.js";
 
 const redisCache = new Redis();
 
@@ -80,43 +80,32 @@ export const getAllProduct = async (req, res) => {
   }
 };
 
-//get product by id
-export const getProductById = async (req, res) => {
-  const { productId, page, pageSize } = req.query;
+//get product by fied
+export const getProductByField = async (req, res) => {
+  const { field, keyword, page, pageSize } = req.query;
 
-  try {
-    const result = await filterProductsFromCache({
-      keyword: productId,
-      getFieldValue: (product) => product.productId,
-      page,
-      pageSize,
-      message: "get all productId from cache",
-    });
+  const fieldMap = {
+    productId: (product) => product.productId,
+    productName: (product) => product?.productName,
+  };
 
-    res.status(200).json(result);
-  } catch (err) {
-    console.error("Failed to get product by productId:", err);
-    res.status(500).json({ message: "Server error", error: err.message });
+  if (!fieldMap[field]) {
+    return res.status(400).json({ message: "Invalid field parameter" });
   }
-};
-
-//get product by name
-export const getProductByName = async (req, res) => {
-  const { productName, page, pageSize } = req.query;
 
   try {
     const result = await filterProductsFromCache({
-      keyword: productName,
-      getFieldValue: (product) => product?.productName,
+      keyword: keyword,
+      getFieldValue: fieldMap[field],
       page,
       pageSize,
-      message: "get all productName from cache",
+      message: `get all by ${field} from filtered cache`,
     });
 
     res.status(200).json(result);
-  } catch (err) {
-    console.error("Failed to get product by productName:", err);
-    res.status(500).json({ message: "Server error", error: err.message });
+  } catch (error) {
+    console.error(`Failed to get product by ${field}:`, error);
+    return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
@@ -273,42 +262,13 @@ export const exportExcelProduct = async (req, res) => {
       ],
     });
 
-    // Tạo workbook
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Danh sách sản phẩm");
-
-    // Tạo header
-    worksheet.columns = productColumns;
-
-    // Đổ dữ liệu
-    data.forEach((item, index) => {
-      worksheet.addRow(mappingProductRow(item, index));
+    await exportExcelResponse(res, {
+      data: data,
+      sheetName: "Danh sách sản phẩm",
+      fileName: "product",
+      columns: productColumns,
+      rows: mappingProductRow,
     });
-
-    // Style header
-    worksheet.getRow(1).eachCell((cell) => {
-      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FF0070C0" },
-      };
-      cell.alignment = { vertical: "middle", horizontal: "center" };
-    });
-
-    const now = new Date();
-    const dateStr = now.toISOString().split("T")[0];
-
-    // Xuất file
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
-    res.setHeader("Content-Disposition", `attachment; filename=product-${dateStr}.xlsx`);
-
-    await workbook.xlsx.write(res);
-
-    res.end();
   } catch (error) {
     console.error("Export Excel error:", error);
     res.status(500).json({ message: "Lỗi xuất Excel" });

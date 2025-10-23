@@ -177,36 +177,41 @@ export const filterCustomersFromCache = async ({
 
   const cacheKey = "customers:search:all";
 
-  let allCustomers = await redisCache.get(cacheKey);
-  let sourceMessage = "";
+  try {
+    let allCustomers = await redisCache.get(cacheKey);
+    let sourceMessage = "";
 
-  if (!allCustomers) {
-    allCustomers = await Customer.findAll();
-    await redisCache.set(cacheKey, JSON.stringify(allCustomers), "EX", 900);
-    sourceMessage = "Get customers from DB";
-  } else {
-    allCustomers = JSON.parse(allCustomers);
-    sourceMessage = message || "Get customers from cache";
+    if (!allCustomers) {
+      allCustomers = await Customer.findAll();
+      await redisCache.set(cacheKey, JSON.stringify(allCustomers), "EX", 900);
+      sourceMessage = "Get customers from DB";
+    } else {
+      allCustomers = JSON.parse(allCustomers);
+      sourceMessage = message || "Get customers from cache";
+    }
+
+    const filteredCustomers = allCustomers.filter((customer) => {
+      const fieldValue = getFieldValue(customer);
+      if (fieldValue == null) return false;
+      return String(fieldValue).toLowerCase().includes(lowerKeyword);
+    });
+
+    const totalCustomers = filteredCustomers.length;
+    const totalPages = Math.ceil(totalCustomers / currentPageSize);
+    const offset = (currentPage - 1) * currentPageSize;
+    const paginatedCustomers = filteredCustomers.slice(offset, offset + currentPageSize);
+
+    return {
+      message: sourceMessage,
+      data: paginatedCustomers,
+      totalCustomers,
+      totalPages,
+      currentPage,
+    };
+  } catch (error) {
+    console.error(error);
+    throw new Error("Lỗi server");
   }
-
-  const filteredCustomers = allCustomers.filter((customer) => {
-    const fieldValue = getFieldValue(customer);
-    if (fieldValue == null) return false;
-    return String(fieldValue).toLowerCase().includes(lowerKeyword);
-  });
-
-  const totalCustomers = filteredCustomers.length;
-  const totalPages = Math.ceil(totalCustomers / currentPageSize);
-  const offset = (currentPage - 1) * currentPageSize;
-  const paginatedCustomers = filteredCustomers.slice(offset, offset + currentPageSize);
-
-  return {
-    message: sourceMessage,
-    data: paginatedCustomers,
-    totalCustomers,
-    totalPages,
-    currentPage,
-  };
 };
 
 export const filterProductsFromCache = async ({

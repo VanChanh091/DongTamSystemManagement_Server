@@ -1,6 +1,5 @@
 import Redis from "ioredis";
 import { Op } from "sequelize";
-import ExcelJS from "exceljs";
 import Order from "../../../models/order/order.js";
 import Box from "../../../models/order/box.js";
 import Customer from "../../../models/customer/customer.js";
@@ -12,6 +11,7 @@ import ReportPlanningBox from "../../../models/report/reportPlanningBox.js";
 import { filterReportByField } from "../../../utils/helper/reportHelper.js";
 import { mapReportPaperRow, reportPaperColumns } from "./mapping/reportPaperRowAndColumn.js";
 import { mapReportBoxRow, reportBoxColumns } from "./mapping/reportBoxRowAndColumn.js";
+import { exportExcelResponse } from "../../../utils/helper/excelExporter.js";
 
 const redisCache = new Redis();
 
@@ -129,135 +129,38 @@ export const getReportPlanningPaper = async (req, res) => {
   }
 };
 
-//get by customerName
-export const getReportPaperByCustomerName = async (req, res) => {
-  const { customerName, machine, page = 1, pageSize = 20, refresh = false } = req.query;
+//get reported paper by field
+export const getReportedPaperByField = async (req, res) => {
+  const { field, keyword, machine, page = 1, pageSize = 20, refresh = false } = req.query;
 
-  try {
-    const result = await filterReportByField({
-      keyword: customerName,
-      machine,
-      getFieldValue: (report) => report?.Planning?.Order?.Customer?.customerName,
-      page,
-      pageSize,
-      message: "get all customerName from cache",
-      refresh: refresh,
-    });
+  const fieldMap = {
+    customerName: (report) => report?.Planning?.Order?.Customer?.customerName,
+    dayReported: (report) => report?.dayReport,
+    qtyProduced: (report) => report?.qtyProduced,
+    ghepKho: (report) => report?.Planning?.ghepKho,
+    shiftManagement: (report) => report?.shiftManagement,
+    orderId: (report) => report?.Planning?.Order?.orderId,
+  };
 
-    res.status(200).json(result);
-  } catch (error) {
-    console.error("Failed to get customerName:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+  if (!fieldMap[field]) {
+    return res.status(400).json({ message: "Invalid field parameter" });
   }
-};
-
-//get by dayReported
-export const getReportPaperByDayReported = async (req, res) => {
-  const { dayReported, machine, page = 1, pageSize = 20, refresh = false } = req.query;
 
   try {
     const result = await filterReportByField({
-      keyword: dayReported,
+      keyword: keyword,
       machine,
-      getFieldValue: (report) => report?.dayReport,
+      getFieldValue: fieldMap[field],
       page,
       pageSize,
-      message: "get all dayReported from cache",
+      message: `get all by ${field} from filtered cache`,
       refresh: refresh,
     });
 
     res.status(200).json(result);
   } catch (error) {
-    console.error("Failed to get dayReported:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
-//get by qtyReported
-export const getReportPaperByQtyReported = async (req, res) => {
-  const { qtyProduced, machine, page = 1, pageSize = 20, refresh = false } = req.query;
-
-  try {
-    const result = await filterReportByField({
-      keyword: qtyProduced,
-      machine,
-      getFieldValue: (report) => report?.qtyProduced,
-      page,
-      pageSize,
-      message: "get all qtyReported from cache",
-      refresh: refresh,
-    });
-
-    res.status(200).json(result);
-  } catch (error) {
-    console.error("Failed to get qtyReported:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
-//get by ghepKho
-export const getReportPaperByGhepKho = async (req, res) => {
-  const { ghepKho, machine, page = 1, pageSize = 20, refresh = false } = req.query;
-
-  try {
-    const result = await filterReportByField({
-      keyword: ghepKho,
-      machine,
-      getFieldValue: (report) => report?.Planning?.ghepKho,
-      page,
-      pageSize,
-      message: "get all ghepKho from cache",
-      refresh: refresh,
-    });
-
-    res.status(200).json(result);
-  } catch (error) {
-    console.error("Failed to get ghepKho:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
-//get by shiftManagement
-export const getReportPaperByShiftManagement = async (req, res) => {
-  const { shiftManagement, machine, page = 1, pageSize = 20, refresh = false } = req.query;
-
-  try {
-    const result = await filterReportByField({
-      keyword: shiftManagement,
-      machine,
-      getFieldValue: (report) => report?.shiftManagement,
-      page,
-      pageSize,
-      message: "get all shiftManagement from cache",
-      refresh: refresh,
-    });
-
-    res.status(200).json(result);
-  } catch (error) {
-    console.error("Failed to get shiftManagement:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
-//get by orderId
-export const getReportPaperByOrderId = async (req, res) => {
-  const { orderId, machine, page = 1, pageSize = 20, refresh = false } = req.query;
-
-  try {
-    const result = await filterReportByField({
-      keyword: orderId,
-      machine,
-      getFieldValue: (report) => report?.Planning?.Order?.orderId,
-      page,
-      pageSize,
-      message: "get all orderId from cache",
-      refresh: refresh,
-    });
-
-    res.status(200).json(result);
-  } catch (error) {
-    console.error("Failed to get orderId:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    console.error(`Failed to get report paper by ${field}:`, error);
+    return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
@@ -400,141 +303,39 @@ export const getReportPlanningBox = async (req, res) => {
   }
 };
 
-//get by customerName
-export const getReportBoxByCustomerName = async (req, res) => {
-  const { customerName, machine, page = 1, pageSize = 20, refresh = false } = req.query;
+//get reported box by field
+export const getReportedBoxByField = async (req, res) => {
+  const { field, keyword, machine, page = 1, pageSize = 20, refresh = false } = req.query;
 
-  try {
-    const result = await filterReportByField({
-      keyword: customerName,
-      machine,
-      getFieldValue: (report) => report?.PlanningBox?.Order?.Customer?.customerName,
-      page,
-      pageSize,
-      message: "get all customerName from cache",
-      refresh: refresh,
-      isBox: true,
-    });
+  const fieldMap = {
+    customerName: (report) => report?.PlanningBox?.Order?.Customer?.customerName,
+    dayReported: (report) => report?.dayReport,
+    qtyProduced: (report) => report?.qtyProduced,
+    QcBox: (report) => report?.PlanningBox?.Order?.QC_box,
+    shiftManagement: (report) => report?.shiftManagement,
+    orderId: (report) => report?.PlanningBox?.Order?.orderId,
+  };
 
-    res.status(200).json(result);
-  } catch (error) {
-    console.error("Failed to get customerName:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+  if (!fieldMap[field]) {
+    return res.status(400).json({ message: "Invalid field parameter" });
   }
-};
-
-//get by dayReported
-export const getReportBoxByDayReported = async (req, res) => {
-  const { dayReported, machine, page = 1, pageSize = 20, refresh = false } = req.query;
 
   try {
     const result = await filterReportByField({
-      keyword: dayReported,
+      keyword: keyword,
       machine,
-      getFieldValue: (report) => report?.dayReport,
+      getFieldValue: fieldMap[field],
       page,
       pageSize,
-      message: "get all dayReported from cache",
+      message: `get all by ${field} from filtered cache`,
       refresh: refresh,
       isBox: true,
     });
 
     res.status(200).json(result);
   } catch (error) {
-    console.error("Failed to get dayReported:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
-// //get by qtyReported
-export const getReportBoxByQtyReported = async (req, res) => {
-  const { qtyProduced, machine, page = 1, pageSize = 20, refresh = false } = req.query;
-
-  try {
-    const result = await filterReportByField({
-      keyword: qtyProduced,
-      machine,
-      getFieldValue: (report) => report?.qtyProduced,
-      page,
-      pageSize,
-      message: "get all qtyProduced from cache",
-      refresh: refresh,
-      isBox: true,
-    });
-
-    res.status(200).json(result);
-  } catch (error) {
-    console.error("Failed to get qtyProduced:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
-//get by QC_Box
-export const getReportBoxByQcBox = async (req, res) => {
-  const { QcBox, machine, page = 1, pageSize = 20, refresh = false } = req.query;
-
-  try {
-    const result = await filterReportByField({
-      keyword: QcBox,
-      machine,
-      getFieldValue: (report) => report?.PlanningBox?.Order?.QC_box,
-      page,
-      pageSize,
-      message: "get all QcBox from cache",
-      refresh: refresh,
-      isBox: true,
-    });
-
-    res.status(200).json(result);
-  } catch (error) {
-    console.error("Failed to get QcBox:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
-//get by shiftManagement
-export const getReportBoxByShiftManagement = async (req, res) => {
-  const { shiftManagement, machine, page = 1, pageSize = 20, refresh = false } = req.query;
-
-  try {
-    const result = await filterReportByField({
-      keyword: shiftManagement,
-      machine,
-      getFieldValue: (report) => report?.shiftManagement,
-      page,
-      pageSize,
-      message: "get all shiftManagement from cache",
-      refresh: refresh,
-      isBox: true,
-    });
-
-    res.status(200).json(result);
-  } catch (error) {
-    console.error("Failed to get shiftManagement:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
-//get by orderId
-export const getReportBoxByOrderId = async (req, res) => {
-  const { orderId, machine, page = 1, pageSize = 20, refresh = false } = req.query;
-
-  try {
-    const result = await filterReportByField({
-      keyword: orderId,
-      machine,
-      getFieldValue: (report) => report?.PlanningBox?.Order?.orderId,
-      page,
-      pageSize,
-      message: "get all orderId from cache",
-      refresh: refresh,
-      isBox: true,
-    });
-
-    res.status(200).json(result);
-  } catch (error) {
-    console.error("Failed to get orderId:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    console.error(`Failed to get report paper by ${field}:`, error);
+    return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
@@ -623,45 +424,13 @@ export const exportExcelReportPaper = async (req, res) => {
       order: [["dayReport", "ASC"]],
     });
 
-    // Tạo workbook
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Báo cáo sản xuất giấy tấm");
-
-    // Tạo header
-    worksheet.columns = reportPaperColumns;
-
-    // Đổ dữ liệu
-    data.forEach((item, index) => {
-      worksheet.addRow(mapReportPaperRow(item, index));
+    await exportExcelResponse(res, {
+      data: data,
+      sheetName: "Báo cáo sản xuất giấy tấm",
+      fileName: `report_paper_${machine}`,
+      columns: reportPaperColumns,
+      rows: mapReportPaperRow,
     });
-
-    // Style header
-    worksheet.getRow(1).eachCell((cell) => {
-      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FF0070C0" },
-      };
-      cell.alignment = { vertical: "middle", horizontal: "center" };
-    });
-
-    const now = new Date();
-    const dateStr = now.toISOString().split("T")[0];
-
-    // Xuất file
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename=report-paper-${machine}-${dateStr}.xlsx`
-    );
-
-    await workbook.xlsx.write(res);
-
-    res.end();
   } catch (error) {
     console.error("Export Excel error:", error);
     res.status(500).json({ message: "Lỗi xuất Excel" });
@@ -776,40 +545,13 @@ export const exportExcelReportBox = async (req, res) => {
       ],
     });
 
-    // Tạo workbook
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Báo cáo sản xuất thùng");
-
-    // Tạo header
-    worksheet.columns = reportBoxColumns;
-
-    // Đổ dữ liệu
-    data.forEach((item, index) => {
-      worksheet.addRow(mapReportBoxRow(item, index));
+    await exportExcelResponse(res, {
+      data: data,
+      sheetName: "Báo cáo sản xuất thùng",
+      fileName: `report_box_${machine}`,
+      columns: reportBoxColumns,
+      rows: mapReportBoxRow,
     });
-
-    // Style header
-    worksheet.getRow(1).eachCell((cell) => {
-      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FF0070C0" },
-      };
-      cell.alignment = { vertical: "middle", horizontal: "center" };
-    });
-
-    console.log(machine);
-
-    // Xuất file
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
-
-    await workbook.xlsx.write(res);
-
-    res.end();
   } catch (error) {
     console.error("Export Excel error:", error);
     res.status(500).json({ message: "Lỗi xuất Excel" });

@@ -6,6 +6,7 @@ import { generateNextId } from "../../../utils/helper/generateNextId.js";
 import { sequelize } from "../../../configs/connectDB.js";
 import { filterCustomersFromCache } from "../../../utils/helper/orderHelpers.js";
 import { customerColumns, mappingCustomerRow } from "./mapping/customerRowAndColumn.js";
+import { exportExcelResponse } from "../../../utils/helper/excelExporter.js";
 
 const redisClient = new Redis();
 
@@ -227,44 +228,13 @@ export const exportExcelCustomer = async (req, res) => {
       ],
     });
 
-    console.log(data);
-
-    // Tạo workbook
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Danh sách khách hàng");
-
-    // Tạo header
-    worksheet.columns = customerColumns;
-
-    // Đổ dữ liệu
-    data.forEach((item, index) => {
-      worksheet.addRow(mappingCustomerRow(item, index));
+    await exportExcelResponse(res, {
+      data: data,
+      sheetName: "Danh sách khách hàng",
+      fileName: "customer",
+      columns: customerColumns,
+      rows: mappingCustomerRow,
     });
-
-    // Style header
-    worksheet.getRow(1).eachCell((cell) => {
-      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FF0070C0" },
-      };
-      cell.alignment = { vertical: "middle", horizontal: "center" };
-    });
-
-    const now = new Date();
-    const dateStr = now.toISOString().split("T")[0];
-
-    // Xuất file
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
-    res.setHeader("Content-Disposition", `attachment; filename=customer-${dateStr}.xlsx`);
-
-    await workbook.xlsx.write(res);
-
-    res.end();
   } catch (error) {
     console.error("Export Excel error:", error);
     res.status(500).json({ message: "Lỗi xuất Excel" });

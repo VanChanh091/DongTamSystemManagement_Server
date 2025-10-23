@@ -109,17 +109,7 @@ export const getPlanningPaper = async (req, res) => {
     });
 
     const allPlannings = [];
-    const overflowRemoveFields = [
-      "runningPlan",
-      "quantityManufacture",
-      "bottom",
-      "fluteE",
-      "fluteB",
-      "fluteC",
-      "knife",
-      "totalLoss",
-      "instructSpecial",
-    ];
+    const overflowRemoveFields = ["runningPlan", "quantityManufacture"];
 
     validData.forEach((planning) => {
       const original = {
@@ -264,23 +254,20 @@ export const addReportPaper = async (req, res) => {
       if (isOverflowReport) {
         await overflow.update({ status: "complete" }, { transaction });
       }
-
-      //Cập nhật số lượng cho planning box
-      const planningBox = await PlanningBox.findOne({
-        where: { orderId: planning.orderId },
-      });
-      if (!planningBox) {
-        return res.status(404).json({ message: "PlanningBox not found" });
-      }
-
-      //cộng gộp sl của đơn hàng đó
-      const updatedQty = Number(planningBox.qtyPaper || 0) + Number(newQtyProduced || 0);
-      await planningBox.update({ qtyPaper: updatedQty }, { transaction });
     } else {
       await planning.update({ status: "lackQty" }, { transaction });
     }
 
-    //fix here
+    //Cập nhật số lượng cho planning box
+    const planningBox = await PlanningBox.findOne({
+      where: { orderId: planning.orderId },
+    });
+    if (!planningBox) {
+      return res.status(404).json({ message: "PlanningBox not found" });
+    }
+
+    await planningBox.update({ qtyPaper: newQtyProduced }, { transaction });
+
     //check qty to planning order
     const allPlans = await PlanningPaper.findAll({
       where: { orderId: planning.orderId },

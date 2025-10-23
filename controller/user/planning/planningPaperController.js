@@ -504,17 +504,7 @@ const getPlanningByMachineSorted = async (machine) => {
 
     //Gộp overflow vào liền sau đơn gốc
     const allPlannings = [];
-    const overflowRemoveFields = [
-      "runningPlan",
-      "quantityManufacture",
-      "bottom",
-      "fluteE",
-      "fluteB",
-      "fluteC",
-      "knife",
-      "totalLoss",
-      "instructSpecial",
-    ];
+    const overflowRemoveFields = ["runningPlan", "quantityManufacture"];
 
     sortedPlannings.forEach((planning) => {
       const original = {
