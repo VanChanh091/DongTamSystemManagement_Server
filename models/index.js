@@ -3,6 +3,8 @@ import MachinePaper from "./admin/machinePaper.js";
 import WasteNormPaper from "./admin/wasteNormPaper.js";
 import WaveCrestCoefficient from "./admin/waveCrestCoefficient.js";
 import Customer from "./customer/customer.js";
+import EmployeeBasicInfo from "./employee/employeeBasicInfo.js";
+import EmployeeCompanyInfo from "./employee/employeeCompanyInfo.js";
 import Box from "./order/box.js";
 import Order from "./order/order.js";
 import PlanningBox from "./planning/planningBox.js";
@@ -30,6 +32,10 @@ const models = {
   //report
   ReportPlanningPaper,
   ReportPlanningBox,
+
+  //employee
+  EmployeeBasicInfo,
+  EmployeeCompanyInfo,
 
   //admin
   MachinePaper,
@@ -117,6 +123,17 @@ PlanningBox.hasMany(timeOverflowPlanning, {
 timeOverflowPlanning.belongsTo(PlanningBox, {
   foreignKey: "planningBoxId",
   constraints: false,
+});
+
+//employee
+EmployeeBasicInfo.hasOne(EmployeeCompanyInfo, {
+  foreignKey: "employeeId",
+  as: "companyInfo",
+  onDelete: "CASCADE",
+});
+EmployeeCompanyInfo.belongsTo(EmployeeBasicInfo, {
+  foreignKey: "employeeId",
+  as: "basicInfo",
 });
 
 export default models;

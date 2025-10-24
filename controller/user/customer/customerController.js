@@ -1,5 +1,4 @@
 import Redis from "ioredis";
-import ExcelJS from "exceljs";
 import Customer from "../../../models/customer/customer.js";
 import { Op, Sequelize } from "sequelize";
 import { generateNextId } from "../../../utils/helper/generateNextId.js";
@@ -104,7 +103,7 @@ export const getCustomerByField = async (req, res) => {
     return res.status(200).json(result);
   } catch (error) {
     console.error(`Failed to get customers by ${field}:`, error);
-    return res.status(500).json({ message: "Server error", error: error.message });
+    return res.status(500).json({ message: "Server error", error });
   }
 };
 

@@ -267,8 +267,8 @@ export const createReportPlanning = async ({
 
   // Tính số lượng còn thiếu
   let lackOfQtyValue = isBox
-    ? planning.PlanningBox.runningPlan - totalProduced
-    : planning.runningPlan - totalProduced;
+    ? planning.PlanningBox.Order.quantityCustomer - totalProduced
+    : planning.Order.quantityCustomer - totalProduced;
 
   let report;
   if (isBox) {

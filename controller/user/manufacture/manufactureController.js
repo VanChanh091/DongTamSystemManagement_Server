@@ -160,6 +160,8 @@ export const addReportPaper = async (req, res) => {
     return res.status(400).json({ message: "Missing required fields" });
   }
 
+  console.log(planningId);
+
   const transaction = await PlanningPaper.sequelize.transaction();
   try {
     // 1. Tìm kế hoạch hiện tại
@@ -167,7 +169,7 @@ export const addReportPaper = async (req, res) => {
       where: { planningId },
       include: [
         { model: timeOverflowPlanning, as: "timeOverFlow" },
-        { model: Order, attributes: ["quantityManufacture"] },
+        { model: Order, attributes: ["quantityCustomer"] },
       ],
       transaction,
       lock: transaction.LOCK.UPDATE,
@@ -219,56 +221,45 @@ export const addReportPaper = async (req, res) => {
       }
     }
 
+    dayReportValue = new Date(dayCompleted);
     if (isOverflowReport) {
-      await overflow.update({ overflowDayCompleted: new Date(dayCompleted) }, { transaction });
-
-      await planning.update(
-        {
-          qtyProduced: newQtyProduced,
-          qtyWasteNorm: newQtyWasteNorm,
-          runningPlan: newRunningPlan,
-          ...otherData,
-        },
-        { transaction }
-      );
-
-      dayReportValue = overflow.getDataValue("overflowDayCompleted");
-    } else {
-      await planning.update(
-        {
-          qtyProduced: newQtyProduced,
-          qtyWasteNorm: newQtyWasteNorm,
-          runningPlan: newRunningPlan,
-          dayCompleted: new Date(dayCompleted),
-          ...otherData,
-        },
-        { transaction }
-      );
-
-      dayReportValue = planning.getDataValue("dayCompleted");
+      await overflow.update({ overflowDayCompleted: dayReportValue }, { transaction });
     }
 
-    //compare qtyProduced vs runningPlan
-    if (newRunningPlan <= 0) {
-      await planning.update({ status: "complete" }, { transaction });
-      if (isOverflowReport) {
-        await overflow.update({ status: "complete" }, { transaction });
+    const nextStatus = newRunningPlan <= 0 ? "complete" : "lackQty";
+
+    // 4) Update planning MỘT LẦN
+    await planning.update(
+      {
+        qtyProduced: newQtyProduced,
+        qtyWasteNorm: newQtyWasteNorm,
+        runningPlan: newRunningPlan,
+        status: nextStatus,
+        dayCompleted: isOverflowReport ? planning.dayCompleted : dayReportValue,
+        ...otherData,
+      },
+      { transaction }
+    );
+
+    if (newRunningPlan <= 0 && planning.hasOverFlow && overflow) {
+      await overflow.update({ status: "complete" }, { transaction });
+    }
+
+    //update qty for planning box
+    if (planning.hasBox) {
+      const planningBox = await PlanningBox.findOne({
+        where: { orderId: planning.orderId },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!planningBox) {
+        return res.status(404).json({ message: "PlanningBox not found" });
       }
-    } else {
-      await planning.update({ status: "lackQty" }, { transaction });
+
+      await planningBox.update({ qtyPaper: newQtyProduced }, { transaction });
     }
 
-    //Cập nhật số lượng cho planning box
-    const planningBox = await PlanningBox.findOne({
-      where: { orderId: planning.orderId },
-    });
-    if (!planningBox) {
-      return res.status(404).json({ message: "PlanningBox not found" });
-    }
-
-    await planningBox.update({ qtyPaper: newQtyProduced }, { transaction });
-
-    //check qty to planning order
+    //check qty to change status order
     const allPlans = await PlanningPaper.findAll({
       where: { orderId: planning.orderId },
       attributes: ["qtyProduced"],

@@ -16,4 +16,21 @@ const MACHINE_FIELD_MAP = {
   "Máy Đóng Ghim": "qtyDongGhim",
 };
 
-export { machineLabels, MACHINE_FIELD_MAP };
+const validPermissions = [
+  // "all",
+  // "manager",
+  "sale",
+  "plan",
+  "HR",
+  "accountant",
+  "design",
+  "production",
+  "machine1350",
+  "machine1900",
+  "machine2Layer",
+  "MachineRollPaper",
+  "step2Production",
+  "read",
+];
+
+export { machineLabels, MACHINE_FIELD_MAP, validPermissions };

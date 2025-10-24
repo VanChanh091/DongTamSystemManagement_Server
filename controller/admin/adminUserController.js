@@ -1,9 +1,10 @@
-import User from "../../models/user/user.js";
 import bcrypt from "bcrypt";
-import { col, fn, Op, where } from "sequelize";
-import { getCloudinaryPublicId } from "../../utils/image/converToWebp.js";
-import cloudinary from "../../configs/connectCloudinary.js";
 import Redis from "ioredis";
+import User from "../../models/user/user.js";
+import cloudinary from "../../configs/connectCloudinary.js";
+import { col, fn, Op, where } from "sequelize";
+import { validPermissions } from "../../configs/machineLabels.js";
+import { getCloudinaryPublicId } from "../../utils/image/converToWebp.js";
 
 const redisCache = new Redis();
 
@@ -210,23 +211,6 @@ export const updateUserRole = async (req, res) => {
 export const updatePermissions = async (req, res) => {
   const { userId } = req.query;
   const { permissions } = req.body;
-
-  const validPermissions = [
-    // "all",
-    // "manager",
-    "sale",
-    "plan",
-    "HR",
-    "accountant",
-    "design",
-    "production",
-    "machine1350",
-    "machine1900",
-    "machine2Layer",
-    "MachineRollPaper",
-    "step2Production",
-    "read",
-  ];
 
   // Validate permissions input
   if (!Array.isArray(permissions) || permissions.length === 0) {

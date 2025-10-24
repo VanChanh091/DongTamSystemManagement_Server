@@ -16,6 +16,7 @@ import {
   manufactureRoutes,
   dashboardRoutes,
   reportRoutes,
+  employeeRoutes,
 } from "./routes/index.js";
 
 //create table
@@ -52,6 +53,7 @@ app.use("/uploads", express.static("uploads")); //set up to upload product image
 app.use("/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 
+app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/customer", customerRoutes);
 app.use("/api/order", orderRoutes);
 app.use("/api/product", productRoutes);
@@ -59,7 +61,7 @@ app.use("/api/planning", planningRoutes);
 app.use("/api/user", usersRoutes);
 app.use("/api/manufacture", manufactureRoutes);
 app.use("/api/report", reportRoutes);
-app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/employee", employeeRoutes);
 
 sequelize
   // .sync({ alter: true })
