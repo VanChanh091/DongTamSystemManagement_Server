@@ -1,9 +1,11 @@
 import { Op } from "sequelize";
+import Redis from "ioredis";
 import Customer from "../../models/customer/customer.js";
 import Product from "../../models/product/product.js";
 import Order from "../../models/order/order.js";
 import Box from "../../models/order/box.js";
-import Redis from "ioredis";
+import EmployeeBasicInfo from "../../models/employee/employeeBasicInfo.js";
+import EmployeeCompanyInfo from "../../models/employee/employeeCompanyInfo.js";
 
 const redisCache = new Redis();
 
@@ -164,101 +166,56 @@ export const filterOrdersFromCache = async ({
   };
 };
 
-export const filterCustomersFromCache = async ({
+export const filterDataFromCache = async ({
+  model,
+  cacheKey,
   keyword,
   getFieldValue,
   page,
   pageSize,
   message,
+  totalKey,
+  fetchFunction,
 }) => {
   const currentPage = Number(page) || 1;
   const currentPageSize = Number(pageSize) || 20;
   const lowerKeyword = keyword?.toLowerCase?.() || "";
 
-  const cacheKey = "customers:search:all";
-
   try {
-    let allCustomers = await redisCache.get(cacheKey);
+    let allData = await redisCache.get(cacheKey);
     let sourceMessage = "";
 
-    if (!allCustomers) {
-      allCustomers = await Customer.findAll();
-      await redisCache.set(cacheKey, JSON.stringify(allCustomers), "EX", 900);
-      sourceMessage = "Get customers from DB";
+    if (!allData) {
+      allData = fetchFunction ? await fetchFunction() : await model.findAll();
+      await redisCache.set(cacheKey, JSON.stringify(allData), "EX", 900);
+      sourceMessage = `Get ${cacheKey} from DB`;
     } else {
-      allCustomers = JSON.parse(allCustomers);
-      sourceMessage = message || "Get customers from cache";
+      allData = JSON.parse(allData);
+      sourceMessage = message || `Get ${cacheKey} from cache`;
     }
 
-    const filteredCustomers = allCustomers.filter((customer) => {
-      const fieldValue = getFieldValue(customer);
-      if (fieldValue == null) return false;
-      return String(fieldValue).toLowerCase().includes(lowerKeyword);
+    // Lọc dữ liệu
+    const filteredData = allData.filter((item) => {
+      const fieldValue = getFieldValue(item);
+      return fieldValue != null ? String(fieldValue).toLowerCase().includes(lowerKeyword) : false;
     });
 
-    const totalCustomers = filteredCustomers.length;
-    const totalPages = Math.ceil(totalCustomers / currentPageSize);
+    // Phân trang
+    const totalItems = filteredData.length;
+    const totalPages = Math.ceil(totalItems / currentPageSize);
     const offset = (currentPage - 1) * currentPageSize;
-    const paginatedCustomers = filteredCustomers.slice(offset, offset + currentPageSize);
+    const paginatedData = filteredData.slice(offset, offset + currentPageSize);
 
     return {
       message: sourceMessage,
-      data: paginatedCustomers,
-      totalCustomers,
+      data: paginatedData,
+      [totalKey]: totalItems,
       totalPages,
       currentPage,
     };
   } catch (error) {
     console.error(error);
     throw new Error("Lỗi server");
-  }
-};
-
-export const filterProductsFromCache = async ({
-  keyword,
-  getFieldValue,
-  page,
-  pageSize,
-  message,
-}) => {
-  const currentPage = Number(page) || 1;
-  const currentPageSize = Number(pageSize) || 20;
-  const lowerKeyword = keyword?.toLowerCase?.() || "";
-
-  const cacheKey = "products:search:all";
-
-  try {
-    let allProducts = await redisCache.get(cacheKey);
-    let sourceMessage = "";
-
-    if (!allProducts) {
-      allProducts = await Product.findAll();
-      await redisCache.set(cacheKey, JSON.stringify(allProducts), "EX", 900);
-      sourceMessage = "Get products from DB";
-    } else {
-      allProducts = JSON.parse(allProducts);
-      sourceMessage = message || "Get products from cache";
-    }
-
-    const filteredProducts = allProducts.filter((product) =>
-      getFieldValue(product)?.toLowerCase?.().includes(lowerKeyword)
-    );
-
-    const totalProducts = filteredProducts.length;
-    const totalPages = Math.ceil(totalProducts / currentPageSize);
-    const offset = (currentPage - 1) * currentPageSize;
-    const paginatedProducts = filteredProducts.slice(offset, offset + currentPageSize);
-
-    return {
-      message: sourceMessage,
-      data: paginatedProducts,
-      totalProducts,
-      totalPages,
-      currentPage,
-    };
-  } catch (error) {
-    console.error("get products by property failed:", error);
-    throw new Error("get products by property failed");
   }
 };
 

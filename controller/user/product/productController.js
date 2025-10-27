@@ -3,14 +3,14 @@ import Product from "../../../models/product/product.js";
 import cloudinary from "../../../configs/connectCloudinary.js";
 import { Op, Sequelize } from "sequelize";
 import { generateNextId } from "../../../utils/helper/generateNextId.js";
-import { filterProductsFromCache } from "../../../utils/helper/orderHelpers.js";
-import { mappingProductRow, productColumns } from "./mapping/productRowAndColumn.js";
 import {
   convertToWebp,
   getCloudinaryPublicId,
   uploadImageToCloudinary,
 } from "../../../utils/image/converToWebp.js";
 import { exportExcelResponse } from "../../../utils/helper/excelExporter.js";
+import { filterDataFromCache } from "../../../utils/helper/orderHelpers.js";
+import { mappingProductRow, productColumns } from "../../../utils/mapping/productRowAndColumn.js";
 
 const redisCache = new Redis();
 
@@ -94,12 +94,15 @@ export const getProductByField = async (req, res) => {
   }
 
   try {
-    const result = await filterProductsFromCache({
+    const result = await filterDataFromCache({
+      model: Product,
+      cacheKey: "products:search:all",
       keyword: keyword,
       getFieldValue: fieldMap[field],
       page,
       pageSize,
       message: `get all by ${field} from filtered cache`,
+      totalKey: "totalProducts",
     });
 
     res.status(200).json(result);

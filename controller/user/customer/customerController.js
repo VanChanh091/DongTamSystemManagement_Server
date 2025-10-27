@@ -3,8 +3,10 @@ import Customer from "../../../models/customer/customer.js";
 import { Op, Sequelize } from "sequelize";
 import { generateNextId } from "../../../utils/helper/generateNextId.js";
 import { sequelize } from "../../../configs/connectDB.js";
-import { filterCustomersFromCache } from "../../../utils/helper/orderHelpers.js";
-import { customerColumns, mappingCustomerRow } from "./mapping/customerRowAndColumn.js";
+import {
+  customerColumns,
+  mappingCustomerRow,
+} from "../../../utils/mapping/customerRowAndColumn.js";
 import { exportExcelResponse } from "../../../utils/helper/excelExporter.js";
 
 const redisClient = new Redis();
@@ -92,12 +94,15 @@ export const getCustomerByField = async (req, res) => {
   }
 
   try {
-    const result = await filterCustomersFromCache({
+    const result = await filterDataFromCache({
+      model: Customer,
+      cacheKey: "customers:search:all",
       keyword: keyword,
       getFieldValue: fieldMap[field],
       page,
       pageSize,
       message: `get all by ${field} from filtered cache`,
+      totalKey: "totalCustomers",
     });
 
     return res.status(200).json(result);

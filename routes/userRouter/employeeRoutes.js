@@ -1,16 +1,24 @@
 import Router from "express";
-
 import authenticate from "../../middlewares/authMiddleware.js";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware.js";
+import {
+  createEmployee,
+  deleteEmployee,
+  exportExcelEmployee,
+  getAllEmployees,
+  getEmployeesByField,
+  updateEmployee,
+} from "../../controller/user/employee/employeeController.js";
 
 const router = Router();
 
-// router.get("/", authenticate, getAllCustomer);
-// router.get("/filter", authenticate, getCustomerByField);
+router.get("/", authenticate, getAllEmployees);
+router.get("/filter", authenticate, getEmployeesByField);
 
-// router.post("/exportExcel", authenticate, exportExcelCustomer);
-// router.post("/", authenticate, authorizeAnyPermission(["sale"]), createCustomer);
-// router.put("/customerUp", authenticate, authorizeAnyPermission(["sale"]), updateCustomer);
-// router.delete("/customerDel", authenticate, authorizeAnyPermission(["sale"]), deleteCustomer);
+router.post("/", authenticate, authorizeAnyPermission(["HR"]), createEmployee);
+router.put("/updateEmployee", authenticate, authorizeAnyPermission(["HR"]), updateEmployee);
+router.delete("/deleteEmployee", authenticate, authorizeAnyPermission(["HR"]), deleteEmployee);
+
+router.post("/exportExcel", authenticate, authorizeAnyPermission(["HR"]), exportExcelEmployee);
 
 export default router;
