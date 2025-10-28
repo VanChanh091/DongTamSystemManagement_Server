@@ -1,8 +1,8 @@
 import Redis from "ioredis";
+import { Op } from "sequelize";
 import EmployeeBasicInfo from "../../../models/employee/employeeBasicInfo.js";
 import EmployeeCompanyInfo from "../../../models/employee/employeeCompanyInfo.js";
 import { filterDataFromCache } from "../../../utils/helper/orderHelpers.js";
-import { Op } from "sequelize";
 import { exportExcelResponse } from "../../../utils/helper/excelExporter.js";
 import {
   employeeColumns,
@@ -13,18 +13,22 @@ const redisCache = new Redis();
 
 //get all
 export const getAllEmployees = async (req, res) => {
-  const { page = 1, pageSize = 20, refresh = false } = req.query;
-
+  const { page = 1, pageSize = 20, refresh = false, noPaging = false } = req.query;
   const currentPage = Number(page);
   const currentPageSize = Number(pageSize);
+  const noPagingMode = noPaging === "true";
 
-  const cacheKey = `employees:all:page:${currentPage}`;
+  const cacheKey = noPaging === "true" ? "employees:all" : `employees:all:page:${currentPage}`;
 
   try {
     if (refresh === "true") {
-      const keys = await redisCache.keys("employees:all:page:*");
-      if (keys.length > 0) {
-        await redisCache.del(...keys);
+      if (noPaging === "true") {
+        await redisCache.del(cacheKey);
+      } else {
+        const keys = await redisCache.keys("employees:all:page:*");
+        if (keys.length > 0) {
+          await redisCache.del(...keys);
+        }
       }
     }
 
@@ -35,23 +39,36 @@ export const getAllEmployees = async (req, res) => {
       return res.status(200).json({ ...parsed, message: "Get all employees from cache" });
     }
 
+    let data, totalPages;
     const totalEmployees = await EmployeeBasicInfo.count();
-    const totalPages = Math.ceil(totalEmployees / currentPageSize);
-    const offset = (currentPage - 1) * currentPageSize;
 
-    const data = await EmployeeBasicInfo.findAll({
-      attributes: { exclude: ["createdAt", "updatedAt"] },
-      include: [
-        {
-          model: EmployeeCompanyInfo,
-          as: "companyInfo",
-          attributes: { exclude: ["createdAt", "updatedAt"] },
-        },
-      ],
-      offset,
-      limit: currentPageSize,
-      //   order: [["dayReport", "DESC"]],
-    });
+    if (noPagingMode) {
+      totalPages = 1;
+      data = await EmployeeBasicInfo.findAll({
+        attributes: { exclude: ["createdAt", "updatedAt"] },
+        include: [
+          {
+            model: EmployeeCompanyInfo,
+            as: "companyInfo",
+            attributes: { exclude: ["createdAt", "updatedAt"] },
+          },
+        ],
+      });
+    } else {
+      totalPages = Math.ceil(totalEmployees / currentPageSize);
+      data = await EmployeeBasicInfo.findAll({
+        attributes: { exclude: ["createdAt", "updatedAt"] },
+        include: [
+          {
+            model: EmployeeCompanyInfo,
+            as: "companyInfo",
+            attributes: { exclude: ["createdAt", "updatedAt"] },
+          },
+        ],
+        offset: (currentPage - 1) * currentPageSize,
+        limit: currentPageSize,
+      });
+    }
 
     const responseData = {
       message: "get all employees successfully",
@@ -136,6 +153,8 @@ export const createEmployee = async (req, res) => {
     );
 
     await transaction.commit();
+    await redisCache.del("employees:all:page:*");
+    await redisCache.del("employees:search:all");
 
     const createdEmployee = await EmployeeBasicInfo.findOne({
       where: { employeeId: newBasicInfo.employeeId },
@@ -156,7 +175,7 @@ export const createEmployee = async (req, res) => {
 //update
 export const updateEmployee = async (req, res) => {
   const { employeeId } = req.query;
-  const { basicInfo, companyInfo } = req.body;
+  const { companyInfo, ...basicInfo } = req.body;
 
   const transaction = await EmployeeBasicInfo.sequelize.transaction();
   try {
@@ -182,6 +201,8 @@ export const updateEmployee = async (req, res) => {
     }
 
     await transaction.commit();
+    await redisCache.del("employees:all:page:*");
+    await redisCache.del("employees:search:all");
 
     const updatedEmployee = await EmployeeBasicInfo.findOne({
       where: { employeeId: employeeId },
@@ -222,6 +243,8 @@ export const deleteEmployee = async (req, res) => {
     await employee.destroy({ transaction });
 
     await transaction.commit();
+    await redisCache.del("employees:all:page:*");
+    await redisCache.del("employees:search:all");
 
     return res.status(200).json({
       message: "delete employee successfully",

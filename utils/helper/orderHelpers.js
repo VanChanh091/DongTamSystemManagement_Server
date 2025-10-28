@@ -4,8 +4,6 @@ import Customer from "../../models/customer/customer.js";
 import Product from "../../models/product/product.js";
 import Order from "../../models/order/order.js";
 import Box from "../../models/order/box.js";
-import EmployeeBasicInfo from "../../models/employee/employeeBasicInfo.js";
-import EmployeeCompanyInfo from "../../models/employee/employeeCompanyInfo.js";
 
 const redisCache = new Redis();
 
