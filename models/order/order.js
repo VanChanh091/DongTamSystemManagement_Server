@@ -14,6 +14,7 @@ const Order = sequelize.define(
     matE: { type: DataTypes.STRING },
     matB: { type: DataTypes.STRING },
     matC: { type: DataTypes.STRING },
+    matE2: { type: DataTypes.STRING },
     songE: { type: DataTypes.STRING },
     songB: { type: DataTypes.STRING },
     songC: { type: DataTypes.STRING },

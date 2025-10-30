@@ -150,6 +150,8 @@ export const planningOrder = async (req, res) => {
       planningData.matBReplace,
       planningData.songCReplace,
       planningData.matCReplace,
+      planningData.songE2Replace,
+      planningData.matE2Replace,
     ]
       .filter(Boolean)
       .join("/");
@@ -180,7 +182,7 @@ export const planningOrder = async (req, res) => {
       waveTypes
     ) => {
       const gkTh = ghepKho / 100;
-      let flute = { E: 0, B: 0, C: 0 };
+      let flute = { E: 0, B: 0, C: 0, E2: 0 };
       let softLiner = 0;
       let countE = 0;
 
@@ -205,7 +207,12 @@ export const planningOrder = async (req, res) => {
           const loss =
             gkTh * wasteNorm.waveCrest * linerBefore + gkTh * wasteNorm.waveCrest * fluteTh * coef;
 
-          flute[letter] += loss;
+          if (letter === "E") {
+            if (countE === 1) flute.E2 += loss;
+            else flute[letter] += loss;
+          } else {
+            flute[letter] += loss;
+          }
         }
       }
 
@@ -216,25 +223,27 @@ export const planningOrder = async (req, res) => {
       }
 
       // 5.2) Tính hao phí, dao, tổng hao hụt
-      let knife = 0;
-      let haoPhi = 0;
-
       const bottom = flute.E + flute.B + flute.C + softLiner;
-      if (wasteNorm.waveCrestSoft > 0) {
-        haoPhi =
-          (runningPlan / numberChild) *
-          (bottom / wasteNorm.waveCrestSoft) *
-          (wasteNorm.lossInProcess / 100);
-      }
-      if (wasteNorm.waveCrestSoft > 0) {
-        knife = (bottom / wasteNorm.waveCrestSoft) * wasteNorm.lossInSheetingAndSlitting;
-      }
-      const totalLoss = flute.E + flute.B + flute.C + haoPhi + knife + bottom;
+
+      const haoPhi =
+        wasteNorm.waveCrestSoft > 0
+          ? (runningPlan / numberChild) *
+            (bottom / wasteNorm.waveCrestSoft) *
+            (wasteNorm.lossInProcess / 100)
+          : 0;
+
+      const knife =
+        wasteNorm.waveCrestSoft > 0
+          ? (bottom / wasteNorm.waveCrestSoft) * wasteNorm.lossInSheetingAndSlitting
+          : 0;
+
+      const totalLoss = flute.E + flute.B + flute.C + flute.E2 + haoPhi + knife + bottom;
 
       return {
         fluteE: roundSmart(flute.E),
         fluteB: roundSmart(flute.B),
         fluteC: roundSmart(flute.C),
+        fluteE2: roundSmart(flute.E2),
         bottom: roundSmart(bottom),
         haoPhi: roundSmart(haoPhi),
         knife: roundSmart(knife),
@@ -279,6 +288,7 @@ export const planningOrder = async (req, res) => {
           matE: paperPlan.matEReplace,
           matB: paperPlan.matBReplace,
           matC: paperPlan.matCReplace,
+          matE2: paperPlan.matE2Replace,
           songE: paperPlan.songEReplace,
           songB: paperPlan.songBReplace,
           songC: paperPlan.songCReplace,

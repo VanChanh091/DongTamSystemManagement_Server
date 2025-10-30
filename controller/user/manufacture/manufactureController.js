@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-import { Op, where } from "sequelize";
+import { Op } from "sequelize";
 import { machineLabels } from "../../../configs/machineLabels.js";
 import PlanningPaper from "../../../models/planning/planningPaper.js";
 import timeOverflowPlanning from "../../../models/planning/timeOverFlowPlanning.js";
