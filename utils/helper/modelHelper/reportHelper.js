@@ -1,12 +1,12 @@
 import Redis from "ioredis";
-import ReportPlanningPaper from "../../models/report/reportPlanningPaper.js";
-import PlanningPaper from "../../models/planning/planningPaper.js";
-import Order from "../../models/order/order.js";
-import Customer from "../../models/customer/customer.js";
-import Box from "../../models/order/box.js";
-import ReportPlanningBox from "../../models/report/reportPlanningBox.js";
-import PlanningBox from "../../models/planning/planningBox.js";
-import PlanningBoxTime from "../../models/planning/planningBoxMachineTime.js";
+import ReportPlanningPaper from "../../../models/report/reportPlanningPaper.js";
+import PlanningPaper from "../../../models/planning/planningPaper.js";
+import Order from "../../../models/order/order.js";
+import Customer from "../../../models/customer/customer.js";
+import Box from "../../../models/order/box.js";
+import ReportPlanningBox from "../../../models/report/reportPlanningBox.js";
+import PlanningBox from "../../../models/planning/planningBox.js";
+import PlanningBoxTime from "../../../models/planning/planningBoxMachineTime.js";
 import { Op } from "sequelize";
 
 const redisCache = new Redis();

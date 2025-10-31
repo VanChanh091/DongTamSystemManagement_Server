@@ -10,7 +10,7 @@ import PlanningBox from "../../../models/planning/planningBox.js";
 import planningBoxMachineTime from "../../../models/planning/planningBoxMachineTime.js";
 import ReportPlanningPaper from "../../../models/report/reportPlanningPaper.js";
 import ReportPlanningBox from "../../../models/report/reportPlanningBox.js";
-import { createReportPlanning } from "../../../utils/helper/reportHelper.js";
+import { createReportPlanning } from "../../../utils/helper/modelHelper/reportHelper.js";
 
 const redisCache = new Redis();
 

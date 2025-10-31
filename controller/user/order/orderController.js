@@ -1,11 +1,16 @@
 import Redis from "ioredis";
-import { cachedStatus, filterOrdersFromCache } from "../../../utils/helper/orderHelpers.js";
+import {
+  cachedStatus,
+  filterOrdersFromCache,
+} from "../../../utils/helper/modelHelper/orderHelpers.js";
 import {
   getOrderByStatus,
   createOrderService,
   deleteOrderService,
   updateOrderService,
 } from "../../../service/orderService.js";
+import { checkLastChange } from "../../../utils/helper/checkLastChangeHelper.js";
+import Order from "../../../models/order/order.js";
 
 const redisCache = new Redis();
 
@@ -14,25 +19,36 @@ const redisCache = new Redis();
 //get order status accept and planning
 export const getOrderAcceptAndPlanning = async (req, res) => {
   const { userId, role } = req.user;
-  const { page, pageSize, refresh = false, ownOnly = false } = req.query;
+  const { page, pageSize, ownOnly = false } = req.query;
   const currentPage = Number(page);
   const currentPageSize = Number(pageSize);
 
-  try {
-    const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
-    const cacheKey = `orders:${keyRole}:accept_planning:page:${currentPage}`; //orders:admin:accept_planning:page:1
+  const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
+  const cacheKey = `orders:${keyRole}:accept_planning:page:${currentPage}`; //orders:admin:accept_planning:page:1
 
-    if (refresh == "true") await redisCache.del(cacheKey);
+  try {
+    const { isChanged } = await checkLastChange(Order, "order:accept_planning:lastUpdated");
+
+    console.log(`order:accept_planning: ${isChanged}`);
+
+    if (isChanged) {
+      const keys = await redisCache.keys(`orders:${keyRole}:accept_planning:*`);
+      if (keys.length > 0) {
+        await redisCache.del(...keys);
+      }
+      await redisCache.del("orders:accept_planning");
+    } else {
+      const cachedData = await redisCache.get(cacheKey);
+      if (cachedData) {
+        const parsed = JSON.parse(cachedData);
+        return res.status(200).json({
+          message: "✅ Get Order from Redis",
+          ...parsed,
+        });
+      }
+    }
 
     // Lấy data đã lọc từ cachedStatus
-    const cachedData = await redisCache.get(cacheKey);
-    if (cachedData) {
-      const parsed = JSON.parse(cachedData);
-      return res.status(200).json({
-        message: "Get Order from cache",
-        ...parsed,
-      });
-    }
 
     const result = await getOrderByStatus({
       statusList: ["accept", "planning"],
@@ -44,7 +60,7 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
       isPaging: true,
     });
 
-    await redisCache.set(cacheKey, JSON.stringify(result), "EX", 1800);
+    await redisCache.set(cacheKey, JSON.stringify(result), "EX", 3600);
 
     res.status(200).json({
       message: "Get all orders from DB with status: accept and planning",
@@ -95,32 +111,38 @@ export const getOrderByField = async (req, res) => {
 //get order pending and reject
 export const getOrderPendingAndReject = async (req, res) => {
   const { userId, role } = req.user;
-  const { refresh = false, ownOnly = false } = req.query;
+  const { ownOnly = false } = req.query;
 
   if (!userId) {
     return res.status(400).json({ message: "Missing userId" });
   }
 
+  const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
+  const cacheKey = `orders:${keyRole}:pending_reject`;
+
   try {
-    const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
-    const cacheKey = `orders:${keyRole}:pending_reject`;
+    const { isChanged } = await checkLastChange(Order, "order:pending_reject:lastUpdated");
 
-    if (refresh == "true") await redisCache.del(cacheKey);
+    console.log(`order:pending_reject: ${isChanged}`);
 
-    const cachedResult = await cachedStatus(
-      cacheKey,
-      redisCache,
-      "pending",
-      "reject",
-      userId,
-      role
-    );
+    if (isChanged) {
+      await redisCache.del(cacheKey);
+    } else {
+      const cachedResult = await cachedStatus(
+        cacheKey,
+        redisCache,
+        "pending",
+        "reject",
+        userId,
+        role
+      );
 
-    if (cachedResult) {
-      return res.status(200).json({
-        message: "Get Order from cache",
-        data: cachedResult,
-      });
+      if (cachedResult) {
+        return res.status(200).json({
+          message: "Get Order from cache",
+          data: cachedResult,
+        });
+      }
     }
 
     const result = await getOrderByStatus({

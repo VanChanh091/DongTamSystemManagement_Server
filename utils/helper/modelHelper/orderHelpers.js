@@ -1,9 +1,9 @@
 import { Op } from "sequelize";
 import Redis from "ioredis";
-import Customer from "../../models/customer/customer.js";
-import Product from "../../models/product/product.js";
-import Order from "../../models/order/order.js";
-import Box from "../../models/order/box.js";
+import Customer from "../../../models/customer/customer.js";
+import Product from "../../../models/product/product.js";
+import Order from "../../../models/order/order.js";
+import Box from "../../../models/order/box.js";
 
 const redisCache = new Redis();
 

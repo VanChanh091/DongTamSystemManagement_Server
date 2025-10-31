@@ -10,7 +10,7 @@ import {
   generateOrderId,
   updateChildOrder,
   validateCustomerAndProduct,
-} from "../utils/helper/orderHelpers.js";
+} from "../utils/helper/modelHelper/orderHelpers.js";
 import { AppError } from "../utils/appError.js";
 
 const redisCache = new Redis();

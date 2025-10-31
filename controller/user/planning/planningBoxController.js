@@ -18,7 +18,7 @@ import {
   getWorkShift,
   isDuringBreak,
   setTimeOnDay,
-} from "../../../utils/helper/planningHelper.js";
+} from "../../../utils/helper/modelHelper/planningHelper.js";
 
 const redisCache = new Redis();
 

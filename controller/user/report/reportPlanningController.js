@@ -8,7 +8,7 @@ import ReportPlanningPaper from "../../../models/report/reportPlanningPaper.js";
 import PlanningBoxTime from "../../../models/planning/planningBoxMachineTime.js";
 import PlanningBox from "../../../models/planning/planningBox.js";
 import ReportPlanningBox from "../../../models/report/reportPlanningBox.js";
-import { filterReportByField } from "../../../utils/helper/reportHelper.js";
+import { filterReportByField } from "../../../utils/helper/modelHelper/reportHelper.js";
 import { mapReportPaperRow, reportPaperColumns } from "./mapping/reportPaperRowAndColumn.js";
 import { mapReportBoxRow, reportBoxColumns } from "./mapping/reportBoxRowAndColumn.js";
 import { exportExcelResponse } from "../../../utils/helper/excelExporter.js";

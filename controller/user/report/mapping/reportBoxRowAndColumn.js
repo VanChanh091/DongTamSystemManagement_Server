@@ -1,6 +1,6 @@
 import { machine } from "os";
 import { MACHINE_FIELD_MAP } from "../../../../configs/machineLabels.js";
-import { formatterStructureOrder } from "../../../../utils/helper/orderHelpers.js";
+import { formatterStructureOrder } from "../../../../utils/helper/modelHelper/orderHelpers.js";
 
 export const reportBoxColumns = [
   { header: "STT", key: "index" },

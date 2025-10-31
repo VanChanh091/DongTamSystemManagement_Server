@@ -2,7 +2,7 @@ import Redis from "ioredis";
 import { Op } from "sequelize";
 import EmployeeBasicInfo from "../../../models/employee/employeeBasicInfo.js";
 import EmployeeCompanyInfo from "../../../models/employee/employeeCompanyInfo.js";
-import { filterDataFromCache } from "../../../utils/helper/orderHelpers.js";
+import { filterDataFromCache } from "../../../utils/helper/modelHelper/orderHelpers.js";
 import { exportExcelResponse } from "../../../utils/helper/excelExporter.js";
 import {
   employeeColumns,

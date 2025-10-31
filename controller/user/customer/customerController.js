@@ -4,17 +4,18 @@ import { Op, Sequelize } from "sequelize";
 import { generateNextId } from "../../../utils/helper/generateNextId.js";
 import { sequelize } from "../../../configs/connectDB.js";
 import { exportExcelResponse } from "../../../utils/helper/excelExporter.js";
-import { filterDataFromCache } from "../../../utils/helper/orderHelpers.js";
+import { filterDataFromCache } from "../../../utils/helper/modelHelper/orderHelpers.js";
 import {
   customerColumns,
   mappingCustomerRow,
 } from "../../../utils/mapping/customerRowAndColumn.js";
+import { checkLastChange } from "../../../utils/helper/checkLastChangeHelper.js";
 
 const redisClient = new Redis();
 
 //get all
 export const getAllCustomer = async (req, res) => {
-  const { page = 1, pageSize = 20, refresh = false, noPaging = false } = req.query;
+  const { page = 1, pageSize = 20, noPaging = false } = req.query;
   const currentPage = Number(page);
   const currentPageSize = Number(pageSize);
   const noPagingMode = noPaging === "true";
@@ -22,7 +23,11 @@ export const getAllCustomer = async (req, res) => {
   const cacheKey = noPaging === "true" ? "customers:all" : `customers:all:page:${currentPage}`;
 
   try {
-    if (refresh === "true") {
+    const { isChanged } = await checkLastChange(Customer, "customer:lastUpdated");
+
+    console.log(`customer: ${isChanged}`);
+
+    if (isChanged) {
       if (noPaging === "true") {
         await redisClient.del(cacheKey);
       } else {
@@ -30,14 +35,15 @@ export const getAllCustomer = async (req, res) => {
         if (keys.length > 0) {
           await redisClient.del(...keys);
         }
+        redisClient.del("customers:search:all");
       }
-    }
-
-    const cachedData = await redisClient.get(cacheKey);
-    if (cachedData) {
-      console.log("✅ Data Customer from Redis");
-      const parsed = JSON.parse(cachedData);
-      return res.status(200).json({ ...parsed, message: "Get all customers from cache" });
+    } else {
+      const cachedData = await redisClient.get(cacheKey);
+      if (cachedData) {
+        console.log("✅ Data Customer from Redis");
+        const parsed = JSON.parse(cachedData);
+        return res.status(200).json({ ...parsed, message: "Get all customers from cache" });
+      }
     }
 
     let data, totalPages;
@@ -137,8 +143,11 @@ export const createCustomer = async (req, res) => {
     );
 
     await transaction.commit();
-    await redisClient.del("customers:all:page:*");
-    await redisClient.del("customers:search:all");
+
+    // const keys = await redisClient.keys("customers:*");
+    // if (keys.length > 0) {
+    //   await redisClient.del(...keys);
+    // }
 
     res.status(201).json({ message: "Customer created successfully", data: newCustomer });
   } catch (err) {
@@ -161,11 +170,10 @@ export const updateCustomer = async (req, res) => {
 
     await customer.update(customerData);
 
-    const keys = await redisClient.keys("customers:all:page:*");
-    if (keys.length > 0) {
-      await redisClient.del(keys);
-    }
-    await redisClient.del("customers:search:all");
+    // const keys = await redisClient.keys("customers:*");
+    // if (keys.length > 0) {
+    //   await redisClient.del(...keys);
+    // }
 
     res.status(201).json({
       message: "Customer updated successfully",
@@ -193,11 +201,10 @@ export const deleteCustomer = async (req, res) => {
       return res.status(404).json({ message: "Customer not found" });
     }
 
-    const keys = await redisClient.keys("customers:all:page:*");
+    const keys = await redisClient.keys("customers:*");
     if (keys.length > 0) {
-      await redisClient.del(keys);
+      await redisClient.del(...keys);
     }
-    await redisClient.del("customers:search:all");
 
     res.status(201).json({ message: "Customer deleted successfully" });
   } catch (err) {

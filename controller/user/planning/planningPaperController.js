@@ -11,7 +11,7 @@ import WasteNormPaper from "../../../models/admin/wasteNormPaper.js";
 import WaveCrestCoefficient from "../../../models/admin/waveCrestCoefficient.js";
 import PlanningBox from "../../../models/planning/planningBox.js";
 import planningBoxMachineTime from "../../../models/planning/planningBoxMachineTime.js";
-import { getPlanningPaperByField } from "../../../utils/helper/planningHelper.js";
+import { getPlanningPaperByField } from "../../../utils/helper/modelHelper/planningHelper.js";
 import {
   calculateTimeRunning,
   updateSortPlanning,

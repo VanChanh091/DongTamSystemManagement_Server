@@ -9,22 +9,25 @@ import {
   uploadImageToCloudinary,
 } from "../../../utils/image/converToWebp.js";
 import { exportExcelResponse } from "../../../utils/helper/excelExporter.js";
-import { filterDataFromCache } from "../../../utils/helper/orderHelpers.js";
+import { filterDataFromCache } from "../../../utils/helper/modelHelper/orderHelpers.js";
 import { mappingProductRow, productColumns } from "../../../utils/mapping/productRowAndColumn.js";
+import { checkLastChange } from "../../../utils/helper/checkLastChangeHelper.js";
 
 const redisCache = new Redis();
 
 //get all product
 export const getAllProduct = async (req, res) => {
-  const { page = 1, pageSize = 20, refresh = false, noPaging = false } = req.query;
+  const { page = 1, pageSize = 20, noPaging = false } = req.query;
   const currentPage = Number(page);
   const currentPageSize = Number(pageSize);
   const noPagingMode = noPaging === "true";
 
-  const cacheKey = noPaging === "true" ? "product:all" : `product:all:page:${currentPage}`;
+  const cacheKey = noPaging === "true" ? "products:all" : `products:all:page:${currentPage}`;
 
   try {
-    if (refresh === "true") {
+    const { isChanged } = await checkLastChange(Product, "product:lastUpdated");
+
+    if (isChanged) {
       if (noPaging === "true") {
         await redisCache.del(cacheKey);
       } else {
@@ -32,14 +35,15 @@ export const getAllProduct = async (req, res) => {
         if (keys.length > 0) {
           await redisCache.del(...keys);
         }
+        redisCache.del("products:search:all");
       }
-    }
-
-    const cachedData = await redisCache.get(cacheKey);
-    if (cachedData) {
-      console.log("✅ Data Product from Redis");
-      const parsed = JSON.parse(cachedData);
-      return res.status(200).json({ ...parsed, message: "Get all products from cache" });
+    } else {
+      const cachedData = await redisCache.get(cacheKey);
+      if (cachedData) {
+        console.log("✅ Data Product from Redis");
+        const parsed = JSON.parse(cachedData);
+        return res.status(200).json({ ...parsed, message: "Get all products from cache" });
+      }
     }
 
     let data, totalPages;
@@ -167,7 +171,11 @@ export const addProduct = async (req, res) => {
     );
 
     await transaction.commit();
-    await redisCache.del("products:all");
+
+    const keys = await redisCache.keys("products:*");
+    if (keys.length > 0) {
+      await redisCache.del(...keys);
+    }
 
     return res.status(201).json({
       message: "Product created successfully",
@@ -202,7 +210,11 @@ export const updateProduct = async (req, res) => {
     }
 
     await existingProduct.update(productData);
-    await redisCache.del("products:all");
+
+    const keys = await redisCache.keys("products:*");
+    if (keys.length > 0) {
+      await redisCache.del(...keys);
+    }
 
     return res.status(200).json({
       message: "Product updated successfully",
@@ -227,7 +239,11 @@ export const deleteProduct = async (req, res) => {
     const imageName = product.productImage;
 
     await product.destroy();
-    await redisCache.del("products:all");
+
+    const keys = await redisCache.keys("products:*");
+    if (keys.length > 0) {
+      await redisCache.del(...keys);
+    }
 
     if (imageName && imageName.includes("cloudinary.com")) {
       const publicId = getCloudinaryPublicId(imageName);
