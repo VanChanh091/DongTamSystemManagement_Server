@@ -1,24 +1,47 @@
 import Redis from "ioredis";
 
-const redisClient = new Redis();
+const redisCache = new Redis();
 
-export const checkLastChange = async (Model, cacheKey) => {
-  const [lastCreated, lastUpdated] = await Promise.all([
-    Model.max("createdAt"),
-    Model.max("updatedAt"),
-  ]);
+export const checkLastChange = async (models, cacheKey) => {
+  //truyền 1 model hoặc nhiều model
+  const modelArray = Array.isArray(models) ? models : [models];
 
-  const lastChange = new Date(
-    Math.max(new Date(lastCreated || 0).getTime(), new Date(lastUpdated || 0).getTime())
-  ).toISOString();
+  // Duyệt qua từng model, lấy max createdAt/updatedAt
+  const lastChanges = await Promise.all(
+    modelArray.map(async (item) => {
+      const model = item.model || item;
+      const where = item.where || undefined;
 
-  const lastCached = await redisClient.get(cacheKey);
+      const [lastCreated, lastUpdated] = await Promise.all([
+        model.max("createdAt", { where }),
+        model.max("updatedAt", { where }),
+      ]);
 
-  const isChanged = lastCached !== lastChange;
+      return new Date(
+        Math.max(new Date(lastCreated || 0).getTime(), new Date(lastUpdated || 0).getTime())
+      ).getTime();
+    })
+  );
+
+  console.log(
+    "🔍 last changes by model:",
+    modelArray.map((item, i) => ({
+      model: item.model ? item.model.name : item.name,
+      last: new Date(lastChanges[i]).toISOString(),
+    }))
+  );
+
+  // Lấy timestamp mới nhất trong tất cả bảng
+  const latestChange = Math.max(...lastChanges);
+  const lastChangeISO = new Date(latestChange).toISOString();
+
+  //So sánh với cache Redis
+  const lastCached = await redisCache.get(cacheKey);
+  const isChanged = lastCached !== lastChangeISO;
 
   if (isChanged) {
-    await redisClient.set(cacheKey, lastChange);
+    await redisCache.set(cacheKey, lastChangeISO);
   }
 
-  return { isChanged, lastChange };
+  return { isChanged, lastChange: lastChangeISO };
 };

@@ -9,8 +9,8 @@ import {
   deleteOrderService,
   updateOrderService,
 } from "../../../service/orderService.js";
-import { checkLastChange } from "../../../utils/helper/checkLastChangeHelper.js";
 import Order from "../../../models/order/order.js";
+import { CacheManager } from "../../../utils/helper/cacheManager.js";
 
 const redisCache = new Redis();
 
@@ -23,20 +23,16 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
   const currentPage = Number(page);
   const currentPageSize = Number(pageSize);
 
+  const { order } = CacheManager.keys;
+
   const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
-  const cacheKey = `orders:${keyRole}:accept_planning:page:${currentPage}`; //orders:admin:accept_planning:page:1
+  const cacheKey = order.acceptPlanning(keyRole, currentPage); //orders:admin:accept_planning:page:1
 
   try {
-    const { isChanged } = await checkLastChange(Order, "order:accept_planning:lastUpdated");
-
-    console.log(`order:accept_planning: ${isChanged}`);
+    const { isChanged } = await CacheManager.check(Order, "orderAccept");
 
     if (isChanged) {
-      const keys = await redisCache.keys(`orders:${keyRole}:accept_planning:*`);
-      if (keys.length > 0) {
-        await redisCache.del(...keys);
-      }
-      await redisCache.del("orders:accept_planning");
+      await CacheManager.clearOrderAcceptPlanning(keyRole);
     } else {
       const cachedData = await redisCache.get(cacheKey);
       if (cachedData) {
@@ -87,6 +83,8 @@ export const getOrderByField = async (req, res) => {
     return res.status(400).json({ message: "Invalid field parameter" });
   }
 
+  const { order } = CacheManager.keys;
+
   try {
     const result = await filterOrdersFromCache({
       userId,
@@ -95,7 +93,7 @@ export const getOrderByField = async (req, res) => {
       getFieldValue: fieldMap[field],
       page,
       pageSize,
-      cacheKeyPrefix: `orders:accept_planning`,
+      cacheKeyPrefix: order.searchAcceptPlanning,
       message: `Get orders by ${field} from filtered cache`,
     });
 
@@ -117,16 +115,16 @@ export const getOrderPendingAndReject = async (req, res) => {
     return res.status(400).json({ message: "Missing userId" });
   }
 
+  const { order } = CacheManager.keys;
+
   const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
-  const cacheKey = `orders:${keyRole}:pending_reject`;
+  const cacheKey = order.pendingReject(keyRole);
 
   try {
-    const { isChanged } = await checkLastChange(Order, "order:pending_reject:lastUpdated");
-
-    console.log(`order:pending_reject: ${isChanged}`);
+    const { isChanged } = await CacheManager.check(Order, "orderPending");
 
     if (isChanged) {
-      await redisCache.del(cacheKey);
+      await CacheManager.clearOrderPendingReject(keyRole);
     } else {
       const cachedResult = await cachedStatus(
         cacheKey,

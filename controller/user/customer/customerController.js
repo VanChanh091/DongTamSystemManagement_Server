@@ -2,14 +2,14 @@ import Redis from "ioredis";
 import Customer from "../../../models/customer/customer.js";
 import { Op, Sequelize } from "sequelize";
 import { generateNextId } from "../../../utils/helper/generateNextId.js";
-import { sequelize } from "../../../configs/connectDB.js";
 import { exportExcelResponse } from "../../../utils/helper/excelExporter.js";
 import { filterDataFromCache } from "../../../utils/helper/modelHelper/orderHelpers.js";
+import Order from "../../../models/order/order.js";
 import {
   customerColumns,
   mappingCustomerRow,
 } from "../../../utils/mapping/customerRowAndColumn.js";
-import { checkLastChange } from "../../../utils/helper/checkLastChangeHelper.js";
+import { CacheManager } from "../../../utils/helper/cacheManager.js";
 
 const redisClient = new Redis();
 
@@ -20,23 +20,14 @@ export const getAllCustomer = async (req, res) => {
   const currentPageSize = Number(pageSize);
   const noPagingMode = noPaging === "true";
 
-  const cacheKey = noPaging === "true" ? "customers:all" : `customers:all:page:${currentPage}`;
+  const { customer } = CacheManager.keys;
+  const cacheKey = noPaging === "true" ? customer.all : customer.page(currentPage);
 
   try {
-    const { isChanged } = await checkLastChange(Customer, "customer:lastUpdated");
-
-    console.log(`customer: ${isChanged}`);
+    const { isChanged } = await CacheManager.check(Customer, "customer");
 
     if (isChanged) {
-      if (noPaging === "true") {
-        await redisClient.del(cacheKey);
-      } else {
-        const keys = await redisClient.keys("customers:all:page:*");
-        if (keys.length > 0) {
-          await redisClient.del(...keys);
-        }
-        redisClient.del("customers:search:all");
-      }
+      await CacheManager.clearCustomer();
     } else {
       const cachedData = await redisClient.get(cacheKey);
       if (cachedData) {
@@ -100,16 +91,17 @@ export const getCustomerByField = async (req, res) => {
     return res.status(400).json({ message: "Invalid field parameter" });
   }
 
+  const { customer } = CacheManager.keys;
+
   try {
     const result = await filterDataFromCache({
       model: Customer,
-      cacheKey: "customers:search:all",
+      cacheKey: customer.search,
       keyword: keyword,
       getFieldValue: fieldMap[field],
       page,
       pageSize,
       message: `get all by ${field} from filtered cache`,
-      totalKey: "totalCustomers",
     });
 
     return res.status(200).json(result);
@@ -119,10 +111,25 @@ export const getCustomerByField = async (req, res) => {
   }
 };
 
+//get customerId in orders
+export const checkCustomerInOrders = async (req, res) => {
+  const { customerId } = req.query;
+
+  try {
+    const orderCount = await Order.count({ where: { customerId: customerId } });
+    console.log(orderCount);
+
+    res.status(200).json({ hasOrders: orderCount > 0, orderCount });
+  } catch (error) {
+    console.error("Check customer in orders failed:", error);
+    res.status(500).json({ message: "Check customer in orders failed", error });
+  }
+};
+
 //create customer
 export const createCustomer = async (req, res) => {
   const { prefix = "CUSTOM", ...customerData } = req.body;
-  const transaction = await sequelize.transaction();
+  const transaction = await Customer.sequelize.transaction();
 
   try {
     const customers = await Customer.findAll({
@@ -144,11 +151,6 @@ export const createCustomer = async (req, res) => {
 
     await transaction.commit();
 
-    // const keys = await redisClient.keys("customers:*");
-    // if (keys.length > 0) {
-    //   await redisClient.del(...keys);
-    // }
-
     res.status(201).json({ message: "Customer created successfully", data: newCustomer });
   } catch (err) {
     await transaction.rollback();
@@ -162,29 +164,23 @@ export const updateCustomer = async (req, res) => {
   const { customerId } = req.query;
   const { ...customerData } = req.body;
 
+  const transaction = await Customer.sequelize.transaction();
+
   try {
-    const customer = await Customer.findOne({ where: { customerId: customerId } });
+    const customer = await Customer.findOne({ where: { customerId: customerId }, transaction });
     if (!customer) {
       return res.status(404).json({ message: "Customer not found" });
     }
 
-    await customer.update(customerData);
+    await customer.update(customerData, { transaction });
 
-    // const keys = await redisClient.keys("customers:*");
-    // if (keys.length > 0) {
-    //   await redisClient.del(...keys);
-    // }
+    await transaction.commit();
 
-    res.status(201).json({
-      message: "Customer updated successfully",
-      customer,
-    });
+    res.status(201).json({ message: "Customer updated successfully", customer });
   } catch (err) {
+    await transaction.rollback();
     console.error("Update customer failed:", err);
-    res.status(500).json({
-      message: "Update customer failed",
-      err,
-    });
+    res.status(500).json({ message: "Update customer failed", err });
   }
 };
 
@@ -192,22 +188,23 @@ export const updateCustomer = async (req, res) => {
 export const deleteCustomer = async (req, res) => {
   const { customerId } = req.query;
 
+  const transaction = await Customer.sequelize.transaction();
+
   try {
     const deletedCustomer = await Customer.destroy({
       where: { customerId: customerId },
+      transaction,
     });
 
     if (!deletedCustomer) {
+      await transaction.rollback();
       return res.status(404).json({ message: "Customer not found" });
     }
 
-    const keys = await redisClient.keys("customers:*");
-    if (keys.length > 0) {
-      await redisClient.del(...keys);
-    }
-
+    await transaction.commit();
     res.status(201).json({ message: "Customer deleted successfully" });
   } catch (err) {
+    await transaction.rollback();
     console.error("Delete customer failed:", err);
     res.status(500).json({ message: "Delete customer failed", err });
   }

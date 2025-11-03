@@ -172,7 +172,6 @@ export const filterDataFromCache = async ({
   page,
   pageSize,
   message,
-  totalKey,
   fetchFunction,
 }) => {
   const currentPage = Number(page) || 1;
@@ -199,15 +198,15 @@ export const filterDataFromCache = async ({
     });
 
     // Phân trang
-    const totalItems = filteredData.length;
-    const totalPages = Math.ceil(totalItems / currentPageSize);
+    const totalCustomers = filteredData.length;
+    const totalPages = Math.ceil(totalCustomers / currentPageSize);
     const offset = (currentPage - 1) * currentPageSize;
     const paginatedData = filteredData.slice(offset, offset + currentPageSize);
 
     return {
       message: sourceMessage,
       data: paginatedData,
-      [totalKey]: totalItems,
+      totalCustomers,
       totalPages,
       currentPage,
     };

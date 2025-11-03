@@ -1,4 +1,4 @@
-import { Op, Sequelize } from "sequelize";
+import { Op, Sequelize, where } from "sequelize";
 import Redis from "ioredis";
 import Order from "../../../models/order/order.js";
 import Customer from "../../../models/customer/customer.js";
@@ -16,6 +16,7 @@ import {
   calculateTimeRunning,
   updateSortPlanning,
 } from "../../../service/planning/timeRunningService.js";
+import { CacheManager } from "../../../utils/helper/cacheManager.js";
 
 const redisCache = new Redis();
 
@@ -23,20 +24,21 @@ const redisCache = new Redis();
 
 //getOrderAccept
 export const getOrderAccept = async (req, res) => {
-  const { refresh = false } = req.query;
+  const { order } = CacheManager.keys.planning;
+  const cacheKey = order.all;
   try {
-    const cacheKey = "orders:userId:status:accept";
+    const { isChanged } = await CacheManager.check(Order, "planningOrderAccept");
 
-    if (refresh == "true") {
-      await redisCache.del(cacheKey);
-    }
-
-    const cachedData = await redisCache.get(cacheKey);
-    if (cachedData) {
-      return res.json({
-        message: "get all order have status:accept from cache",
-        data: JSON.parse(cachedData),
-      });
+    if (isChanged) {
+      await CacheManager.clearOrderAccept();
+    } else {
+      const cachedData = await redisCache.get(cacheKey);
+      if (cachedData) {
+        return res.json({
+          message: "get all order have status:accept from cache",
+          data: JSON.parse(cachedData),
+        });
+      }
     }
 
     const data = await Order.findAll({
@@ -334,8 +336,6 @@ export const planningOrder = async (req, res) => {
       }
     }
 
-    await redisCache.del(`planning:machine:${chooseMachine}`);
-
     return res.status(201).json({
       message: "Đã tạo kế hoạch thành công.",
       planning: [paperPlan, boxPlan].filter(Boolean),
@@ -350,26 +350,35 @@ export const planningOrder = async (req, res) => {
 
 //get planning by machine
 export const getPlanningByMachine = async (req, res) => {
-  const { machine, refresh = false } = req.query;
+  const { machine } = req.query;
 
   if (!machine) {
     return res.status(400).json({ message: "Missing 'machine' query parameter" });
   }
 
+  const { paper } = CacheManager.keys.planning;
+  const cacheKey = paper.machine(machine);
+
   try {
-    const cacheKey = `planning:machine:${machine}`;
+    const { isChanged } = await CacheManager.check(
+      [
+        { model: PlanningPaper },
+        { model: timeOverflowPlanning, where: { planningId: { [Op.ne]: null } } },
+      ],
+      "planningPaper"
+    );
 
-    //refresh cache
-    if (refresh === "true") {
-      await redisCache.del(cacheKey);
-    }
-
-    const cachedData = await redisCache.get(cacheKey);
-    if (cachedData) {
-      return res.json({
-        message: `get all cache planning:machine:${machine}`,
-        data: JSON.parse(cachedData),
-      });
+    if (isChanged) {
+      await CacheManager.clearPlanningPaper();
+    } else {
+      const cachedData = await redisCache.get(cacheKey);
+      if (cachedData) {
+        console.log("✅ Data PlanningPaper from Redis");
+        return res.json({
+          message: `get all cache planning:machine:${machine}`,
+          data: JSON.parse(cachedData),
+        });
+      }
     }
 
     const data = await getPlanningByMachineSorted(machine);
@@ -550,44 +559,6 @@ const getPlanningByMachineSorted = async (machine) => {
   }
 };
 
-//change planning machine
-export const changeMachinePlanning = async (req, res) => {
-  const { planningIds, newMachine } = req.body;
-  try {
-    if (!Array.isArray(planningIds) || planningIds.length === 0) {
-      return res.status(400).json({ message: "Missing or invalid planningIds" });
-    }
-
-    const plannings = await PlanningPaper.findAll({
-      where: {
-        planningId: { [Op.in]: planningIds },
-      },
-    });
-
-    if (plannings.length === 0) {
-      return res.status(404).json({ message: "No planning found" });
-    }
-
-    const oldMachine = plannings[0].chooseMachine;
-    const cacheOldKey = `planning:machine:${oldMachine}`;
-    const cacheNewKey = `planning:machine:${newMachine}`;
-
-    for (const planning of plannings) {
-      planning.chooseMachine = newMachine;
-      planning.sortPlanning = null;
-      await planning.save();
-    }
-
-    await redisCache.del(cacheOldKey);
-    await redisCache.del(cacheNewKey);
-
-    res.status(200).json({ message: "Change machine complete", plannings });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
 //get by orderId
 export const getPlanningByOrderId = async (req, res) => {
   const { orderId, machine } = req.query;
@@ -596,9 +567,10 @@ export const getPlanningByOrderId = async (req, res) => {
     return res.status(400).json({ message: "Thiếu machine hoặc orderId" });
   }
 
-  try {
-    const cacheKey = `planning:machine:${machine}`;
+  const { paper } = CacheManager.keys.planning;
+  const cacheKey = paper.machine(machine);
 
+  try {
     const cachedData = await redisCache.get(cacheKey);
     if (cachedData) {
       console.log("✅ Data planning from Redis");
@@ -668,8 +640,8 @@ export const getPlanningByOrderId = async (req, res) => {
       data: planning,
     });
   } catch (error) {
-    console.error("❌ Lỗi khi tìm orderId:", error.message);
-    res.status(500).json({ message: "Server error" });
+    console.error("❌ Lỗi khi tìm orderId:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
@@ -683,6 +655,37 @@ export const getPlanningByFlute = async (req, res) => getPlanningPaperByField(re
 //get by ghepKho
 export const getPlanningByGhepKho = async (req, res) =>
   getPlanningPaperByField(req, res, "ghepKho");
+
+//change planning machine
+export const changeMachinePlanning = async (req, res) => {
+  const { planningIds, newMachine } = req.body;
+  try {
+    if (!Array.isArray(planningIds) || planningIds.length === 0) {
+      return res.status(400).json({ message: "Missing or invalid planningIds" });
+    }
+
+    const plannings = await PlanningPaper.findAll({
+      where: {
+        planningId: { [Op.in]: planningIds },
+      },
+    });
+
+    if (plannings.length === 0) {
+      return res.status(404).json({ message: "No planning found" });
+    }
+
+    for (const planning of plannings) {
+      planning.chooseMachine = newMachine;
+      planning.sortPlanning = null;
+      await planning.save();
+    }
+
+    res.status(200).json({ message: "Change machine complete", plannings });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
 //pause or accept lack of qty
 export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
@@ -838,7 +841,6 @@ export const updateIndex_TimeRunning = async (req, res) => {
   }
 
   const transaction = await PlanningPaper.sequelize.transaction();
-  const cacheKey = `planning:machine:${machine}`;
 
   try {
     // 1️⃣ Cập nhật sortPlanning
@@ -871,7 +873,6 @@ export const updateIndex_TimeRunning = async (req, res) => {
     });
 
     await transaction.commit();
-    await redisCache.del(cacheKey);
 
     // 5️⃣ Phát socket
     const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;

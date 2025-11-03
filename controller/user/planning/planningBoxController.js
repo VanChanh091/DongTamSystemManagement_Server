@@ -19,30 +19,41 @@ import {
   isDuringBreak,
   setTimeOnDay,
 } from "../../../utils/helper/modelHelper/planningHelper.js";
+import { CacheManager } from "../../../utils/helper/cacheManager.js";
 
 const redisCache = new Redis();
 
 //get all planning box
 export const getPlanningBox = async (req, res) => {
-  const { machine, refresh = false } = req.query;
+  const { machine } = req.query;
 
   if (!machine) {
     return res.status(400).json({ message: "Missing 'machine' query parameter" });
   }
 
+  const { box } = CacheManager.keys.planning;
+  const cacheKey = box.machine(machine);
+
   try {
-    const cacheKey = `planning:box:machine:${machine}`;
+    const { isChanged } = await CacheManager.check(
+      [
+        { model: PlanningBox },
+        { model: timeOverflowPlanning, where: { planningBoxId: { [Op.ne]: null } } },
+      ],
+      "planningBox"
+    );
 
-    if (refresh === "true") {
-      await redisCache.del(cacheKey);
-    }
-
-    const cachedData = await redisCache.get(cacheKey);
-    if (cachedData) {
-      return res.json({
-        message: `get filtered cached planning:box:machine:${machine}`,
-        data: JSON.parse(cachedData),
-      });
+    if (isChanged) {
+      await CacheManager.clearPlanningBox();
+    } else {
+      const cachedData = await redisCache.get(cacheKey);
+      if (cachedData) {
+        console.log("✅ Data PlanningBox from Redis");
+        return res.json({
+          message: `get filtered cached planning:box:machine:${machine}`,
+          data: JSON.parse(cachedData),
+        });
+      }
     }
 
     const planning = await getPlanningByMachineSorted(machine);
@@ -249,9 +260,10 @@ export const getPlanningBoxByOrderId = async (req, res) => {
     return res.status(400).json({ message: "Thiếu machine hoặc orderId" });
   }
 
-  try {
-    const cacheKey = `planning:box:machine:${machine}`;
+  const { box } = CacheManager.keys.planning;
+  const cacheKey = box.machine(machine);
 
+  try {
     const cachedData = await redisCache.get(cacheKey);
     if (cachedData) {
       console.log("✅ Data planning from Redis");
@@ -341,9 +353,6 @@ export const acceptLackQtyBox = async (req, res) => {
       }
     }
 
-    // 6) Xóa cache
-    await redisCache.del(`planning:box:machine:${machine}`);
-
     res.status(200).json({
       message: `Update status:${newStatus} successfully.`,
     });
@@ -361,7 +370,6 @@ export const updateIndex_TimeRunningBox = async (req, res) => {
   }
 
   const transaction = await PlanningBox.sequelize.transaction();
-  const cachedKey = `planning:box:machine:${machine}`;
 
   try {
     // 1. Cập nhật sortPlanning
@@ -415,7 +423,6 @@ export const updateIndex_TimeRunningBox = async (req, res) => {
     });
 
     await transaction.commit();
-    await redisCache.del(cachedKey);
 
     //socket
     const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;

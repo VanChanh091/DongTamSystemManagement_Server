@@ -12,6 +12,7 @@ import { filterReportByField } from "../../../utils/helper/modelHelper/reportHel
 import { mapReportPaperRow, reportPaperColumns } from "./mapping/reportPaperRowAndColumn.js";
 import { mapReportBoxRow, reportBoxColumns } from "./mapping/reportBoxRowAndColumn.js";
 import { exportExcelResponse } from "../../../utils/helper/excelExporter.js";
+import { CacheManager } from "../../../utils/helper/cacheManager.js";
 
 const redisCache = new Redis();
 
@@ -19,7 +20,7 @@ const redisCache = new Redis();
 
 //get all report planning paper
 export const getReportPlanningPaper = async (req, res) => {
-  const { machine, refresh = false, page = 1, pageSize = 20 } = req.query;
+  const { machine, page = 1, pageSize = 20 } = req.query;
   const currentPage = Number(page);
   const currentPageSize = Number(pageSize);
 
@@ -27,19 +28,23 @@ export const getReportPlanningPaper = async (req, res) => {
     return res.status(400).json({ message: "Missing 'machine' query parameter" });
   }
 
-  const cacheKey = `reportPaper:all:page:${currentPage}`;
-  try {
-    if (refresh === "true") {
-      await redisCache.del(cacheKey);
-    }
+  const { paper } = CacheManager.keys.report;
+  const cacheKey = paper.all(currentPage);
 
-    const cachedData = await redisCache.get(cacheKey);
-    if (cachedData) {
-      console.log("✅ Data Report Planning Paper from Redis");
-      const parsed = JSON.parse(cachedData);
-      return res
-        .status(200)
-        .json({ ...parsed, message: "Get all report planning paper from cache" });
+  try {
+    const { isChanged } = await CacheManager.check(ReportPlanningPaper, "reportPaper");
+
+    if (isChanged) {
+      await CacheManager.clearReportPaper();
+    } else {
+      const cachedData = await redisCache.get(cacheKey);
+      if (cachedData) {
+        console.log("✅ Data Report Planning Paper from Redis");
+        const parsed = JSON.parse(cachedData);
+        return res
+          .status(200)
+          .json({ ...parsed, message: "Get all report planning paper from cache" });
+      }
     }
 
     const totalOrders = await ReportPlanningPaper.count();
@@ -131,7 +136,7 @@ export const getReportPlanningPaper = async (req, res) => {
 
 //get reported paper by field
 export const getReportedPaperByField = async (req, res) => {
-  const { field, keyword, machine, page = 1, pageSize = 20, refresh = false } = req.query;
+  const { field, keyword, machine, page = 1, pageSize = 20 } = req.query;
 
   const fieldMap = {
     customerName: (report) => report?.Planning?.Order?.Customer?.customerName,
@@ -154,7 +159,6 @@ export const getReportedPaperByField = async (req, res) => {
       page,
       pageSize,
       message: `get all by ${field} from filtered cache`,
-      refresh: refresh,
     });
 
     res.status(200).json(result);
@@ -168,7 +172,7 @@ export const getReportedPaperByField = async (req, res) => {
 
 //get all report planning box
 export const getReportPlanningBox = async (req, res) => {
-  const { machine, refresh = false, page = 1, pageSize = 20 } = req.query;
+  const { machine, page = 1, pageSize = 20 } = req.query;
   const currentPage = Number(page);
   const currentPageSize = Number(pageSize);
 
@@ -176,17 +180,23 @@ export const getReportPlanningBox = async (req, res) => {
     return res.status(400).json({ message: "Missing 'machine' query parameter" });
   }
 
-  const cacheKey = `reportBox:all:page:${currentPage}`;
-  try {
-    if (refresh === "true") {
-      await redisCache.del(cacheKey);
-    }
+  const { box } = CacheManager.keys.report;
+  const cacheKey = box.all(currentPage);
 
-    const cachedData = await redisCache.get(cacheKey);
-    if (cachedData) {
-      console.log("✅ Data Report Planning Box from Redis");
-      const parsed = JSON.parse(cachedData);
-      return res.status(200).json({ ...parsed, message: "Get all report planning box from cache" });
+  try {
+    const { isChanged } = await CacheManager.check(ReportPlanningBox, "reportBox");
+
+    if (isChanged) {
+      await CacheManager.clearReportBox();
+    } else {
+      const cachedData = await redisCache.get(cacheKey);
+      if (cachedData) {
+        console.log("✅ Data Report Planning Box from Redis");
+        const parsed = JSON.parse(cachedData);
+        return res
+          .status(200)
+          .json({ ...parsed, message: "Get all report planning box from cache" });
+      }
     }
 
     const totalOrders = await ReportPlanningBox.count();
@@ -305,7 +315,7 @@ export const getReportPlanningBox = async (req, res) => {
 
 //get reported box by field
 export const getReportedBoxByField = async (req, res) => {
-  const { field, keyword, machine, page = 1, pageSize = 20, refresh = false } = req.query;
+  const { field, keyword, machine, page = 1, pageSize = 20 } = req.query;
 
   const fieldMap = {
     customerName: (report) => report?.PlanningBox?.Order?.Customer?.customerName,
@@ -328,7 +338,6 @@ export const getReportedBoxByField = async (req, res) => {
       page,
       pageSize,
       message: `get all by ${field} from filtered cache`,
-      refresh: refresh,
       isBox: true,
     });
 

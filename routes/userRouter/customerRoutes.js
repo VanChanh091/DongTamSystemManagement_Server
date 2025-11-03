@@ -1,5 +1,6 @@
 import Router from "express";
 import {
+  checkCustomerInOrders,
   createCustomer,
   deleteCustomer,
   exportExcelCustomer,
@@ -14,6 +15,7 @@ const router = Router();
 
 router.get("/", authenticate, getAllCustomer);
 router.get("/filter", authenticate, getCustomerByField);
+router.get("/orderCount", authenticate, checkCustomerInOrders);
 
 router.post("/exportExcel", authenticate, exportExcelCustomer);
 router.post("/", authenticate, authorizeAnyPermission(["sale"]), createCustomer);

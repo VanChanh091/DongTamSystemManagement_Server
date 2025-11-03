@@ -8,6 +8,7 @@ import ReportPlanningBox from "../../../models/report/reportPlanningBox.js";
 import PlanningBox from "../../../models/planning/planningBox.js";
 import PlanningBoxTime from "../../../models/planning/planningBoxMachineTime.js";
 import { Op } from "sequelize";
+import { CacheManager } from "../cacheManager.js";
 
 const redisCache = new Redis();
 
@@ -19,18 +20,15 @@ export const filterReportByField = async ({
   pageSize,
   message,
   isBox = false,
-  refresh = false,
 }) => {
   const currentPage = Number(page) || 1;
   const currentPageSize = Number(pageSize) || 20;
   const lowerKeyword = keyword?.toLowerCase?.() || "";
 
-  const cacheKey = isBox ? "reportBox:search:all" : "reportPaper:search:all";
+  const { paper, box } = CacheManager.keys.report;
+  const cacheKey = isBox ? box.search : paper.search;
 
   try {
-    if (refresh == "true") {
-      await redisCache.del(cacheKey);
-    }
     let allReports = await redisCache.get(cacheKey);
     let sourceMessage = "";
 
@@ -43,13 +41,13 @@ export const filterReportByField = async ({
       sourceMessage = message;
     }
 
-    //check both string and number
+    // Lọc dữ liệu
     const filteredReports = allReports.filter((report) => {
       const fieldValue = getFieldValue(report);
-      if (fieldValue == null) return false;
-      return String(fieldValue).toLowerCase().includes(lowerKeyword);
+      return fieldValue != null ? String(fieldValue).toLowerCase().includes(lowerKeyword) : false;
     });
 
+    // Phân trang
     const totalReports = filteredReports.length;
     const totalPages = Math.ceil(totalReports / currentPageSize);
     const offset = (currentPage - 1) * currentPageSize;

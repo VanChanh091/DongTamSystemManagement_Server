@@ -8,35 +8,32 @@ import {
   employeeColumns,
   mappingEmployeeRow,
 } from "../../../utils/mapping/employeeRowAndColumn.js";
+import { CacheManager } from "../../../utils/helper/cacheManager.js";
 
 const redisCache = new Redis();
 
 //get all
 export const getAllEmployees = async (req, res) => {
-  const { page = 1, pageSize = 20, refresh = false, noPaging = false } = req.query;
+  const { page = 1, pageSize = 20, noPaging = false } = req.query;
   const currentPage = Number(page);
   const currentPageSize = Number(pageSize);
   const noPagingMode = noPaging === "true";
 
-  const cacheKey = noPaging === "true" ? "employees:all" : `employees:all:page:${currentPage}`;
+  const { employee } = CacheManager.keys;
+  const cacheKey = noPaging === "true" ? employee.all : employee.page(currentPage);
 
   try {
-    if (refresh === "true") {
-      if (noPaging === "true") {
-        await redisCache.del(cacheKey);
-      } else {
-        const keys = await redisCache.keys("employees:all:page:*");
-        if (keys.length > 0) {
-          await redisCache.del(...keys);
-        }
-      }
-    }
+    const { isChanged } = await CacheManager.check(EmployeeBasicInfo, "employee");
 
-    const cachedData = await redisCache.get(cacheKey);
-    if (cachedData) {
-      console.log("✅ Data Employees from Redis");
-      const parsed = JSON.parse(cachedData);
-      return res.status(200).json({ ...parsed, message: "Get all employees from cache" });
+    if (isChanged) {
+      await CacheManager.clearEmployee();
+    } else {
+      const cachedData = await redisCache.get(cacheKey);
+      if (cachedData) {
+        console.log("✅ Data Employees from Redis");
+        const parsed = JSON.parse(cachedData);
+        return res.status(200).json({ ...parsed, message: "Get all employees from cache" });
+      }
     }
 
     let data, totalPages;
@@ -104,10 +101,12 @@ export const getEmployeesByField = async (req, res) => {
     return res.status(400).json({ message: "Invalid field parameter" });
   }
 
+  const { employee } = CacheManager.keys;
+
   try {
     const result = await filterDataFromCache({
       model: EmployeeBasicInfo,
-      cacheKey: "employees:search:all",
+      cacheKey: employee.search,
       keyword: keyword,
       getFieldValue: fieldMap[field],
       page,
@@ -153,8 +152,6 @@ export const createEmployee = async (req, res) => {
     );
 
     await transaction.commit();
-    await redisCache.del("employees:all:page:*");
-    await redisCache.del("employees:search:all");
 
     const createdEmployee = await EmployeeBasicInfo.findOne({
       where: { employeeId: newBasicInfo.employeeId },
@@ -201,8 +198,6 @@ export const updateEmployee = async (req, res) => {
     }
 
     await transaction.commit();
-    await redisCache.del("employees:all:page:*");
-    await redisCache.del("employees:search:all");
 
     const updatedEmployee = await EmployeeBasicInfo.findOne({
       where: { employeeId: employeeId },
@@ -243,8 +238,6 @@ export const deleteEmployee = async (req, res) => {
     await employee.destroy({ transaction });
 
     await transaction.commit();
-    await redisCache.del("employees:all:page:*");
-    await redisCache.del("employees:search:all");
 
     return res.status(200).json({
       message: "delete employee successfully",

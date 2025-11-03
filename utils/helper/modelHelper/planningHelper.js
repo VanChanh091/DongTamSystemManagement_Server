@@ -4,6 +4,7 @@ import Order from "../../../models/order/order.js";
 import Customer from "../../../models/customer/customer.js";
 import PlanningPaper from "../../../models/planning/planningPaper.js";
 import PlanningBox from "../../../models/planning/planningBox.js";
+import { CacheManager } from "../cacheManager.js";
 
 const redisCache = new Redis();
 
@@ -18,9 +19,10 @@ export const getPlanningPaperByField = async (req, res, field) => {
     });
   }
 
-  try {
-    const cacheKey = `planning:machine:${machine}`;
+  const { paper } = CacheManager.keys.planning;
+  const cacheKey = paper.machine(machine);
 
+  try {
     const cachedData = await redisCache.get(cacheKey);
     if (cachedData) {
       const parsed = JSON.parse(cachedData);
@@ -45,6 +47,7 @@ export const getPlanningPaperByField = async (req, res, field) => {
 
     // Build query nếu không có cache
     const whereClause = { chooseMachine: machine };
+
     if (field === "ghepKho") {
       whereClause.ghepKho = value;
     }
@@ -105,9 +108,10 @@ export const getPlanningBoxByField = async (req, res, field) => {
     });
   }
 
-  try {
-    const cacheKey = `planning:box:machine:${machine}`;
+  const { box } = CacheManager.keys.planning;
+  const cacheKey = box.machine(machine);
 
+  try {
     const cachedData = await redisCache.get(cacheKey);
     if (cachedData) {
       const parsed = JSON.parse(cachedData);

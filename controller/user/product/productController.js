@@ -11,7 +11,7 @@ import {
 import { exportExcelResponse } from "../../../utils/helper/excelExporter.js";
 import { filterDataFromCache } from "../../../utils/helper/modelHelper/orderHelpers.js";
 import { mappingProductRow, productColumns } from "../../../utils/mapping/productRowAndColumn.js";
-import { checkLastChange } from "../../../utils/helper/checkLastChangeHelper.js";
+import { CacheManager } from "../../../utils/helper/cacheManager.js";
 
 const redisCache = new Redis();
 
@@ -22,21 +22,14 @@ export const getAllProduct = async (req, res) => {
   const currentPageSize = Number(pageSize);
   const noPagingMode = noPaging === "true";
 
-  const cacheKey = noPaging === "true" ? "products:all" : `products:all:page:${currentPage}`;
+  const { product } = CacheManager.keys;
+  const cacheKey = noPaging === "true" ? product.all : product.page(currentPage);
 
   try {
-    const { isChanged } = await checkLastChange(Product, "product:lastUpdated");
+    const { isChanged } = await CacheManager.check(Product, "product");
 
     if (isChanged) {
-      if (noPaging === "true") {
-        await redisCache.del(cacheKey);
-      } else {
-        const keys = await redisCache.keys("product:all:page:*");
-        if (keys.length > 0) {
-          await redisCache.del(...keys);
-        }
-        redisCache.del("products:search:all");
-      }
+      await CacheManager.clearProduct();
     } else {
       const cachedData = await redisCache.get(cacheKey);
       if (cachedData) {
@@ -97,10 +90,12 @@ export const getProductByField = async (req, res) => {
     return res.status(400).json({ message: "Invalid field parameter" });
   }
 
+  const { product } = CacheManager.keys;
+
   try {
     const result = await filterDataFromCache({
       model: Product,
-      cacheKey: "products:search:all",
+      cacheKey: product.search,
       keyword: keyword,
       getFieldValue: fieldMap[field],
       page,
@@ -172,11 +167,6 @@ export const addProduct = async (req, res) => {
 
     await transaction.commit();
 
-    const keys = await redisCache.keys("products:*");
-    if (keys.length > 0) {
-      await redisCache.del(...keys);
-    }
-
     return res.status(201).json({
       message: "Product created successfully",
       data: newProduct,
@@ -211,11 +201,6 @@ export const updateProduct = async (req, res) => {
 
     await existingProduct.update(productData);
 
-    const keys = await redisCache.keys("products:*");
-    if (keys.length > 0) {
-      await redisCache.del(...keys);
-    }
-
     return res.status(200).json({
       message: "Product updated successfully",
       data: existingProduct,
@@ -239,11 +224,6 @@ export const deleteProduct = async (req, res) => {
     const imageName = product.productImage;
 
     await product.destroy();
-
-    const keys = await redisCache.keys("products:*");
-    if (keys.length > 0) {
-      await redisCache.del(...keys);
-    }
 
     if (imageName && imageName.includes("cloudinary.com")) {
       const publicId = getCloudinaryPublicId(imageName);

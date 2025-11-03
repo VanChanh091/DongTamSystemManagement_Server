@@ -11,6 +11,7 @@ import planningBoxMachineTime from "../../../models/planning/planningBoxMachineT
 import ReportPlanningPaper from "../../../models/report/reportPlanningPaper.js";
 import ReportPlanningBox from "../../../models/report/reportPlanningBox.js";
 import { createReportPlanning } from "../../../utils/helper/modelHelper/reportHelper.js";
+import { CacheManager } from "../../../utils/helper/cacheManager.js";
 
 const redisCache = new Redis();
 
@@ -18,34 +19,35 @@ const redisCache = new Redis();
 
 //get planning machine paper
 export const getPlanningPaper = async (req, res) => {
-  const { machine, refresh = false } = req.query;
+  const { machine } = req.query;
 
   if (!machine) {
     return res.status(400).json({ message: "Missing machine query parameter" });
   }
 
+  const { paper } = CacheManager.keys.planning;
+  const cacheKey = paper.machine(machine);
+
   try {
-    const cacheKey = `planning:machine:${machine}`;
+    const { isChanged } = await CacheManager.check(
+      [
+        { model: PlanningPaper },
+        { model: timeOverflowPlanning, where: { planningId: { [Op.ne]: null } } },
+      ],
+      "planningPaper"
+    );
 
-    // refresh cache
-    if (refresh === "true") {
-      await redisCache.del(cacheKey);
-    }
-
-    const cachedData = await redisCache.get(cacheKey);
-    if (cachedData) {
-      let cachedPlannings = JSON.parse(cachedData);
-
-      const filtered = cachedPlannings.filter((item) => {
-        const matchStatus = ["planning", "lackQty", "producing"].includes(item.status);
-        const hasDayStart = item.dayStart !== null;
-        return matchStatus && hasDayStart;
-      });
-
-      return res.json({
-        message: `get filtered cache planning:machine:${machine}`,
-        data: filtered,
-      });
+    if (isChanged) {
+      await CacheManager.clearPlanningPaper();
+    } else {
+      const cachedData = await redisCache.get(cacheKey);
+      if (cachedData) {
+        console.log("✅ Data manufacture paper from Redis");
+        return res.json({
+          message: `get filtered cache planning:machine:${machine}`,
+          data: JSON.parse(cachedData),
+        });
+      }
     }
 
     const planning = await PlanningPaper.findAll({
@@ -159,8 +161,6 @@ export const addReportPaper = async (req, res) => {
   if (!planningId || !qtyProduced || !dayCompleted || !qtyWasteNorm) {
     return res.status(400).json({ message: "Missing required fields" });
   }
-
-  console.log(planningId);
 
   const transaction = await PlanningPaper.sequelize.transaction();
   try {
@@ -289,7 +289,6 @@ export const addReportPaper = async (req, res) => {
 
     //4. Commit + clear cache
     await transaction.commit();
-    await redisCache.del(`planning:machine:${machine}`);
 
     res.status(200).json({
       message: "Add Report Production successfully",
@@ -361,7 +360,6 @@ export const confirmProducingPaper = async (req, res) => {
 
     //clear cache
     await transaction.commit();
-    await redisCache.del(`planning:machine:${machine}`);
 
     res.status(200).json({
       message: "Confirm producing paper successfully",
@@ -378,37 +376,34 @@ export const confirmProducingPaper = async (req, res) => {
 
 //get all planning box
 export const getPlanningBox = async (req, res) => {
-  const { machine, refresh = false } = req.query;
+  const { machine } = req.query;
 
   if (!machine) {
     return res.status(400).json({ message: "Missing 'machine' query parameter" });
   }
 
+  const { box } = CacheManager.keys.planning;
+  const cacheKey = box.machine(machine);
   try {
-    const cacheKey = `planning:box:machine:${machine}`;
+    const { isChanged } = await CacheManager.check(
+      [
+        { model: PlanningBox },
+        { model: timeOverflowPlanning, where: { planningBoxId: { [Op.ne]: null } } },
+      ],
+      "planningBox"
+    );
 
-    // refresh cache
-    if (refresh === "true") {
-      await redisCache.del(cacheKey);
-    }
-
-    const cachedData = await redisCache.get(cacheKey);
-    if (cachedData) {
-      let cachedPlannings = JSON.parse(cachedData);
-
-      const filtered = cachedPlannings.filter((item) => {
-        const hasValidStatus = item.boxTimes.some((boxTimes) =>
-          ["planning", "lackOfQty", "producing"].includes(boxTimes.status)
-        );
-        const hasDayStart = item.dayStart !== null;
-
-        return hasValidStatus && hasDayStart;
-      });
-
-      return res.json({
-        message: `get filtered cached planning:box:machine:${machine}`,
-        data: filtered,
-      });
+    if (isChanged) {
+      await CacheManager.clearPlanningBox();
+    } else {
+      const cachedData = await redisCache.get(cacheKey);
+      if (cachedData) {
+        console.log("✅ Data manufacture box from Redis");
+        return res.json({
+          message: `get filtered cached planning:box:machine:${machine}`,
+          data: JSON.parse(cachedData),
+        });
+      }
     }
 
     const planning = await PlanningBox.findAll({
@@ -683,7 +678,6 @@ export const addReportBox = async (req, res) => {
 
     // 4. Commit + clear cache
     await transaction.commit();
-    await redisCache.del(`planning:box:machine:${machine}`);
 
     res.status(200).json({
       message: "Add Report Production successfully",
@@ -762,9 +756,6 @@ export const confirmProducingBox = async (req, res) => {
     await planning.update({ status: "producing" }, { transaction });
 
     await transaction.commit();
-
-    // Clear cache sau khi commit
-    await redisCache.del(`planning:box:machine:${machine}`);
 
     return res.status(200).json({
       message: "Confirm producing box successfully",

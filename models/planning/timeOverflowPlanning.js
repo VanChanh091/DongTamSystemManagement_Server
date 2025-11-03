@@ -15,9 +15,7 @@ const timeOverflowPlanning = sequelize.define(
       get() {
         const rawValue = this.getDataValue("overflowDayCompleted");
         if (!rawValue) return null;
-        return new Date(
-          rawValue.getTime() - rawValue.getTimezoneOffset() * 60000
-        ).toISOString();
+        return new Date(rawValue.getTime() - rawValue.getTimezoneOffset() * 60000).toISOString();
       },
     },
     overflowTimeRunning: { type: DataTypes.TIME },
