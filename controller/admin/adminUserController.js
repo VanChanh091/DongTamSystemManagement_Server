@@ -1,33 +1,13 @@
 import bcrypt from "bcrypt";
-import Redis from "ioredis";
 import User from "../../models/user/user.js";
 import cloudinary from "../../configs/connectCloudinary.js";
 import { col, fn, Op, where } from "sequelize";
 import { validPermissions } from "../../configs/machineLabels.js";
 import { getCloudinaryPublicId } from "../../utils/image/converToWebp.js";
 
-const redisCache = new Redis();
-
 //get all users
 export const getAllUsers = async (req, res) => {
-  const { refresh = false } = req.query;
   try {
-    const cacheKey = "users:all";
-
-    //refresh cache
-    if (refresh === "true") {
-      await redisCache.del(cacheKey);
-    }
-
-    const cachedData = await redisCache.get(cacheKey);
-    if (cachedData) {
-      console.log("✅ Data users from Redis");
-      return res.status(200).json({
-        message: "Get all users from cache",
-        data: JSON.parse(cachedData),
-      });
-    }
-
     const data = await User.findAll();
 
     const sanitizedData = data
@@ -35,9 +15,7 @@ export const getAllUsers = async (req, res) => {
         const { password, ...sanitizedUser } = user.toJSON();
         return sanitizedUser;
       })
-      .filter((user) => user.role.toLowerCase() !== "admin"); // Loại bỏ admin
-
-    await redisCache.set(cacheKey, JSON.stringify(sanitizedData), "EX", 1800);
+      .filter((user) => user.role.toLowerCase() !== "admin"); // Loại bỏ role:admin
 
     res.status(200).json({
       message: "Get all users successfully (excluding admin)",
@@ -195,8 +173,6 @@ export const updateUserRole = async (req, res) => {
     const sanitizedData = user.toJSON();
     delete sanitizedData.password;
 
-    await redisCache.del("users:all");
-
     res.status(200).json({
       message: "User role updated successfully",
       data: sanitizedData,
@@ -235,8 +211,6 @@ export const updatePermissions = async (req, res) => {
     user.permissions = permissions;
     await user.save();
 
-    await redisCache.del("users:all");
-
     res.status(200).json({
       message: "Permissions updated successfully",
       userId: user.userId,
@@ -267,8 +241,6 @@ export const deleteUserById = async (req, res) => {
         await cloudinary.uploader.destroy(publicId);
       }
     }
-
-    await redisCache.del("users:all");
 
     res.status(200).json({
       message: "User deleted successfully",

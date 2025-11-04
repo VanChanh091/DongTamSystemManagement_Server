@@ -1,4 +1,3 @@
-import Redis from "ioredis";
 import ReportPlanningPaper from "../../../models/report/reportPlanningPaper.js";
 import PlanningPaper from "../../../models/planning/planningPaper.js";
 import Order from "../../../models/order/order.js";
@@ -9,8 +8,7 @@ import PlanningBox from "../../../models/planning/planningBox.js";
 import PlanningBoxTime from "../../../models/planning/planningBoxMachineTime.js";
 import { Op } from "sequelize";
 import { CacheManager } from "../cacheManager.js";
-
-const redisCache = new Redis();
+import redisCache from "../../../configs/redisCache.js";
 
 export const filterReportByField = async ({
   keyword,

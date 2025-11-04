@@ -1,4 +1,3 @@
-import Redis from "ioredis";
 import PlanningPaper from "../../models/planning/planningPaper.js";
 import PlanningBox from "../../models/planning/planningBox.js";
 import PlanningBoxTime from "../../models/planning/planningBoxMachineTime.js";
@@ -9,8 +8,7 @@ import Box from "../../models/order/box.js";
 import Product from "../../models/product/product.js";
 import User from "../../models/user/user.js";
 import { Op } from "sequelize";
-
-const redisCache = new Redis();
+import redisCache from "../../configs/redisCache.js";
 
 //=============================PAPER===================================
 

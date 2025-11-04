@@ -1,6 +1,4 @@
-import Redis from "ioredis";
-
-const redisCache = new Redis();
+import redisCache from "../../configs/redisCache.js";
 
 export const checkLastChange = async (models, cacheKey) => {
   //truyền 1 model hoặc nhiều model
@@ -23,13 +21,16 @@ export const checkLastChange = async (models, cacheKey) => {
     })
   );
 
-  console.log(
-    "🔍 last changes by model:",
-    modelArray.map((item, i) => ({
-      model: item.model ? item.model.name : item.name,
-      last: new Date(lastChanges[i]).toISOString(),
-    }))
-  );
+  console.log(`lastChanges: ${lastChanges}`);
+  console.log(`cacheKey: ${cacheKey}`);
+
+  // console.log(
+  //   "🔍 last changes by model:",
+  //   modelArray.map((item, i) => ({
+  //     model: item.model ? item.model.name : item.name,
+  //     last: new Date(lastChanges[i]).toISOString(),
+  //   }))
+  // );
 
   // Lấy timestamp mới nhất trong tất cả bảng
   const latestChange = Math.max(...lastChanges);
@@ -39,8 +40,15 @@ export const checkLastChange = async (models, cacheKey) => {
   const lastCached = await redisCache.get(cacheKey);
   const isChanged = lastCached !== lastChangeISO;
 
+  console.log(`lastCached: ${lastCached}`);
+  console.log(`lastChangeISO: ${lastChangeISO}`);
+  console.log(`isChanged: ${isChanged}`);
+
   if (isChanged) {
     await redisCache.set(cacheKey, lastChangeISO);
+
+    const check = await redisCache.get(cacheKey);
+    console.log("🧩 Verify after set:", check);
   }
 
   return { isChanged, lastChange: lastChangeISO };

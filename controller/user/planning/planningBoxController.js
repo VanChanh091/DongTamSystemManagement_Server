@@ -1,4 +1,3 @@
-import Redis from "ioredis";
 import { Op } from "sequelize";
 import Order from "../../../models/order/order.js";
 import Customer from "../../../models/customer/customer.js";
@@ -20,8 +19,7 @@ import {
   setTimeOnDay,
 } from "../../../utils/helper/modelHelper/planningHelper.js";
 import { CacheManager } from "../../../utils/helper/cacheManager.js";
-
-const redisCache = new Redis();
+import redisCache from "../../../configs/redisCache.js";
 
 //get all planning box
 export const getPlanningBox = async (req, res) => {

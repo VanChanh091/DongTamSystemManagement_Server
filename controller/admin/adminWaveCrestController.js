@@ -1,29 +1,11 @@
-import Redis from "ioredis";
 import WaveCrestCoefficient from "../../models/admin/waveCrestCoefficient.js";
-
-const redisCache = new Redis();
 
 //get all wave crest coefficient
 export const getAllWaveCrestCoefficient = async (req, res) => {
   try {
-    const cacheKey = "waveCrest:all";
-
-    const cachedData = await redisCache.get(cacheKey);
-    if (cachedData) {
-      console.log("✅ Data wave crest coefficient from Redis");
-      return res.status(200).json({
-        message: "Get all wave crest coefficient from cache",
-        data: JSON.parse(cachedData),
-      });
-    }
-
     const data = await WaveCrestCoefficient.findAll();
 
-    await redisCache.set(cacheKey, JSON.stringify(data), "EX", 1800);
-
-    res
-      .status(200)
-      .json({ message: "get all wave crest coefficient successfully", data });
+    res.status(200).json({ message: "get all wave crest coefficient successfully", data });
   } catch (error) {
     console.error("failed to get all wave crest coefficient", error.message);
     res.status(500).json({ message: "server error" });
@@ -34,22 +16,8 @@ export const getAllWaveCrestCoefficient = async (req, res) => {
 //use to get id for update
 export const getWaveCrestById = async (req, res) => {
   const { waveCrestId } = req.query;
+
   try {
-    const cacheKey = "waveCrest:all";
-
-    const cachedData = await redisCache.get(cacheKey);
-    if (cachedData) {
-      console.log("✅ Data wave crest from Redis");
-      const parsedData = JSON.parse(cachedData);
-      const filteredData = parsedData.filter(
-        (item) => item.waveCrestCoefficientId == waveCrestId
-      );
-      return res.status(200).json({
-        message: "Get all wave crest from cache",
-        data: filteredData,
-      });
-    }
-
     const waveCrest = await WaveCrestCoefficient.findByPk(waveCrestId);
     if (!waveCrest) {
       return res.status(404).json({ message: "wave crest not found" });
@@ -60,10 +28,7 @@ export const getWaveCrestById = async (req, res) => {
       data: waveCrest,
     });
   } catch (error) {
-    console.error(
-      `failed to get wave crest by waveCrestId:${waveCrestId}`,
-      error.message
-    );
+    console.error(`failed to get wave crest by waveCrestId:${waveCrestId}`, error.message);
     res.status(500).json({ message: "server error" });
   }
 };
@@ -74,13 +39,9 @@ export const createWaveCrestCoefficient = async (req, res) => {
 
   const transaction = await WaveCrestCoefficient.sequelize.transaction();
   try {
-    const newWaveCrest = await WaveCrestCoefficient.create(
-      { ...waveCrest },
-      { transaction }
-    );
+    const newWaveCrest = await WaveCrestCoefficient.create({ ...waveCrest }, { transaction });
 
     await transaction.commit();
-    await redisCache.del("waveCrest:all");
 
     res.status(200).json({
       message: "create wave crest coefficient successfully",
@@ -97,19 +58,16 @@ export const createWaveCrestCoefficient = async (req, res) => {
 export const updateWaveCrestById = async (req, res) => {
   const { waveCrestId } = req.query;
   const { ...waveCrestUpdated } = req.body;
+
   try {
     const existingWaveCrest = await WaveCrestCoefficient.findByPk(waveCrestId);
     if (!existingWaveCrest) {
-      return res
-        .status(404)
-        .json({ message: "wave crest coefficient not found" });
+      return res.status(404).json({ message: "wave crest coefficient not found" });
     }
 
     await existingWaveCrest.update({
       ...waveCrestUpdated,
     });
-
-    await redisCache.del("waveCrest:all");
 
     res.status(200).json({
       message: "update wave crest coefficient successfully",
@@ -124,16 +82,14 @@ export const updateWaveCrestById = async (req, res) => {
 //delete wave crest coefficient
 export const deleteWaveCrestById = async (req, res) => {
   const { waveCrestId } = req.query;
+
   try {
     const waveCrest = await WaveCrestCoefficient.findByPk(waveCrestId);
     if (!waveCrest) {
-      return res
-        .status(404)
-        .json({ message: "wave crest coefficient not found" });
+      return res.status(404).json({ message: "wave crest coefficient not found" });
     }
 
     await waveCrest.destroy();
-    await redisCache.del("waveCrest:all");
 
     res.status(200).json({
       message: `delete waveCrestCoefficientId:${waveCrestId} successfully`,

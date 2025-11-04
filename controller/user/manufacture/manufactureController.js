@@ -1,4 +1,3 @@
-import Redis from "ioredis";
 import { Op } from "sequelize";
 import { machineLabels } from "../../../configs/machineLabels.js";
 import PlanningPaper from "../../../models/planning/planningPaper.js";
@@ -12,8 +11,7 @@ import ReportPlanningPaper from "../../../models/report/reportPlanningPaper.js";
 import ReportPlanningBox from "../../../models/report/reportPlanningBox.js";
 import { createReportPlanning } from "../../../utils/helper/modelHelper/reportHelper.js";
 import { CacheManager } from "../../../utils/helper/cacheManager.js";
-
-const redisCache = new Redis();
+import redisCache from "../../../configs/redisCache.js";
 
 //===============================MANUFACTURE PAPER=====================================
 
@@ -267,7 +265,7 @@ export const addReportPaper = async (req, res) => {
     });
 
     const totalQtyProduced = allPlans.reduce((sum, p) => sum + Number(p.qtyProduced || 0), 0);
-    const qtyManufacture = planning.Order?.quantityManufacture || 0;
+    const qtyManufacture = planning.Order?.quantityCustomer || 0;
 
     if (totalQtyProduced >= qtyManufacture) {
       await Order.update(

@@ -1,19 +1,13 @@
 import User from "../../../models/user/user.js";
 import bcrypt from "bcrypt";
-import {
-  convertToWebp,
-  uploadImageToCloudinary,
-} from "../../../utils/image/converToWebp.js";
-import Redis from "ioredis";
-
-const redisCache = new Redis();
+import { convertToWebp, uploadImageToCloudinary } from "../../../utils/image/converToWebp.js";
+import redisCache from "../../../configs/redisCache.js";
 
 export const updateProfileUser = async (req, res) => {
   const { userId } = req.query;
   const { newPassword, userUpdated } = req.body;
 
-  const parsedUser =
-    typeof userUpdated === "string" ? JSON.parse(userUpdated) : userUpdated;
+  const parsedUser = typeof userUpdated === "string" ? JSON.parse(userUpdated) : userUpdated;
 
   try {
     const user = await User.findByPk(userId);
@@ -39,11 +33,7 @@ export const updateProfileUser = async (req, res) => {
         .replace(/[^\w\-]/g, ""); // bỏ ký tự đặc biệt
 
       const fileName = `${sanitizeName}-userId:${userId}`;
-      const result = await uploadImageToCloudinary(
-        webpBuffer,
-        "users",
-        fileName
-      );
+      const result = await uploadImageToCloudinary(webpBuffer, "users", fileName);
 
       parsedUser.avatar = result.secure_url;
     }

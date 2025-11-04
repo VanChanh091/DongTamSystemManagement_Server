@@ -1,4 +1,3 @@
-import Redis from "ioredis";
 import {
   cachedStatus,
   filterOrdersFromCache,
@@ -11,8 +10,7 @@ import {
 } from "../../../service/orderService.js";
 import Order from "../../../models/order/order.js";
 import { CacheManager } from "../../../utils/helper/cacheManager.js";
-
-const redisCache = new Redis();
+import redisCache from "../../../configs/redisCache.js";
 
 //===============================ACCEPT AND PLANNING=====================================
 
@@ -36,9 +34,10 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
     } else {
       const cachedData = await redisCache.get(cacheKey);
       if (cachedData) {
+        console.log("✅ Data Order accept_planning from Redis");
         const parsed = JSON.parse(cachedData);
         return res.status(200).json({
-          message: "✅ Get Order from Redis",
+          message: "Get Order from cache",
           ...parsed,
         });
       }
@@ -136,6 +135,7 @@ export const getOrderPendingAndReject = async (req, res) => {
       );
 
       if (cachedResult) {
+        console.log("✅ Data Order pending_reject from Redis");
         return res.status(200).json({
           message: "Get Order from cache",
           data: cachedResult,

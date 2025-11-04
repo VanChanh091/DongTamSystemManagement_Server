@@ -1,4 +1,3 @@
-import Redis from "ioredis";
 import Product from "../../../models/product/product.js";
 import cloudinary from "../../../configs/connectCloudinary.js";
 import { Op, Sequelize } from "sequelize";
@@ -12,8 +11,7 @@ import { exportExcelResponse } from "../../../utils/helper/excelExporter.js";
 import { filterDataFromCache } from "../../../utils/helper/modelHelper/orderHelpers.js";
 import { mappingProductRow, productColumns } from "../../../utils/mapping/productRowAndColumn.js";
 import { CacheManager } from "../../../utils/helper/cacheManager.js";
-
-const redisCache = new Redis();
+import redisCache from "../../../configs/redisCache.js";
 
 //get all product
 export const getAllProduct = async (req, res) => {

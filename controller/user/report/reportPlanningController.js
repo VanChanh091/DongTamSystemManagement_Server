@@ -1,4 +1,3 @@
-import Redis from "ioredis";
 import { Op } from "sequelize";
 import Order from "../../../models/order/order.js";
 import Box from "../../../models/order/box.js";
@@ -13,8 +12,7 @@ import { mapReportPaperRow, reportPaperColumns } from "./mapping/reportPaperRowA
 import { mapReportBoxRow, reportBoxColumns } from "./mapping/reportBoxRowAndColumn.js";
 import { exportExcelResponse } from "../../../utils/helper/excelExporter.js";
 import { CacheManager } from "../../../utils/helper/cacheManager.js";
-
-const redisCache = new Redis();
+import redisCache from "../../../configs/redisCache.js";
 
 //===============================REPORT PAPER=====================================
 

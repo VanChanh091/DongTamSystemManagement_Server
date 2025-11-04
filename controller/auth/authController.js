@@ -1,13 +1,11 @@
 import asyncHandler from "express-async-handler";
 import User from "../../models/user/user.js";
 import bcrypt from "bcrypt";
-import Redis from "ioredis";
 import sendEmail from "../../utils/sendMail.js";
 import generateToken from "../../middlewares/jwtHelper.js";
 import dotenv from "dotenv";
+import redisCache from "../../configs/redisCache.js";
 dotenv.config();
-
-const redis = new Redis();
 
 const handleSendEmail = async (email, otp) => {
   try {
@@ -22,7 +20,7 @@ const handleSendEmail = async (email, otp) => {
 };
 
 const checkExistAndMatchOtp = async (email, otpInput) => {
-  const redisUser = await redis.get(`user:${email}`);
+  const redisUser = await redisCache.get(`user:${email}`);
   if (!redisUser) {
     return { success: false, message: "OTP đã hết hạn" };
   }
@@ -43,7 +41,7 @@ export const getOtpCode = asyncHandler(async (req, res) => {
   const userData = JSON.stringify({ email, otp });
 
   //save new data user into Redis in 5m
-  await redis.setex(`user:${email}`, 600, userData);
+  await redisCache.setex(`user:${email}`, 600, userData);
 
   // Send OTP email
   handleSendEmail(email, otp);
@@ -77,8 +75,8 @@ export const register = asyncHandler(async (req, res) => {
     password: hashedPassword,
   });
 
-  await redis.del(`user:${email}`);
-  await redis.del("users:all");
+  await redisCache.del(`user:${email}`);
+  await redisCache.del("users:all");
 
   return res.status(201).json({ message: "Đăng ký thành công!" });
 });
@@ -130,7 +128,7 @@ export const changePassword = asyncHandler(async (req, res) => {
   const { email, newPassword, confirmNewPW } = req.body;
 
   // Tìm email trong Redis
-  const redisData = await redis.get(`user:${email}`);
+  const redisData = await redisCache.get(`user:${email}`);
   if (!redisData) {
     return res.status(401).json({ message: "Email đã hết hạn hoặc không hợp lệ" });
   }
@@ -144,7 +142,7 @@ export const changePassword = asyncHandler(async (req, res) => {
 
   await User.update({ password: hashedPassword }, { where: { email: email } });
 
-  await redis.del(`user:${email}`);
+  await redisCache.del(`user:${email}`);
 
   return res.status(201).json({ message: "Cập nhật mật khẩu thành công" });
 });

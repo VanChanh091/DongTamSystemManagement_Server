@@ -1,12 +1,10 @@
 import { Op } from "sequelize";
-import Redis from "ioredis";
 import Order from "../../../models/order/order.js";
 import Customer from "../../../models/customer/customer.js";
 import PlanningPaper from "../../../models/planning/planningPaper.js";
 import PlanningBox from "../../../models/planning/planningBox.js";
 import { CacheManager } from "../cacheManager.js";
-
-const redisCache = new Redis();
+import redisCache from "../../../configs/redisCache.js";
 
 //get planningPaper properties
 export const getPlanningPaperByField = async (req, res, field) => {

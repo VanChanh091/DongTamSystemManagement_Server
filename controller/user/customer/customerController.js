@@ -1,4 +1,3 @@
-import Redis from "ioredis";
 import Customer from "../../../models/customer/customer.js";
 import { Op, Sequelize } from "sequelize";
 import { generateNextId } from "../../../utils/helper/generateNextId.js";
@@ -10,8 +9,7 @@ import {
   mappingCustomerRow,
 } from "../../../utils/mapping/customerRowAndColumn.js";
 import { CacheManager } from "../../../utils/helper/cacheManager.js";
-
-const redisClient = new Redis();
+import redisCache from "../../../configs/redisCache.js";
 
 //get all
 export const getAllCustomer = async (req, res) => {
@@ -29,7 +27,7 @@ export const getAllCustomer = async (req, res) => {
     if (isChanged) {
       await CacheManager.clearCustomer();
     } else {
-      const cachedData = await redisClient.get(cacheKey);
+      const cachedData = await redisCache.get(cacheKey);
       if (cachedData) {
         console.log("✅ Data Customer from Redis");
         const parsed = JSON.parse(cachedData);
@@ -67,7 +65,7 @@ export const getAllCustomer = async (req, res) => {
       currentPage: noPagingMode ? 1 : currentPage,
     };
 
-    await redisClient.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+    await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
 
     res.status(200).json(responseData);
   } catch (err) {

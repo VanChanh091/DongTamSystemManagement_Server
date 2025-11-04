@@ -1,7 +1,5 @@
-import Redis from "ioredis";
+import redisCache from "../../configs/redisCache.js";
 import { checkLastChange } from "./checkLastChangeHelper.js";
-
-const redisCache = new Redis();
 
 export const CacheManager = {
   keys: {
@@ -38,7 +36,7 @@ export const CacheManager = {
     planning: {
       order: {
         all: "orders:status:accept",
-        lastUpdated: "orders:status:accept:lastUpdated",
+        lastUpdated: "orders:accept:lastUpdated",
       },
       paper: {
         machine: (machine) => `planningPaper:machine:${machine}`,
@@ -54,14 +52,16 @@ export const CacheManager = {
       paper: {
         all: (page) => `reportPaper:page:${page}`,
         search: "reportPaper:search:all",
-        lastUpdated: "reportPaper:lastUpdated",
+        lastUpdated: "report:paper:lastUpdated",
       },
       box: {
         all: (page) => `reportBox:page:${page}`,
         search: "reportBox:search:all",
-        lastUpdated: "reportBox:lastUpdated",
+        lastUpdated: "report:box:lastUpdated",
       },
     },
+
+    admin: {},
   },
 
   // Xóa toàn bộ cache theo prefix
@@ -100,7 +100,7 @@ export const CacheManager = {
   },
 
   async clearOrderAccept() {
-    await this.clearByPrefix("orders:status:accept:");
+    await this.clearByPrefix("orders:status:accept");
   },
 
   async clearPlanningPaper() {
@@ -127,17 +127,22 @@ export const CacheManager = {
       employee: this.keys.employee.lastUpdated,
       orderPending: this.keys.order.lastUpdatedPending,
       orderAccept: this.keys.order.lastUpdatedAccept,
-      planningOrderAccept: this.keys.planning.order.lastUpdated,
+      planningOrder: this.keys.planning.order.lastUpdated,
       planningPaper: this.keys.planning.paper.lastUpdated,
       planningBox: this.keys.planning.box.lastUpdated,
       reportPaper: this.keys.report.paper.lastUpdated,
       reportBox: this.keys.report.box.lastUpdated,
     };
 
+    console.log(`module: ${module}`);
+
     const key = map[module];
+    console.log(`key: ${key}`);
+
     if (!key) throw new Error(`Invalid module for checkLastChange: ${module}`);
 
     const result = await checkLastChange(models, key);
+
     console.log(`🕒 Cache check [${module}]:`, result);
     return result;
   },

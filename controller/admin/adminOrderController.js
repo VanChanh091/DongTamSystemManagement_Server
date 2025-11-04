@@ -1,12 +1,9 @@
-import Redis from "ioredis";
 import Order from "../../models/order/order.js";
 import Customer from "../../models/customer/customer.js";
 import Product from "../../models/product/product.js";
 import Box from "../../models/order/box.js";
 import User from "../../models/user/user.js";
 import { Sequelize } from "sequelize";
-
-const redisCache = new Redis();
 
 //getOrderPending
 export const getOrderPending = async (req, res) => {
@@ -45,8 +42,6 @@ export const updateStatusAdmin = async (req, res) => {
   const { newStatus, rejectReason } = req.body;
 
   try {
-    const acceptCacheKey = "orders:userId:status:accept";
-
     if (!["accept", "reject"].includes(newStatus)) {
       return res.status(400).json({ message: "Invalid status" });
     }
@@ -100,10 +95,6 @@ export const updateStatusAdmin = async (req, res) => {
     }
 
     await order.save();
-
-    if (newStatus === "accept") {
-      await redisCache.del(acceptCacheKey);
-    }
 
     res.json({ message: "Order status updated successfully", order });
   } catch (error) {

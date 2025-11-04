@@ -1,4 +1,3 @@
-import Redis from "ioredis";
 import { Op, Sequelize } from "sequelize";
 import Box from "../models/order/box.js";
 import Order from "../models/order/order.js";
@@ -12,8 +11,7 @@ import {
   validateCustomerAndProduct,
 } from "../utils/helper/modelHelper/orderHelpers.js";
 import { AppError } from "../utils/appError.js";
-
-const redisCache = new Redis();
+import redisCache from "../configs/redisCache.js";
 
 export const getOrderByStatus = async ({
   statusList,

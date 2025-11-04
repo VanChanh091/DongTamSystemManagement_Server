@@ -1,5 +1,4 @@
-import Redis from "ioredis";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 import EmployeeBasicInfo from "../../../models/employee/employeeBasicInfo.js";
 import EmployeeCompanyInfo from "../../../models/employee/employeeCompanyInfo.js";
 import { filterDataFromCache } from "../../../utils/helper/modelHelper/orderHelpers.js";
@@ -9,8 +8,7 @@ import {
   mappingEmployeeRow,
 } from "../../../utils/mapping/employeeRowAndColumn.js";
 import { CacheManager } from "../../../utils/helper/cacheManager.js";
-
-const redisCache = new Redis();
+import redisCache from "../../../configs/redisCache.js";
 
 //get all
 export const getAllEmployees = async (req, res) => {
@@ -64,6 +62,13 @@ export const getAllEmployees = async (req, res) => {
         ],
         offset: (currentPage - 1) * currentPageSize,
         limit: currentPageSize,
+        order: [
+          //lấy 4 số cuối -> ép chuỗi thành số để so sánh -> sort
+          [
+            Sequelize.literal(`CAST(RIGHT(\`companyInfo\`.\`employeeCode\`, 3) AS UNSIGNED)`),
+            "ASC",
+          ],
+        ],
       });
     }
 
@@ -79,7 +84,7 @@ export const getAllEmployees = async (req, res) => {
 
     res.status(200).json(responseData);
   } catch (error) {
-    console.error("get all employees failed:", err);
+    console.error("get all employees failed:", error);
     return res.status(500).json({ message: "Server error", error });
   }
 };

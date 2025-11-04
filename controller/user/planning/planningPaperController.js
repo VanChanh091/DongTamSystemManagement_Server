@@ -1,5 +1,4 @@
-import { Op, Sequelize, where } from "sequelize";
-import Redis from "ioredis";
+import { Op, Sequelize } from "sequelize";
 import Order from "../../../models/order/order.js";
 import Customer from "../../../models/customer/customer.js";
 import Product from "../../../models/product/product.js";
@@ -16,9 +15,8 @@ import {
   calculateTimeRunning,
   updateSortPlanning,
 } from "../../../service/planning/timeRunningService.js";
+import redisCache from "../../../configs/redisCache.js";
 import { CacheManager } from "../../../utils/helper/cacheManager.js";
-
-const redisCache = new Redis();
 
 //===============================PLANNING ORDER=====================================
 
@@ -26,8 +24,12 @@ const redisCache = new Redis();
 export const getOrderAccept = async (req, res) => {
   const { order } = CacheManager.keys.planning;
   const cacheKey = order.all;
+
+  console.log(`cacheKey: ${cacheKey}`);
+  console.log(`order: ${order}`);
+
   try {
-    const { isChanged } = await CacheManager.check(Order, "planningOrderAccept");
+    const { isChanged } = await CacheManager.check(Order, "planningOrder");
 
     if (isChanged) {
       await CacheManager.clearOrderAccept();
@@ -66,7 +68,7 @@ export const getOrderAccept = async (req, res) => {
           attributes: ["customerName", "companyName"],
         },
         { model: Product, attributes: ["typeProduct", "productName"] },
-        { model: Box, as: "box", attributes: ["boxId"] },
+        // { model: Box, as: "box", attributes: ["boxId"] },
         { model: PlanningPaper, attributes: ["planningId", "runningPlan", "qtyProduced"] },
       ],
       order: [
