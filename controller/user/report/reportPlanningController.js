@@ -8,8 +8,11 @@ import PlanningBoxTime from "../../../models/planning/planningBoxMachineTime.js"
 import PlanningBox from "../../../models/planning/planningBox.js";
 import ReportPlanningBox from "../../../models/report/reportPlanningBox.js";
 import { filterReportByField } from "../../../utils/helper/modelHelper/reportHelper.js";
-import { mapReportPaperRow, reportPaperColumns } from "./mapping/reportPaperRowAndColumn.js";
-import { mapReportBoxRow, reportBoxColumns } from "./mapping/reportBoxRowAndColumn.js";
+import {
+  mapReportPaperRow,
+  reportPaperColumns,
+} from "../../../utils/mapping/reportPaperRowAndColumn.js";
+import { mapReportBoxRow, reportBoxColumns } from "../../../utils/mapping/reportBoxRowAndColumn.js";
 import { exportExcelResponse } from "../../../utils/helper/excelExporter.js";
 import { CacheManager } from "../../../utils/helper/cacheManager.js";
 import redisCache from "../../../configs/redisCache.js";

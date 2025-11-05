@@ -54,7 +54,7 @@ export const register = asyncHandler(async (req, res) => {
 
   const existingEmail = await User.findOne({ where: { email } });
   if (existingEmail) {
-    return res.status(401).json({ message: "User already exists" });
+    return res.status(401).json({ message: "Tài khoản đã tồn tại" });
   }
 
   if (password !== confirmPW) {
@@ -63,7 +63,7 @@ export const register = asyncHandler(async (req, res) => {
 
   const otpCheck = await checkExistAndMatchOtp(email, otpInput);
   if (!otpCheck.success) {
-    return res.status(401).json({ message: otpCheck.message });
+    return res.status(401).json({ message: "Sai mã OTP" });
   }
 
   const salt = await bcrypt.genSalt(10);
@@ -76,7 +76,6 @@ export const register = asyncHandler(async (req, res) => {
   });
 
   await redisCache.del(`user:${email}`);
-  await redisCache.del("users:all");
 
   return res.status(201).json({ message: "Đăng ký thành công!" });
 });

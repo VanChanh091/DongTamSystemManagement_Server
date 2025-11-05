@@ -28,9 +28,7 @@ export const getMachinePaperById = async (req, res) => {
       return res.status(404).json({ message: "machine not found" });
     }
 
-    return res
-      .status(200)
-      .json({ message: `get machine by id:${machineId}`, data: machine });
+    return res.status(200).json({ message: `get machine by id:${machineId}`, data: machine });
   } catch (error) {
     console.error(`failed to get machine by id:${machineId}`, error.message);
     res.status(500).json({ message: "server error" });
@@ -43,16 +41,11 @@ export const createMachinePaper = async (req, res) => {
 
   const transaction = await MachinePaper.sequelize.transaction();
   try {
-    const newMachine = await MachinePaper.create(
-      { ...machine },
-      { transaction }
-    );
+    const newMachine = await MachinePaper.create({ ...machine }, { transaction });
 
     await transaction.commit();
 
-    res
-      .status(200)
-      .json({ message: "create machine successfully", data: newMachine });
+    res.status(200).json({ message: "create machine successfully", data: newMachine });
   } catch (error) {
     await transaction.rollback();
     console.error("failed to create machine", error.message);
@@ -75,9 +68,7 @@ export const updateMachinePaperById = async (req, res) => {
       ...machineUpdated,
     });
 
-    res
-      .status(200)
-      .json({ message: "update machine successfully", data: existingMachine });
+    res.status(200).json({ message: "update machine successfully", data: existingMachine });
   } catch (error) {
     console.error("failed to update machine", error.message);
     res.status(500).json({ message: "server error" });
@@ -95,9 +86,7 @@ export const deleteMachinePaperById = async (req, res) => {
 
     await machine.destroy();
 
-    res
-      .status(200)
-      .json({ message: `delete machineId:${machineId} successfully` });
+    res.status(200).json({ message: `delete machineId:${machineId} successfully` });
   } catch (error) {
     console.error("failed to delete machine", error.message);
     res.status(500).json({ message: "server error" });
@@ -124,9 +113,7 @@ export const getMachineBoxById = async (req, res) => {
   const { machineId } = req.query;
 
   if (!machineId) {
-    return res
-      .status(400)
-      .json({ message: "Missing machineId query parameter" });
+    return res.status(400).json({ message: "Missing machineId query parameter" });
   }
 
   try {
@@ -138,9 +125,7 @@ export const getMachineBoxById = async (req, res) => {
       return res.status(404).json({ message: "machine not found" });
     }
 
-    return res
-      .status(200)
-      .json({ message: `get machine by id:${machineId}`, data: machine });
+    return res.status(200).json({ message: `get machine by id:${machineId}`, data: machine });
   } catch (error) {
     console.error(`failed to get machine by id:${machineId}`, error.message);
     res.status(500).json({ message: "server error" });
@@ -157,9 +142,7 @@ export const createMachineBox = async (req, res) => {
 
     await transaction.commit();
 
-    res
-      .status(200)
-      .json({ message: "create machine successfully", data: newMachine });
+    res.status(200).json({ message: "create machine successfully", data: newMachine });
   } catch (error) {
     await transaction.rollback();
     console.error("failed to create machine", error.message);
@@ -182,9 +165,7 @@ export const updateMachineBoxById = async (req, res) => {
       ...machineUpdated,
     });
 
-    res
-      .status(200)
-      .json({ message: "update machine successfully", data: existingMachine });
+    res.status(200).json({ message: "update machine successfully", data: existingMachine });
   } catch (error) {
     console.error("failed to update machine", error.message);
     res.status(500).json({ message: "server error" });
@@ -202,9 +183,7 @@ export const deleteMachineBoxById = async (req, res) => {
 
     await machine.destroy();
 
-    res
-      .status(200)
-      .json({ message: `delete machineId:${machineId} successfully` });
+    res.status(200).json({ message: `delete machineId:${machineId} successfully` });
   } catch (error) {
     console.error("failed to delete machine", error.message);
     res.status(500).json({ message: "server error" });

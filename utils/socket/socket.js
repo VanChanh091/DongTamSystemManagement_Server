@@ -31,7 +31,7 @@ export const initSocket = (server) => {
       // console.log("✅ Token ok:", decoded);
       next();
     } catch (err) {
-      console.log("❌ Reject: Invalid token");
+      console.log("❌ Reject: Invalid token", err);
       return next(new Error("Authentication error: Invalid token"));
     }
   });

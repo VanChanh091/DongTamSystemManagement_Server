@@ -41,10 +41,7 @@ export const getOrderByStatus = async ({
       //1. sort theo accept -> planning
       [Sequelize.literal(`CASE WHEN status = '${statusList[0]}' THEN 0 ELSE 1 END`), "ASC"],
       //2. sort theo 3 số đầu của orderId
-      [
-        Sequelize.literal(`CAST(SUBSTRING_INDEX(\`Order\`.\`orderId\`, '/', 1) AS UNSIGNED)`),
-        "ASC",
-      ],
+      [Sequelize.literal("CAST(SUBSTRING_INDEX(`Order`.`orderId`, '/', 1) AS UNSIGNED)"), "ASC"],
       //3. nếu trùng orderId thì sort theo dateRequestShipping
       ["dateRequestShipping", "ASC"],
     ],

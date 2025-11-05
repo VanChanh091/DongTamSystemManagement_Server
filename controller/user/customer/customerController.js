@@ -52,7 +52,7 @@ export const getAllCustomer = async (req, res) => {
         limit: currentPageSize,
         order: [
           //lấy 4 số cuối -> ép chuỗi thành số để so sánh -> sort
-          [Sequelize.literal(`CAST(RIGHT(\`Customer\`.\`customerId\`, 4) AS UNSIGNED)`), "ASC"],
+          [Sequelize.literal("CAST(RIGHT(`Customer`.`customerId`, 4) AS UNSIGNED)"), "ASC"],
         ],
       });
     }
@@ -231,7 +231,7 @@ export const exportExcelCustomer = async (req, res) => {
       attributes: { exclude: ["createdAt", "updatedAt"] },
       order: [
         //lấy 4 số cuối -> ép chuỗi thành số để so sánh -> sort
-        [Sequelize.literal(`CAST(RIGHT(\`Customer\`.\`customerId\`, 4) AS UNSIGNED)`), "ASC"],
+        [Sequelize.literal("CAST(RIGHT(`Customer`.`customerId`, 4) AS UNSIGNED)"), "ASC"],
       ],
     });
 

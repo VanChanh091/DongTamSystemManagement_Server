@@ -63,11 +63,8 @@ export const getAllEmployees = async (req, res) => {
         offset: (currentPage - 1) * currentPageSize,
         limit: currentPageSize,
         order: [
-          //lấy 4 số cuối -> ép chuỗi thành số để so sánh -> sort
-          [
-            Sequelize.literal(`CAST(RIGHT(\`companyInfo\`.\`employeeCode\`, 3) AS UNSIGNED)`),
-            "ASC",
-          ],
+          //lấy 3 số cuối -> ép chuỗi thành số để so sánh -> sort
+          [Sequelize.literal("CAST(RIGHT(`companyInfo`.`employeeCode`, 3) AS UNSIGNED)"), "ASC"],
         ],
       });
     }
@@ -261,6 +258,7 @@ export const exportExcelEmployee = async (req, res) => {
   try {
     let whereCondition = {};
     if (all === "true") {
+      // no filtering; fetch all employees
     } else if (status) {
       const normalizedStatus = status.toLowerCase().trim();
       whereCondition["$companyInfo.status$"] = normalizedStatus;

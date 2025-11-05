@@ -72,10 +72,7 @@ export const getOrderAccept = async (req, res) => {
         { model: PlanningPaper, attributes: ["planningId", "runningPlan", "qtyProduced"] },
       ],
       order: [
-        [
-          Sequelize.literal(`CAST(SUBSTRING_INDEX(\`Order\`.\`orderId\`, '/', 1) AS UNSIGNED)`),
-          "ASC",
-        ],
+        [Sequelize.literal("CAST(SUBSTRING_INDEX(`Order`.`orderId`, '/', 1) AS UNSIGNED)"), "ASC"],
         ["dateRequestShipping", "ASC"],
       ],
     });
@@ -584,7 +581,7 @@ export const getPlanningByOrderId = async (req, res) => {
       );
 
       return res.json({
-        message: `Get planning by orderId from cache`,
+        message: "Get planning by orderId from cache",
         data: filteredData,
       });
     }
@@ -826,7 +823,7 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
     }
 
     res.status(200).json({
-      message: `Update status planning successfully.`,
+      message: "Update status planning successfully",
     });
   } catch (error) {
     console.log("error pause planning", error);

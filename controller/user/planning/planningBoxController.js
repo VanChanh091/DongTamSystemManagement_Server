@@ -273,7 +273,7 @@ export const getPlanningBoxByOrderId = async (req, res) => {
       });
 
       return res.json({
-        message: `Get planning by orderId from cache`,
+        message: "Get planning by orderId from cache",
         data: filteredData,
       });
     }

@@ -1,4 +1,4 @@
-import { formatterStructureOrder } from "../../../../utils/helper/modelHelper/orderHelpers.js";
+import { formatterStructureOrder } from "../helper/modelHelper/orderHelpers.js";
 
 export const reportPaperColumns = [
   { header: "STT", key: "index" },

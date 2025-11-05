@@ -12,7 +12,8 @@ export const getAllUsers = async (req, res) => {
 
     const sanitizedData = data
       .map((user) => {
-        const { password, ...sanitizedUser } = user.toJSON();
+        const { _password, ...sanitizedUser } = user.toJSON();
+
         return sanitizedUser;
       })
       .filter((user) => user.role.toLowerCase() !== "admin"); // Loại bỏ role:admin
@@ -48,7 +49,7 @@ export const getUserByName = async (req, res) => {
 
     const sanitizedUsers = users
       .map((user) => {
-        const { password, ...rest } = user.toJSON();
+        const { _password, ...rest } = user.toJSON();
         return rest;
       })
       .filter((user) => user.role.toLowerCase() !== "admin");
@@ -82,7 +83,7 @@ export const getUserByPhone = async (req, res) => {
 
     const sanitizedUsers = users
       .map((user) => {
-        const { password, ...rest } = user.toJSON();
+        const { _password, ...rest } = user.toJSON();
         return rest;
       })
       .filter((user) => user.role.toLowerCase() !== "admin");
@@ -124,7 +125,7 @@ export const getUserByPermission = async (req, res) => {
 
     const sanitizedUsers = matchedUsers
       .map((user) => {
-        const { password, ...rest } = user.toJSON();
+        const { _password, ...rest } = user.toJSON();
         return rest;
       })
       .filter((user) => user.role.toLowerCase() !== "admin");

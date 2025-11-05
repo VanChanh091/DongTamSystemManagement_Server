@@ -17,8 +17,6 @@ const MACHINE_FIELD_MAP = {
 };
 
 const validPermissions = [
-  // "all",
-  // "manager",
   "sale",
   "plan",
   "HR",

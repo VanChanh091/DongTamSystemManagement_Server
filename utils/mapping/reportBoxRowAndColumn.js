@@ -1,5 +1,5 @@
-import { MACHINE_FIELD_MAP } from "../../../../configs/machineLabels.js";
-import { formatterStructureOrder } from "../../../../utils/helper/modelHelper/orderHelpers.js";
+import { MACHINE_FIELD_MAP } from "../../configs/machineLabels.js";
+import { formatterStructureOrder } from "../helper/modelHelper/orderHelpers.js";
 
 export const reportBoxColumns = [
   { header: "STT", key: "index" },

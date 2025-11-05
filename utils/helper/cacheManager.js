@@ -60,8 +60,6 @@ export const CacheManager = {
         lastUpdated: "report:box:lastUpdated",
       },
     },
-
-    admin: {},
   },
 
   // Xóa toàn bộ cache theo prefix

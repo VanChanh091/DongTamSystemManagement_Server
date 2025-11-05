@@ -53,7 +53,7 @@ export const getAllProduct = async (req, res) => {
         limit: currentPageSize,
         order: [
           //lấy 4 số cuối -> ép chuỗi thành số để so sánh -> sort
-          [Sequelize.literal(`CAST(RIGHT(\`Product\`.\`productId\`, 4) AS UNSIGNED)`), "ASC"],
+          [Sequelize.literal("CAST(RIGHT(`Product`.`productId`, 4) AS UNSIGNED)"), "ASC"],
         ],
       });
     }
@@ -255,7 +255,7 @@ export const exportExcelProduct = async (req, res) => {
       attributes: { exclude: ["createdAt", "updatedAt"] },
       order: [
         //lấy 4 số cuối -> ép chuỗi thành số để so sánh -> sort
-        [Sequelize.literal(`CAST(RIGHT(\`Product\`.\`productId\`, 4) AS UNSIGNED)`), "ASC"],
+        [Sequelize.literal("CAST(RIGHT(`Product`.`productId`, 4) AS UNSIGNED)"), "ASC"],
       ],
     });
 

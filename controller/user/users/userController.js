@@ -30,7 +30,7 @@ export const updateProfileUser = async (req, res) => {
         .normalize("NFD") // tách các dấu
         .replace(/[\u0300-\u036f]/g, "") // xóa dấu
         .replace(/\s+/g, "_") // khoảng trắng -> _
-        .replace(/[^\w\-]/g, ""); // bỏ ký tự đặc biệt
+        .replace(/[^\w-]/g, ""); // bỏ ký tự đặc biệt
 
       const fileName = `${sanitizeName}-userId:${userId}`;
       const result = await uploadImageToCloudinary(webpBuffer, "users", fileName);
@@ -41,7 +41,7 @@ export const updateProfileUser = async (req, res) => {
     await user.update(parsedUser);
 
     const updatedUser = await User.findOne({ where: { userId } });
-    const { password, ...sanitizedUser } = updatedUser.toJSON();
+    const { _password, ...sanitizedUser } = updatedUser.toJSON();
 
     await redisCache.del("users:all");
 

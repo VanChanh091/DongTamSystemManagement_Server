@@ -22,10 +22,7 @@ export const getOrderPending = async (req, res) => {
       ],
       order: [
         //lấy 3 số đầu tiên -> ép chuỗi thành số để so sánh -> sort
-        [
-          Sequelize.literal(`CAST(SUBSTRING_INDEX(\`Order\`.\`orderId\`, '/', 1) AS UNSIGNED)`),
-          "ASC",
-        ],
+        [Sequelize.literal("CAST(SUBSTRING_INDEX(`Order`.`orderId`, '/', 1) AS UNSIGNED)"), "ASC"],
         [Sequelize.col("Order.createdAt"), "ASC"], // nếu trùng thì sort theo ngày tạo (tạo trước lên trên)
       ],
     });
