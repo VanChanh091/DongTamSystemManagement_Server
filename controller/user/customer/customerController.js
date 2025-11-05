@@ -115,7 +115,6 @@ export const checkCustomerInOrders = async (req, res) => {
 
   try {
     const orderCount = await Order.count({ where: { customerId: customerId } });
-    console.log(orderCount);
 
     res.status(200).json({ hasOrders: orderCount > 0, orderCount });
   } catch (error) {

@@ -48,6 +48,17 @@ export const CacheManager = {
       },
     },
 
+    manufacture: {
+      paper: {
+        machine: (machine) => `manufacturePaper:machine:${machine}`,
+        lastUpdated: "manufacturePaper:lastUpdated",
+      },
+      box: {
+        machine: (machine) => `manufactureBoxs:machine:${machine}`,
+        lastUpdated: "manufactureBoxs:lastUpdated",
+      },
+    },
+
     report: {
       paper: {
         all: (page) => `reportPaper:page:${page}`,
@@ -65,7 +76,7 @@ export const CacheManager = {
   // Xóa toàn bộ cache theo prefix
   async clearByPrefix(prefix) {
     const keys = await redisCache.keys(`${prefix}*`);
-    console.log(keys);
+    // console.log(keys);
 
     if (keys.length > 0) {
       await redisCache.del(...keys);
@@ -109,6 +120,14 @@ export const CacheManager = {
     await this.clearByPrefix("planningBox:machine:");
   },
 
+  async clearManufacturePaper() {
+    await this.clearByPrefix("`manufacturePaper:machine:");
+  },
+
+  async clearManufactureBox() {
+    await this.clearByPrefix("manufactureBox:machine:");
+  },
+
   async clearReportPaper() {
     await this.clearByPrefix("reportPaper:");
   },
@@ -118,7 +137,9 @@ export const CacheManager = {
   },
 
   /** Check lastChange cho 1 module */
-  async check(models, module) {
+  async check(models, module, options = {}) {
+    const { setCache = true } = options;
+
     const map = {
       customer: this.keys.customer.lastUpdated,
       product: this.keys.product.lastUpdated,
@@ -128,20 +149,18 @@ export const CacheManager = {
       planningOrder: this.keys.planning.order.lastUpdated,
       planningPaper: this.keys.planning.paper.lastUpdated,
       planningBox: this.keys.planning.box.lastUpdated,
+      manufacturePaper: this.keys.manufacture.paper.lastUpdated,
+      manufactureBox: this.keys.manufacture.box.lastUpdated,
       reportPaper: this.keys.report.paper.lastUpdated,
       reportBox: this.keys.report.box.lastUpdated,
     };
 
-    console.log(`module: ${module}`);
-
     const key = map[module];
-    console.log(`key: ${key}`);
-
     if (!key) throw new Error(`Invalid module for checkLastChange: ${module}`);
 
-    const result = await checkLastChange(models, key);
-
+    const result = await checkLastChange(models, key, { setCache });
     console.log(`🕒 Cache check [${module}]:`, result);
+
     return result;
   },
 };

@@ -27,7 +27,10 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
   const cacheKey = order.acceptPlanning(keyRole, currentPage); //orders:admin:accept_planning:page:1
 
   try {
-    const { isChanged } = await CacheManager.check(Order, "orderAccept");
+    const { isChanged } = await CacheManager.check(
+      [{ model: Order, where: { status: ["accept", "planning"] } }],
+      "orderAccept"
+    );
 
     if (isChanged) {
       await CacheManager.clearOrderAcceptPlanning(keyRole);
@@ -120,7 +123,10 @@ export const getOrderPendingAndReject = async (req, res) => {
   const cacheKey = order.pendingReject(keyRole);
 
   try {
-    const { isChanged } = await CacheManager.check(Order, "orderPending");
+    const { isChanged } = await CacheManager.check(
+      [{ model: Order, where: { status: ["pending", "reject"] } }],
+      "orderPending"
+    );
 
     if (isChanged) {
       await CacheManager.clearOrderPendingReject(keyRole);

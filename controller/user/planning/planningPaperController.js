@@ -25,13 +25,24 @@ export const getOrderAccept = async (req, res) => {
   const { order } = CacheManager.keys.planning;
   const cacheKey = order.all;
 
-  console.log(`cacheKey: ${cacheKey}`);
-  console.log(`order: ${order}`);
-
   try {
-    const { isChanged } = await CacheManager.check(Order, "planningOrder");
+    const { isChanged: order } = await CacheManager.check(
+      [{ model: Order, where: { status: "accept" } }],
+      "planningOrder"
+    );
 
-    if (isChanged) {
+    const { isChanged: planningPaper } = await CacheManager.check(
+      [
+        { model: PlanningPaper },
+        { model: timeOverflowPlanning, where: { planningId: { [Op.ne]: null } } },
+      ],
+      "planningPaper",
+      { setCache: false }
+    );
+
+    const isChangedData = order || planningPaper;
+
+    if (isChangedData) {
       await CacheManager.clearOrderAccept();
     } else {
       const cachedData = await redisCache.get(cacheKey);
@@ -191,6 +202,7 @@ export const planningOrder = async (req, res) => {
         const L = layers[i];
         if (L.kind === "flute") {
           const letter = L.code[0].toUpperCase();
+
           if (!waveTypes.includes(letter)) continue;
 
           const fluteTh = parseFloat(L.code.replace(/\D+/g, "")) / 1000;
@@ -199,19 +211,27 @@ export const planningOrder = async (req, res) => {
 
           let coef = 0;
           if (letter === "E") {
-            coef = countE === 0 ? waveCoeff.fluteE_1 : waveCoeff.fluteE_2;
+            const isFirstE = countE === 0;
+            coef = isFirstE ? waveCoeff.fluteE_1 : waveCoeff.fluteE_2;
+
+            const loss =
+              gkTh * wasteNorm.waveCrest * linerBefore +
+              gkTh * wasteNorm.waveCrest * fluteTh * coef;
+
+            if (isFirstE) {
+              flute.E += loss;
+            } else {
+              flute.E2 += loss;
+            }
+
             countE++;
           } else {
             coef = waveCoeff[`flute${letter}`] || 0;
-          }
 
-          const loss =
-            gkTh * wasteNorm.waveCrest * linerBefore + gkTh * wasteNorm.waveCrest * fluteTh * coef;
+            const loss =
+              gkTh * wasteNorm.waveCrest * linerBefore +
+              gkTh * wasteNorm.waveCrest * fluteTh * coef;
 
-          if (letter === "E") {
-            if (countE === 1) flute.E2 += loss;
-            else flute[letter] += loss;
-          } else {
             flute[letter] += loss;
           }
         }
@@ -785,6 +805,9 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
 
                 //xóa planning paper
                 await planning.destroy();
+
+                //clear cache
+                await CacheManager.clearOrderAccept();
               }
             }
           }

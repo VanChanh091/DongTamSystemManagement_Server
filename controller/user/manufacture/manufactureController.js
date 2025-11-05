@@ -23,7 +23,7 @@ export const getPlanningPaper = async (req, res) => {
     return res.status(400).json({ message: "Missing machine query parameter" });
   }
 
-  const { paper } = CacheManager.keys.planning;
+  const { paper } = CacheManager.keys.manufacture;
   const cacheKey = paper.machine(machine);
 
   try {
@@ -32,11 +32,11 @@ export const getPlanningPaper = async (req, res) => {
         { model: PlanningPaper },
         { model: timeOverflowPlanning, where: { planningId: { [Op.ne]: null } } },
       ],
-      "planningPaper"
+      "manufacturePaper"
     );
 
     if (isChanged) {
-      await CacheManager.clearPlanningPaper();
+      await CacheManager.clearManufacturePaper();
     } else {
       const cachedData = await redisCache.get(cacheKey);
       if (cachedData) {
@@ -380,19 +380,20 @@ export const getPlanningBox = async (req, res) => {
     return res.status(400).json({ message: "Missing 'machine' query parameter" });
   }
 
-  const { box } = CacheManager.keys.planning;
+  const { box } = CacheManager.keys.manufacture;
   const cacheKey = box.machine(machine);
+
   try {
     const { isChanged } = await CacheManager.check(
       [
         { model: PlanningBox },
         { model: timeOverflowPlanning, where: { planningBoxId: { [Op.ne]: null } } },
       ],
-      "planningBox"
+      "manufactureBox"
     );
 
     if (isChanged) {
-      await CacheManager.clearPlanningBox();
+      await CacheManager.clearManufactureBox();
     } else {
       const cachedData = await redisCache.get(cacheKey);
       if (cachedData) {
