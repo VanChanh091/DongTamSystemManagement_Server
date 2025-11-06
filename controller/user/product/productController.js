@@ -12,6 +12,10 @@ import { filterDataFromCache } from "../../../utils/helper/modelHelper/orderHelp
 import { mappingProductRow, productColumns } from "../../../utils/mapping/productRowAndColumn.js";
 import { CacheManager } from "../../../utils/helper/cacheManager.js";
 import redisCache from "../../../configs/redisCache.js";
+import dotenv from "dotenv";
+dotenv.config();
+
+const devEnvironment = process.env.NODE_ENV !== "production";
 
 //get all product
 export const getAllProduct = async (req, res) => {
@@ -31,7 +35,7 @@ export const getAllProduct = async (req, res) => {
     } else {
       const cachedData = await redisCache.get(cacheKey);
       if (cachedData) {
-        console.log("✅ Data Product from Redis");
+        if (devEnvironment) console.log("✅ Data Product from Redis");
         const parsed = JSON.parse(cachedData);
         return res.status(200).json({ ...parsed, message: "Get all products from cache" });
       }

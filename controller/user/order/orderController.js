@@ -11,6 +11,10 @@ import {
 import Order from "../../../models/order/order.js";
 import { CacheManager } from "../../../utils/helper/cacheManager.js";
 import redisCache from "../../../configs/redisCache.js";
+import dotenv from "dotenv";
+dotenv.config();
+
+const devEnvironment = process.env.NODE_ENV !== "production";
 
 //===============================ACCEPT AND PLANNING=====================================
 
@@ -37,7 +41,7 @@ export const getOrderAcceptAndPlanning = async (req, res) => {
     } else {
       const cachedData = await redisCache.get(cacheKey);
       if (cachedData) {
-        console.log("✅ Data Order accept_planning from Redis");
+        if (devEnvironment) console.log("✅ Data Order accept_planning from Redis");
         const parsed = JSON.parse(cachedData);
         return res.status(200).json({
           message: "Get Order from cache",
@@ -141,7 +145,7 @@ export const getOrderPendingAndReject = async (req, res) => {
       );
 
       if (cachedResult) {
-        console.log("✅ Data Order pending_reject from Redis");
+        if (devEnvironment) console.log("✅ Data Order pending_reject from Redis");
         return res.status(200).json({
           message: "Get Order from cache",
           data: cachedResult,

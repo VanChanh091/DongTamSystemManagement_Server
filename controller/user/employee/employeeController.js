@@ -9,6 +9,10 @@ import {
 } from "../../../utils/mapping/employeeRowAndColumn.js";
 import { CacheManager } from "../../../utils/helper/cacheManager.js";
 import redisCache from "../../../configs/redisCache.js";
+import dotenv from "dotenv";
+dotenv.config();
+
+const devEnvironment = process.env.NODE_ENV !== "production";
 
 //get all
 export const getAllEmployees = async (req, res) => {
@@ -28,7 +32,7 @@ export const getAllEmployees = async (req, res) => {
     } else {
       const cachedData = await redisCache.get(cacheKey);
       if (cachedData) {
-        console.log("✅ Data Employees from Redis");
+        if (devEnvironment) console.log("✅ Data Employees from Redis");
         const parsed = JSON.parse(cachedData);
         return res.status(200).json({ ...parsed, message: "Get all employees from cache" });
       }

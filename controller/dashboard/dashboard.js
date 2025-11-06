@@ -9,6 +9,10 @@ import Product from "../../models/product/product.js";
 import User from "../../models/user/user.js";
 import { Op } from "sequelize";
 import redisCache from "../../configs/redisCache.js";
+import dotenv from "dotenv";
+dotenv.config();
+
+const devEnvironment = process.env.NODE_ENV !== "production";
 
 //=============================PAPER===================================
 
@@ -30,7 +34,7 @@ export const getAllDataPaper = async (req, res) => {
       const planningArray = parsed?.data ?? [];
 
       if (planningArray.length > 0) {
-        console.log("✅ Get Planning from cache");
+        if (devEnvironment) console.log("✅ Get Planning from cache");
         return res.status(200).json({
           message: "Get PlanningPaper from cache",
           data: planningArray,
@@ -179,7 +183,7 @@ export const getAllDataBox = async (req, res) => {
       const planningArray = parsed?.data ?? [];
 
       if (planningArray.length > 0) {
-        console.log("✅ Get PlanningBox from cache");
+        if (devEnvironment) console.log("✅ Get PlanningBox from cache");
         return res.status(200).json({
           message: "Get Order from cache",
           data: planningArray,

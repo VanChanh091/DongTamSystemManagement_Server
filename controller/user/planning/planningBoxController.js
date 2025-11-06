@@ -20,6 +20,10 @@ import {
 } from "../../../utils/helper/modelHelper/planningHelper.js";
 import { CacheManager } from "../../../utils/helper/cacheManager.js";
 import redisCache from "../../../configs/redisCache.js";
+import dotenv from "dotenv";
+dotenv.config();
+
+const devEnvironment = process.env.NODE_ENV !== "production";
 
 //get all planning box
 export const getPlanningBox = async (req, res) => {
@@ -36,6 +40,7 @@ export const getPlanningBox = async (req, res) => {
     const { isChanged } = await CacheManager.check(
       [
         { model: PlanningBox },
+        { model: PlanningBoxTime },
         { model: timeOverflowPlanning, where: { planningBoxId: { [Op.ne]: null } } },
       ],
       "planningBox"
@@ -46,7 +51,7 @@ export const getPlanningBox = async (req, res) => {
     } else {
       const cachedData = await redisCache.get(cacheKey);
       if (cachedData) {
-        console.log("✅ Data PlanningBox from Redis");
+        if (devEnvironment) console.log("✅ Data PlanningBox from Redis");
         return res.json({
           message: `get filtered cached planning:box:machine:${machine}`,
           data: JSON.parse(cachedData),
@@ -264,7 +269,7 @@ export const getPlanningBoxByOrderId = async (req, res) => {
   try {
     const cachedData = await redisCache.get(cacheKey);
     if (cachedData) {
-      console.log("✅ Data planning from Redis");
+      if (devEnvironment) console.log("✅ Data planning from Redis");
       const parsedData = JSON.parse(cachedData);
 
       // Tìm kiếm tương đối trong cache
@@ -355,7 +360,7 @@ export const acceptLackQtyBox = async (req, res) => {
       message: `Update status:${newStatus} successfully.`,
     });
   } catch (error) {
-    console.log("error pause planning", error);
+    if (devEnvironment) console.log("error pause planning", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

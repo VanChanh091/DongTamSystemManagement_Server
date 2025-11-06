@@ -3,6 +3,8 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 dotenv.config();
 
+const devEnvironment = process.env.NODE_ENV !== "production";
+
 export const initSocket = (server) => {
   const io = new Server(server, {
     cors: {
@@ -16,7 +18,7 @@ export const initSocket = (server) => {
     const token = socket.handshake.auth?.token;
 
     if (!token) {
-      console.log("❌ Reject: No token");
+      if (devEnvironment) console.log("❌ Reject: No token");
       return next(new Error("Authentication error: No token"));
     }
 
@@ -31,7 +33,7 @@ export const initSocket = (server) => {
       // console.log("✅ Token ok:", decoded);
       next();
     } catch (err) {
-      console.log("❌ Reject: Invalid token", err);
+      if (devEnvironment) console.log("❌ Reject: Invalid token", err);
       return next(new Error("Authentication error: Invalid token"));
     }
   });
@@ -41,12 +43,12 @@ export const initSocket = (server) => {
     //machine
     socket.on("join-machine", (roomName) => {
       socket.join(roomName);
-      console.log(`📌 socket joined ${roomName}`);
+      if (devEnvironment) console.log(`📌 socket joined ${roomName}`);
     });
 
     socket.on("leave-room", (room) => {
       socket.leave(room);
-      console.log(`📌 socket left ${room}`);
+      if (devEnvironment) console.log(`📌 socket left ${room}`);
     });
   });
 

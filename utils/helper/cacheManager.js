@@ -1,5 +1,9 @@
 import redisCache from "../../configs/redisCache.js";
 import { checkLastChange } from "./checkLastChangeHelper.js";
+import dotenv from "dotenv";
+dotenv.config();
+
+const devEnvironment = process.env.NODE_ENV !== "production";
 
 export const CacheManager = {
   keys: {
@@ -80,7 +84,7 @@ export const CacheManager = {
 
     if (keys.length > 0) {
       await redisCache.del(...keys);
-      console.log(`🧹 Cleared ${keys.length} keys for prefix: ${prefix}`);
+      if (devEnvironment) console.log(`🧹 Cleared ${keys.length} keys for prefix: ${prefix}`);
     }
   },
 
@@ -159,7 +163,7 @@ export const CacheManager = {
     if (!key) throw new Error(`Invalid module for checkLastChange: ${module}`);
 
     const result = await checkLastChange(models, key, { setCache });
-    console.log(`🕒 Cache check [${module}]:`, result);
+    // console.log(`🕒 Cache check [${module}]:`, result);
 
     return result;
   },

@@ -6,12 +6,16 @@ import Customer from "../../../models/customer/customer.js";
 import Box from "../../../models/order/box.js";
 import Order from "../../../models/order/order.js";
 import PlanningBox from "../../../models/planning/planningBox.js";
-import planningBoxMachineTime from "../../../models/planning/planningBoxMachineTime.js";
 import ReportPlanningPaper from "../../../models/report/reportPlanningPaper.js";
 import ReportPlanningBox from "../../../models/report/reportPlanningBox.js";
 import { createReportPlanning } from "../../../utils/helper/modelHelper/reportHelper.js";
 import { CacheManager } from "../../../utils/helper/cacheManager.js";
 import redisCache from "../../../configs/redisCache.js";
+import PlanningBoxTime from "../../../models/planning/planningBoxMachineTime.js";
+import dotenv from "dotenv";
+dotenv.config();
+
+const devEnvironment = process.env.NODE_ENV !== "production";
 
 //===============================MANUFACTURE PAPER=====================================
 
@@ -30,6 +34,7 @@ export const getPlanningPaper = async (req, res) => {
     const { isChanged } = await CacheManager.check(
       [
         { model: PlanningPaper },
+        { model: PlanningBoxTime },
         { model: timeOverflowPlanning, where: { planningId: { [Op.ne]: null } } },
       ],
       "manufacturePaper"
@@ -40,7 +45,7 @@ export const getPlanningPaper = async (req, res) => {
     } else {
       const cachedData = await redisCache.get(cacheKey);
       if (cachedData) {
-        console.log("✅ Data manufacture paper from Redis");
+        if (devEnvironment) console.log("✅ Data manufacture paper from Redis");
         return res.json({
           message: `get filtered cache planning:machine:${machine}`,
           data: JSON.parse(cachedData),
@@ -397,7 +402,7 @@ export const getPlanningBox = async (req, res) => {
     } else {
       const cachedData = await redisCache.get(cacheKey);
       if (cachedData) {
-        console.log("✅ Data manufacture box from Redis");
+        if (devEnvironment) console.log("✅ Data manufacture box from Redis");
         return res.json({
           message: `get filtered cached planning:box:machine:${machine}`,
           data: JSON.parse(cachedData),
@@ -422,13 +427,13 @@ export const getPlanningBox = async (req, res) => {
       },
       include: [
         {
-          model: planningBoxMachineTime,
+          model: PlanningBoxTime,
           where: { machine: machine, dayStart: { [Op.ne]: null } },
           as: "boxTimes",
           attributes: { exclude: ["createdAt", "updatedAt"] },
         },
         {
-          model: planningBoxMachineTime,
+          model: PlanningBoxTime,
           as: "allBoxTimes",
           where: {
             machine: { [Op.ne]: machine },
@@ -481,7 +486,7 @@ export const getPlanningBox = async (req, res) => {
           ],
         },
       ],
-      order: [[{ model: planningBoxMachineTime, as: "boxTimes" }, "sortPlanning", "ASC"]],
+      order: [[{ model: PlanningBoxTime, as: "boxTimes" }, "sortPlanning", "ASC"]],
     });
 
     //lọc đơn complete trong 1 ngày
@@ -563,10 +568,10 @@ export const addReportBox = async (req, res) => {
     return res.status(400).json({ message: "Missing required fields" });
   }
 
-  const transaction = await planningBoxMachineTime.sequelize.transaction();
+  const transaction = await PlanningBoxTime.sequelize.transaction();
   try {
     // 1. Tìm kế hoạch hiện tại
-    const planning = await planningBoxMachineTime.findOne({
+    const planning = await PlanningBoxTime.findOne({
       where: { planningBoxId, machine: machine },
       include: [
         {
@@ -709,7 +714,7 @@ export const confirmProducingBox = async (req, res) => {
   const transaction = await PlanningBox.sequelize.transaction();
   try {
     // Lấy planning cần update
-    const planning = await planningBoxMachineTime.findOne({
+    const planning = await PlanningBoxTime.findOne({
       where: { planningBoxId, machine },
       transaction,
       lock: transaction.LOCK.UPDATE,
@@ -739,7 +744,7 @@ export const confirmProducingBox = async (req, res) => {
     }
 
     // Reset những thằng đang "producing"
-    await planningBoxMachineTime.update(
+    await PlanningBoxTime.update(
       { status: "planning" },
       {
         where: {

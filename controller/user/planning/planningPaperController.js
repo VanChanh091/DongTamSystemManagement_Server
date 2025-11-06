@@ -17,6 +17,10 @@ import {
 } from "../../../service/planning/timeRunningService.js";
 import redisCache from "../../../configs/redisCache.js";
 import { CacheManager } from "../../../utils/helper/cacheManager.js";
+import dotenv from "dotenv";
+dotenv.config();
+
+const devEnvironment = process.env.NODE_ENV !== "production";
 
 //===============================PLANNING ORDER=====================================
 
@@ -392,7 +396,7 @@ export const getPlanningByMachine = async (req, res) => {
     } else {
       const cachedData = await redisCache.get(cacheKey);
       if (cachedData) {
-        console.log("✅ Data PlanningPaper from Redis");
+        if (devEnvironment) console.log("✅ Data PlanningPaper from Redis");
         return res.json({
           message: `get all cache planning:machine:${machine}`,
           data: JSON.parse(cachedData),
@@ -592,7 +596,7 @@ export const getPlanningByOrderId = async (req, res) => {
   try {
     const cachedData = await redisCache.get(cacheKey);
     if (cachedData) {
-      console.log("✅ Data planning from Redis");
+      if (devEnvironment) console.log("✅ Data planning from Redis");
       const parsedData = JSON.parse(cachedData);
 
       // Tìm kiếm tương đối trong cache
@@ -849,7 +853,7 @@ export const pauseOrAcceptLackQtyPLanning = async (req, res) => {
       message: "Update status planning successfully",
     });
   } catch (error) {
-    console.log("error pause planning", error);
+    if (devEnvironment) console.log("error pause planning", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

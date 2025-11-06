@@ -16,6 +16,10 @@ import { mapReportBoxRow, reportBoxColumns } from "../../../utils/mapping/report
 import { exportExcelResponse } from "../../../utils/helper/excelExporter.js";
 import { CacheManager } from "../../../utils/helper/cacheManager.js";
 import redisCache from "../../../configs/redisCache.js";
+import dotenv from "dotenv";
+dotenv.config();
+
+const devEnvironment = process.env.NODE_ENV !== "production";
 
 //===============================REPORT PAPER=====================================
 
@@ -40,7 +44,7 @@ export const getReportPlanningPaper = async (req, res) => {
     } else {
       const cachedData = await redisCache.get(cacheKey);
       if (cachedData) {
-        console.log("✅ Data Report Planning Paper from Redis");
+        if (devEnvironment) console.log("✅ Data Report Planning Paper from Redis");
         const parsed = JSON.parse(cachedData);
         return res
           .status(200)
@@ -192,7 +196,7 @@ export const getReportPlanningBox = async (req, res) => {
     } else {
       const cachedData = await redisCache.get(cacheKey);
       if (cachedData) {
-        console.log("✅ Data Report Planning Box from Redis");
+        if (devEnvironment) console.log("✅ Data Report Planning Box from Redis");
         const parsed = JSON.parse(cachedData);
         return res
           .status(200)
