@@ -4,6 +4,7 @@ import { Product } from "../../../models/product/product";
 import { Order } from "../../../models/order/order";
 import { Box } from "../../../models/order/box";
 import redisCache from "../../../configs/redisCache";
+import { FilterDataFromCacheProps } from "../../../interface/cacheTypes";
 
 export const validateCustomerAndProduct = async (customerId: string, productId: string) => {
   const customer = await Customer.findOne({ where: { customerId } });
@@ -177,7 +178,7 @@ export const filterOrdersFromCache = async ({
   };
 };
 
-export const filterDataFromCache = async ({
+export const filterDataFromCache = async <T>({
   model,
   cacheKey,
   keyword,
@@ -186,16 +187,7 @@ export const filterDataFromCache = async ({
   pageSize,
   message,
   fetchFunction,
-}: {
-  model: any;
-  cacheKey: string;
-  keyword: string;
-  getFieldValue: (item: any) => any;
-  page?: number | string;
-  pageSize?: number | string;
-  message?: string;
-  fetchFunction?: () => Promise<any[]>;
-}) => {
+}: FilterDataFromCacheProps<T>) => {
   const currentPage = Number(page) || 1;
   const currentPageSize = Number(pageSize) || 20;
   const lowerKeyword = keyword?.toLowerCase?.() || "";
