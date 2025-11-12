@@ -4,7 +4,7 @@ module.exports = {
   apps: [
     {
       name: "dongtam-api",
-      script: "index.js",
+      script: "index.ts",
       exec_mode: "cluster", // cluster mode để cân bằng tải
       autorestart: true,
       watch: false,

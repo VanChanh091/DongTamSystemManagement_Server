@@ -3,11 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "cross-env NODE_ENV=development nodemon index.js",
-    "prod": "cross-env NODE_ENV=production node index.js"
+    "dev": "cross-env NODE_ENV=development nodemon --watch . --ext ts,js,json --exec ts-node index.ts",
+    "prod": "cross-env NODE_ENV=production node index.ts",
+    "test": "jest"
   },
-  "type": "module",
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -36,9 +35,20 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
-    "@types/node": "^20.14.11",
+    "@types/bcrypt": "^6.0.0",
+    "@types/express": "^5.0.5",
+    "@types/jest": "^30.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^20.19.24",
+    "@types/nodemailer": "^7.0.3",
+    "@types/streamifier": "^0.1.2",
     "cross-env": "^10.0.0",
     "eslint": "^9.39.1",
-    "globals": "^16.5.0"
+    "globals": "^16.5.0",
+    "jest": "^30.2.0",
+    "ts-jest": "^29.4.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   }
 }
