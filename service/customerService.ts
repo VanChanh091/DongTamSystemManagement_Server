@@ -8,7 +8,11 @@ import { exportExcelResponse } from "../utils/helper/excelExporter";
 import { generateNextId } from "../utils/helper/generateNextId";
 import { filterDataFromCache } from "../utils/helper/modelHelper/orderHelpers";
 import { customerColumns, mappingCustomerRow } from "../utils/mapping/customerRowAndColumn";
+import { Response } from "express";
+import dotenv from "dotenv";
+dotenv.config();
 
+const devEnvironment = process.env.NODE_ENV !== "production";
 const { customer } = CacheManager.keys;
 
 export const customerService = {
@@ -16,19 +20,17 @@ export const customerService = {
     page = 1,
     pageSize = 20,
     noPaging = false,
-    devEnvironment,
   }: {
     page?: number;
     pageSize?: number;
     noPaging?: string | boolean;
-    devEnvironment: boolean;
   }) => {
     const noPagingMode = noPaging === "true";
     const cacheKey = noPaging === "true" ? customer.all : customer.page(page);
 
-    const { isChanged } = await CacheManager.check(Customer, "customer");
-
     try {
+      const { isChanged } = await CacheManager.check(Customer, "customer");
+
       if (isChanged) {
         await CacheManager.clearCustomer();
       } else {
@@ -120,12 +122,9 @@ export const customerService = {
       const sanitizedPrefix = prefix.trim().replace(/\s+/g, "").toUpperCase();
       const newCustomerId = generateNextId(allCustomerIds, sanitizedPrefix, 4);
 
-      const newCustomer = await Customer.create(
-        {
-          customerId: newCustomerId,
-          ...customerData,
-        },
-        { transaction }
+      const newCustomer = await customerRepository.createCustomer(
+        { customerId: newCustomerId, ...customerData },
+        transaction
       );
 
       await transaction?.commit();
@@ -180,7 +179,7 @@ export const customerService = {
     }
   },
 
-  exportExcelCustomer: async (res: any, { fromDate, toDate, all = false }: any) => {
+  exportExcelCustomer: async (res: Response, { fromDate, toDate, all = false }: any) => {
     try {
       let whereCondition: any = {};
 

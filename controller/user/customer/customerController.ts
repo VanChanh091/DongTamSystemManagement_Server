@@ -1,10 +1,6 @@
 import { Order } from "../../../models/order/order";
 import { Request, Response } from "express";
 import { customerService } from "../../../service/customerService";
-import dotenv from "dotenv";
-dotenv.config();
-
-const devEnvironment = process.env.NODE_ENV !== "production";
 
 //get all
 export const getAllCustomer = async (req: Request, res: Response) => {
@@ -19,7 +15,6 @@ export const getAllCustomer = async (req: Request, res: Response) => {
       page: Number(page),
       pageSize: Number(pageSize),
       noPaging,
-      devEnvironment,
     });
 
     res.status(200).json({
@@ -29,7 +24,7 @@ export const getAllCustomer = async (req: Request, res: Response) => {
         : "Get all customers successfully",
     });
   } catch (error: any) {
-    res.status(error.statusCode).json({ message: error.message });
+    return res.status(error.statusCode).json({ message: error.message });
   }
 };
 
@@ -64,9 +59,9 @@ export const checkCustomerInOrders = async (req: Request, res: Response) => {
     const orderCount = await Order.count({ where: { customerId: customerId } });
 
     res.status(200).json({ hasOrders: orderCount > 0, orderCount });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Check customer in orders failed:", error);
-    res.status(500).json({ message: "Check customer in orders failed", error });
+    return res.status(error.statusCode).json({ message: error.message });
   }
 };
 
@@ -76,7 +71,7 @@ export const createCustomer = async (req: Request, res: Response) => {
     const response = await customerService.createCustomer(req.body);
     res.status(201).json(response);
   } catch (error: any) {
-    res.status(error.statusCode).json({ message: error.message });
+    return res.status(error.statusCode).json({ message: error.message });
   }
 };
 
@@ -89,7 +84,7 @@ export const updateCustomer = async (req: Request, res: Response) => {
     const response = await customerService.updateCustomer(customerId, customerData);
     res.status(201).json(response);
   } catch (error: any) {
-    res.status(error.statusCode).json({ message: error.message });
+    return res.status(error.statusCode).json({ message: error.message });
   }
 };
 
@@ -101,7 +96,7 @@ export const deleteCustomer = async (req: Request, res: Response) => {
     const response = await customerService.deleteCustomer(customerId);
     res.status(200).json(response);
   } catch (error: any) {
-    res.status(error.statusCode).json({ message: error.message });
+    return res.status(error.statusCode).json({ message: error.message });
   }
 };
 
@@ -113,6 +108,6 @@ export const exportExcelCustomer = async (req: Request, res: Response) => {
     const response = await customerService.exportExcelCustomer(res, { fromDate, toDate, all });
     res.status(200).json(response);
   } catch (error: any) {
-    res.status(error.statusCode).json({ message: error.message });
+    return res.status(error.statusCode).json({ message: error.message });
   }
 };

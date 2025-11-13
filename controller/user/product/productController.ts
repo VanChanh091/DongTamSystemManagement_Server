@@ -12,71 +12,30 @@ import { filterDataFromCache } from "../../../utils/helper/modelHelper/orderHelp
 import { mappingProductRow, productColumns } from "../../../utils/mapping/productRowAndColumn";
 import { CacheManager } from "../../../utils/helper/cacheManager";
 import redisCache from "../../../configs/redisCache";
-import dotenv from "dotenv";
-import { Request, Response } from "express";
-dotenv.config();
-
-const devEnvironment = process.env.NODE_ENV !== "production";
+import { Request, response, Response } from "express";
+import { productService } from "../../../service/productService";
 
 //get all product
 export const getAllProduct = async (req: Request, res: Response) => {
-  const { page = 1, pageSize = 20, noPaging = false } = req.query;
-  const currentPage = Number(page);
-  const currentPageSize = Number(pageSize);
-  const noPagingMode = noPaging === "true";
-
-  const { product } = CacheManager.keys;
-  const cacheKey = noPaging === "true" ? product.all : product.page(currentPage);
+  const {
+    page = 1,
+    pageSize = 20,
+    noPaging = false,
+  } = req.query as { page?: string; pageSize?: string; noPaging?: string | boolean };
 
   try {
-    const { isChanged } = await CacheManager.check(Product, "product");
+    const response = await productService.getAllProducts({
+      page: Number(page),
+      pageSize: Number(pageSize),
+      noPaging,
+    });
 
-    if (isChanged) {
-      await CacheManager.clearProduct();
-    } else {
-      const cachedData = await redisCache.get(cacheKey);
-      if (cachedData) {
-        if (devEnvironment) console.log("✅ Data Product from Redis");
-        const parsed = JSON.parse(cachedData);
-        return res.status(200).json({ ...parsed, message: "Get all products from cache" });
-      }
-    }
-
-    let data, totalPages;
-    const totalProducts = await Product.count();
-
-    if (noPagingMode) {
-      totalPages = 1;
-      data = await Product.findAll({
-        attributes: { exclude: ["createdAt", "updatedAt"] },
-      });
-    } else {
-      totalPages = Math.ceil(totalProducts / currentPageSize);
-      data = await Product.findAll({
-        attributes: { exclude: ["createdAt", "updatedAt"] },
-        offset: (currentPage - 1) * currentPageSize,
-        limit: currentPageSize,
-        order: [
-          //lấy 4 số cuối -> ép chuỗi thành số để so sánh -> sort
-          [Sequelize.literal("CAST(RIGHT(`Product`.`productId`, 4) AS UNSIGNED)"), "ASC"],
-        ],
-      });
-    }
-
-    const responseData = {
-      message: "get all products successfully",
-      data,
-      totalProducts,
-      totalPages,
-      currentPage: noPagingMode ? 1 : currentPage,
-    };
-
-    await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
-
-    res.status(200).json(responseData);
+    res.status(200).json({
+      ...response,
+      message: response.fromCache ? "Get all products from cache" : "get all products successfully",
+    });
   } catch (error: any) {
-    console.error("get all product failed:", error.message);
-    res.status(500).json({ message: "get all product failed" });
+    res.status(error.statusCode).json({ message: error.message });
   }
 };
 
@@ -89,101 +48,27 @@ export const getProductByField = async (req: Request, res: Response) => {
     pageSize: string;
   };
 
-  const fieldMap = {
-    productId: (product: Product) => product.productId,
-    productName: (product: Product) => product?.productName,
-  } as const;
-
-  const key = field as keyof typeof fieldMap;
-
-  if (!fieldMap[key]) {
-    return res.status(400).json({ message: "Invalid field parameter" });
-  }
-
-  const { product } = CacheManager.keys;
-
   try {
-    const result = await filterDataFromCache({
-      model: Product,
-      cacheKey: product.search,
-      keyword: keyword,
-      getFieldValue: fieldMap[key],
-      page,
-      pageSize,
-      message: `get all by ${field} from filtered cache`,
+    const response = await productService.getProductByField({
+      field,
+      keyword,
+      page: Number(page),
+      pageSize: Number(pageSize),
     });
 
-    res.status(200).json(result);
+    res.status(200).json(response);
   } catch (error: any) {
-    console.error(`Failed to get product by ${field}:`, error.message);
-    return res.status(500).json({ message: "Server error", error: error });
+    res.status(error.statusCode).json({ message: error.message });
   }
 };
 
 //add product
 export const addProduct = async (req: Request, res: Response) => {
-  const { prefix = "CUSTOM", product } = req.body;
-  const parsedProduct = typeof product === "string" ? JSON.parse(product) : product;
-
-  const transaction = await Product.sequelize?.transaction();
-
   try {
-    const sanitizedPrefix = prefix.trim().replace(/\s+/g, "").toUpperCase();
-
-    // 🔍 Check prefix đã tồn tại chưa
-    const prefixExists = await Product.findOne({
-      where: {
-        productId: {
-          [Op.like]: `${sanitizedPrefix}%`,
-        },
-      },
-      transaction,
-    });
-
-    if (prefixExists) {
-      await transaction?.rollback();
-      return res.status(400).json({
-        message: `Prefix '${sanitizedPrefix}' đã tồn tại, vui lòng chọn prefix khác`,
-      });
-    }
-
-    const products = await Product.findAll({
-      attributes: ["productId"],
-      transaction,
-    });
-
-    //custom productId
-    const allProductIds = products.map((p) => p.productId);
-    const newProductId = generateNextId(allProductIds, sanitizedPrefix, 4);
-
-    if (req.file) {
-      const webpBuffer = await convertToWebp(req.file.buffer);
-      const result = await uploadImageToCloudinary(
-        webpBuffer,
-        "products",
-        newProductId.replace(/\s+/g, "_")
-      );
-      parsedProduct.productImage = result.secure_url;
-    }
-
-    const newProduct = await Product.create(
-      {
-        productId: newProductId,
-        ...parsedProduct,
-      },
-      { transaction }
-    );
-
-    await transaction?.commit();
-
-    return res.status(201).json({
-      message: "Product created successfully",
-      data: newProduct,
-    });
+    const response = await productService.createProduct(req, req.body);
+    return res.status(201).json(response);
   } catch (error: any) {
-    await transaction?.rollback();
-    console.error("add product failed:", error.message);
-    return res.status(500).json({ message: "add product failed" });
+    res.status(error.statusCode).json({ message: error.message });
   }
 };
 
@@ -193,30 +78,10 @@ export const updateProduct = async (req: Request, res: Response) => {
   const productData = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
 
   try {
-    const existingProduct = await Product.findByPk(id);
-
-    if (!existingProduct) {
-      return res.status(404).json({ message: "Product not found" });
-    }
-
-    // Nếu có ảnh mới được upload
-    if (req.file) {
-      if (req.file) {
-        const webpBuffer = await convertToWebp(req.file.buffer);
-        const result = await uploadImageToCloudinary(webpBuffer, "products", id);
-        productData.productImage = result.secure_url;
-      }
-    }
-
-    await existingProduct.update(productData);
-
-    return res.status(200).json({
-      message: "Product updated successfully",
-      data: existingProduct,
-    });
+    const response = await productService.updatedProduct(req, id, productData);
+    return res.status(200).json(response);
   } catch (error: any) {
-    console.error("Update product error:", error.message);
-    res.status(500).json({ message: "failed to upadte product" });
+    res.status(error.statusCode).json({ message: error.message });
   }
 };
 
@@ -225,26 +90,10 @@ export const deleteProduct = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   try {
-    const product = await Product.findByPk(id);
-    if (!product) {
-      return res.status(404).json({ message: "Product not found" });
-    }
-
-    const imageName = product.productImage;
-
-    await product.destroy();
-
-    if (imageName && imageName.includes("cloudinary.com")) {
-      const publicId = getCloudinaryPublicId(imageName);
-      if (publicId) {
-        await cloudinary.uploader.destroy(publicId);
-      }
-    }
-
-    return res.status(200).json({ message: "Product deleted successfully" });
+    const response = await productService.deletedProduct(id);
+    return res.status(200).json(response);
   } catch (error: any) {
-    console.error("Delete product error:", error.message);
-    res.status(500).json({ message: "Delete product failed" });
+    res.status(error.statusCode).json({ message: error.message });
   }
 };
 
@@ -253,32 +102,9 @@ export const exportExcelProduct = async (req: Request, res: Response) => {
   const { typeProduct, all = false } = req.body;
 
   try {
-    let whereCondition: any = {};
-
-    if (all === "true") {
-      // xuất toàn bộ -> để whereCondition = {}
-    } else if (typeProduct) {
-      whereCondition.typeProduct = typeProduct;
-    }
-
-    const data = await Product.findAll({
-      where: whereCondition,
-      attributes: { exclude: ["createdAt", "updatedAt"] },
-      order: [
-        //lấy 4 số cuối -> ép chuỗi thành số để so sánh -> sort
-        [Sequelize.literal("CAST(RIGHT(`Product`.`productId`, 4) AS UNSIGNED)"), "ASC"],
-      ],
-    });
-
-    await exportExcelResponse(res, {
-      data: data,
-      sheetName: "Danh sách sản phẩm",
-      fileName: "product",
-      columns: productColumns,
-      rows: mappingProductRow,
-    });
+    const response = await productService.exportExcelProducts(res, { typeProduct, all });
+    res.status(200).json(response);
   } catch (error: any) {
-    console.error("Export Excel error:", error.message);
-    res.status(500).json({ message: "Lỗi xuất Excel" });
+    res.status(error.statusCode).json({ message: error.message });
   }
 };
