@@ -1,18 +1,4 @@
-import { Product } from "../../../models/product/product";
-import cloudinary from "../../../configs/connectCloudinary";
-import { Op, Sequelize } from "sequelize";
-import { generateNextId } from "../../../utils/helper/generateNextId";
-import {
-  convertToWebp,
-  getCloudinaryPublicId,
-  uploadImageToCloudinary,
-} from "../../../utils/image/converToWebp";
-import { exportExcelResponse } from "../../../utils/helper/excelExporter";
-import { filterDataFromCache } from "../../../utils/helper/modelHelper/orderHelpers";
-import { mappingProductRow, productColumns } from "../../../utils/mapping/productRowAndColumn";
-import { CacheManager } from "../../../utils/helper/cacheManager";
-import redisCache from "../../../configs/redisCache";
-import { Request, response, Response } from "express";
+import { Request, Response } from "express";
 import { productService } from "../../../service/productService";
 
 //get all product
@@ -103,7 +89,6 @@ export const exportExcelProduct = async (req: Request, res: Response) => {
 
   try {
     const response = await productService.exportExcelProducts(res, { typeProduct, all });
-    res.status(200).json(response);
   } catch (error: any) {
     res.status(error.statusCode).json({ message: error.message });
   }

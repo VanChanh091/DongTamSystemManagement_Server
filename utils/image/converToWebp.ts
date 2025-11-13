@@ -1,13 +1,14 @@
 import sharp from "sharp";
 import streamifier from "streamifier";
 import cloudinary from "../../configs/connectCloudinary";
+import { AppError } from "../appError";
 
 export const convertToWebp = async (buffer: Buffer, quality: number = 80) => {
   try {
     const webpBuffer = await sharp(buffer).webp({ quality }).toBuffer();
     return webpBuffer;
   } catch (error: any) {
-    throw new Error("Lỗi khi chuyển ảnh sang WebP: " + error.message);
+    throw new AppError("Lỗi khi chuyển ảnh sang WebP: ", 400);
   }
 };
 

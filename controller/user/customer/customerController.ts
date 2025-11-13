@@ -51,7 +51,8 @@ export const getCustomerByField = async (req: Request, res: Response) => {
   }
 };
 
-//get customerId in orders //unfinished
+//get customerId in orders
+//unfinished
 export const checkCustomerInOrders = async (req: Request, res: Response) => {
   const { customerId } = req.query as { customerId: string };
 
@@ -60,7 +61,6 @@ export const checkCustomerInOrders = async (req: Request, res: Response) => {
 
     res.status(200).json({ hasOrders: orderCount > 0, orderCount });
   } catch (error: any) {
-    console.error("Check customer in orders failed:", error);
     return res.status(error.statusCode).json({ message: error.message });
   }
 };
@@ -105,8 +105,7 @@ export const exportExcelCustomer = async (req: Request, res: Response) => {
   const { fromDate, toDate, all = false } = req.body;
 
   try {
-    const response = await customerService.exportExcelCustomer(res, { fromDate, toDate, all });
-    res.status(200).json(response);
+    await customerService.exportExcelCustomer(res, { fromDate, toDate, all });
   } catch (error: any) {
     return res.status(error.statusCode).json({ message: error.message });
   }

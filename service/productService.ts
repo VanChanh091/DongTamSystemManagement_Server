@@ -11,11 +11,10 @@ import {
 } from "../utils/image/converToWebp";
 import { generateNextId } from "../utils/helper/generateNextId";
 import { Request, Response } from "express";
-import dotenv from "dotenv";
 import cloudinary from "../configs/connectCloudinary";
-import { Sequelize } from "sequelize";
 import { exportExcelResponse } from "../utils/helper/excelExporter";
 import { mappingProductRow, productColumns } from "../utils/mapping/productRowAndColumn";
+import dotenv from "dotenv";
 dotenv.config();
 
 const devEnvironment = process.env.NODE_ENV !== "production";
@@ -67,6 +66,8 @@ export const productService = {
       };
 
       await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+
+      return responseData;
     } catch (error) {
       console.error("❌ get all product failed:", error);
       throw new AppError("get all product failed", 500);
@@ -113,7 +114,9 @@ export const productService = {
   },
 
   createProduct: async (req: Request, data: any) => {
-    const { prefix = "CUSTOM", ...product } = data;
+    const { prefix = "CUSTOM", product } = data;
+    const parsedProduct = typeof product === "string" ? JSON.parse(product) : product;
+
     const transaction = await Product.sequelize?.transaction();
 
     try {
@@ -123,7 +126,6 @@ export const productService = {
       const prefixExists = await productRepository.checkPrefixProduct(sanitizedPrefix, transaction);
 
       if (prefixExists) {
-        await transaction?.rollback();
         throw new AppError(
           `Prefix '${sanitizedPrefix}' đã tồn tại, vui lòng chọn prefix khác`,
           400
@@ -143,11 +145,11 @@ export const productService = {
           "products",
           newProductId.replace(/\s+/g, "_")
         );
-        product.productImage = result.secure_url;
+        parsedProduct.productImage = result.secure_url;
       }
 
       const newProduct = await productRepository.createProduct(
-        { productId: newProductId, ...product },
+        { productId: newProductId, ...parsedProduct },
         transaction
       );
 

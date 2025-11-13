@@ -203,8 +203,6 @@ export const customerService = {
         columns: customerColumns,
         rows: mappingCustomerRow,
       });
-
-      return { message: "Export Excel successfully" };
     } catch (error) {
       console.error("❌ Export Excel error:", error);
       throw new AppError("Export Excel error", 500);
