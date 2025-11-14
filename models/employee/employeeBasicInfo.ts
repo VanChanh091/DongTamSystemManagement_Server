@@ -24,7 +24,7 @@ interface EmployeeBasicInfoAttributes {
 }
 
 //cho phép bỏ qua id khi tạo
-type EmployeeBasicInfoCreationAttributes = Optional<
+export type EmployeeBasicInfoCreationAttributes = Optional<
   EmployeeBasicInfoAttributes,
   "employeeId" | "homeTown" | "educationSystem" | "major" | "createdAt" | "updatedAt"
 >;

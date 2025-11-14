@@ -1,5 +1,7 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 
+export type userRole = "admin" | "user" | "manager";
+
 interface UserAttributes {
   userId: number;
   fullName: string;
@@ -7,7 +9,7 @@ interface UserAttributes {
   password: string;
   sex?: string | null;
   phone?: string | null;
-  role: "admin" | "user" | "manager";
+  role: userRole;
   permissions: string[];
   avatar?: string | null;
   createdAt?: Date;
@@ -27,7 +29,7 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   declare password: string;
   declare sex?: string | null;
   declare phone?: string | null;
-  declare role: "admin" | "user" | "manager";
+  declare role: userRole;
   declare permissions: string[];
   declare avatar?: string | null;
   declare readonly createdAt?: Date;

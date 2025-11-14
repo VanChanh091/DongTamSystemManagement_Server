@@ -1,6 +1,7 @@
 import { Order } from "../../../models/order/order";
 import { Request, Response } from "express";
 import { customerService } from "../../../service/customerService";
+import { CustomerCreationAttributes } from "../../../models/customer/customer";
 
 //get all
 export const getAllCustomer = async (req: Request, res: Response) => {
@@ -17,7 +18,7 @@ export const getAllCustomer = async (req: Request, res: Response) => {
       noPaging,
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       ...response,
       message: response.fromCache
         ? "Get all customers from cache"
@@ -59,7 +60,7 @@ export const checkCustomerInOrders = async (req: Request, res: Response) => {
   try {
     const orderCount = await Order.count({ where: { customerId: customerId } });
 
-    res.status(200).json({ hasOrders: orderCount > 0, orderCount });
+    return res.status(200).json({ hasOrders: orderCount > 0, orderCount });
   } catch (error: any) {
     return res.status(error.statusCode).json({ message: error.message });
   }
@@ -68,8 +69,8 @@ export const checkCustomerInOrders = async (req: Request, res: Response) => {
 //create customer
 export const createCustomer = async (req: Request, res: Response) => {
   try {
-    const response = await customerService.createCustomer(req.body);
-    res.status(201).json(response);
+    const response = await customerService.createCustomer(req.body as CustomerCreationAttributes);
+    return res.status(201).json(response);
   } catch (error: any) {
     return res.status(error.statusCode).json({ message: error.message });
   }
@@ -82,7 +83,7 @@ export const updateCustomer = async (req: Request, res: Response) => {
 
   try {
     const response = await customerService.updateCustomer(customerId, customerData);
-    res.status(201).json(response);
+    return res.status(201).json(response);
   } catch (error: any) {
     return res.status(error.statusCode).json({ message: error.message });
   }
@@ -94,7 +95,7 @@ export const deleteCustomer = async (req: Request, res: Response) => {
 
   try {
     const response = await customerService.deleteCustomer(customerId);
-    res.status(200).json(response);
+    return res.status(200).json(response);
   } catch (error: any) {
     return res.status(error.statusCode).json({ message: error.message });
   }

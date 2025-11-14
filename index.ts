@@ -23,6 +23,7 @@ import {
 //create table
 import "./models/index";
 import { initSocket } from "./utils/socket/socket";
+import { AppError } from "./utils/appError";
 
 const app = express();
 
@@ -48,7 +49,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static("uploads")); //set up to upload product image
 
-//routes
+// ========================
+//        ROUTES
+// ========================
 app.use("/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 
@@ -69,6 +72,37 @@ sequelize
   .catch((err) => console.error("❌ Error syncing database:", err));
 
 app.use(authenticate);
+
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  // Lỗi nghiệp vụ (client gây ra)
+  if (err instanceof AppError && err.isOperational) {
+    console.warn("⚠️ Operational error:", {
+      message: err.message,
+      errorCode: err.errorCode,
+      statusCode: err.statusCode,
+      path: req.originalUrl,
+    });
+
+    return res.status(err.statusCode).json({
+      success: false,
+      message: err.message,
+      errorCode: err.errorCode,
+    });
+  }
+
+  // Lỗi server thật (bug, DB lỗi, runtime crash)
+  console.error("🔥 SERVER ERROR:", {
+    message: err.message,
+    stack: err.stack,
+    path: req.originalUrl,
+  });
+
+  return res.status(500).json({
+    success: false,
+    message: "Internal server error",
+    errorCode: "SERVER_ERROR",
+  });
+});
 
 server.listen({ port: Number(process.env.PORT) || 5000, host: "0.0.0.0" }, (err?: Error) => {
   if (err) {

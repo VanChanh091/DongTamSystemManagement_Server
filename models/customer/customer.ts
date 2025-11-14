@@ -24,7 +24,7 @@ interface CustomerAttributes {
 }
 
 //cho phép bỏ qua id khi tạo
-type CustomerCreationAttributes = Optional<
+export type CustomerCreationAttributes = Optional<
   CustomerAttributes,
   | "distance"
   | "mst"

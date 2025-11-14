@@ -65,7 +65,7 @@ export const customerService = {
       return responseData;
     } catch (error) {
       console.error("❌ get all customer failed:", error);
-      throw new AppError("get all customer failed", 500);
+      throw AppError.ServerError();
     }
   },
 
@@ -91,7 +91,7 @@ export const customerService = {
       const key = field as keyof typeof fieldMap;
 
       if (!key || !fieldMap[key]) {
-        throw new AppError("Invalid field parameter", 400);
+        throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
       }
 
       const result = await filterDataFromCache({
@@ -107,7 +107,8 @@ export const customerService = {
       return result;
     } catch (error) {
       console.error(`Failed to get customers by ${field}`, error);
-      throw new AppError(`Failed to get customers by ${field}`, 500);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
     }
   },
 
@@ -133,7 +134,7 @@ export const customerService = {
     } catch (error) {
       await transaction?.rollback();
       console.error("❌ Failed to create customer:", error);
-      throw new AppError("Failed to create customer", 500);
+      throw AppError.ServerError();
     }
   },
 
@@ -143,7 +144,7 @@ export const customerService = {
     try {
       const customer = await customerRepository.findByCustomerId(customerId, transaction);
       if (!customer) {
-        throw new AppError("Customer not found", 404);
+        throw AppError.NotFound("Customer not found", "CUSTOMER_NOT_FOUND");
       }
 
       const result = await customerRepository.updateCustomer(customer, customerData, transaction);
@@ -154,7 +155,8 @@ export const customerService = {
     } catch (error) {
       await transaction?.rollback();
       console.error("❌ Update customer failed:", error);
-      throw new AppError("Update customer failed", 500);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
     }
   },
 
@@ -166,7 +168,7 @@ export const customerService = {
 
       if (!deletedCustomer) {
         await transaction?.rollback();
-        throw new AppError("Customer not found", 404);
+        throw AppError.NotFound("Customer not found", "CUSTOMER_NOT_FOUND");
       }
 
       await transaction?.commit();
@@ -175,7 +177,8 @@ export const customerService = {
     } catch (error) {
       await transaction?.rollback();
       console.error("❌ Delete customer failed:", error);
-      throw new AppError("Delete customer failed", 500);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
     }
   },
 
@@ -205,7 +208,7 @@ export const customerService = {
       });
     } catch (error) {
       console.error("❌ Export Excel error:", error);
-      throw new AppError("Export Excel error", 500);
+      throw AppError.ServerError();
     }
   },
 };

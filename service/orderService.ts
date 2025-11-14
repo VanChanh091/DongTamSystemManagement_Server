@@ -55,10 +55,12 @@ export const getOrderByStatus = async ({
     ],
   };
 
+  const order = await Order.findAndCountAll(queryOptions);
+
   if (isPaging) {
     queryOptions.offset = (page - 1) * pageSize;
     queryOptions.limit = pageSize;
-    const { count, rows } = await Order.findAndCountAll(queryOptions);
+    const { count, rows } = order;
     return {
       data: rows,
       totalOrders: count,
@@ -88,7 +90,7 @@ export const createOrderService = async ({
   [key: string]: any;
 }) => {
   const validation = await validateCustomerAndProduct(customerId, productId);
-  if (!validation.success) throw new AppError(validation.message || "Unknown error", 400);
+  if (!validation.success) throw AppError.NotFound(validation.message);
 
   //create id + number auto increase
   const newOrderId = await generateOrderId(prefix);
@@ -108,7 +110,8 @@ export const createOrderService = async ({
       await createDataTable(newOrderId, Box, box);
     } catch (error) {
       console.error("Error creating related data:", error);
-      throw new AppError("Failed to create related data", 500);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
     }
   }
 
@@ -131,7 +134,7 @@ export const updateOrderService = async ({
 }) => {
   const order = await Order.findOne({ where: { orderId } });
   if (!order) {
-    throw new AppError("Order not found", 404);
+    throw AppError.NotFound("Order not found");
   }
 
   await order.update({
@@ -157,8 +160,8 @@ export const deleteOrderService = async ({
   userId: number;
 }) => {
   const deleted = await Order.destroy({ where: { orderId } });
-  if (!deleted) {
-    throw new AppError("Order delete failed", 404);
+  if (deleted === 0) {
+    throw AppError.NotFound("Order không tồn tại");
   }
 
   await redisCache.del(`orders:${userId}:pending_reject`);

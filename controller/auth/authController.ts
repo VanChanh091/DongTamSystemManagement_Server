@@ -6,7 +6,7 @@ export const getOtpCode = async (req: Request, res: Response) => {
 
   try {
     const response = await authService.getOtpCode(email);
-    res.status(201).json(response);
+    return res.status(201).json(response);
   } catch (error: any) {
     return res.status(error.statusCode).json({ message: error.message });
   }
@@ -15,7 +15,7 @@ export const getOtpCode = async (req: Request, res: Response) => {
 export const register = async (req: Request, res: Response) => {
   try {
     const response = await authService.register(req.body);
-    res.status(201).json(response);
+    return res.status(201).json(response);
   } catch (error: any) {
     return res.status(error.statusCode).json({ message: error.message });
   }
@@ -26,8 +26,7 @@ export const login = async (req: Request, res: Response) => {
 
   try {
     const response = await authService.login(email, password);
-
-    res.status(201).json(response);
+    return res.status(201).json(response);
   } catch (error: any) {
     return res.status(error.statusCode).json({ message: error.message });
   }
@@ -38,7 +37,7 @@ export const verifyOTPChangePassword = async (req: Request, res: Response) => {
 
   try {
     const response = await authService.verifyOTPChangePassword(email, otpInput);
-    res.status(201).json(response);
+    return res.status(201).json(response);
   } catch (error: any) {
     return res.status(error.statusCode).json({ message: error.message });
   }
@@ -49,7 +48,7 @@ export const changePassword = async (req: Request, res: Response) => {
 
   try {
     const response = await authService.changePassword(email, newPassword, confirmNewPW);
-    res.status(201).json(response);
+    return res.status(201).json(response);
   } catch (error: any) {
     return res.status(error.statusCode).json({ message: error.message });
   }

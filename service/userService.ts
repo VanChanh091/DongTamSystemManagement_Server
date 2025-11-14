@@ -1,5 +1,4 @@
 import redisCache from "../configs/redisCache";
-import { User } from "../models/user/user";
 import { AppError } from "../utils/appError";
 import bcrypt from "bcrypt";
 import { convertToWebp, uploadImageToCloudinary } from "../utils/image/converToWebp";
@@ -23,7 +22,7 @@ export const userService = {
 
       const user = await userRepository.findUserById(userId);
       if (!user) {
-        throw new AppError("User not found", 400);
+        throw AppError.NotFound("User not found", "USER_NOT_FOUND");
       }
 
       // Hash password nếu có newPassword
@@ -59,7 +58,8 @@ export const userService = {
       return { message: "Update profile user successfully", data: sanitizedUser };
     } catch (error) {
       console.error("Update user error:", error);
-      throw new AppError("Update user error", 500);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
     }
   },
 };

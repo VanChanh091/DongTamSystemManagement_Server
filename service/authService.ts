@@ -53,7 +53,7 @@ export const authService = {
       return { message: `Mã OTP đã được gửi đến bạn, mã OTP là ${otp}` };
     } catch (error) {
       console.error("❌ get otp code failed:", error);
-      throw new AppError("get otp code failed", 500);
+      throw AppError.ServerError();
     }
   },
 
@@ -70,16 +70,16 @@ export const authService = {
     try {
       const existingEmail = await authRepository.findUserByEmail(email);
       if (existingEmail) {
-        throw new AppError("Tài khoản đã tồn tại", 401);
+        throw AppError.Conflict("Tài khoản đã tồn tại", "EMAIL_ALREADY_EXISTS");
       }
 
       if (password !== confirmPW) {
-        throw new AppError("Mật khẩu không khớp", 400);
+        throw AppError.BadRequest("Mật khẩu không khớp", "PASSWORD_MISMATCH");
       }
 
       const otpCheck = await checkExistAndMatchOtp(email, otpInput);
       if (!otpCheck.success) {
-        throw new AppError("Sai mã OTP", 401);
+        throw AppError.Unauthorized("Sai mã OTP", "INVALID_OTP");
       }
 
       const salt = await bcrypt.genSalt(10);
@@ -92,7 +92,8 @@ export const authService = {
       return { message: "Đăng ký thành công!" };
     } catch (error) {
       console.error("❌ register failed:", error);
-      throw new AppError("register failed", 500);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
     }
   },
 
@@ -101,13 +102,13 @@ export const authService = {
       //check email
       const existUser = await authRepository.findUserByEmail(email);
       if (!existUser) {
-        throw new AppError("Email không tồn tại", 401);
+        throw AppError.NotFound("Email không tồn tại", "EMAIL_NOT_FOUND");
       }
 
       //check password
       const isMatch = await bcrypt.compare(password, existUser.password);
       if (!isMatch) {
-        throw new AppError("Mật khẩu không đúng", 401);
+        throw AppError.Unauthorized("Mật khẩu không đúng", "INVALID_PASSWORD");
       }
 
       return {
@@ -122,7 +123,8 @@ export const authService = {
       };
     } catch (error) {
       console.error("❌ login failed:", error);
-      throw new AppError("login failed", 500);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
     }
   },
 
@@ -130,18 +132,19 @@ export const authService = {
     try {
       const existingEmail = await authRepository.findUserByEmail(email);
       if (!existingEmail) {
-        throw new AppError("Email không tồn tại", 401);
+        throw AppError.NotFound("Email không tồn tại", "EMAIL_NOT_FOUND");
       }
 
       const otpCheck = await checkExistAndMatchOtp(email, otpInput);
       if (!otpCheck.success) {
-        throw new AppError(`${otpCheck.message}`, 401);
+        throw AppError.Unauthorized(`${otpCheck.message}`, "INVALID_OTP");
       }
 
       return { message: "Xác thực thành công!" };
     } catch (error) {
       console.error("❌ verify otp failed:", error);
-      throw new AppError("verify otp failed", 500);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
     }
   },
 
@@ -149,11 +152,11 @@ export const authService = {
     try {
       const redisData = await redisCache.get(`user:${email}`);
       if (!redisData) {
-        throw new AppError("Email đã hết hạn hoặc không hợp lệ", 500);
+        throw AppError.Unauthorized("Email đã hết hạn hoặc không hợp lệ", "INVALID_EMAIL");
       }
 
       if (newPassword !== confirmNewPW) {
-        throw new AppError("Mật khẩu không khớp", 500);
+        throw AppError.BadRequest("Mật khẩu không khớp", "PASSWORD_MISMATCH");
       }
 
       const salt = await bcrypt.genSalt(10);
@@ -166,7 +169,8 @@ export const authService = {
       return { message: "Cập nhật mật khẩu thành công" };
     } catch (error) {
       console.error("❌ change password failed:", error);
-      throw new AppError("change password failed", 500);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
     }
   },
 };

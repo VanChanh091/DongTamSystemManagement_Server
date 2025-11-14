@@ -70,7 +70,7 @@ export const productService = {
       return responseData;
     } catch (error) {
       console.error("❌ get all product failed:", error);
-      throw new AppError("get all product failed", 500);
+      throw AppError.ServerError();
     }
   },
 
@@ -94,7 +94,7 @@ export const productService = {
       const key = field as keyof typeof fieldMap;
 
       if (!key || !fieldMap[key]) {
-        throw new AppError("Invalid field parameter", 400);
+        throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
       }
       const result = await filterDataFromCache({
         model: Product,
@@ -109,7 +109,8 @@ export const productService = {
       return result;
     } catch (error) {
       console.error(`❌ Failed to get product by ${field}:`, error);
-      throw new AppError(`Failed to get product by ${field}`, 500);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
     }
   },
 
@@ -126,9 +127,9 @@ export const productService = {
       const prefixExists = await productRepository.checkPrefixProduct(sanitizedPrefix, transaction);
 
       if (prefixExists) {
-        throw new AppError(
+        throw AppError.Conflict(
           `Prefix '${sanitizedPrefix}' đã tồn tại, vui lòng chọn prefix khác`,
-          400
+          "PREFIX_ALREADY_EXISTS"
         );
       }
 
@@ -159,7 +160,8 @@ export const productService = {
     } catch (error) {
       await transaction?.rollback();
       console.error("❌ add product failed:", error);
-      throw new AppError("add product failed", 500);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
     }
   },
 
@@ -169,7 +171,7 @@ export const productService = {
     try {
       const existingProduct = await productRepository.findProductByPk(producId);
       if (!existingProduct) {
-        throw new AppError("Product not found", 404);
+        throw AppError.NotFound("Product not found", "PRODUCT_NOT_FOUND");
       }
 
       // Nếu có ảnh mới được upload
@@ -193,7 +195,8 @@ export const productService = {
     } catch (error) {
       await transaction?.rollback();
       console.error("❌ Update product error:", error);
-      throw new AppError("Update product error", 500);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
     }
   },
 
@@ -203,7 +206,7 @@ export const productService = {
     try {
       const product = await productRepository.findProductByPk(producId);
       if (!product) {
-        throw new AppError("Product not found", 404);
+        throw AppError.NotFound("Product not found", "PRODUCT_NOT_FOUND");
       }
 
       const imageName = product.productImage;
@@ -223,7 +226,8 @@ export const productService = {
     } catch (error) {
       await transaction?.rollback();
       console.error("❌ Delete product error:", error);
-      throw new AppError("Delete product error", 500);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
     }
   },
 
@@ -251,7 +255,7 @@ export const productService = {
       });
     } catch (error) {
       console.error("❌ Export Excel error:", error);
-      throw new AppError("Export Excel error", 500);
+      throw AppError.ServerError();
     }
   },
 };

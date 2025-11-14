@@ -1,18 +1,17 @@
 import { Request, Response } from "express";
 import { MachinePaper, MachinePaperCreationAttributes } from "../../models/admin/machinePaper";
 import { MachineBox, MachineBoxCreationAttributes } from "../../models/admin/machineBox";
+import { adminService } from "../../service/adminService";
 
 //===============================PAPER=====================================
 
 //get all machine
 export const getAllMachinePaper = async (req: Request, res: Response) => {
   try {
-    const data = await MachinePaper.findAll();
-
-    res.status(200).json({ message: "get all machine successfully", data });
+    const response = await adminService.getAllMachine(MachinePaper);
+    return res.status(200).json(response);
   } catch (error: any) {
-    console.error("failed to get all machine", error.message);
-    res.status(500).json({ message: "server error" });
+    return res.status(error.statusCode).json({ message: error.message });
   }
 };
 
@@ -20,42 +19,25 @@ export const getAllMachinePaper = async (req: Request, res: Response) => {
 //use to get id for update
 export const getMachinePaperById = async (req: Request, res: Response) => {
   const { machineId } = req.query as { machineId: string };
-  const id = Number(machineId);
 
   try {
-    const machine = await MachinePaper.findOne({
-      where: { machineId: id },
-    });
-
-    if (!machine) {
-      return res.status(404).json({ message: "machine not found" });
-    }
-
-    return res.status(200).json({ message: `get machine by id:${id}`, data: machine });
+    const response = await adminService.getMachineById(MachinePaper, Number(machineId));
+    return res.status(200).json(response);
   } catch (error: any) {
-    console.error(`failed to get machine by id:${id}`, error.message);
-    res.status(500).json({ message: "server error" });
+    return res.status(error.statusCode).json({ message: error.message });
   }
 };
 
 //add machine
 export const createMachinePaper = async (req: Request, res: Response) => {
-  const machine = req.body as MachinePaperCreationAttributes;
-  const transaction = await MachinePaper.sequelize?.transaction();
-
   try {
-    const newMachine = await MachinePaper.create(machine, { transaction });
-
-    await transaction?.commit();
-
-    res.status(200).json({
-      message: "Create machine successfully",
-      data: newMachine,
-    });
+    const response = await adminService.createMachine(
+      MachinePaper,
+      req.body as MachinePaperCreationAttributes
+    );
+    return res.status(200).json(response);
   } catch (error: any) {
-    await transaction?.rollback();
-    console.error("❌ Failed to create machine:", error.message);
-    res.status(500).json({ message: "Server error" });
+    return res.status(error.statusCode).json({ message: error.message });
   }
 };
 
@@ -64,42 +46,27 @@ export const updateMachinePaperById = async (req: Request, res: Response) => {
   const { machineId } = req.query as { machineId: string };
   const { ...machineUpdated } = req.body;
 
-  const id = Number(machineId);
-
   try {
-    const existingMachine = await MachinePaper.findByPk(id);
-    if (!existingMachine) {
-      return res.status(404).json({ message: "machine not found" });
-    }
-
-    await existingMachine.update({
-      ...machineUpdated,
-    });
-
-    res.status(200).json({ message: "update machine successfully", data: existingMachine });
+    const response = await adminService.updateMachineById(
+      MachinePaper,
+      Number(machineId),
+      machineUpdated
+    );
+    return res.status(200).json(response);
   } catch (error: any) {
-    console.error("failed to update machine", error.message);
-    res.status(500).json({ message: "server error" });
+    return res.status(error.statusCode).json({ message: error.message });
   }
 };
 
 //delete machine
 export const deleteMachinePaperById = async (req: Request, res: Response) => {
   const { machineId } = req.query as { machineId: string };
-  const id = Number(machineId);
 
   try {
-    const machine = await MachinePaper.findByPk(id);
-    if (!machine) {
-      return res.status(404).json({ message: "machine not found" });
-    }
-
-    await machine.destroy();
-
-    res.status(200).json({ message: `delete machineId:${id} successfully` });
+    const response = await adminService.deleteMachineById(MachinePaper, Number(machineId));
+    return res.status(200).json(response);
   } catch (error: any) {
-    console.error("failed to delete machine", error.message);
-    res.status(500).json({ message: "server error" });
+    return res.status(error.statusCode).json({ message: error.message });
   }
 };
 
@@ -108,12 +75,10 @@ export const deleteMachinePaperById = async (req: Request, res: Response) => {
 //get all machine
 export const getAllMachineBox = async (req: Request, res: Response) => {
   try {
-    const data = await MachineBox.findAll();
-
-    res.status(200).json({ message: "get all machine successfully", data });
+    const response = await adminService.getAllMachine(MachineBox);
+    return res.status(200).json(response);
   } catch (error: any) {
-    console.error("failed to get all machine", error.message);
-    res.status(500).json({ message: "server error" });
+    return res.status(error.statusCode).json({ message: error.message });
   }
 };
 
@@ -121,39 +86,25 @@ export const getAllMachineBox = async (req: Request, res: Response) => {
 //use to get id for update
 export const getMachineBoxById = async (req: Request, res: Response) => {
   const { machineId } = req.query as { machineId: string };
-  const id = Number(machineId);
 
   try {
-    const machine = await MachineBox.findOne({
-      where: { machineId: id },
-    });
-
-    if (!machine) {
-      return res.status(404).json({ message: "machine not found" });
-    }
-
-    return res.status(200).json({ message: `get machine by id:${id}`, data: machine });
+    const response = await adminService.getMachineById(MachineBox, Number(machineId));
+    return res.status(200).json(response);
   } catch (error: any) {
-    console.error(`failed to get machine by id:${id}`, error.message);
-    res.status(500).json({ message: "server error" });
+    return res.status(error.statusCode).json({ message: error.message });
   }
 };
 
 //add machine
 export const createMachineBox = async (req: Request, res: Response) => {
-  const machine = req.body as MachineBoxCreationAttributes;
-  const transaction = await MachineBox.sequelize?.transaction();
-
   try {
-    const newMachine = await MachineBox.create(machine, { transaction });
-
-    await transaction?.commit();
-
-    res.status(200).json({ message: "create machine successfully", data: newMachine });
+    const response = await adminService.createMachine(
+      MachineBox,
+      req.body as MachineBoxCreationAttributes
+    );
+    return res.status(200).json(response);
   } catch (error: any) {
-    await transaction?.rollback();
-    console.error("failed to create machine", error.message);
-    res.status(500).json({ message: "server error" });
+    return res.status(error.statusCode).json({ message: error.message });
   }
 };
 
@@ -162,41 +113,26 @@ export const updateMachineBoxById = async (req: Request, res: Response) => {
   const { machineId } = req.query as { machineId: string };
   const { ...machineUpdated } = req.body;
 
-  const id = Number(machineId);
-
   try {
-    const existingMachine = await MachineBox.findByPk(id);
-    if (!existingMachine) {
-      return res.status(404).json({ message: "machine not found" });
-    }
-
-    await existingMachine.update({
-      ...machineUpdated,
-    });
-
-    res.status(200).json({ message: "update machine successfully", data: existingMachine });
+    const response = await adminService.updateMachineById(
+      MachineBox,
+      Number(machineId),
+      machineUpdated
+    );
+    return res.status(200).json(response);
   } catch (error: any) {
-    console.error("failed to update machine", error.message);
-    res.status(500).json({ message: "server error" });
+    return res.status(error.statusCode).json({ message: error.message });
   }
 };
 
 //delete machine
 export const deleteMachineBoxById = async (req: Request, res: Response) => {
   const { machineId } = req.query as { machineId: string };
-  const id = Number(machineId);
 
   try {
-    const machine = await MachineBox.findByPk(id);
-    if (!machine) {
-      return res.status(404).json({ message: "machine not found" });
-    }
-
-    await machine.destroy();
-
-    res.status(200).json({ message: `delete machineId:${id} successfully` });
+    const response = await adminService.deleteMachineById(MachineBox, Number(machineId));
+    return res.status(200).json(response);
   } catch (error: any) {
-    console.error("failed to delete machine", error.message);
-    res.status(500).json({ message: "server error" });
+    return res.status(error.statusCode).json({ message: error.message });
   }
 };

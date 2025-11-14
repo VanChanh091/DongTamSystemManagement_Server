@@ -18,7 +18,7 @@ interface EmployeeCompanyInfoAttributes {
 }
 
 //cho phép bỏ qua id khi tạo
-type EmployeeCompanyInfoCreationAttributes = Optional<
+export type EmployeeCompanyInfoCreationAttributes = Optional<
   EmployeeCompanyInfoAttributes,
   "companyInfoId" | "employeeCode" | "createdAt" | "updatedAt"
 >;

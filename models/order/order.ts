@@ -4,6 +4,8 @@ import { Product } from "../product/product.js";
 import { User } from "../user/user.js";
 import { Box } from "./box.js";
 
+export type OrderStatus = "pending" | "accept" | "reject" | "planning" | "stop";
+
 //định nghĩa trường trong bảng
 interface OrderAttributes {
   orderId: string;
@@ -23,7 +25,7 @@ interface OrderAttributes {
   totalPrice: number;
   totalPriceVAT: number;
   isBox: boolean;
-  status: "pending" | "accept" | "reject" | "planning" | "stop";
+  status: OrderStatus;
 
   flute?: string | null;
   QC_box?: string | null;
@@ -134,7 +136,7 @@ export class Order
   declare totalPriceVAT: number;
   declare instructSpecial?: string | null;
   declare isBox: boolean;
-  declare status: "pending" | "accept" | "reject" | "planning" | "stop";
+  declare status: OrderStatus;
   declare rejectReason?: string | null;
 
   declare readonly createdAt?: Date;

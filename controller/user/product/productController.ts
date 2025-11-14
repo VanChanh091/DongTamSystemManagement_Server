@@ -16,7 +16,7 @@ export const getAllProduct = async (req: Request, res: Response) => {
       noPaging,
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       ...response,
       message: response.fromCache ? "Get all products from cache" : "get all products successfully",
     });
@@ -42,7 +42,7 @@ export const getProductByField = async (req: Request, res: Response) => {
       pageSize: Number(pageSize),
     });
 
-    res.status(200).json(response);
+    return res.status(200).json(response);
   } catch (error: any) {
     res.status(error.statusCode).json({ message: error.message });
   }
@@ -88,7 +88,7 @@ export const exportExcelProduct = async (req: Request, res: Response) => {
   const { typeProduct, all = false } = req.body;
 
   try {
-    const response = await productService.exportExcelProducts(res, { typeProduct, all });
+    await productService.exportExcelProducts(res, { typeProduct, all });
   } catch (error: any) {
     res.status(error.statusCode).json({ message: error.message });
   }
