@@ -62,7 +62,7 @@ export const employeeRepository = {
   },
 
   deleteEmployee: async (employee: any, transaction?: any) => {
-    return await employee.destroy({ transaction });
+    return await employee.destroy(transaction);
   },
 
   exportExcelEmpl: async (whereCondition: any = {}) => {

@@ -1,6 +1,17 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { PlanningBox } from "./planningBox";
 
+export type statusBoxType = "planning" | "lackOfQty" | "complete" | "producing" | "stop";
+export type machineBoxType =
+  | "Máy In"
+  | "Máy Cấn Lằn"
+  | "Máy Bế"
+  | "Máy Xả"
+  | "Máy Dán"
+  | "Máy Cắt Khe"
+  | "Máy Cán Màng"
+  | "Máy Đóng Ghim";
+
 //định nghĩa trường trong bảng
 interface PlanningBoxTimeAttributes {
   boxTimeId: number;
@@ -11,17 +22,9 @@ interface PlanningBoxTimeAttributes {
   wasteBox?: number | null;
   rpWasteLoss?: number | null;
   qtyProduced?: number | null;
-  machine:
-    | "Máy In"
-    | "Máy Cấn Lằn"
-    | "Máy Bế"
-    | "Máy Xả"
-    | "Máy Dán"
-    | "Máy Cắt Khe"
-    | "Máy Cán Màng"
-    | "Máy Đóng Ghim";
+  machine: machineBoxType;
   shiftManagement?: string | null;
-  status: "planning" | "lackOfQty" | "complete" | "producing" | "stop";
+  status: statusBoxType;
   sortPlanning?: number | null;
   createdAt?: Date;
   updatedAt?: Date;
@@ -60,17 +63,9 @@ export class PlanningBoxTime
   declare wasteBox?: number | null;
   declare rpWasteLoss?: number | null;
   declare qtyProduced?: number | null;
-  declare machine:
-    | "Máy In"
-    | "Máy Cấn Lằn"
-    | "Máy Bế"
-    | "Máy Xả"
-    | "Máy Dán"
-    | "Máy Cắt Khe"
-    | "Máy Cán Màng"
-    | "Máy Đóng Ghim";
+  declare machine: machineBoxType;
   declare shiftManagement?: string | null;
-  declare status: "planning" | "lackOfQty" | "complete" | "producing" | "stop";
+  declare status: statusBoxType;
   declare sortPlanning?: number | null;
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;

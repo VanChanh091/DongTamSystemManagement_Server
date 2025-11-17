@@ -6,6 +6,7 @@ import { PlanningBox } from "../../../models/planning/planningBox";
 import { CacheManager } from "../cacheManager";
 import redisCache from "../../../configs/redisCache";
 import { Request, Response } from "express";
+import { BreakTime } from "../../../interface/types";
 
 //get planningPaper properties
 export const getPlanningPaperByField = async (req: Request, res: Response, field: string) => {
@@ -222,12 +223,6 @@ export const parseTimeOnly = (timeStr: string) => {
   return d;
 };
 
-interface BreakTime {
-  start: string;
-  end: string;
-  duration: number;
-}
-
 export const isDuringBreak = (start: Date, end: Date) => {
   const breaks: BreakTime[] = [
     { start: "11:30", end: "12:00", duration: 30 },
@@ -258,4 +253,20 @@ export const setTimeOnDay = (dayDate: Date, timeStrOrDate: string | Date) => {
     typeof timeStrOrDate === "string" ? parseTimeOnly(timeStrOrDate) : new Date(timeStrOrDate);
   t.setFullYear(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate());
   return t;
+};
+
+export const mergeShiftField = (currentValue: string, incoming?: string) => {
+  if (!incoming) return currentValue;
+
+  const newValue = incoming.trim();
+  const exists = currentValue
+    .split(",")
+    .map((s) => s.trim())
+    .includes(newValue);
+
+  if (!exists) {
+    return currentValue ? `${currentValue}, ${newValue}` : newValue;
+  }
+
+  return currentValue;
 };

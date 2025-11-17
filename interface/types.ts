@@ -8,3 +8,9 @@ export interface FilterDataFromCacheProps<T> {
   message?: string;
   fetchFunction?: () => Promise<T[]>;
 }
+
+export interface BreakTime {
+  start: string;
+  end: string;
+  duration: number;
+}

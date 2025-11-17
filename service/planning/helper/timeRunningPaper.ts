@@ -1,6 +1,8 @@
 import { Op } from "sequelize";
-import { PlanningPaper } from "../../models/planning/planningPaper";
-import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
+import { planningRepository } from "../../../repository/planningRepository";
+import { PlanningPaper } from "../../../models/planning/planningPaper";
+import { timeOverflowPlanning } from "../../../models/planning/timeOverflowPlanning";
+import { BreakTime } from "../../../interface/types";
 
 export const updateSortPlanning = async (
   updateIndex: { planningId: number; sortPlanning: number | null }[],
@@ -9,7 +11,8 @@ export const updateSortPlanning = async (
   const updates = updateIndex
     .filter((item) => item.sortPlanning)
     .map((item) =>
-      PlanningPaper.update(
+      planningRepository.updateDataModel(
+        PlanningPaper,
         { sortPlanning: item.sortPlanning },
         {
           where: { planningId: item.planningId, status: { [Op.ne]: "complete" } },
@@ -47,10 +50,11 @@ export const calculateTimeRunning = async ({
 
   if (feComplete) {
     const overflowRecord = feComplete.hasOverFlow
-      ? await timeOverflowPlanning.findOne({
-          where: { planningId: feComplete.planningId },
-          transaction,
-        })
+      ? await planningRepository.getModelById(
+          timeOverflowPlanning,
+          { planningId: feComplete.planningId },
+          { transaction }
+        )
       : null;
 
     if (overflowRecord?.overflowTimeRunning && overflowRecord?.overflowDayStart) {
@@ -101,7 +105,7 @@ export const calculateTimeRunning = async ({
   return updated;
 };
 
-export const calculateTimeForOnePlanning = async ({
+const calculateTimeForOnePlanning = async ({
   planning,
   machine,
   machineInfo,
@@ -194,7 +198,8 @@ export const calculateTimeForOnePlanning = async ({
     transaction,
   });
 
-  await PlanningPaper.update(
+  await planningRepository.updateDataModel(
+    PlanningPaper,
     {
       dayStart: new Date(result.dayStart),
       timeRunning: result.timeRunning,
@@ -224,7 +229,7 @@ export const calculateTimeForOnePlanning = async ({
 
 //==================== HỖ TRỢ ====================//
 
-export const getSpeed = (flute: string, machine: string, info: Record<string, number>): number => {
+const getSpeed = (flute: string, machine: string, info: Record<string, number>): number => {
   const layer = parseInt(flute?.[0] ?? "0", 10);
 
   if (machine === "Máy 2 Lớp") return info.speed2Layer;
@@ -240,8 +245,8 @@ export const getSpeed = (flute: string, machine: string, info: Record<string, nu
   return speed;
 };
 
-export const isDuringBreak = (start: Date, end: Date) => {
-  const breaks = [
+const isDuringBreak = (start: Date, end: Date) => {
+  const breaks: BreakTime[] = [
     { start: "11:30", end: "12:00", duration: 30 },
     { start: "17:00", end: "17:30", duration: 30 },
     { start: "02:00", end: "02:45", duration: 45 },
@@ -258,7 +263,7 @@ export const isDuringBreak = (start: Date, end: Date) => {
   }, 0);
 };
 
-export const handleOverflow = async ({
+const handleOverflow = async ({
   hasOverFlow,
   predictedEnd,
   endOfWork,
@@ -276,7 +281,8 @@ export const handleOverflow = async ({
   transaction: any;
 }) => {
   if (!hasOverFlow) {
-    await timeOverflowPlanning.destroy({ where: { planningId }, transaction });
+    await planningRepository.deleteModelData(timeOverflowPlanning, { planningId }, transaction);
+
     return {
       dayStart: currentDay.toISOString().split("T")[0],
       timeRunning: formatTime(predictedEnd),
@@ -295,14 +301,15 @@ export const handleOverflow = async ({
   const overflowEnd = new Date(startOverflow);
   overflowEnd.setMinutes(overflowEnd.getMinutes() + overflowMin);
 
-  await timeOverflowPlanning.destroy({ where: { planningId }, transaction });
-  await timeOverflowPlanning.create(
+  await planningRepository.deleteModelData(timeOverflowPlanning, { planningId }, transaction);
+  await planningRepository.createPlanning(
+    timeOverflowPlanning,
     {
       planningId,
       overflowDayStart: new Date(overflowDay.toISOString().split("T")[0]),
       overflowTimeRunning: formatTime(overflowEnd),
     },
-    { transaction }
+    transaction
   );
 
   return {
@@ -313,26 +320,26 @@ export const handleOverflow = async ({
   };
 };
 
-export const parseTime = (t: string) => {
+const parseTime = (t: string) => {
   const [h, m] = t.split(":").map(Number);
   const d = new Date();
   d.setHours(h, m, 0, 0);
   return d;
 };
 
-export const formatTime = (d: Date) => {
+const formatTime = (d: Date) => {
   const pad = (n: number) => n.toString().padStart(2, "0");
   return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 };
 
-export const combineDateAndHHMMSS = (dateObj: Date, hhmmss: string) => {
+const combineDateAndHHMMSS = (dateObj: Date, hhmmss: string) => {
   const [h, m, s = 0] = hhmmss.split(":").map(Number);
   const d = new Date(dateObj);
   d.setHours(h, m, s, 0);
   return d;
 };
 
-export const getInitialCursor = async ({
+const getInitialCursor = async ({
   machine,
   dayStart,
   timeStart,
@@ -371,21 +378,7 @@ export const getInitialCursor = async ({
   }
 
   // B) Kiểm tra overflow mới nhất (ưu tiên cao hơn)
-  const lastOverflow = await timeOverflowPlanning.findOne({
-    include: [
-      {
-        model: PlanningPaper,
-        attributes: ["status", "ghepKho", "chooseMachine"],
-        where: { chooseMachine: machine, status: "complete" },
-        required: true,
-      },
-    ],
-    order: [
-      ["overflowDayStart", "DESC"],
-      ["overflowTimeRunning", "DESC"],
-    ],
-    transaction,
-  });
+  const lastOverflow = await planningRepository.getTimeOverflowPaper(machine, transaction);
 
   if (lastOverflow?.overflowTimeRunning) {
     const overflowDay = new Date(lastOverflow.overflowDayStart ?? "");

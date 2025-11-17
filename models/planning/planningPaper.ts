@@ -3,6 +3,9 @@ import { Order } from "../order/order";
 import { timeOverflowPlanning } from "./timeOverflowPlanning";
 import { PlanningBox } from "./planningBox";
 
+export type machinePaperType = "Máy 1350" | "Máy 1900" | "Máy 2 Lớp" | "Máy Quấn Cuồn";
+export type planningPaperStatus = "planning" | "complete" | "lackQty" | "producing" | "stop";
+
 //định nghĩa trường trong bảng
 interface PlanningPaperAttributes {
   planningId: number;
@@ -35,10 +38,10 @@ interface PlanningPaperAttributes {
   totalLoss?: number | null;
   qtyWasteNorm?: number | null;
 
-  chooseMachine: "Máy 1350" | "Máy 1900" | "Máy 2 Lớp" | "Máy Quấn Cuồn";
+  chooseMachine: machinePaperType;
   shiftProduction?: string | null;
   shiftManagement?: string | null;
-  status: "planning" | "complete" | "lackQty" | "producing" | "stop";
+  status: planningPaperStatus;
   hasOverFlow?: boolean | null;
   hasBox?: boolean | null;
   sortPlanning?: number | null;
@@ -117,10 +120,10 @@ export class PlanningPaper
   declare knife?: number | null;
   declare totalLoss?: number | null;
   declare qtyWasteNorm?: number | null;
-  declare chooseMachine: "Máy 1350" | "Máy 1900" | "Máy 2 Lớp" | "Máy Quấn Cuồn";
+  declare chooseMachine: machinePaperType;
   declare shiftProduction?: string | null;
   declare shiftManagement?: string | null;
-  declare status: "planning" | "complete" | "lackQty" | "producing" | "stop";
+  declare status: planningPaperStatus;
   declare hasOverFlow?: boolean | null;
   declare hasBox?: boolean | null;
   declare sortPlanning?: number | null;

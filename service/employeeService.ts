@@ -1,17 +1,11 @@
 import dotenv from "dotenv";
 import { CacheManager } from "../utils/helper/cacheManager";
 import { AppError } from "../utils/appError";
-import {
-  EmployeeBasicInfo,
-  EmployeeBasicInfoCreationAttributes,
-} from "../models/employee/employeeBasicInfo";
+import { EmployeeBasicInfo } from "../models/employee/employeeBasicInfo";
 import redisCache from "../configs/redisCache";
 import { employeeRepository } from "../repository/employeeRepository";
 import { filterDataFromCache } from "../utils/helper/modelHelper/orderHelpers";
-import {
-  EmployeeCompanyInfo,
-  EmployeeCompanyInfoCreationAttributes,
-} from "../models/employee/employeeCompanyInfo";
+import { EmployeeCompanyInfo } from "../models/employee/employeeCompanyInfo";
 import { Op } from "sequelize";
 import { exportExcelResponse } from "../utils/helper/excelExporter";
 import { employeeColumns, mappingEmployeeRow } from "../utils/mapping/employeeRowAndColumn";
@@ -35,7 +29,10 @@ export const employeeService = {
     const cacheKey = noPaging === "true" ? employee.all : employee.page(page);
 
     try {
-      const { isChanged } = await CacheManager.check(EmployeeBasicInfo, "employee");
+      const { isChanged } = await CacheManager.check(
+        [{ model: EmployeeBasicInfo }, { model: EmployeeCompanyInfo }],
+        "employee"
+      );
 
       if (isChanged) {
         await CacheManager.clearEmployee();
@@ -43,7 +40,6 @@ export const employeeService = {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {
           if (devEnvironment) console.log("✅ Data Employees from Redis");
-          //   return res.status(200).json({ ...parsed, message: "Get all employees from cache" });
           return { ...JSON.parse(cachedData), fromCache: true };
         }
       }
@@ -56,15 +52,15 @@ export const employeeService = {
         data = await employeeRepository.findAllEmployee();
       } else {
         totalPages = Math.ceil(totalEmployees / pageSize);
-        data = employeeRepository.findEmployeeByPage(page, pageSize);
+        data = await employeeRepository.findEmployeeByPage(page, pageSize);
       }
 
       const responseData = {
-        message: "get all employees successfully",
+        message: "",
         data,
         totalEmployees,
         totalPages,
-        page,
+        currentPage: page,
       };
 
       await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
@@ -128,14 +124,16 @@ export const employeeService = {
     const transaction = await EmployeeBasicInfo.sequelize?.transaction();
 
     try {
-      const newBasicInfo = await employeeRepository.createEmployee(EmployeeBasicInfo, basicInfo, {
-        transaction,
-      });
+      const newBasicInfo = await employeeRepository.createEmployee(
+        EmployeeBasicInfo,
+        basicInfo,
+        transaction
+      );
 
       await employeeRepository.createEmployee(
         EmployeeCompanyInfo,
         { employeeId: newBasicInfo.employeeId, ...companyInfo },
-        { transaction }
+        transaction
       );
 
       await transaction?.commit();
@@ -162,15 +160,16 @@ export const employeeService = {
       }
 
       if (basicInfo) {
-        await employeeRepository.updateEmployee(basicInfo, { transaction });
+        await employeeRepository.updateEmployee(employee, basicInfo, transaction);
       }
 
       if (companyInfo && employee.companyInfo) {
-        await employeeRepository.updateEmployee(employee.companyInfo, companyInfo, { transaction });
+        await employeeRepository.updateEmployee(employee.companyInfo, companyInfo, transaction);
       } else if (companyInfo) {
         await employeeRepository.createEmployee(
+          EmployeeCompanyInfo,
           { employeeId: employee.employeeId, ...companyInfo },
-          { transaction }
+          transaction
         );
       }
 

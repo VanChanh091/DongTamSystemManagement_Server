@@ -1,11 +1,13 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { EmployeeCompanyInfo } from "./employeeCompanyInfo";
 
+export type genderEmployee = "Nam" | "Nữ" | "Khác";
+
 //định nghĩa trường trong bảng
 interface EmployeeBasicInfoAttributes {
   employeeId: number;
   fullName: string;
-  gender: "Nam" | "Nữ" | "Khác";
+  gender: genderEmployee;
   birthday: Date;
   birthPlace: string;
   homeTown?: string | null;
@@ -36,7 +38,7 @@ export class EmployeeBasicInfo
 {
   declare employeeId: number;
   declare fullName: string;
-  declare gender: "Nam" | "Nữ" | "Khác";
+  declare gender: genderEmployee;
   declare birthday: Date;
   declare birthPlace: string;
   declare homeTown?: string | null;

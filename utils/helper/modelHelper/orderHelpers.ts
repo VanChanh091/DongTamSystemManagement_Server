@@ -4,7 +4,7 @@ import { Product } from "../../../models/product/product";
 import { Order } from "../../../models/order/order";
 import { Box } from "../../../models/order/box";
 import redisCache from "../../../configs/redisCache";
-import { FilterDataFromCacheProps } from "../../../interface/cacheTypes";
+import { FilterDataFromCacheProps } from "../../../interface/types";
 
 export const validateCustomerAndProduct = async (customerId: string, productId: string) => {
   const customer = await Customer.findOne({ where: { customerId } });
