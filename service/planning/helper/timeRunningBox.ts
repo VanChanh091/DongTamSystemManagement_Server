@@ -119,7 +119,7 @@ export const calTimeRunningPlanningBox = async ({
 };
 
 // Tính thời gian cho từng planning (sửa để ngày/giờ luôn đồng bộ)
-export const calculateTimeForOnePlanning = async ({
+const calculateTimeForOnePlanning = async ({
   planning,
   machine,
   machineInfo,
@@ -155,7 +155,8 @@ export const calculateTimeForOnePlanning = async ({
   }
 
   // ✅ chỉ dùng quantityCustomer làm runningPlan
-  const runningPlan = Order?.quantityCustomer || 0;
+  const boxTime = planning.boxTimes && planning.boxTimes[0] ? planning.boxTimes[0] : null;
+  const runningPlan = boxTime.runningPlan;
 
   const productionMinutes = calculateProductionMinutes({
     runningPlan,
@@ -288,7 +289,7 @@ export const calculateTimeForOnePlanning = async ({
 };
 
 // Tính phút sản xuất (có log)
-export const calculateProductionMinutes = ({
+const calculateProductionMinutes = ({
   runningPlan,
   Order,
   machineInfo,
@@ -320,9 +321,8 @@ export const calculateProductionMinutes = ({
 };
 
 // Xử lý overflow
-export const handleOverflow = async ({
+const handleOverflow = async ({
   planningBoxId,
-  sortPlanning,
   predictedEndTime,
   endOfWorkTime,
   timeStart,
@@ -370,7 +370,7 @@ export const handleOverflow = async ({
 };
 
 // Tính waste
-export const calculateWasteBoxValue = async ({
+const calculateWasteBoxValue = async ({
   machine,
   runningPlan,
   Order,
@@ -410,7 +410,7 @@ export const calculateWasteBoxValue = async ({
   return p + runningPlan * (totalLossOnTotalQty / 100);
 };
 
-export const combineDateAndHHMMSS = (dateObj: Date | string, hhmmss: string): Date => {
+const combineDateAndHHMMSS = (dateObj: Date | string, hhmmss: string): Date => {
   const [h, m, s = 0] = hhmmss.split(":").map((x) => Number(x) || 0);
 
   const d = new Date(dateObj);
@@ -418,7 +418,7 @@ export const combineDateAndHHMMSS = (dateObj: Date | string, hhmmss: string): Da
   return d;
 };
 
-export const getInitialCursor = async ({
+const getInitialCursor = async ({
   machine,
   dayStart,
   timeStart,

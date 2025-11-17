@@ -31,4 +31,15 @@ const validPermissions = [
   "read",
 ];
 
-export { machineLabels, MACHINE_FIELD_MAP, validPermissions };
+const machineMap = {
+  hasIn: "Máy In",
+  hasCanLan: "Máy Cấn Lằn",
+  hasBe: "Máy Bế",
+  hasXa: "Máy Xả",
+  hasDan: "Máy Dán",
+  hasCatKhe: "Máy Cắt Khe",
+  hasCanMang: "Máy Cán Màng",
+  hasDongGhim: "Máy Đóng Ghim",
+};
+
+export { machineLabels, MACHINE_FIELD_MAP, validPermissions, machineMap };

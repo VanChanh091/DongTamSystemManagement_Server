@@ -470,8 +470,7 @@ export const manufactureService = {
       const newQtyProduced = Number(planning.qtyProduced || 0) + Number(qtyProduced || 0);
       const newQtyWasteNorm = Number(planning.rpWasteLoss || 0) + Number(rpWasteLoss || 0);
 
-      const qtyCustomer = planning.PlanningBox?.Order?.quantityCustomer || 0;
-      const newRunningPlan = Math.max(qtyCustomer - Number(newQtyProduced || 0), 0);
+      const isCompletedOrder = newQtyProduced >= (planning.runningPlan || 0);
 
       const timeOverFlow = (
         Array.isArray(planning.PlanningBox.timeOverFlow) &&
@@ -512,7 +511,6 @@ export const manufactureService = {
             qtyProduced: newQtyProduced,
             rpWasteLoss: newQtyWasteNorm,
             shiftManagement: shiftManagement,
-            runningPlan: newRunningPlan,
           },
           { transaction }
         );
@@ -527,7 +525,6 @@ export const manufactureService = {
             qtyProduced: newQtyProduced,
             rpWasteLoss: newQtyWasteNorm,
             shiftManagement: shiftManagement,
-            runningPlan: newRunningPlan,
           },
           { transaction }
         );
@@ -536,7 +533,7 @@ export const manufactureService = {
       }
 
       //condition to complete
-      if (newRunningPlan <= 0) {
+      if (isCompletedOrder) {
         await planningRepository.updateDataModel(planning, { status: "complete" }, { transaction });
         if (isOverflowReport) {
           await overflow?.update({ status: "complete" }, { transaction });
@@ -574,7 +571,7 @@ export const manufactureService = {
           qtyWasteNorm: newQtyWasteNorm,
           dayCompleted,
           shiftManagement,
-          status: newQtyProduced >= qtyCustomer ? "complete" : "lackQty",
+          status: isCompletedOrder ? "complete" : "lackQty",
         },
       };
     } catch (error) {

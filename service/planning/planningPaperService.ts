@@ -16,6 +16,7 @@ import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
 import { MachinePaper } from "../../models/admin/machinePaper";
 import { Request } from "express";
 import { calculateTimeRunning, updateSortPlanning } from "./helper/timeRunningPaper";
+import { machineMap } from "../../configs/machineLabels";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper } = CacheManager.keys.planning;
@@ -236,59 +237,41 @@ export const planningPaperService = {
       // 8) Nếu đơn hàng có làm thùng, tạo thêm kế hoạch lam-thung (waiting)
       const box = order.box;
       if (order.isBox) {
-        //check if orderId is exited in PlanningBox
-        const existedOrderId = await planningRepository.getModelById(PlanningBox, {
-          orderId: orderId,
+        boxPlan = await planningRepository.createPlanning(PlanningBox, {
+          planningId: paperPlan.planningId,
+          orderId,
+
+          day: paperPlan.dayReplace,
+          matE: paperPlan.matEReplace,
+          matB: paperPlan.matBReplace,
+          matC: paperPlan.matCReplace,
+          matE2: paperPlan.matE2Replace,
+          songE: paperPlan.songEReplace,
+          songB: paperPlan.songBReplace,
+          songC: paperPlan.songCReplace,
+          songE2: paperPlan.songE2Replace,
+          length: paperPlan.lengthPaperPlanning,
+          size: paperPlan.sizePaperPLaning,
+
+          hasIn: !!(box.inMatTruoc || box.inMatSau),
+          hasCanLan: !!box.canLan,
+          hasBe: !!box.be,
+          hasXa: !!box.Xa,
+          hasDan: !!(box.dan_1_Manh || box.dan_2_Manh),
+          hasCatKhe: !!box.catKhe,
+          hasCanMang: !!box.canMang,
+          hasDongGhim: !!(box.dongGhim1Manh || box.dongGhim2Manh),
         });
-
-        if (!existedOrderId) {
-          boxPlan = await planningRepository.createPlanning(PlanningBox, {
-            planningId: paperPlan.planningId,
-            orderId,
-
-            day: paperPlan.dayReplace,
-            matE: paperPlan.matEReplace,
-            matB: paperPlan.matBReplace,
-            matC: paperPlan.matCReplace,
-            matE2: paperPlan.matE2Replace,
-            songE: paperPlan.songEReplace,
-            songB: paperPlan.songBReplace,
-            songC: paperPlan.songCReplace,
-            songE2: paperPlan.songE2Replace,
-            length: paperPlan.lengthPaperPlanning,
-            size: paperPlan.sizePaperPLaning,
-
-            hasIn: !!(box.inMatTruoc || box.inMatSau),
-            hasCanLan: !!box.canLan,
-            hasBe: !!box.be,
-            hasXa: !!box.Xa,
-            hasDan: !!(box.dan_1_Manh || box.dan_2_Manh),
-            hasCatKhe: !!box.catKhe,
-            hasCanMang: !!box.canMang,
-            hasDongGhim: !!(box.dongGhim1Manh || box.dongGhim2Manh),
-          });
-        }
       }
 
       //9) dựa vào các hasIn, hasBe, hasXa... để tạo ra planning box time
       if (boxPlan) {
-        const machineMap = {
-          hasIn: "Máy In",
-          hasCanLan: "Máy Cấn Lằn",
-          hasBe: "Máy Bế",
-          hasXa: "Máy Xả",
-          hasDan: "Máy Dán",
-          hasCatKhe: "Máy Cắt Khe",
-          hasCanMang: "Máy Cán Màng",
-          hasDongGhim: "Máy Đóng Ghim",
-        };
-
         const machineTimes = Object.entries(machineMap)
           .filter(([flag]) => boxPlan[flag as keyof typeof boxPlan] === true)
           .map(([_, machineName]) => ({
             planningBoxId: boxPlan.planningBoxId,
             machine: machineName,
-            runningPlan: order.quantityCustomer,
+            runningPlan: paperPlan.runningPlan,
           }));
 
         if (machineTimes.length > 0) {
