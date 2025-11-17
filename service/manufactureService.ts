@@ -150,8 +150,9 @@ export const manufactureService = {
       const newQtyProduced = Number(planning.qtyProduced || 0) + Number(qtyProduced || 0);
       const newQtyWasteNorm = Number(planning.qtyWasteNorm || 0) + Number(qtyWasteNorm || 0);
 
-      //cập nhật lại runningPlan cho planningPaper
-      const newRunningPlan = Math.max(planning.runningPlan - Number(qtyProduced || 0), 0);
+      // update status dựa trên qtyProduced
+      const isCompleted = newQtyProduced >= planning.runningPlan;
+      const newStatus = isCompleted ? "complete" : "lackQty";
 
       const isOverflowReport =
         planning.hasOverFlow &&
@@ -179,20 +180,23 @@ export const manufactureService = {
         await overflow?.update({ overflowDayCompleted: dayReportValue }, { transaction });
       }
 
-      let updatedShiftProduction = planning.shiftProduction || "";
-      let updatedShiftManagement = planning.shiftManagement || "";
+      // Merge shift fields
+      let updatedShiftProduction = mergeShiftField(
+        planning.shiftProduction || "",
+        otherData.shiftProduction
+      );
 
-      // nối thêm nếu có giá trị mới
-      updatedShiftProduction = mergeShiftField(updatedShiftProduction, otherData.shiftProduction);
-      updatedShiftManagement = mergeShiftField(updatedShiftManagement, otherData.shiftManagement);
+      let updatedShiftManagement = mergeShiftField(
+        planning.shiftManagement || "",
+        otherData.shiftManagement
+      );
 
       await planningRepository.updateDataModel(
         planning,
         {
           qtyProduced: newQtyProduced,
           qtyWasteNorm: newQtyWasteNorm,
-          runningPlan: newRunningPlan,
-          status: newRunningPlan <= 0 ? "complete" : "lackQty",
+          status: newStatus,
           dayCompleted: isOverflowReport ? planning.dayCompleted : dayReportValue,
           shiftProduction: updatedShiftProduction,
           shiftManagement: updatedShiftManagement,
@@ -200,7 +204,7 @@ export const manufactureService = {
         { transaction }
       );
 
-      if (newRunningPlan <= 0 && planning.hasOverFlow && overflow) {
+      if (isCompleted && planning.hasOverFlow && overflow) {
         planningRepository.updateDataModel(overflow, { status: "complete" }, { transaction });
       }
 
