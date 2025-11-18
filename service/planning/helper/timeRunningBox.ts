@@ -14,6 +14,22 @@ import {
   setTimeOnDay,
 } from "../../../utils/helper/modelHelper/planningHelper";
 
+// công thức:
+// Nếu là máy in thì totalTime = thời gian in + time
+// Ngược lại totalTime = thời gian lên bài + time
+
+// Trong đó:
+// time = tổng dài / (tốc độ máy / 60)
+// Thời gian in = thời gian lên bài * số màu trước & sau
+// Tổng dài = tổng sl khách đặt / số con
+// Tốc độ máy: tốc độ máy theo lớp giấy (mét/phút) -> lấy từ thông số máy
+// Thời gian lên bài: lấy từ thông số máy
+
+//công thức tính waste:
+//Nếu là máy in -> c * (inMatTruoc + inMatSau) + runningPlan * (totalLossOnTotalQty / 100)
+//ngược lại -> p + runningPlan * (totalLossOnTotalQty / 100)
+//ký hiệu: c = colorNumberOnProduct, p = paperNumberOnProduct
+
 // Tính thời gian cho danh sách planning
 export const calTimeRunningPlanningBox = async ({
   machine,
@@ -200,9 +216,11 @@ const calculateTimeForOnePlanning = async ({
   };
   let hasOverFlow = false;
 
-  const tempEndTime = addMinutes(currentTime, productionMinutes);
-  const extraBreak = isDuringBreak(currentTime, tempEndTime);
-  const predictedEndTime = addMinutes(currentTime, productionMinutes + extraBreak);
+  //lưu giá trị để xem log
+  const startForLog = currentTime;
+
+  // predictedEndTime: đã bao gồm productionMinutes + toàn bộ break
+  const predictedEndTime = addMinutes(currentTime, productionMinutes);
 
   if (predictedEndTime > endOfWorkTime) {
     hasOverFlow = true;
@@ -262,27 +280,18 @@ const calculateTimeForOnePlanning = async ({
   );
 
   // ================== LOG CHI TIẾT ==================
-  // console.log(
-  //   "PlanningBox",
-  //   JSON.stringify(
-  //     {
-  //       machine,
-  //       status: planning.status,
-  //       runningPlan,
-  //       sortPlanning,
-  //       totalTimeWorking,
-  //       shift: {
-  //         startOfWorkTime: formatTimeToHHMMSS(startOfWorkTime),
-  //         endOfWorkTime: formatTimeToHHMMSS(endOfWorkTime),
-  //       },
-  //       productionMinutes,
-  //       breakMinutes: extraBreak,
-  //       result,
-  //     },
-  //     null,
-  //     2
-  //   )
-  // );
+  // console.log("PlanningBox", {
+  //   machine,
+  //   runningPlan,
+  //   totalTimeWorking,
+  //   shift: {
+  //     startOfWorkTime: formatTimeToHHMMSS(startOfWorkTime),
+  //     endOfWorkTime: formatTimeToHHMMSS(endOfWorkTime),
+  //   },
+  //   productionMinutes,
+  //   breakMinutes: isDuringBreak(startForLog, predictedEndTime),
+  //   result,
+  // });
   // console.log("========================================");
 
   return { result, nextTime: currentTime, nextDay: currentDay };
@@ -384,12 +393,12 @@ const calculateWasteBoxValue = async ({
   transaction: any;
 }) => {
   if (runningPlan <= 0) return null;
+
   const wasteNorm = await planningRepository.getModelById(
     WasteNormBox,
     { machineName: machine },
     { transaction }
   );
-
   if (!wasteNorm) return null;
 
   const {
@@ -405,7 +414,7 @@ const calculateWasteBoxValue = async ({
 
   if (isMayIn && box) {
     const { inMatTruoc = 0, inMatSau = 0 } = box;
-    return c * inMatTruoc + c * inMatSau + runningPlan * (totalLossOnTotalQty / 100);
+    return c * (inMatTruoc + inMatSau) + runningPlan * (totalLossOnTotalQty / 100);
   }
   return p + runningPlan * (totalLossOnTotalQty / 100);
 };

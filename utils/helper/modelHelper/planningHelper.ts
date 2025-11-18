@@ -194,8 +194,31 @@ export const formatTimeToHHMMSS = (date: Date) => {
 
 export const addMinutes = (date: Date | string, mins: number) => {
   const d = new Date(date);
-  d.setMinutes(d.getMinutes() + mins);
-  return d;
+  let totalMinutes = mins;
+
+  while (true) {
+    const end = new Date(d);
+    end.setMinutes(end.getMinutes() + totalMinutes);
+
+    const breakMinutes = isDuringBreak(d, end);
+
+    const newTotal = mins + breakMinutes;
+
+    // console.log(
+    //   "totalMinutes:",
+    //   totalMinutes,
+    //   "breakMinutes:",
+    //   breakMinutes,
+    //   "newTotal:",
+    //   newTotal
+    // );
+
+    if (newTotal === totalMinutes) {
+      return end;
+    }
+
+    totalMinutes = newTotal;
+  }
 };
 
 export const addDays = (date: Date | string, days: number) => {
@@ -238,6 +261,7 @@ export const isDuringBreak = (start: Date, end: Date) => {
     // Gán cùng ngày với 'start'
     bStart.setFullYear(start.getFullYear(), start.getMonth(), start.getDate());
     bEnd.setFullYear(start.getFullYear(), start.getMonth(), start.getDate());
+
     if (bEnd <= bStart) bEnd.setDate(bEnd.getDate() + 1);
 
     if (end > bStart && start < bEnd) {

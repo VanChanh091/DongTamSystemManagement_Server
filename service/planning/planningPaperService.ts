@@ -186,16 +186,17 @@ export const planningPaperService = {
         // 5.2) Tính hao phí, dao, tổng hao hụt
         const bottom = flute.E + flute.B + flute.C + softLiner;
 
+        const totalLength = runningPlan / numberChild;
+        const oneM2WaveCrestSoft = bottom / wasteNorm.waveCrestSoft;
+
         const haoPhi =
           wasteNorm.waveCrestSoft > 0
-            ? (runningPlan / numberChild) *
-              (bottom / wasteNorm.waveCrestSoft) *
-              (wasteNorm.lossInProcess / 100)
+            ? totalLength * oneM2WaveCrestSoft * (wasteNorm.lossInProcess / 100)
             : 0;
 
         const knife =
           wasteNorm.waveCrestSoft > 0
-            ? (bottom / wasteNorm.waveCrestSoft) * wasteNorm.lossInSheetingAndSlitting
+            ? oneM2WaveCrestSoft * wasteNorm.lossInSheetingAndSlitting
             : 0;
 
         const totalLoss = flute.E + flute.B + flute.C + flute.E2 + haoPhi + knife + bottom;

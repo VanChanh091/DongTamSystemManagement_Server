@@ -4,6 +4,24 @@ import { PlanningPaper } from "../../../models/planning/planningPaper";
 import { timeOverflowPlanning } from "../../../models/planning/timeOverflowPlanning";
 import { BreakTime } from "../../../interface/types";
 
+//Công thức tính thời gian: time = (Thời gian A/B + (tổng dài / tốc độ)) / (hiệu suất / 100)
+// Trong đó:
+// A: Thời gian thay đổi kích thước (phút) (nếu đơn đầu tiên trong ngày thì luôn tính thời gian thay đổi kích thước (30p))
+// B: Thời gian thay đổi cùng kích thước (phút) (nếu đơn cùng khổ ghép với đơn trước đó thì tính thời gian này (5p), ngược lại tính thời gian thay đổi kích thước)
+// Tổng dài: tổng dài cần chạy (mét) = tổng sl khách đặt / số con
+// Tốc độ: tốc độ máy theo lớp giấy (mét/phút) -> lấy từ thông số máy
+// Hiệu suất: hiệu suất máy (%)
+
+//công thức phế liệu: totalLoss = flute.E + flute.B + flute.C + flute.E2 + haoPhi + knife + bottom;
+//Trong đó: gkTh = ghepKho / 100, định lượng (MA115) -> 115/1000
+//Mặt E, E2, B, C -> gkTh * waveCrest * định lượng
+//Sóng E, E2, B, C -> gkTh * waveCrest * định lượng * hệ số sóng (lấy từ thông số máy)
+//Đáy = flute.E + flute.B + flute.C + softLiner (lớp cuối cùng)
+//Dao = oneM2WaveCrestSoft * lossInSheetingAndSlitting
+//Hao phí = totalLength * oneM2WaveCrest * (SoftlossInProcess / 100)
+//totalLength = runningPlan / numberChild;
+//oneM2WaveCrestSoft = bottom / wasteNorm.waveCrestSoft;
+
 export const updateSortPlanning = async (
   updateIndex: { planningId: number; sortPlanning: number | null }[],
   transaction: any
