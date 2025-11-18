@@ -5,6 +5,7 @@ import { Order } from "../../../models/order/order";
 import { Box } from "../../../models/order/box";
 import redisCache from "../../../configs/redisCache";
 import { FilterDataFromCacheProps } from "../../../interface/types";
+import { orderRepository } from "../../../repository/orderRepository";
 
 export const validateCustomerAndProduct = async (customerId: string, productId: string) => {
   const customer = await Customer.findOne({ where: { customerId } });
@@ -251,3 +252,46 @@ export function formatterStructureOrder(cell: Record<string, any>) {
 
   return formattedParts.join("/");
 }
+
+export const getOrderByStatus = async ({
+  statusList,
+  userId,
+  role,
+  page = 1,
+  pageSize = 30,
+  ownOnly,
+  isPaging = true,
+}: {
+  statusList: string[];
+  userId: number;
+  role: string;
+  page?: number;
+  pageSize?: number;
+  ownOnly?: string;
+  isPaging?: boolean;
+}) => {
+  let whereCondition: any = { status: { [Op.in]: statusList } };
+
+  if ((role !== "admin" && role !== "manager") || ownOnly === "true") {
+    whereCondition.userId = userId;
+  }
+
+  const queryOptions = orderRepository.buildQueryOptions(whereCondition, statusList);
+
+  if (isPaging) {
+    queryOptions.offset = (page - 1) * pageSize;
+    queryOptions.limit = pageSize;
+
+    const { count, rows } = await orderRepository.findAndCountAll(queryOptions);
+
+    return {
+      data: rows,
+      totalOrders: count,
+      totalPages: Math.ceil(count / pageSize),
+      currentPage: page,
+    };
+  }
+
+  const rows = await orderRepository.findAll(queryOptions);
+  return { data: rows };
+};

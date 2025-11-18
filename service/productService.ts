@@ -1,3 +1,5 @@
+import dotenv from "dotenv";
+dotenv.config();
 import redisCache from "../configs/redisCache";
 import { Product } from "../models/product/product";
 import { productRepository } from "../repository/productRepository";
@@ -14,8 +16,6 @@ import { Request, Response } from "express";
 import cloudinary from "../configs/connectCloudinary";
 import { exportExcelResponse } from "../utils/helper/excelExporter";
 import { mappingProductRow, productColumns } from "../utils/mapping/productRowAndColumn";
-import dotenv from "dotenv";
-dotenv.config();
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { product } = CacheManager.keys;
@@ -42,7 +42,8 @@ export const productService = {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {
           if (devEnvironment) console.log("✅ Data Product from Redis");
-          return { ...JSON.parse(cachedData), fromCache: true };
+          const parsed = JSON.parse(cachedData);
+          return { ...parsed, message: `Get all products from cache` };
         }
       }
 
@@ -58,7 +59,7 @@ export const productService = {
       }
 
       const responseData = {
-        message: "",
+        message: "get all products successfully",
         data,
         totalProducts,
         totalPages,

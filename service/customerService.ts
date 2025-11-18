@@ -37,7 +37,9 @@ export const customerService = {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {
           if (devEnvironment) console.log("✅ Data Customer from Redis");
-          return { ...JSON.parse(cachedData), fromCache: true };
+
+          const parsed = JSON.parse(cachedData);
+          return { ...parsed, message: `Get all customers from cache` };
         }
       }
 
@@ -53,7 +55,7 @@ export const customerService = {
       }
 
       const responseData = {
-        message: "",
+        message: "Get all customers successfully",
         data,
         totalCustomers,
         totalPages,

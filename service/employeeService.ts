@@ -40,7 +40,8 @@ export const employeeService = {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {
           if (devEnvironment) console.log("✅ Data Employees from Redis");
-          return { ...JSON.parse(cachedData), fromCache: true };
+          const parsed = JSON.parse(cachedData);
+          return { ...parsed, message: `Get all employees from cache` };
         }
       }
 
@@ -56,7 +57,7 @@ export const employeeService = {
       }
 
       const responseData = {
-        message: "",
+        message: "Get all employees successfully",
         data,
         totalEmployees,
         totalPages,

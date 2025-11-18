@@ -16,12 +16,7 @@ export const getAllEmployees = async (req: Request, res: Response) => {
       noPaging,
     });
 
-    return res.status(200).json({
-      ...response,
-      message: response.fromCache
-        ? "Get all employees from cache"
-        : "Get all employees successfully",
-    });
+    return res.status(200).json(response);
   } catch (error: any) {
     return res.status(error.statusCode).json({ message: error.message });
   }

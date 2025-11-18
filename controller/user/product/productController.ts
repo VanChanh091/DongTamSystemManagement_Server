@@ -16,10 +16,7 @@ export const getAllProduct = async (req: Request, res: Response) => {
       noPaging,
     });
 
-    return res.status(200).json({
-      ...response,
-      message: response.fromCache ? "Get all products from cache" : "get all products successfully",
-    });
+    return res.status(200).json(response);
   } catch (error: any) {
     res.status(error.statusCode).json({ message: error.message });
   }
