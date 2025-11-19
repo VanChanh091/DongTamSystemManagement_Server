@@ -38,7 +38,7 @@ export const planningPaperService = {
           { model: PlanningPaper },
           { model: timeOverflowPlanning, where: { planningId: { [Op.ne]: null } } },
         ],
-        "planningPaper",
+        "planningOrderPaper",
         { setCache: false }
       );
 

@@ -3,33 +3,23 @@ import redisCache from "../configs/redisCache";
 import { dashboardRepository } from "../repository/dashboardRepository";
 import { AppError } from "../utils/appError";
 import dotenv from "dotenv";
+import { CacheManager } from "../utils/helper/cacheManager";
 dotenv.config();
 
 const devEnvironment = process.env.NODE_ENV !== "production";
+const { dashboard } = CacheManager.keys;
 
 export const dashboardService = {
-  getAllPlaningPaper: async (page: number, pageSize: number, refresh: boolean) => {
-    const cacheKey = `data:paper:all:${page}`;
+  getAllPlaningPaper: async (page: number, pageSize: number) => {
+    const cacheKey = dashboard.paper(page);
 
     try {
-      if (refresh === true) {
-        await redisCache.del(cacheKey);
-      }
-
       const cachedData = await redisCache.get(cacheKey);
       if (cachedData) {
-        const parsed = JSON.parse(cachedData);
-        const planningArray = parsed?.data ?? [];
-
-        if (planningArray.length > 0) {
-          if (devEnvironment) console.log("✅ Get Planning from cache");
-          return {
-            message: "Get PlanningPaper from cache",
-            data: planningArray,
-            totalPlannings: parsed.totalPlannings,
-            totalPages: parsed.totalPages,
-            page: parsed.page,
-          };
+        if (cachedData) {
+          if (devEnvironment) console.log("✅ Get PlanningPaper from cache");
+          const parsed = JSON.parse(cachedData);
+          return { ...parsed, message: "Get PlanningPaper from cache" };
         }
       }
 
@@ -61,27 +51,18 @@ export const dashboardService = {
     }
   },
 
-  getAllPlaningBox: async (page: number, pageSize: number, refresh: boolean) => {
-    const cacheKey = `data:box:all:${pageSize}`;
-    try {
-      if (refresh === true) {
-        await redisCache.del(cacheKey);
-      }
+  getAllPlaningBox: async (page: number, pageSize: number) => {
+    const cacheKey = dashboard.box(page);
 
+    try {
       const cachedData = await redisCache.get(cacheKey);
       if (cachedData) {
-        const parsed = JSON.parse(cachedData);
-        const planningArray = parsed?.data ?? [];
-
-        if (planningArray.length > 0) {
-          if (devEnvironment) console.log("✅ Get PlanningBox from cache");
-          return {
-            message: "Get PlanningBox from cache",
-            data: planningArray,
-            totalPlannings: parsed.totalPlannings,
-            totalPages: parsed.totalPages,
-            page: parsed.page,
-          };
+        if (cachedData) {
+          if (cachedData) {
+            if (devEnvironment) console.log("✅ Get PlanningBox from cache");
+            const parsed = JSON.parse(cachedData);
+            return { ...parsed, message: "Get PlanningBox from cache" };
+          }
         }
       }
 

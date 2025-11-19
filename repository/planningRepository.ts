@@ -257,9 +257,7 @@ export const planningRepository = {
         {
           model: PlanningBoxTime,
           as: "allBoxTimes",
-          where: {
-            machine: { [Op.ne]: machine },
-          },
+          where: { machine: { [Op.ne]: machine } },
           attributes: {
             exclude: [
               "timeRunning",

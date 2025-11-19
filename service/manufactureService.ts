@@ -39,6 +39,7 @@ export const manufactureService = {
 
       if (isChanged) {
         await CacheManager.clearManufacturePaper();
+        await CacheManager.clearOrderAccept();
       } else {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {

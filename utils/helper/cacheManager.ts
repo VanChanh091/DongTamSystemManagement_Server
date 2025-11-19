@@ -14,6 +14,11 @@ export const CacheManager = {
       lastUpdated: "customer:lastUpdated",
     },
 
+    dashboard: {
+      paper: (page: number) => `dashboard:paper:all:${page}`,
+      box: (page: number) => `dashboard:box:all:${page}`,
+    },
+
     product: {
       all: "products:all",
       page: (page: number) => `products:page:${page}`,
@@ -152,6 +157,7 @@ export const CacheManager = {
       orderAccept: this.keys.order.lastUpdatedAccept,
       planningOrder: this.keys.planning.order.lastUpdated,
       planningPaper: this.keys.planning.paper.lastUpdated,
+      planningOrderPaper: this.keys.planning.paper.lastUpdated, //using for cache planning order
       planningBox: this.keys.planning.box.lastUpdated,
       manufacturePaper: this.keys.manufacture.paper.lastUpdated,
       manufactureBox: this.keys.manufacture.box.lastUpdated,

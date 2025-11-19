@@ -25,48 +25,6 @@ export const dashboardRepository = {
           attributes: { exclude: ["createdAt", "updatedAt"] },
         },
         {
-          model: PlanningBox,
-          attributes: {
-            exclude: [
-              "hasIn",
-              "hasBe",
-              "hasXa",
-              "hasDan",
-              "hasCanLan",
-              "hasCatKhe",
-              "hasCanMang",
-              "hasDongGhim",
-              "createdAt",
-              "updatedAt",
-              "runningPlan",
-              "day",
-              "matE",
-              "matB",
-              "matC",
-              "songE",
-              "songB",
-              "songC",
-              "songE2",
-              "length",
-              "size",
-              "hasOverFlow",
-            ],
-          },
-          include: [
-            {
-              model: PlanningBoxTime,
-              as: "boxTimes",
-              where: whereCondition,
-              attributes: { exclude: ["createdAt", "updatedAt"] },
-            },
-            {
-              model: timeOverflowPlanning,
-              as: "timeOverFlow",
-              attributes: { exclude: ["createdAt", "updatedAt"] },
-            },
-          ],
-        },
-        {
           model: Order,
           attributes: {
             exclude: [
@@ -85,20 +43,14 @@ export const dashboardRepository = {
             ],
           },
           include: [
-            { model: Customer, attributes: ["customerName", "companyName"] },
             {
               model: Box,
               as: "box",
               attributes: { exclude: ["createdAt", "updatedAt"] },
             },
-            {
-              model: Product,
-              attributes: ["typeProduct", "productName", "maKhuon"],
-            },
-            {
-              model: User,
-              attributes: ["fullName"],
-            },
+            { model: Customer, attributes: ["customerName", "companyName"] },
+            { model: Product, attributes: ["typeProduct", "productName", "maKhuon"] },
+            { model: User, attributes: ["fullName"] },
           ],
         },
       ],
@@ -128,10 +80,7 @@ export const dashboardRepository = {
         {
           model: PlanningBoxTime,
           as: "boxTimes",
-          where: {
-            status: "complete",
-            dayCompleted: { [Op.ne]: null },
-          },
+          where: { status: "complete", dayCompleted: { [Op.ne]: null } },
           attributes: { exclude: ["createdAt", "updatedAt"] },
         },
         {
@@ -142,7 +91,20 @@ export const dashboardRepository = {
         {
           model: Order,
           attributes: {
-            exclude: ["rejectReason", "createdAt", "updatedAt"],
+            exclude: [
+              "rejectReason",
+              "createdAt",
+              "updatedAt",
+              "day",
+              "matE",
+              "matB",
+              "matC",
+              "songE",
+              "songB",
+              "songC",
+              "songE2",
+              "status",
+            ],
           },
           include: [
             { model: Customer, attributes: ["customerName", "companyName"] },
