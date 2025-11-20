@@ -14,18 +14,18 @@ export const dashboardService = {
     const cacheKey = dashboard.paper(page);
 
     try {
-      const cachedData = await redisCache.get(cacheKey);
-      if (cachedData) {
-        if (cachedData) {
-          if (devEnvironment) console.log("✅ Get PlanningPaper from cache");
-          const parsed = JSON.parse(cachedData);
-          return { ...parsed, message: "Get PlanningPaper from cache" };
-        }
-      }
+      // const cachedData = await redisCache.get(cacheKey);
+      // if (cachedData) {
+      //   if (cachedData) {
+      //     if (devEnvironment) console.log("✅ Get PlanningPaper from cache");
+      //     const parsed = JSON.parse(cachedData);
+      //     return { ...parsed, message: "Get PlanningPaper from cache" };
+      //   }
+      // }
 
       const whereCondition = {
-        status: "complete",
-        dayCompleted: { [Op.ne]: null },
+        // status: "complete",
+        // dayCompleted: { [Op.ne]: null },
       };
 
       const totalPlannings = await dashboardRepository.getPlanningPaperCount(whereCondition);
@@ -42,7 +42,7 @@ export const dashboardService = {
         currentPage: page,
       };
 
-      await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 1800);
+      // await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 1800);
 
       return responseData;
     } catch (error) {

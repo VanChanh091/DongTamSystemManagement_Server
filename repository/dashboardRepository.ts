@@ -15,14 +15,32 @@ export const dashboardRepository = {
   },
 
   getAllPlaningPaper: async (whereCondition: any = {}, offset: number, pageSize: number) => {
-    return await PlanningPaper.findAll({
+    const rawPapers = await PlanningPaper.findAll({
       where: whereCondition,
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
+        // {
+        //   model: timeOverflowPlanning,
+        //   as: "timeOverFlow",
+        //   attributes: { exclude: ["createdAt", "updatedAt"] },
+        // },
         {
-          model: timeOverflowPlanning,
-          as: "timeOverFlow",
-          attributes: { exclude: ["createdAt", "updatedAt"] },
+          model: PlanningBox,
+          attributes: ["planningBoxId", "qtyPaper", "hasOverFlow", "orderId", "planningId"],
+          include: [
+            {
+              model: PlanningBoxTime,
+              as: "boxTimes",
+              attributes: {
+                exclude: ["createdAt", "updatedAt", "boxTimeId", "status", "sortPlanning"],
+              },
+            },
+            {
+              model: timeOverflowPlanning,
+              as: "timeOverFlow",
+              attributes: { exclude: ["createdAt", "updatedAt"] },
+            },
+          ],
         },
         {
           model: Order,
@@ -58,6 +76,42 @@ export const dashboardRepository = {
       offset: offset,
       limit: pageSize,
     });
+
+    // ================================
+    // 🔥 CHANGED: Format dữ liệu thành 2 tầng cho FE
+    // ================================
+    const formatted = rawPapers.map((paper) => {
+      const box = paper.PlanningBox;
+
+      // ===== Stages (7 công đoạn) =====
+      // CHANGED: Làm gọn từng stage cho FE dễ render
+      const stages = box?.boxTimes?.map((stage) => {
+        const stageJson = stage.toJSON();
+        return { ...stageJson };
+      });
+
+      // ===== Progress =====
+      // CHANGED: Lấy qtyProduced cuối cùng trong chuỗi công đoạn
+      // const lastStageProduced =
+      //   stages?.filter((s) => s.qtyProduced != null).pop()?.qtyProduced ?? 0;
+
+      // const progressBox =
+      //   order.quantityManufacture > 0 ? lastStageProduced / order.quantityManufacture : 0;
+
+      const paperJson: any = paper.toJSON();
+      delete paperJson.PlanningBox;
+      delete paperJson.Order.box;
+
+      return {
+        // ===== Level 1: Summary =====
+        ...paperJson,
+
+        // CHANGED: Level 2 — stages
+        stages,
+      };
+    });
+
+    return formatted;
   },
 
   getAllPlaningBox: async () => {
