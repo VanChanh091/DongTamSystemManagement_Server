@@ -1,13 +1,12 @@
 import { Request, Response } from "express";
 import { dashboardService } from "../../service/dashboardService";
 
-//=============================PAPER===================================
-
-export const getAllDataPaper = async (req: Request, res: Response) => {
+//get all dashboard planning
+export const getAllDashboardPlanning = async (req: Request, res: Response) => {
   const { page, pageSize } = req.query as { page: string; pageSize: string; refresh: string };
 
   try {
-    const response = await dashboardService.getAllPlaningPaper(Number(page), Number(pageSize));
+    const response = await dashboardService.getAllDashboardPlanning(Number(page), Number(pageSize));
 
     return res.status(200).json(response);
   } catch (error: any) {
@@ -15,19 +14,10 @@ export const getAllDataPaper = async (req: Request, res: Response) => {
   }
 };
 
-//==============================BOX====================================
-
-export const getAllDataBox = async (req: Request, res: Response) => {
-  const { page = 1, pageSize = 20 } = req.query as {
-    page: string;
-    pageSize: string;
-    refresh: string;
-  };
-
+//export excel
+export const exportExcelDbPlanning = async (req: Request, res: Response) => {
   try {
-    const response = await dashboardService.getAllPlaningBox(Number(page), Number(pageSize));
-
-    return res.status(200).json(response);
+    await dashboardService.exportExcelDbPlanning(req, res);
   } catch (error: any) {
     return res.status(error.statusCode).json({ message: error.message });
   }

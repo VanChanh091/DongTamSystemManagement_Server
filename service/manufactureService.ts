@@ -461,7 +461,6 @@ export const manufactureService = {
 
       // 1. Tìm kế hoạch hiện tại
       const planning = await manufactureRepository.getBoxById(planningBoxId, machine, transaction);
-
       if (!planning) {
         await transaction?.rollback();
         throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
@@ -470,6 +469,8 @@ export const manufactureService = {
       // 2. Cộng dồn số lượng mới vào số đã có
       const newQtyProduced = Number(planning.qtyProduced || 0) + Number(qtyProduced || 0);
       const newQtyWasteNorm = Number(planning.rpWasteLoss || 0) + Number(rpWasteLoss || 0);
+
+      const mergedShift = mergeShiftField(planning.shiftManagement ?? "", shiftManagement);
 
       const isCompletedOrder = newQtyProduced >= (planning.runningPlan || 0);
 
@@ -511,7 +512,7 @@ export const manufactureService = {
           {
             qtyProduced: newQtyProduced,
             rpWasteLoss: newQtyWasteNorm,
-            shiftManagement: shiftManagement,
+            shiftManagement: mergedShift,
           },
           { transaction }
         );
@@ -525,7 +526,7 @@ export const manufactureService = {
             dayCompleted: new Date(dayCompleted),
             qtyProduced: newQtyProduced,
             rpWasteLoss: newQtyWasteNorm,
-            shiftManagement: shiftManagement,
+            shiftManagement: mergedShift,
           },
           { transaction }
         );
