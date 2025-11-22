@@ -9,8 +9,8 @@ import { Product } from "../models/product/product";
 import { User } from "../models/user/user";
 
 export const dashboardRepository = {
-  getDbPlanningCount: async (whereCondition: any = {}) => {
-    return await PlanningPaper.count({ where: whereCondition });
+  getDbPlanningCount: async () => {
+    return await PlanningPaper.count();
   },
 
   getAllDbPlanning: async ({
@@ -23,6 +23,114 @@ export const dashboardRepository = {
     offset?: number;
     pageSize?: number;
     paginate?: boolean;
+  }) => {
+    const query: any = {
+      where: whereCondition,
+      attributes: {
+        exclude: ["createdAt", "updatedAt", "status", "hasBox", "sortPlanning"],
+      },
+      include: [
+        {
+          model: timeOverflowPlanning,
+          as: "timeOverFlow",
+          attributes: {
+            exclude: [
+              "createdAt",
+              "updatedAt",
+              "machine",
+              "status",
+              "planningId",
+              "planningBoxId",
+              "overflowId",
+            ],
+          },
+        },
+        {
+          model: Order,
+          attributes: {
+            exclude: [
+              "rejectReason",
+              "createdAt",
+              "updatedAt",
+              "day",
+              "matE",
+              "matE2",
+              "matB",
+              "matC",
+              "songE",
+              "songB",
+              "songC",
+              "songE2",
+              "status",
+              "lengthPaperCustomer",
+              "paperSizeCustomer",
+              "quantityCustomer",
+              "lengthPaperManufacture",
+              "paperSizeManufacture",
+              "numberChild",
+              "isBox",
+            ],
+          },
+          include: [
+            { model: Customer, attributes: ["customerName", "companyName"] },
+            { model: Product, attributes: ["typeProduct", "productName", "maKhuon"] },
+            { model: User, attributes: ["fullName"] },
+          ],
+        },
+      ],
+      // order: [["sortPlanning", "ASC"]],
+    };
+
+    if (paginate) {
+      query.offset = offset;
+      query.limit = pageSize;
+    }
+
+    const rawPapers = await PlanningPaper.findAll(query);
+
+    return rawPapers;
+  },
+
+  getDBPlanningDetail: async (planningId: number) => {
+    return await PlanningPaper.findByPk(planningId, {
+      attributes: ["planningId", "orderId"],
+      include: [
+        {
+          model: PlanningBox,
+          attributes: ["planningBoxId", "qtyPaper", "hasOverFlow", "orderId", "planningId"],
+          include: [
+            {
+              model: PlanningBoxTime,
+              as: "boxTimes",
+              attributes: {
+                exclude: ["createdAt", "updatedAt", "boxTimeId", "status", "sortPlanning"],
+              },
+            },
+          ],
+        },
+      ],
+      // order: [["sortPlanning", "ASC"]],
+    });
+  },
+
+  getAllTimeOverflow: async (planningBoxId: number) => {
+    return await timeOverflowPlanning.findAll({
+      where: { planningBoxId: planningBoxId },
+      attributes: {
+        exclude: ["createdAt", "updatedAt", "status", "planningId", "overflowId"],
+      },
+      raw: true,
+    });
+  },
+
+  exportExcelDbPlanning: async ({
+    whereCondition = {},
+    offset,
+    pageSize,
+  }: {
+    whereCondition?: any;
+    offset?: number;
+    pageSize?: number;
   }) => {
     const query: any = {
       where: whereCondition,

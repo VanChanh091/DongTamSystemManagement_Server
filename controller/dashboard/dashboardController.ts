@@ -7,7 +7,17 @@ export const getAllDashboardPlanning = async (req: Request, res: Response) => {
 
   try {
     const response = await dashboardService.getAllDashboardPlanning(Number(page), Number(pageSize));
+    return res.status(200).json(response);
+  } catch (error: any) {
+    return res.status(error.statusCode).json({ message: error.message });
+  }
+};
 
+export const getDbPlanningDetail = async (req: Request, res: Response) => {
+  const { planningId } = req.query as { planningId: string };
+
+  try {
+    const response = await dashboardService.getDbPlanningDetail(Number(planningId));
     return res.status(200).json(response);
   } catch (error: any) {
     return res.status(error.statusCode).json({ message: error.message });

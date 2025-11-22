@@ -15,8 +15,14 @@ export const CacheManager = {
     },
 
     dashboard: {
-      paper: (page: number) => `dashboard:paper:all:${page}`,
-      box: (page: number) => `dashboard:box:all:${page}`,
+      planning: {
+        all: (page: number) => `dashboard:planning:all:${page}`,
+        lastUpdated: "db:planning:lastUpdated",
+      },
+      details: {
+        all: (planningId: number) => `dashboard:detail:${planningId}`,
+        lastUpdated: "db:detail:lastUpdated",
+      },
     },
 
     product: {
@@ -145,6 +151,14 @@ export const CacheManager = {
     await this.clearByPrefix("reportBox:");
   },
 
+  async clearDbPlanning() {
+    await this.clearByPrefix("dashboard:planning:all:");
+  },
+
+  async clearDbPlanningDetail() {
+    await this.clearByPrefix("dashboard:detail:");
+  },
+
   /** Check lastChange cho 1 module */
   async check(models: any, module: string, options: { setCache?: boolean } = {}) {
     const { setCache = true } = options;
@@ -163,6 +177,8 @@ export const CacheManager = {
       manufactureBox: this.keys.manufacture.box.lastUpdated,
       reportPaper: this.keys.report.paper.lastUpdated,
       reportBox: this.keys.report.box.lastUpdated,
+      dbPlanning: this.keys.dashboard.planning.lastUpdated,
+      dbDetail: this.keys.dashboard.details.lastUpdated,
     };
 
     const key = map[module];

@@ -8,31 +8,31 @@ import { Op } from "sequelize";
 import { Request, Response } from "express";
 import { dbPlanningColumns, mappingDbPlanningRow } from "../utils/mapping/dbPlanningRowAndColumn";
 import { exportExcelDbPlanning } from "../utils/helper/excelExporter";
+import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 dotenv.config();
 
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { dashboard } = CacheManager.keys;
+const { planning, details } = CacheManager.keys.dashboard;
 
 export const dashboardService = {
   getAllDashboardPlanning: async (page: number, pageSize: number) => {
-    const cacheKey = dashboard.paper(page);
+    const cacheKey = planning.all(page);
 
     try {
-      // const cachedData = await redisCache.get(cacheKey);
-      // if (cachedData) {
-      //   if (cachedData) {
-      //     if (devEnvironment) console.log("✅ Get PlanningPaper from cache");
-      //     const parsed = JSON.parse(cachedData);
-      //     return { ...parsed, message: "Get PlanningPaper from cache" };
-      //   }
-      // }
+      const { isChanged } = await CacheManager.check(PlanningPaper, "dbPlanning");
 
-      const whereCondition = {
-        // status: "complete",
-        // dayCompleted: { [Op.ne]: null },
-      };
+      if (isChanged) {
+        await CacheManager.clearDbPlanning();
+      } else {
+        const cachedData = await redisCache.get(cacheKey);
+        if (cachedData) {
+          if (devEnvironment) console.log("✅ Get PlanningPaper from cache");
+          const parsed = JSON.parse(cachedData);
+          return { ...parsed, message: "Get PlanningPaper from cache" };
+        }
+      }
 
-      const totalPlannings = await dashboardRepository.getDbPlanningCount(whereCondition);
+      const totalPlannings = await dashboardRepository.getDbPlanningCount();
       const totalPages = Math.ceil(totalPlannings / pageSize);
       const offset = (page - 1) * pageSize;
 
@@ -46,11 +46,61 @@ export const dashboardService = {
         currentPage: page,
       };
 
-      // await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 1800);
+      await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 1800);
 
       return responseData;
     } catch (error) {
-      console.error("Error add Report Production:", error);
+      console.error("Error get db planning:", error);
+      throw AppError.ServerError();
+    }
+  },
+
+  getDbPlanningDetail: async (planningId: number) => {
+    const cacheKey = details.all(planningId);
+
+    try {
+      const { isChanged } = await CacheManager.check(PlanningBoxTime, "dbDetail");
+
+      if (isChanged) {
+        await CacheManager.clearDbPlanningDetail();
+      } else {
+        const cachedData = await redisCache.get(cacheKey);
+        if (cachedData) {
+          if (devEnvironment) console.log("📦 Get Planning STAGES from cache");
+          const parsed = JSON.parse(cachedData);
+          return { message: "Get PlanningPaper from cache", data: parsed };
+        }
+      }
+
+      //get data detail
+      const detail = await dashboardRepository.getDBPlanningDetail(planningId);
+      if (!detail) {
+        throw AppError.NotFound("detail not found", "DETAIL_NOT_FOUND");
+      }
+
+      const box = detail.PlanningBox;
+
+      //get stage
+      const normalStages = box?.boxTimes?.map((stage) => stage.toJSON()) ?? [];
+
+      //get all time overflow
+      const allOverflow = await dashboardRepository.getAllTimeOverflow(box?.planningBoxId ?? 0);
+
+      const overflowByMachine: Record<string, any> = {};
+      for (const ov of allOverflow) {
+        overflowByMachine[ov.machine as string] = ov;
+      }
+
+      const stages = normalStages.map((stage) => ({
+        ...stage,
+        timeOverFlow: overflowByMachine[stage.machine] ?? null,
+      }));
+
+      await redisCache.set(cacheKey, JSON.stringify(stages), "EX", 1800);
+
+      return { message: "get db planning detail succesfully", data: stages };
+    } catch (error) {
+      console.error("Error get db planning detail:", error);
       throw AppError.ServerError();
     }
   },
