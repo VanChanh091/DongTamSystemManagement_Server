@@ -1,14 +1,7 @@
 import ExcelJS from "exceljs";
 import { Response } from "express";
 import { AppError } from "../appError";
-
-interface ExportExcelOptions<T> {
-  data: T[];
-  sheetName: string;
-  fileName: string;
-  columns: Partial<ExcelJS.Column>[];
-  rows: (item: T, index: number) => Record<string, any>;
-}
+import { ExportExcelOptions } from "../../interface/types";
 
 export const exportExcelResponse = async <T>(
   res: Response,
@@ -23,7 +16,26 @@ export const exportExcelResponse = async <T>(
     worksheet.columns = columns as ExcelJS.Column[];
 
     // Data rows
-    data.forEach((item, index) => worksheet.addRow(rows(item, index)));
+    data.forEach((item, index) => {
+      const rowData = rows(item, index);
+      const excelRow = worksheet.addRow(rowData);
+
+      for (let i = 1; i <= worksheet.columnCount; i++) {
+        const cell = excelRow.getCell(i);
+
+        cell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFF2F2F2" }, // màu xám nhẹ
+        };
+      }
+    });
 
     // Header style
     worksheet.getRow(1).eachCell((cell) => {
@@ -34,6 +46,12 @@ export const exportExcelResponse = async <T>(
         fgColor: { argb: "FF0070C0" },
       };
       cell.alignment = { vertical: "middle", horizontal: "center" };
+      cell.border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
+      };
     });
 
     // Auto-fit columns
@@ -99,27 +117,43 @@ export const exportExcelDbPlanning = async <T>(
 
         // ===== STYLE CHA =====
         if (isParent) {
-          excelRow.fill = {
-            type: "pattern",
-            pattern: "solid",
-            fgColor: { argb: "FFE2EFDA" }, // xanh nhạt
-          };
+          for (let c = 1; c <= worksheet.columnCount; c++) {
+            const cell = excelRow.getCell(c);
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "FFE2EFDA" }, // xanh nhạt
+            };
+          }
           excelRow.height = 25;
         }
 
         // ===== STYLE CON =====
         if (isStage) {
-          excelRow.fill = {
-            type: "pattern",
-            pattern: "solid",
-            fgColor: { argb: "FFF2F2F2" }, // xám nhẹ
-          };
+          for (let c = 1; c <= worksheet.columnCount; c++) {
+            const cell = excelRow.getCell(c);
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "FFF2F2F2" }, // xám nhẹ
+            };
+          }
 
           // indent ô đầu tiên
           const firstCell = excelRow.getCell(1);
           if (firstCell.value) {
             firstCell.value = `   → ${firstCell.value}`;
           }
+        }
+
+        for (let i = 1; i <= worksheet.columnCount; i++) {
+          const cell = excelRow.getCell(i);
+          cell.border = {
+            top: { style: "thin" },
+            left: { style: "thin" },
+            bottom: { style: "thin" },
+            right: { style: "thin" },
+          };
         }
       });
     });
@@ -133,6 +167,13 @@ export const exportExcelDbPlanning = async <T>(
         fgColor: { argb: "FF0070C0" },
       };
       cell.alignment = { vertical: "middle", horizontal: "center" };
+
+      cell.border = {
+        top: { style: "thin" },
+        bottom: { style: "thin" },
+        left: { style: "thin" },
+        right: { style: "thin" },
+      };
     });
 
     // ===== AUTO FIT =====
@@ -158,7 +199,7 @@ export const exportExcelDbPlanning = async <T>(
     await workbook.xlsx.write(res);
     res.end();
   } catch (error) {
-    console.error("ExportExcelV2 error:", error);
+    console.error("Export excel error:", error);
     throw AppError.BadRequest("Lỗi xuất Excel", "ERROR_EXPORT_EXCEL");
   }
 };

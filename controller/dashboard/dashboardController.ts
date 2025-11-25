@@ -24,10 +24,40 @@ export const getDbPlanningDetail = async (req: Request, res: Response) => {
   }
 };
 
+export const getDbPlanningByFields = async (req: Request, res: Response) => {
+  const { field, keyword, page, pageSize } = req.query as {
+    field: string;
+    keyword: string;
+    page: string;
+    pageSize: string;
+  };
+
+  try {
+    const response = await dashboardService.getDbPlanningByFields({
+      field,
+      keyword,
+      page: Number(page),
+      pageSize: Number(pageSize),
+    });
+    return res.status(200).json(response);
+  } catch (error: any) {
+    return res.status(error.statusCode).json({ message: error.message });
+  }
+};
+
 //export excel
 export const exportExcelDbPlanning = async (req: Request, res: Response) => {
   try {
     await dashboardService.exportExcelDbPlanning(req, res);
+  } catch (error: any) {
+    return res.status(error.statusCode).json({ message: error.message });
+  }
+};
+
+export const getAllDbPlanningStage = async (req: Request, res: Response) => {
+  try {
+    const response = await dashboardService.getAllDbPlanningStage();
+    return res.status(200).json(response);
   } catch (error: any) {
     return res.status(error.statusCode).json({ message: error.message });
   }

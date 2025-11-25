@@ -6,7 +6,10 @@ import { PlanningBox } from "../../../models/planning/planningBox";
 import { CacheManager } from "../cacheManager";
 import redisCache from "../../../configs/redisCache";
 import { Request, Response } from "express";
-import { BreakTime } from "../../../interface/types";
+import { BreakTime, FilterDataFromCacheProps } from "../../../interface/types";
+import { AppError } from "../../appError";
+import { dashboardRepository } from "../../../repository/dashboardRepository";
+import { normalizeVN } from "../normalizeVN";
 
 //get planningPaper properties
 export const getPlanningPaperByField = async (req: Request, res: Response, field: string) => {
@@ -185,6 +188,61 @@ export const getPlanningBoxByField = async (req: Request, res: Response, field: 
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
+//get db planning by field
+export const getDbPlanningByField = async <T>({
+  cacheKey,
+  keyword,
+  getFieldValue,
+  page,
+  pageSize,
+  message,
+}: FilterDataFromCacheProps<T>) => {
+  const currentPage = Number(page) || 1;
+  const currentPageSize = Number(pageSize) || 20;
+  const lowerKeyword = keyword?.toLowerCase?.() || "";
+
+  try {
+    let allData = await redisCache.get(cacheKey);
+    let sourceMessage = "";
+
+    if (!allData) {
+      allData = await dashboardRepository.getDbPlanningSearch();
+      await redisCache.set(cacheKey, JSON.stringify(allData), "EX", 900);
+      sourceMessage = `Get ${cacheKey} from DB`;
+    } else {
+      allData = JSON.parse(allData);
+      sourceMessage = message || `Get ${cacheKey} from cache`;
+    }
+
+    // Lọc dữ liệu
+    const filteredData = allData.filter((item: any) => {
+      const fieldValue = getFieldValue(item);
+
+      return fieldValue != null
+        ? normalizeVN(String(fieldValue).toLowerCase()).includes(normalizeVN(lowerKeyword))
+        : false;
+    });
+
+    // Phân trang
+    const totalCustomers = filteredData.length;
+    const totalPages = Math.ceil(totalCustomers / currentPageSize);
+
+    const offset = (currentPage - 1) * currentPageSize;
+    const paginatedData = filteredData.slice(offset, offset + currentPageSize);
+
+    return {
+      message: sourceMessage,
+      data: paginatedData,
+      totalCustomers,
+      totalPages,
+      currentPage,
+    };
+  } catch (error) {
+    console.log(`error to get planning`, error);
+    throw AppError.ServerError();
   }
 };
 

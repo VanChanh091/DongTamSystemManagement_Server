@@ -1,7 +1,8 @@
+import dotenv from "dotenv";
+dotenv.config();
 import redisCache from "../configs/redisCache";
 import { dashboardRepository } from "../repository/dashboardRepository";
 import { AppError } from "../utils/appError";
-import dotenv from "dotenv";
 import { CacheManager } from "../utils/helper/cacheManager";
 import { PlanningPaper } from "../models/planning/planningPaper";
 import { Op } from "sequelize";
@@ -9,10 +10,11 @@ import { Request, Response } from "express";
 import { dbPlanningColumns, mappingDbPlanningRow } from "../utils/mapping/dbPlanningRowAndColumn";
 import { exportExcelDbPlanning } from "../utils/helper/excelExporter";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
-dotenv.config();
+import { getDbPlanningByField } from "../utils/helper/modelHelper/planningHelper";
+import { PlanningSearchRaw } from "../types/searchField";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { planning, details } = CacheManager.keys.dashboard;
+const { planning, details, search } = CacheManager.keys.dashboard;
 
 export const dashboardService = {
   getAllDashboardPlanning: async (page: number, pageSize: number) => {
@@ -34,9 +36,10 @@ export const dashboardService = {
 
       const totalPlannings = await dashboardRepository.getDbPlanningCount();
       const totalPages = Math.ceil(totalPlannings / pageSize);
-      const offset = (page - 1) * pageSize;
 
-      const data = await dashboardRepository.getAllDbPlanning({ offset, pageSize });
+      const whereCondition = { status: { [Op.ne]: "stop" } };
+
+      const data = await dashboardRepository.getAllDbPlanning({ page, pageSize, whereCondition });
 
       const responseData = {
         message: "get all data paper from db",
@@ -93,7 +96,7 @@ export const dashboardService = {
 
       const stages = normalStages.map((stage) => ({
         ...stage,
-        timeOverFlow: overflowByMachine[stage.machine] ?? null,
+        timeOverFlow: overflowByMachine[String(stage.machine)] ?? null,
       }));
 
       await redisCache.set(cacheKey, JSON.stringify(stages), "EX", 1800);
@@ -106,15 +109,25 @@ export const dashboardService = {
   },
 
   //get by field
-  getDbPlanningByFields: async (field: string, keyword: string, page: number, pageSize: number) => {
+  getDbPlanningByFields: async ({
+    field,
+    keyword,
+    page,
+    pageSize,
+  }: {
+    field: string;
+    keyword: string;
+    page: number;
+    pageSize: number;
+  }) => {
     try {
       const fieldMap = {
-        orderId: (paper: PlanningPaper) => paper.orderId,
-        customerName: (paper: PlanningPaper) => paper.Order.Customer.customerName,
-        companyName: (paper: PlanningPaper) => paper.Order.Customer.companyName,
-        ghepKho: (paper: PlanningPaper) => paper.ghepKho,
-        username: (paper: PlanningPaper) => paper.Order.User.fullName,
-        machine: (paper: PlanningPaper) => paper.chooseMachine,
+        orderId: (paper: PlanningSearchRaw) => paper.orderId,
+        ghepKho: (paper: PlanningSearchRaw) => paper.ghepKho,
+        machine: (paper: PlanningSearchRaw) => paper.chooseMachine,
+        customerName: (paper: PlanningSearchRaw) => paper["Order.Customer.customerName"],
+        companyName: (paper: PlanningSearchRaw) => paper["Order.Customer.companyName"],
+        username: (paper: PlanningSearchRaw) => paper["Order.User.fullName"],
       } as const;
 
       const key = field as keyof typeof fieldMap;
@@ -123,16 +136,33 @@ export const dashboardService = {
         throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
       }
 
-      // const result = await filterDataFromCache({
-      //   model: Customer,
-      //   cacheKey: customer.search,
-      //   keyword: keyword,
-      //   getFieldValue: fieldMap[key],
-      //   page,
-      //   pageSize,
-      //   message: `get all by ${field} from filtered cache`,
-      // });
+      const result = await getDbPlanningByField({
+        cacheKey: search,
+        keyword,
+        getFieldValue: fieldMap[key],
+        page,
+        pageSize,
+        message: `get all by ${field} from filtered cache`,
+      });
 
+      const planningIdsArr = result.data.map((p: any) => p.planningId);
+      const planningIds = planningIdsArr;
+
+      if (!planningIds || planningIds.length === 0) {
+        return {
+          ...result,
+          data: [],
+        };
+      }
+
+      const fullData = await dashboardRepository.getAllDbPlanning({
+        whereCondition: {
+          planningId: planningIds,
+        },
+        paginate: false,
+      });
+
+      return { ...result, data: fullData };
       // return result;
     } catch (error) {
       console.error(`Failed to get customers by ${field}`, error);
@@ -143,7 +173,7 @@ export const dashboardService = {
 
   //export excel
   exportExcelDbPlanning: async (req: Request, res: Response) => {
-    const { username, dayStart, machine, customerName, all = false } = req.body;
+    const { username, dayStart, machine, all = false } = req.body;
 
     try {
       let whereCondition: any = {};
@@ -158,10 +188,6 @@ export const dashboardService = {
         whereCondition["chooseMachine"] = {
           [Op.like]: `%${machine}%`,
         };
-      } else if (customerName) {
-        whereCondition["$Order.Customer.customerName$"] = {
-          [Op.like]: `%${customerName}%`,
-        };
       } else if (dayStart) {
         const start = new Date(dayStart);
         start.setHours(0, 0, 0, 0);
@@ -171,15 +197,87 @@ export const dashboardService = {
         whereCondition.dayStart = { [Op.between]: [start, end] };
       }
 
-      const data = await dashboardRepository.getAllDbPlanning({ whereCondition, paginate: false });
+      const rawPapers = await dashboardRepository.exportExcelDbPlanning({ whereCondition });
+
+      // Format dữ liệu thành 2 tầng cho FE
+      const formatted = await Promise.all(
+        rawPapers.map(async (paper) => {
+          const box = paper.PlanningBox;
+
+          // ===== Stages (7 công đoạn) =====
+          const normalStages = box?.boxTimes?.map((stage) => stage.toJSON()) ?? [];
+
+          const allOverflow = await dashboardRepository.getAllTimeOverflow(box?.planningBoxId ?? 0);
+
+          const overflowByMachine: Record<string, any> = {};
+          for (const ov of allOverflow) {
+            overflowByMachine[ov.machine as string] = ov;
+          }
+
+          // ===== Gắn overflow vào từng stage =====
+          const stages = normalStages.map((stage) => ({
+            ...stage,
+            timeOverFlow: overflowByMachine[String(stage.machine)] ?? null,
+          }));
+
+          // ===== Remove nested (giữ sạch dữ liệu) =====
+          const paperJson: any = paper.toJSON();
+          delete paperJson.PlanningBox;
+          delete paperJson.Order?.box;
+
+          return { ...paperJson, stages };
+        })
+      );
 
       await exportExcelDbPlanning(res, {
-        data: data,
+        data: formatted,
         sheetName: "Tổng Hợp Sản Xuất",
         fileName: "dbPlanning",
         columns: dbPlanningColumns,
         rows: mappingDbPlanningRow,
       });
+    } catch (error) {
+      console.error("❌ Export Excel error:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  getAllDbPlanningStage: async () => {
+    try {
+      const rawPapers = await dashboardRepository.exportExcelDbPlanning({});
+
+      // Format dữ liệu thành 2 tầng cho FE
+      const formatted = await Promise.all(
+        rawPapers.map(async (paper) => {
+          const box = paper.PlanningBox;
+
+          // ===== Stages (7 công đoạn) =====
+          const normalStages = box?.boxTimes?.map((stage) => stage.toJSON()) ?? [];
+
+          const allOverflow = await dashboardRepository.getAllTimeOverflow(box?.planningBoxId ?? 0);
+
+          const overflowByMachine: Record<string, any> = {};
+          for (const ov of allOverflow) {
+            overflowByMachine[ov.machine as string] = ov;
+          }
+
+          // ===== Gắn overflow vào từng stage =====
+          const stages = normalStages.map((stage) => ({
+            ...stage,
+            timeOverFlow: overflowByMachine[String(stage.machine)] ?? null,
+          }));
+
+          // ===== Remove nested (giữ sạch dữ liệu) =====
+          const paperJson: any = paper.toJSON();
+          delete paperJson.PlanningBox;
+          delete paperJson.Order?.box;
+
+          return { ...paperJson, stages };
+        })
+      );
+
+      return formatted;
     } catch (error) {
       console.error("❌ Export Excel error:", error);
       if (error instanceof AppError) throw error;

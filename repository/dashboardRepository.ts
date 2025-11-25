@@ -1,5 +1,4 @@
 import { Customer } from "../models/customer/customer";
-import { Box } from "../models/order/box";
 import { Order } from "../models/order/order";
 import { PlanningBox } from "../models/planning/planningBox";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
@@ -14,14 +13,14 @@ export const dashboardRepository = {
   },
 
   getAllDbPlanning: async ({
+    page = 1,
+    pageSize = 20,
     whereCondition = {},
-    offset,
-    pageSize,
     paginate = true,
   }: {
-    whereCondition?: any;
-    offset?: number;
+    page?: number;
     pageSize?: number;
+    whereCondition?: any;
     paginate?: boolean;
   }) => {
     const query: any = {
@@ -78,11 +77,10 @@ export const dashboardRepository = {
           ],
         },
       ],
-      // order: [["sortPlanning", "ASC"]],
     };
 
     if (paginate) {
-      query.offset = offset;
+      query.offset = (page - 1) * pageSize;
       query.limit = pageSize;
     }
 
@@ -113,6 +111,23 @@ export const dashboardRepository = {
     });
   },
 
+  getDbPlanningSearch: async () => {
+    return await PlanningPaper.findAll({
+      attributes: ["planningId", "orderId", "chooseMachine", "ghepKho"],
+      include: [
+        {
+          model: Order,
+          attributes: [],
+          include: [
+            { model: Customer, attributes: ["customerName", "companyName"] },
+            { model: User, attributes: ["fullName"] },
+          ],
+        },
+      ],
+      raw: true,
+    });
+  },
+
   getAllTimeOverflow: async (planningBoxId: number) => {
     return await timeOverflowPlanning.findAll({
       where: { planningBoxId: planningBoxId },
@@ -123,23 +138,25 @@ export const dashboardRepository = {
     });
   },
 
-  exportExcelDbPlanning: async ({
-    whereCondition = {},
-    offset,
-    pageSize,
-  }: {
-    whereCondition?: any;
-    offset?: number;
-    pageSize?: number;
-  }) => {
-    const query: any = {
+  exportExcelDbPlanning: async ({ whereCondition = {} }: { whereCondition?: any }) => {
+    return await PlanningPaper.findAll({
       where: whereCondition,
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {
           model: timeOverflowPlanning,
           as: "timeOverFlow",
-          attributes: { exclude: ["createdAt", "updatedAt"] },
+          attributes: {
+            exclude: [
+              "createdAt",
+              "updatedAt",
+              "machine",
+              "status",
+              "planningId",
+              "planningBoxId",
+              "overflowId",
+            ],
+          },
         },
         {
           model: PlanningBox,
@@ -168,6 +185,7 @@ export const dashboardRepository = {
               "updatedAt",
               "day",
               "matE",
+              "matE2",
               "matB",
               "matC",
               "songE",
@@ -175,53 +193,22 @@ export const dashboardRepository = {
               "songC",
               "songE2",
               "status",
+              "lengthPaperCustomer",
+              "paperSizeCustomer",
+              "quantityCustomer",
+              "lengthPaperManufacture",
+              "paperSizeManufacture",
+              "numberChild",
+              "isBox",
             ],
           },
           include: [
-            {
-              model: Box,
-              as: "box",
-              attributes: { exclude: ["createdAt", "updatedAt"] },
-            },
             { model: Customer, attributes: ["customerName", "companyName"] },
             { model: Product, attributes: ["typeProduct", "productName", "maKhuon"] },
             { model: User, attributes: ["fullName"] },
           ],
         },
       ],
-      order: [["sortPlanning", "ASC"]],
-    };
-
-    if (paginate) {
-      query.offset = offset;
-      query.limit = pageSize;
-    }
-
-    const rawPapers = await PlanningPaper.findAll(query);
-
-    // Format dữ liệu thành 2 tầng cho FE
-    const formatted = rawPapers.map((paper) => {
-      const box = paper.PlanningBox;
-
-      // ===== Stages (7 công đoạn) =====
-      const stages = box?.boxTimes?.map((stage) => {
-        const stageJson = stage.toJSON();
-        return { ...stageJson };
-      });
-
-      const paperJson: any = paper.toJSON();
-      delete paperJson.PlanningBox;
-      delete paperJson.Order.box;
-
-      return {
-        // ===== Level 1: Summary =====
-        ...paperJson,
-
-        // ===== Level 2 — stages =====
-        stages,
-      };
     });
-
-    return formatted;
   },
 };

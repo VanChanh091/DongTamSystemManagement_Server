@@ -2,38 +2,58 @@ import ExcelJS from "exceljs";
 import { formatterStructureOrder } from "../helper/modelHelper/orderHelpers";
 
 export const dbPlanningColumns: Partial<ExcelJS.Column>[] = [
-  // paper
+  //================================PAPER====================================
+  // Order
   { header: "STT", key: "index" },
   { header: "Mã Đơn Hàng", key: "orderId" },
+
+  // Customer
   { header: "Tên Khách Hàng", key: "customerName" },
   { header: "Tên Công Ty", key: "companyName" },
+
+  // Product
   { header: "Loại SP", key: "typeProduct" },
   { header: "Tên SP", key: "productName" },
+
+  //day
   { header: "Nhận Đơn", key: "dayReceive" },
   { header: "Dự Kiến", key: "dateShipping" },
   { header: "Sản Xuất", key: "dayStartProduction" },
   { header: "Hoàn Thành", key: "dayCompletedProd" },
+  { header: "Hoàn Thành (Tràn)", key: "dayCompletedPaperOvfl" },
+
+  //other fields
   { header: "Kết Cấu Đặt Hàng", key: "structure" },
   { header: "Sóng", key: "flute" },
   { header: "Khổ Cấp Giấy", key: "khoCapGiay" },
   { header: "Dao Xả", key: "daoXa" },
-  { header: "Dài", key: "length" },
-  { header: "Khổ", key: "size" },
+  { header: "Dài (cm)", key: "length", style: { numFmt: "#,##0" } },
+  { header: "Khổ (cm)", key: "size", style: { numFmt: "#,##0" } },
   { header: "Số Con", key: "child" },
+
+  // Quantity
   { header: "Đơn Hàng", key: "quantityOrd" },
   { header: "Đã Sản Xuất", key: "qtyProducedPaper" },
   { header: "Kế Hoạch Chạy", key: "runningPlanPaper" },
-  { header: "HD Đặc Biệt", key: "instructSpecial" },
+
+  //time running
   { header: "Thời Gian Chạy", key: "timeRunningPaper" },
+  { header: "Thời Gian Tràn", key: "timeRunningPaperOvfl" },
+
+  { header: "HD Đặc Biệt", key: "instructSpecial" },
+
+  // Order money
   { header: "DVT", key: "dvt" },
-  { header: "Diện Tích", key: "acreage" },
-  { header: "Đơn Giá", key: "price" },
-  { header: "Giá Tấm", key: "pricePaper" },
-  { header: "Chiết Khấu", key: "discounts" },
-  { header: "Lợi Nhuận", key: "profitOrd" },
+  { header: "Diện Tích (M2)", key: "acreage", style: { numFmt: "#,##0" } },
+  { header: "Đơn Giá (VND)", key: "price", style: { numFmt: "#,##0" } },
+  { header: "Giá Tấm (VND)", key: "pricePaper", style: { numFmt: "#,##0" } },
+  { header: "Chiết Khấu", key: "discounts", style: { numFmt: "#,##0" } },
+  { header: "Lợi Nhuận", key: "profitOrd", style: { numFmt: "#,##0" } },
   { header: "VAT", key: "vat" },
-  { header: "Tổng Tiền", key: "totalPrice" },
-  { header: "Tổng Tiền Sau VAT", key: "totalPriceAfterVAT" },
+  { header: "Tổng Tiền (VND)", key: "totalPrice", style: { numFmt: "#,##0" } },
+  { header: "Tổng Tiền Sau VAT (VND)", key: "totalPriceAfterVAT", style: { numFmt: "#,##0" } },
+
+  //Waste
   { header: "Đáy", key: "bottom" },
   { header: "Sóng E", key: "fluteE" },
   { header: "Sóng E2", key: "fluteE2" },
@@ -41,17 +61,23 @@ export const dbPlanningColumns: Partial<ExcelJS.Column>[] = [
   { header: "Sóng C", key: "fluteC" },
   { header: "Dao", key: "knife" },
   { header: "Tổng PL", key: "totalLoss" },
+
+  // Sản xuất
   { header: "PL Thực Tế", key: "qtyWastes" },
   { header: "Ca Sản Xuất", key: "shiftProduct" },
   { header: "Trưởng Máy", key: "shiftManagerPaper" },
   { header: "Loại Máy", key: "machinePaper" },
+
+  // Staff
   { header: "Nhân Viên", key: "staffOrder" },
 
-  // stage (box)
+  //================================STAGE====================================
   { header: "Loại Máy", key: "machineStage" },
   { header: "Ngày SX", key: "dayStartStage" },
-  { header: "Ngày Hoàn Thành", key: "dayCompletedStage" },
+  { header: "Hoàn Thành", key: "dayCompletedStage" },
+  { header: "Hoàn Thành (Tràn)", key: "dayCompletedOvfl" },
   { header: "Thời Gian Chạy", key: "timeRunningStage" },
+  { header: "Thời Gian Tràn", key: "timeRunningOvfl" },
   { header: "Kế Hoạch Chạy", key: "runningPlanStage" },
   { header: "SL Đã SX", key: "qtyProducedStage" },
   { header: "PL Thực Tế", key: "wasteBox" },
@@ -67,42 +93,53 @@ export const mappingDbPlanningRow = (item: any, index: number) => {
     index: index + 1,
     orderId: item.orderId,
 
+    // Customer
     customerName: order.Customer.customerName,
     companyName: order.Customer.companyName,
 
+    // Product
     typeProduct: order.Product.typeProduct,
     productName: order.Product.productName,
 
+    //day
     dayReceive: order.dayReceiveOrder,
     dateShipping: order.dateRequestShipping,
     dayStartProduction: item.dayStart,
     dayCompletedProd: formatDateTime(item.dayCompleted),
+    dayCompletedPaperOvfl: formatDateTime(item?.timeOverFlow?.overflowDayCompleted ?? ""),
 
+    //other fields
     structure: formatterStructureOrder(item),
     flute: order.flute,
     khoCapGiay: item.ghepKho,
     daoXa: order.daoXa,
-    length: item.lengthPaperPlanning,
-    size: item.sizePaperPLaning,
+    length: Number(item.lengthPaperPlanning),
+    size: Number(item.sizePaperPLaning),
     child: item.numberChild,
 
+    // Quantity
     quantityOrd: order.quantityManufacture,
     qtyProducedPaper: item.qtyProduced,
     runningPlanPaper: item.runningPlan,
 
+    //time running
+    timeRunningPaper: formatTime(item.timeRunning),
+    timeRunningPaperOvfl: formatTime(item?.timeOverFlow?.overflowTimeRunning ?? ""),
+
     instructSpecial: order.instructSpecial,
-    timeRunningPaper: item.timeRunning,
+
+    // Order money
     dvt: order.dvt,
-
-    acreage: order.acreage,
-    price: order.price,
-    pricePaper: order.pricePaper,
-    discounts: order.discount,
-    profitOrd: order.profit,
+    acreage: Number(order.acreage),
+    price: Number(order.price),
+    pricePaper: Number(order.pricePaper),
+    discounts: Number(order.discount),
+    profitOrd: Number(order.profit),
     vat: order.vat,
-    totalPrice: order.totalPrice,
-    totalPriceAfterVAT: order.totalPriceVAT,
+    totalPrice: Number(order.totalPrice),
+    totalPriceAfterVAT: Number(order.totalPriceVAT),
 
+    //Waste
     bottom: item.bottom,
     fluteE: item.fluteE,
     fluteE2: item.fluteE2,
@@ -110,11 +147,14 @@ export const mappingDbPlanningRow = (item: any, index: number) => {
     fluteC: item.fluteC,
     knife: item.knife,
     totalLoss: item.totalLoss,
-    qtyWastes: item.qtyWasteNorm,
 
+    //manufacture
+    qtyWastes: item.qtyWasteNorm,
     shiftProduct: item.shiftProduction,
     shiftManagerPaper: item.shiftManagement,
     machinePaper: item.chooseMachine,
+
+    // Staff
     staffOrder: order.User.fullName,
 
     // STAGE FIELDS
@@ -185,7 +225,9 @@ export const mappingDbPlanningRow = (item: any, index: number) => {
     machineStage: stage.machine,
     dayStartStage: stage.dayStart,
     dayCompletedStage: formatDateTime(stage.dayCompleted),
-    timeRunningStage: stage.timeRunning,
+    dayCompletedOvfl: formatDateTime(stage?.timeOverFlow?.overflowDayCompleted ?? ""),
+    timeRunningStage: formatTime(stage.timeRunning),
+    timeRunningOvfl: formatTime(stage?.timeOverFlow?.overflowTimeRunning ?? ""),
     runningPlanStage: stage.runningPlan,
     qtyProducedStage: stage.qtyProduced,
     wasteBox: stage.wasteBox,
@@ -200,18 +242,23 @@ export const mappingDbPlanningRow = (item: any, index: number) => {
 const formatDateTime = (value: any) => {
   if (!value) return "";
 
-  const d = new Date(value);
-  if (isNaN(d.getTime())) return "";
+  // Đọc chuỗi gốc, không convert timezone
+  const [datePart, timePart] = value.split("T");
+  if (!datePart || !timePart) return "";
 
-  const pad = (n: number) => n.toString().padStart(2, "0");
+  const [year, month, day] = datePart.split("-");
+  const [hms] = timePart.split(".");
 
-  const day = pad(d.getDate());
-  const month = pad(d.getMonth() + 1);
-  const year = d.getFullYear();
+  return `${day}/${month}/${year} ${hms.slice(0, 8)}`;
+};
 
-  const hours = pad(d.getHours());
-  const mins = pad(d.getMinutes());
-  const secs = pad(d.getSeconds());
+const formatTime = (value: any) => {
+  if (!value) return "";
 
-  return `${day}/${month}/${year} ${hours}:${mins}:${secs}`;
+  const parts = value.split(":");
+  if (parts.length < 2) return "";
+
+  const [hh, mm] = parts;
+
+  return `${hh}:${mm}`;
 };

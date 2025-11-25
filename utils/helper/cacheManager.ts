@@ -17,12 +17,13 @@ export const CacheManager = {
     dashboard: {
       planning: {
         all: (page: number) => `dashboard:planning:all:${page}`,
-        lastUpdated: "db:planning:lastUpdated",
+        lastUpdated: "db:planning:lastUpdated", //planning paper
       },
       details: {
         all: (planningId: number) => `dashboard:detail:${planningId}`,
-        lastUpdated: "db:detail:lastUpdated",
+        lastUpdated: "db:detail:lastUpdated", //box time machine
       },
+      search: "dashboard:search:all",
     },
 
     product: {
