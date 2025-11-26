@@ -22,6 +22,7 @@ import {
   getPlanningBoxByQcBox,
   updateIndex_TimeRunningBox,
 } from "../../controller/user/planning/planningBoxController";
+import { getPlanningStop } from "../../controller/user/planning/planningStopController";
 
 const router = Router();
 
@@ -96,5 +97,8 @@ router.get(
 );
 router.get("/getFluteBox", authenticate, authorizeAnyPermission(["plan"]), getPlanningBoxByFlute);
 router.get("/getQcBox", authenticate, authorizeAnyPermission(["plan"]), getPlanningBoxByQcBox);
+
+//=========================PLANNING BOX=========================
+router.get("/getPlanningStop", authenticate, authorizeAnyPermission(["plan"]), getPlanningStop);
 
 export default router;

@@ -38,7 +38,6 @@ export const dashboardService = {
       const totalPages = Math.ceil(totalPlannings / pageSize);
 
       const whereCondition = { status: { [Op.ne]: "stop" } };
-
       const data = await dashboardRepository.getAllDbPlanning({ page, pageSize, whereCondition });
 
       const responseData = {

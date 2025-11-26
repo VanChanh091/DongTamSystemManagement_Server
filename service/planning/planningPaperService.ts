@@ -336,7 +336,9 @@ export const planningPaperService = {
   //get sort planning
   getPlanningPaperSorted: async (machine: string) => {
     try {
-      const data = await planningRepository.getPapersByMachine(machine);
+      const data = await planningRepository.getPlanningPaper({
+        whereCondition: { chooseMachine: machine },
+      });
 
       //lọc đơn complete trong 3 ngày
       const truncateToDate = (date: Date) =>
@@ -444,7 +446,7 @@ export const planningPaperService = {
       return allPlannings;
     } catch (error) {
       console.error("Error fetching planning by machine:", error);
-      throw error;
+      throw AppError.ServerError();
     }
   },
 
@@ -548,18 +550,18 @@ export const planningPaperService = {
                 });
 
                 // Trừ công nợ khách hàng
-                const customer = await planningRepository.getModelById(
-                  Customer,
-                  { customerId: order.customerId },
-                  { attributes: ["customerId", "debtCurrent"] }
-                );
+                // const customer = await planningRepository.getModelById(
+                //   Customer,
+                //   { customerId: order.customerId },
+                //   { attributes: ["customerId", "debtCurrent"] }
+                // );
 
-                if (customer) {
-                  let debtAfter = (customer.debtCurrent || 0) - order.totalPrice;
-                  if (debtAfter < 0) debtAfter = 0; //tránh âm tiền
+                // if (customer) {
+                //   let debtAfter = (customer.debtCurrent || 0) - order.totalPrice;
+                //   if (debtAfter < 0) debtAfter = 0; //tránh âm tiền
 
-                  await planningRepository.updateDataModel(customer, { debtCurrent: debtAfter });
-                }
+                //   await planningRepository.updateDataModel(customer, { debtCurrent: debtAfter });
+                // }
 
                 // Xoá dữ liệu phụ thuộc
                 const dependents = await planningRepository.getBoxByPlanningId(planning.planningId);

@@ -103,10 +103,23 @@ export const planningRepository = {
   },
 
   //====================================QUEUE PAPER========================================
+  getPlanningPaperCount: async (whereCondition: any = {}) => {
+    return await PlanningPaper.count({ where: whereCondition });
+  },
 
-  getPapersByMachine: async (machine: string) => {
-    return await PlanningPaper.findAll({
-      where: { chooseMachine: machine },
+  getPlanningPaper: async ({
+    page = 1,
+    pageSize = 20,
+    whereCondition = {},
+    paginate = false,
+  }: {
+    page?: number;
+    pageSize?: number;
+    whereCondition?: any;
+    paginate?: boolean;
+  }) => {
+    const query: any = {
+      where: whereCondition,
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {
@@ -147,19 +160,17 @@ export const planningRepository = {
               "status",
             ],
           },
-          include: [
-            { model: Customer, attributes: ["customerName", "companyName"] },
-            {
-              model: Box,
-              as: "box",
-              attributes: {
-                exclude: ["createdAt", "updatedAt"],
-              },
-            },
-          ],
+          include: [{ model: Customer, attributes: ["customerName", "companyName"] }],
         },
       ],
-    });
+    };
+
+    if (paginate) {
+      query.offset = (page - 1) * pageSize;
+      query.limit = pageSize;
+    }
+
+    return await PlanningPaper.findAll(query);
   },
 
   getPapersByOrderId: async (orderId: string) => {
@@ -387,4 +398,6 @@ export const planningRepository = {
       transaction,
     });
   },
+
+  //====================================PLANNING STOP========================================
 };

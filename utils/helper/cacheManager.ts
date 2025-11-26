@@ -58,6 +58,10 @@ export const CacheManager = {
         machine: (machine: string) => `planningPaper:machine:${machine}`,
         lastUpdated: "planningPaper:lastUpdated",
       },
+      stop: {
+        page: (page: number) => `planningPaper:stop:page:${page}`,
+        lastUpdated: "planningPaper:stop:lastUpdated",
+      },
       box: {
         machine: (machine: string) => `planningBox:machine:${machine}`,
         lastUpdated: "planningBox:lastUpdated",
@@ -132,6 +136,10 @@ export const CacheManager = {
     await this.clearByPrefix("planningPaper:machine:");
   },
 
+  async clearPlanningStop() {
+    await this.clearByPrefix("planningPaper:stop:");
+  },
+
   async clearPlanningBox() {
     await this.clearByPrefix("planningBox:machine:");
   },
@@ -173,6 +181,7 @@ export const CacheManager = {
       planningOrder: this.keys.planning.order.lastUpdated,
       planningPaper: this.keys.planning.paper.lastUpdated,
       planningOrderPaper: this.keys.planning.paper.lastUpdated, //using for cache planning order
+      planningStop: this.keys.planning.stop.lastUpdated,
       planningBox: this.keys.planning.box.lastUpdated,
       manufacturePaper: this.keys.manufacture.paper.lastUpdated,
       manufactureBox: this.keys.manufacture.box.lastUpdated,
