@@ -242,8 +242,15 @@ export const planningRepository = {
 
   //====================================QUEUE BOX========================================
 
-  getAllPlanningBox: async (machine: string) => {
+  getAllPlanningBox: async ({
+    whereCondition = {},
+    machine,
+  }: {
+    whereCondition?: any;
+    machine: string;
+  }) => {
     return await PlanningBox.findAll({
+      where: whereCondition,
       attributes: {
         exclude: [
           "hasIn",
@@ -313,6 +320,30 @@ export const planningRepository = {
               model: Box,
               as: "box",
               attributes: { exclude: ["createdAt", "updatedAt"] },
+            },
+          ],
+        },
+      ],
+    });
+  },
+
+  getPlanningBoxSearch: async (whereCondition: any = {}) => {
+    return await PlanningBox.findAll({
+      attributes: ["planningBoxId", "orderId", "planningId"],
+      include: [
+        {
+          model: PlanningBoxTime,
+          where: whereCondition,
+          as: "boxTimes",
+          attributes: ["machine", "status", "planningBoxId"],
+        },
+        {
+          model: Order,
+          attributes: ["QC_box"],
+          include: [
+            {
+              model: Customer,
+              attributes: ["customerName", "companyName"],
             },
           ],
         },

@@ -11,7 +11,6 @@ import { dbPlanningColumns, mappingDbPlanningRow } from "../utils/mapping/dbPlan
 import { exportExcelDbPlanning } from "../utils/helper/excelExporter";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { getDbPlanningByField } from "../utils/helper/modelHelper/planningHelper";
-import { PlanningSearchRaw } from "../types/searchField";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { planning, details, search } = CacheManager.keys.dashboard;
@@ -121,12 +120,12 @@ export const dashboardService = {
   }) => {
     try {
       const fieldMap = {
-        orderId: (paper: PlanningSearchRaw) => paper.orderId,
-        ghepKho: (paper: PlanningSearchRaw) => paper.ghepKho,
-        machine: (paper: PlanningSearchRaw) => paper.chooseMachine,
-        customerName: (paper: PlanningSearchRaw) => paper["Order.Customer.customerName"],
-        companyName: (paper: PlanningSearchRaw) => paper["Order.Customer.companyName"],
-        username: (paper: PlanningSearchRaw) => paper["Order.User.fullName"],
+        orderId: (paper: PlanningPaper) => paper.orderId,
+        ghepKho: (paper: PlanningPaper) => paper.ghepKho,
+        machine: (paper: PlanningPaper) => paper.chooseMachine,
+        customerName: (paper: PlanningPaper) => paper.Order.Customer.customerName,
+        companyName: (paper: PlanningPaper) => paper.Order.Customer.companyName,
+        username: (paper: PlanningPaper) => paper.Order.User.fullName,
       } as const;
 
       const key = field as keyof typeof fieldMap;

@@ -36,4 +36,25 @@ export const orderRepository = {
   findAll: (queryOptions: any) => {
     return Order.findAll(queryOptions);
   },
+
+  findAllFilter: async (whereCondition: any = {}) => {
+    return await Order.findAll({
+      where: whereCondition,
+      include: [
+        { model: Customer, attributes: ["customerName", "companyName"] },
+        {
+          model: Product,
+          attributes: ["typeProduct", "productName", "maKhuon"],
+        },
+        {
+          model: Box,
+          as: "box",
+          attributes: {
+            exclude: ["boxId", "createdAt", "updatedAt", "orderId"],
+          },
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+  },
 };

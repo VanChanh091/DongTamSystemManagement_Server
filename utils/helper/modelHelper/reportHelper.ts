@@ -9,6 +9,7 @@ import { PlanningBoxTime } from "../../../models/planning/planningBoxMachineTime
 import { Op } from "sequelize";
 import { CacheManager } from "../cacheManager";
 import redisCache from "../../../configs/redisCache";
+import { normalizeVN } from "../normalizeVN";
 
 export const filterReportByField = async ({
   keyword,
@@ -50,7 +51,9 @@ export const filterReportByField = async ({
     // Lọc dữ liệu
     const filteredReports = allReports.filter((report: any) => {
       const fieldValue = getFieldValue(report);
-      return fieldValue != null ? String(fieldValue).toLowerCase().includes(lowerKeyword) : false;
+      return fieldValue != null
+        ? normalizeVN(String(fieldValue).toLowerCase()).includes(normalizeVN(lowerKeyword))
+        : false;
     });
 
     // Phân trang

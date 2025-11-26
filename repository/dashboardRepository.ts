@@ -111,20 +111,20 @@ export const dashboardRepository = {
     });
   },
 
-  getDbPlanningSearch: async () => {
+  getDbPlanningSearch: async (whereCondition: any = {}) => {
     return await PlanningPaper.findAll({
+      where: whereCondition,
       attributes: ["planningId", "orderId", "chooseMachine", "ghepKho"],
       include: [
         {
           model: Order,
-          attributes: [],
+          attributes: ["flute"],
           include: [
             { model: Customer, attributes: ["customerName", "companyName"] },
             { model: User, attributes: ["fullName"] },
           ],
         },
       ],
-      raw: true,
     });
   },
 

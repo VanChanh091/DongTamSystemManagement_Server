@@ -2,7 +2,6 @@ import dotenv from "dotenv";
 dotenv.config();
 import { Op } from "sequelize";
 import redisCache from "../../configs/redisCache";
-import { Customer } from "../../models/customer/customer";
 import { Order } from "../../models/order/order";
 import { machinePaperType, PlanningPaper } from "../../models/planning/planningPaper";
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
@@ -17,10 +16,10 @@ import { MachinePaper } from "../../models/admin/machinePaper";
 import { Request } from "express";
 import { calculateTimeRunning, updateSortPlanning } from "./helper/timeRunningPaper";
 import { machineMap } from "../../configs/machineLabels";
+import { getPlanningByField } from "../../utils/helper/modelHelper/planningHelper";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { paper } = CacheManager.keys.planning;
-const { order } = CacheManager.keys.planning;
+const { paper, order } = CacheManager.keys.planning;
 
 export const planningPaperService = {
   //====================================PLANNING ORDER========================================
@@ -337,7 +336,10 @@ export const planningPaperService = {
   getPlanningPaperSorted: async (machine: string) => {
     try {
       const data = await planningRepository.getPlanningPaper({
-        whereCondition: { chooseMachine: machine },
+        whereCondition: {
+          chooseMachine: machine,
+          status: { [Op.ne]: "stop" },
+        },
       });
 
       //lọc đơn complete trong 3 ngày
@@ -446,6 +448,52 @@ export const planningPaperService = {
       return allPlannings;
     } catch (error) {
       console.error("Error fetching planning by machine:", error);
+      throw AppError.ServerError();
+    }
+  },
+
+  getPlanningByField: async (machine: string, field: string, keyword: string) => {
+    // console.log(`machine ${machine} - field: ${field} - keyword: ${keyword}`);
+
+    try {
+      const fieldMap = {
+        orderId: (paper: PlanningPaper) => paper.orderId,
+        ghepKho: (paper: PlanningPaper) => paper.ghepKho,
+        customerName: (paper: PlanningPaper) => paper.Order.Customer.customerName,
+        flute: (paper: PlanningPaper) => paper.Order.flute,
+      } as const;
+
+      const key = field as keyof typeof fieldMap;
+
+      if (!key || !fieldMap[key]) {
+        throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
+      }
+
+      const result = await getPlanningByField({
+        cacheKey: paper.search(machine),
+        keyword,
+        getFieldValue: fieldMap[key],
+        whereCondition: { chooseMachine: machine, status: { [Op.ne]: "stop" } },
+        message: `get all by ${field} from filtered cache`,
+      });
+
+      const planningIdsArr = result.data.map((p: any) => p.planningId);
+      if (!planningIdsArr || planningIdsArr.length === 0) {
+        return {
+          ...result,
+          data: [],
+        };
+      }
+
+      const fullData = await planningRepository.getPlanningPaper({
+        whereCondition: { planningId: planningIdsArr },
+      });
+
+      return { ...result, data: fullData };
+      // return result;
+    } catch (error) {
+      console.error(`Failed to get customers by ${field}`, error);
+      if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
   },

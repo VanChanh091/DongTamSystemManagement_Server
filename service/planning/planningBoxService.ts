@@ -11,6 +11,7 @@ import { Op } from "sequelize";
 import { MachineBox } from "../../models/admin/machineBox";
 import { Request } from "express";
 import { calTimeRunningPlanningBox } from "./helper/timeRunningBox";
+import { getPlanningByField } from "../../utils/helper/modelHelper/planningHelper";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { box } = CacheManager.keys.planning;
@@ -61,7 +62,7 @@ export const planningBoxService = {
   //sort planning
   getPlanningBoxSorted: async (machine: string) => {
     try {
-      const data = await planningRepository.getAllPlanningBox(machine);
+      const data = await planningRepository.getAllPlanningBox({ machine });
 
       //lọc đơn complete trong 3 ngày
       const truncateToDate = (date: Date) =>
@@ -162,6 +163,55 @@ export const planningBoxService = {
     } catch (error: any) {
       console.error("Error fetching planning by machine:", error.message);
       throw error;
+    }
+  },
+
+  getPlanningBoxByField: async (machine: string, field: string, keyword: string) => {
+    console.log(`machine ${machine} - field: ${field} - keyword: ${keyword}`);
+
+    try {
+      const fieldMap = {
+        orderId: (paper: PlanningBox) => paper.orderId,
+        customerName: (paper: PlanningBox) => paper.Order.Customer.customerName,
+        QcBox: (paper: PlanningBox) => paper.Order.flute,
+      } as const;
+
+      const key = field as keyof typeof fieldMap;
+
+      if (!key || !fieldMap[key]) {
+        throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
+      }
+
+      const result = await getPlanningByField({
+        cacheKey: box.search(machine),
+        keyword,
+        getFieldValue: fieldMap[key],
+        whereCondition: { machine, status: { [Op.ne]: "stop" } },
+        message: `get all by ${field} from filtered cache`,
+        isBox: true,
+      });
+
+      const planningBoxIdsArr = result.data.map((p: any) => p.planningBoxId);
+      console.log(planningBoxIdsArr);
+
+      if (!planningBoxIdsArr || planningBoxIdsArr.length === 0) {
+        return {
+          ...result,
+          data: [],
+        };
+      }
+
+      const fullData = await planningRepository.getAllPlanningBox({
+        whereCondition: { planningBoxId: planningBoxIdsArr },
+        machine,
+      });
+
+      return { ...result, data: fullData };
+      // return result;
+    } catch (error) {
+      console.error(`Failed to get customers by ${field}`, error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
     }
   },
 

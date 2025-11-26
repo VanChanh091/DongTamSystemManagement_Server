@@ -4,11 +4,8 @@ import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 import {
   changeMachinePlanning,
   getOrderAccept,
-  getPlanningByCustomerName,
-  getPlanningByFlute,
-  getPlanningByGhepKho,
   getPlanningByMachine,
-  getPlanningByOrderId,
+  getPlanningPaperByfield,
   pauseOrAcceptLackQtyPLanning,
   planningOrder,
   updateIndex_TimeRunning,
@@ -16,10 +13,7 @@ import {
 import {
   acceptLackQtyBox,
   getPlanningBox,
-  getPlanningBoxByCusName,
-  getPlanningBoxByFlute,
-  getPlanningBoxByOrderId,
-  getPlanningBoxByQcBox,
+  getPlanningBoxByfield,
   updateIndex_TimeRunningBox,
 } from "../../controller/user/planning/planningBoxController";
 import { getPlanningStop } from "../../controller/user/planning/planningStopController";
@@ -32,6 +26,7 @@ router.post("/planningOrder", authenticate, authorizeAnyPermission(["plan"]), pl
 
 //=========================PLANNING PAPER=========================
 router.get("/byMachinePaper", authenticate, authorizeAnyPermission(["plan"]), getPlanningByMachine);
+router.get("/filterPaper", authenticate, authorizeAnyPermission(["plan"]), getPlanningPaperByfield);
 router.post(
   "/updateIndex_TimeRunningPaper",
   authenticate,
@@ -51,29 +46,9 @@ router.put(
   pauseOrAcceptLackQtyPLanning
 );
 
-//get properties of planning paper
-router.get(
-  "/getCusNamePaper",
-  authenticate,
-  authorizeAnyPermission(["plan"]),
-  getPlanningByCustomerName
-);
-router.get("/getFlutePaper", authenticate, authorizeAnyPermission(["plan"]), getPlanningByFlute);
-router.get(
-  "/getGhepKhoPaper",
-  authenticate,
-  authorizeAnyPermission(["plan"]),
-  getPlanningByGhepKho
-);
-router.get(
-  "/getOrderIdPaper",
-  authenticate,
-  authorizeAnyPermission(["plan"]),
-  getPlanningByOrderId
-);
-
 //=========================PLANNING BOX=========================
 router.get("/byMachineBox", authenticate, authorizeAnyPermission(["plan"]), getPlanningBox);
+router.get("/filterBox", authenticate, authorizeAnyPermission(["plan"]), getPlanningBoxByfield);
 router.post(
   "/updateIndex_TimeRunningBox",
   authenticate,
@@ -81,22 +56,6 @@ router.post(
   updateIndex_TimeRunningBox
 );
 router.put("/acceptLackQtyBox", authenticate, authorizeAnyPermission(["plan"]), acceptLackQtyBox);
-
-//get properties of planning box
-router.get(
-  "/getOrderIdBox",
-  authenticate,
-  authorizeAnyPermission(["plan"]),
-  getPlanningBoxByOrderId
-);
-router.get(
-  "/getCusNameBox",
-  authenticate,
-  authorizeAnyPermission(["plan"]),
-  getPlanningBoxByCusName
-);
-router.get("/getFluteBox", authenticate, authorizeAnyPermission(["plan"]), getPlanningBoxByFlute);
-router.get("/getQcBox", authenticate, authorizeAnyPermission(["plan"]), getPlanningBoxByQcBox);
 
 //=========================PLANNING BOX=========================
 router.get("/getPlanningStop", authenticate, authorizeAnyPermission(["plan"]), getPlanningStop);

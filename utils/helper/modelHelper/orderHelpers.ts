@@ -2,10 +2,10 @@ import { Op } from "sequelize";
 import { Customer } from "../../../models/customer/customer";
 import { Product } from "../../../models/product/product";
 import { Order } from "../../../models/order/order";
-import { Box } from "../../../models/order/box";
 import redisCache from "../../../configs/redisCache";
 import { FilterDataFromCacheProps } from "../../../interface/types";
 import { orderRepository } from "../../../repository/orderRepository";
+import { normalizeVN } from "../normalizeVN";
 
 export const validateCustomerAndProduct = async (customerId: string, productId: string) => {
   const customer = await Customer.findOne({ where: { customerId } });
@@ -132,24 +132,7 @@ export const filterOrdersFromCache = async ({
       whereCondition.userId = userId;
     }
 
-    allOrders = await Order.findAll({
-      where: whereCondition,
-      include: [
-        { model: Customer, attributes: ["customerName", "companyName"] },
-        {
-          model: Product,
-          attributes: ["typeProduct", "productName", "maKhuon"],
-        },
-        {
-          model: Box,
-          as: "box",
-          attributes: {
-            exclude: ["boxId", "createdAt", "updatedAt", "orderId"],
-          },
-        },
-      ],
-      order: [["createdAt", "DESC"]],
-    });
+    allOrders = await orderRepository.findAllFilter(whereCondition);
 
     await redisCache.set(allDataCacheKey, JSON.stringify(allOrders), "EX", 900);
     sourceMessage = "Get all orders from DB";
@@ -161,8 +144,9 @@ export const filterOrdersFromCache = async ({
   // Lọc
   const filteredOrders = allOrders.filter((order: Record<string, any>) => {
     const fieldValue = getFieldValue(order);
-    if (fieldValue == null) return false;
-    return String(fieldValue).toLowerCase().includes(lowerKeyword);
+    return fieldValue != null
+      ? normalizeVN(String(fieldValue).toLowerCase()).includes(normalizeVN(lowerKeyword))
+      : false;
   });
 
   const totalOrders = filteredOrders.length;
@@ -209,7 +193,9 @@ export const filterDataFromCache = async <T>({
     // Lọc dữ liệu
     const filteredData = allData.filter((item: any) => {
       const fieldValue = getFieldValue(item);
-      return fieldValue != null ? String(fieldValue).toLowerCase().includes(lowerKeyword) : false;
+      return fieldValue != null
+        ? normalizeVN(String(fieldValue).toLowerCase()).includes(normalizeVN(lowerKeyword))
+        : false;
     });
 
     // Phân trang

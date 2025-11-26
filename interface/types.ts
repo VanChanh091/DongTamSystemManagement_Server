@@ -8,6 +8,8 @@ export interface FilterDataFromCacheProps<T> {
   pageSize?: number | string;
   message?: string;
   fetchFunction?: () => Promise<T[]>;
+  whereCondition?: any;
+  isBox?: boolean;
 }
 
 export interface BreakTime {

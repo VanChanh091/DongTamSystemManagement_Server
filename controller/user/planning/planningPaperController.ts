@@ -1,5 +1,4 @@
 import { machinePaperType } from "../../../models/planning/planningPaper";
-import { getPlanningPaperByField } from "../../../utils/helper/modelHelper/planningHelper";
 import { Request, Response } from "express";
 import { planningPaperService } from "../../../service/planning/planningPaperService";
 import { OrderStatus } from "../../../models/order/order";
@@ -49,29 +48,21 @@ export const getPlanningByMachine = async (req: Request, res: Response) => {
   }
 };
 
-//get by orderId
-export const getPlanningByOrderId = async (req: Request, res: Response) => {
-  const { orderId, machine } = req.query as { orderId: string; machine: string };
+//get planning paper by field
+export const getPlanningPaperByfield = async (req: Request, res: Response) => {
+  const { machine, field, keyword } = req.query as {
+    machine: string;
+    field: string;
+    keyword: string;
+  };
 
   try {
-    const response = await planningPaperService.getPlanningByOrderId(machine, orderId);
+    const response = await planningPaperService.getPlanningByField(machine, field, keyword);
     return res.status(201).json(response);
   } catch (error: any) {
     return res.status(error.statusCode).json({ message: error.message });
   }
 };
-
-//get by customer name
-export const getPlanningByCustomerName = async (req: Request, res: Response) =>
-  getPlanningPaperByField(req, res, "customerName");
-
-//get by flute
-export const getPlanningByFlute = async (req: Request, res: Response) =>
-  getPlanningPaperByField(req, res, "flute");
-
-//get by ghepKho
-export const getPlanningByGhepKho = async (req: Request, res: Response) =>
-  getPlanningPaperByField(req, res, "ghepKho");
 
 //change planning machine
 export const changeMachinePlanning = async (req: Request, res: Response) => {

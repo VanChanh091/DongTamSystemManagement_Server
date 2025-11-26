@@ -1,7 +1,6 @@
 import { Op } from "sequelize";
 import { Order } from "../../../models/order/order";
 import { Customer } from "../../../models/customer/customer";
-import { PlanningPaper } from "../../../models/planning/planningPaper";
 import { PlanningBox } from "../../../models/planning/planningBox";
 import { CacheManager } from "../cacheManager";
 import redisCache from "../../../configs/redisCache";
@@ -10,93 +9,47 @@ import { BreakTime, FilterDataFromCacheProps } from "../../../interface/types";
 import { AppError } from "../../appError";
 import { dashboardRepository } from "../../../repository/dashboardRepository";
 import { normalizeVN } from "../normalizeVN";
+import { planningRepository } from "../../../repository/planningRepository";
 
 //get planningPaper properties
-export const getPlanningPaperByField = async (req: Request, res: Response, field: string) => {
-  const { machine } = req.query as { machine: string };
-  const value = req.query[field] as string;
-
-  if (!machine || !value) {
-    return res.status(400).json({
-      message: "Thiếu machine hoặc giá trị tìm kiếm",
-    });
-  }
-
-  const { paper } = CacheManager.keys.planning;
-  const cacheKey = paper.machine(machine);
-
+export const getPlanningByField = async <T>({
+  cacheKey,
+  keyword,
+  getFieldValue,
+  whereCondition,
+  message,
+  isBox = false,
+}: FilterDataFromCacheProps<T>) => {
   try {
-    const cachedData = await redisCache.get(cacheKey);
-    if (cachedData) {
-      const parsed = JSON.parse(cachedData);
+    const lowerKeyword = keyword?.toLowerCase?.() || "";
+    let allData = await redisCache.get(cacheKey);
+    let sourceMessage = "";
 
-      const filtered = parsed.filter((item: any) => {
-        const order = item.Order;
-        if (field === "customerName") {
-          return order?.Customer?.customerName?.toLowerCase().includes(value.toLowerCase());
-        } else if (field === "flute") {
-          return order?.flute?.toLowerCase().includes(value.toLowerCase());
-        } else if (field === "ghepKho") {
-          return item?.ghepKho == value;
-        }
-        return false;
-      });
+    if (!allData) {
+      allData = isBox
+        ? await planningRepository.getPlanningBoxSearch(whereCondition)
+        : await dashboardRepository.getDbPlanningSearch(whereCondition);
 
-      return res.json({
-        message: `Lọc planning theo ${field}: ${value} (cache)`,
-        data: filtered,
-      });
+      await redisCache.set(cacheKey, JSON.stringify(allData), "EX", 900);
+      sourceMessage = `Get ${cacheKey} from DB`;
+    } else {
+      allData = JSON.parse(allData);
+      sourceMessage = message || `Get ${cacheKey} from cache`;
     }
 
-    // Build query nếu không có cache
-    const whereClause: any = { chooseMachine: machine };
+    // Lọc dữ liệu
+    const filteredData = allData.filter((item: any) => {
+      const fieldValue = getFieldValue(item);
 
-    if (field === "ghepKho") {
-      whereClause.ghepKho = value;
-    }
-
-    const orderInclude: any = {
-      model: Order,
-      required: true,
-      attributes: ["flute"],
-      include: [
-        {
-          model: Customer,
-          attributes: ["customerName", "companyName"],
-        },
-      ],
-    };
-
-    // Thêm where vào order/customer nếu cần
-    if (field === "flute") {
-      orderInclude.where = {
-        flute: {
-          [Op.like]: `%${value}%`,
-        },
-      };
-    }
-
-    if (field === "customerName") {
-      orderInclude.include[0].required = true;
-      orderInclude.include[0].where = {
-        customerName: {
-          [Op.like]: `%${value}%`,
-        },
-      };
-    }
-
-    const planning = await PlanningPaper.findAll({
-      where: whereClause,
-      include: [orderInclude],
+      return fieldValue != null
+        ? normalizeVN(String(fieldValue).toLowerCase()).includes(normalizeVN(lowerKeyword))
+        : false;
     });
 
-    return res.status(200).json({
-      message: `Lọc planning theo ${field}: ${value}`,
-      data: planning,
-    });
+    return { message: sourceMessage, data: filteredData };
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Lỗi server" });
+    console.log(`error to get planning`, error);
+    throw AppError.ServerError();
   }
 };
 
