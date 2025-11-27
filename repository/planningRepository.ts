@@ -431,4 +431,41 @@ export const planningRepository = {
   },
 
   //====================================PLANNING STOP========================================
+
+  getByIds: async (planningIds: number[]) => {
+    return PlanningPaper.findAll({
+      attributes: [
+        "dayCompleted",
+        "planningId",
+        "dayStart",
+        "timeRunning",
+        "status",
+        "sortPlanning",
+      ],
+      where: { planningId: { [Op.in]: planningIds } },
+    });
+  },
+
+  cancelOrContinuePlanning: async ({
+    planningIds,
+    action,
+  }: {
+    planningIds: number[];
+    action: "cancel" | "continue";
+  }) => {
+    const data =
+      action === "cancel"
+        ? { status: "cancel" }
+        : {
+            status: "planning",
+            dayCompleted: null,
+            dayStart: null,
+            timeRunning: null,
+            sortPlanning: null,
+          };
+
+    return planningRepository.updateDataModel(PlanningPaper, data, {
+      where: { planningId: { [Op.in]: planningIds } },
+    });
+  },
 };

@@ -180,17 +180,27 @@ export const CacheManager = {
       customer: this.keys.customer.lastUpdated,
       product: this.keys.product.lastUpdated,
       employee: this.keys.employee.lastUpdated,
+
+      //order
       orderPending: this.keys.order.lastUpdatedPending,
       orderAccept: this.keys.order.lastUpdatedAccept,
+
+      //planning
       planningOrder: this.keys.planning.order.lastUpdated,
       planningPaper: this.keys.planning.paper.lastUpdated,
       planningOrderPaper: this.keys.planning.paper.lastUpdated, //using for cache planning order
       planningStop: this.keys.planning.stop.lastUpdated,
       planningBox: this.keys.planning.box.lastUpdated,
+
+      //manufacture
       manufacturePaper: this.keys.manufacture.paper.lastUpdated,
       manufactureBox: this.keys.manufacture.box.lastUpdated,
+
+      //report
       reportPaper: this.keys.report.paper.lastUpdated,
       reportBox: this.keys.report.box.lastUpdated,
+
+      //dashboard
       dbPlanning: this.keys.dashboard.planning.lastUpdated,
       dbDetail: this.keys.dashboard.details.lastUpdated,
     };

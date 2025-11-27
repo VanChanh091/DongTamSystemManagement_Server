@@ -7,13 +7,14 @@ exports.getCloudinaryPublicId = exports.uploadImageToCloudinary = exports.conver
 const sharp_1 = __importDefault(require("sharp"));
 const streamifier_1 = __importDefault(require("streamifier"));
 const connectCloudinary_1 = __importDefault(require("../../configs/connectCloudinary"));
+const appError_1 = require("../appError");
 const convertToWebp = async (buffer, quality = 80) => {
     try {
         const webpBuffer = await (0, sharp_1.default)(buffer).webp({ quality }).toBuffer();
         return webpBuffer;
     }
     catch (error) {
-        throw new Error("Lỗi khi chuyển ảnh sang WebP: " + error.message);
+        throw new appError_1.AppError("Lỗi khi chuyển ảnh sang WebP: ", 400);
     }
 };
 exports.convertToWebp = convertToWebp;

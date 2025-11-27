@@ -15,6 +15,7 @@ const planningBoxMachineTime_1 = require("../../../models/planning/planningBoxMa
 const sequelize_1 = require("sequelize");
 const cacheManager_1 = require("../cacheManager");
 const redisCache_1 = __importDefault(require("../../../configs/redisCache"));
+const normalizeVN_1 = require("../normalizeVN");
 const filterReportByField = async ({ keyword, machine, getFieldValue, page, pageSize, message, isBox = false, }) => {
     const currentPage = Number(page) || 1;
     const currentPageSize = Number(pageSize) || 20;
@@ -36,7 +37,9 @@ const filterReportByField = async ({ keyword, machine, getFieldValue, page, page
         // Lọc dữ liệu
         const filteredReports = allReports.filter((report) => {
             const fieldValue = getFieldValue(report);
-            return fieldValue != null ? String(fieldValue).toLowerCase().includes(lowerKeyword) : false;
+            return fieldValue != null
+                ? (0, normalizeVN_1.normalizeVN)(String(fieldValue).toLowerCase()).includes((0, normalizeVN_1.normalizeVN)(lowerKeyword))
+                : false;
         });
         // Phân trang
         const totalReports = filteredReports.length;

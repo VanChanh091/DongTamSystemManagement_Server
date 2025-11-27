@@ -14,6 +14,7 @@ const index_1 = require("./routes/index");
 //create table
 require("./models/index");
 const socket_1 = require("./utils/socket/socket");
+const appError_1 = require("./utils/appError");
 const app = (0, express_1.default)();
 const server = http_1.default.createServer(app);
 const io = (0, socket_1.initSocket)(server);
@@ -32,7 +33,9 @@ app.use((0, cors_1.default)({
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
 app.use("/uploads", express_1.default.static("uploads")); //set up to upload product image
-//routes
+// ========================
+//        ROUTES
+// ========================
 app.use("/auth", index_1.authRoutes);
 app.use("/api/admin", index_1.adminRoutes);
 app.use("/api/dashboard", index_1.dashboardRoutes);
@@ -50,6 +53,33 @@ connectDB_1.sequelize
     .then(() => console.log("✅ Database & tables synchronized"))
     .catch((err) => console.error("❌ Error syncing database:", err));
 app.use(authMiddleware_1.default);
+app.use((err, req, res, next) => {
+    // Lỗi nghiệp vụ (client gây ra)
+    if (err instanceof appError_1.AppError && err.isOperational) {
+        console.warn("⚠️ Operational error:", {
+            message: err.message,
+            errorCode: err.errorCode,
+            statusCode: err.statusCode,
+            path: req.originalUrl,
+        });
+        return res.status(err.statusCode).json({
+            success: false,
+            message: err.message,
+            errorCode: err.errorCode,
+        });
+    }
+    // Lỗi server thật (bug, DB lỗi, runtime crash)
+    console.error("🔥 SERVER ERROR:", {
+        message: err.message,
+        stack: err.stack,
+        path: req.originalUrl,
+    });
+    return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+        errorCode: "SERVER_ERROR",
+    });
+});
 server.listen({ port: Number(process.env.PORT) || 5000, host: "0.0.0.0" }, (err) => {
     if (err) {
         console.log(err);

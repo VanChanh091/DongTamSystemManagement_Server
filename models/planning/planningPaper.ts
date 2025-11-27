@@ -4,7 +4,13 @@ import { timeOverflowPlanning } from "./timeOverflowPlanning";
 import { PlanningBox } from "./planningBox";
 
 export type machinePaperType = "Máy 1350" | "Máy 1900" | "Máy 2 Lớp" | "Máy Quấn Cuồn";
-export type planningPaperStatus = "planning" | "complete" | "lackQty" | "producing" | "stop";
+export type planningPaperStatus =
+  | "planning"
+  | "complete"
+  | "lackQty"
+  | "producing"
+  | "stop"
+  | "cancel";
 
 //định nghĩa trường trong bảng
 interface PlanningPaperAttributes {
@@ -186,7 +192,7 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
       shiftProduction: { type: DataTypes.STRING },
       shiftManagement: { type: DataTypes.STRING },
       status: {
-        type: DataTypes.ENUM("planning", "complete", "lackQty", "producing", "stop"),
+        type: DataTypes.ENUM("planning", "complete", "lackQty", "producing", "stop", "cancel"),
         allowNull: false,
         defaultValue: "planning",
       },

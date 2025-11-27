@@ -3,14 +3,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.filterDataFromCache = exports.filterOrdersFromCache = exports.cachedStatus = exports.updateChildOrder = exports.createDataTable = exports.generateOrderId = exports.validateCustomerAndProduct = void 0;
+exports.getOrderByStatus = exports.filterDataFromCache = exports.filterOrdersFromCache = exports.cachedStatus = exports.updateChildOrder = exports.createDataTable = exports.generateOrderId = exports.validateCustomerAndProduct = void 0;
 exports.formatterStructureOrder = formatterStructureOrder;
 const sequelize_1 = require("sequelize");
 const customer_1 = require("../../../models/customer/customer");
 const product_1 = require("../../../models/product/product");
 const order_1 = require("../../../models/order/order");
-const box_1 = require("../../../models/order/box");
 const redisCache_1 = __importDefault(require("../../../configs/redisCache"));
+const orderRepository_1 = require("../../../repository/orderRepository");
+const normalizeVN_1 = require("../normalizeVN");
 const validateCustomerAndProduct = async (customerId, productId) => {
     const customer = await customer_1.Customer.findOne({ where: { customerId } });
     if (!customer) {
@@ -101,24 +102,7 @@ const filterOrdersFromCache = async ({ userId, role, keyword, getFieldValue, pag
         if (role !== "admin" && role !== "manager") {
             whereCondition.userId = userId;
         }
-        allOrders = await order_1.Order.findAll({
-            where: whereCondition,
-            include: [
-                { model: customer_1.Customer, attributes: ["customerName", "companyName"] },
-                {
-                    model: product_1.Product,
-                    attributes: ["typeProduct", "productName", "maKhuon"],
-                },
-                {
-                    model: box_1.Box,
-                    as: "box",
-                    attributes: {
-                        exclude: ["boxId", "createdAt", "updatedAt", "orderId"],
-                    },
-                },
-            ],
-            order: [["createdAt", "DESC"]],
-        });
+        allOrders = await orderRepository_1.orderRepository.findAllFilter(whereCondition);
         await redisCache_1.default.set(allDataCacheKey, JSON.stringify(allOrders), "EX", 900);
         sourceMessage = "Get all orders from DB";
     }
@@ -129,9 +113,9 @@ const filterOrdersFromCache = async ({ userId, role, keyword, getFieldValue, pag
     // Lọc
     const filteredOrders = allOrders.filter((order) => {
         const fieldValue = getFieldValue(order);
-        if (fieldValue == null)
-            return false;
-        return String(fieldValue).toLowerCase().includes(lowerKeyword);
+        return fieldValue != null
+            ? (0, normalizeVN_1.normalizeVN)(String(fieldValue).toLowerCase()).includes((0, normalizeVN_1.normalizeVN)(lowerKeyword))
+            : false;
     });
     const totalOrders = filteredOrders.length;
     const totalPages = Math.ceil(totalOrders / currentPageSize);
@@ -165,7 +149,9 @@ const filterDataFromCache = async ({ model, cacheKey, keyword, getFieldValue, pa
         // Lọc dữ liệu
         const filteredData = allData.filter((item) => {
             const fieldValue = getFieldValue(item);
-            return fieldValue != null ? String(fieldValue).toLowerCase().includes(lowerKeyword) : false;
+            return fieldValue != null
+                ? (0, normalizeVN_1.normalizeVN)(String(fieldValue).toLowerCase()).includes((0, normalizeVN_1.normalizeVN)(lowerKeyword))
+                : false;
         });
         // Phân trang
         const totalCustomers = filteredData.length;
@@ -205,4 +191,25 @@ function formatterStructureOrder(cell) {
     }
     return formattedParts.join("/");
 }
+const getOrderByStatus = async ({ statusList, userId, role, page = 1, pageSize = 30, ownOnly, isPaging = true, }) => {
+    let whereCondition = { status: { [sequelize_1.Op.in]: statusList } };
+    if ((role !== "admin" && role !== "manager") || ownOnly === "true") {
+        whereCondition.userId = userId;
+    }
+    const queryOptions = orderRepository_1.orderRepository.buildQueryOptions(whereCondition, statusList);
+    if (isPaging) {
+        queryOptions.offset = (page - 1) * pageSize;
+        queryOptions.limit = pageSize;
+        const { count, rows } = await orderRepository_1.orderRepository.findAndCountAll(queryOptions);
+        return {
+            data: rows,
+            totalOrders: count,
+            totalPages: Math.ceil(count / pageSize),
+            currentPage: page,
+        };
+    }
+    const rows = await orderRepository_1.orderRepository.findAll(queryOptions);
+    return { data: rows };
+};
+exports.getOrderByStatus = getOrderByStatus;
 //# sourceMappingURL=orderHelpers.js.map

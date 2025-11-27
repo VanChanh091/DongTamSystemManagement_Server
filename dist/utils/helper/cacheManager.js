@@ -17,6 +17,17 @@ exports.CacheManager = {
             search: "customers:search:all",
             lastUpdated: "customer:lastUpdated",
         },
+        dashboard: {
+            planning: {
+                all: (page) => `dashboard:planning:all:${page}`,
+                lastUpdated: "db:planning:lastUpdated", //planning paper
+            },
+            details: {
+                all: (planningId) => `dashboard:detail:${planningId}`,
+                lastUpdated: "db:detail:lastUpdated", //box time machine
+            },
+            search: "dashboard:search:all",
+        },
         product: {
             all: "products:all",
             page: (page) => `products:page:${page}`,
@@ -44,10 +55,16 @@ exports.CacheManager = {
             },
             paper: {
                 machine: (machine) => `planningPaper:machine:${machine}`,
+                search: (machine) => `planningPaper:search:${machine}`,
                 lastUpdated: "planningPaper:lastUpdated",
+            },
+            stop: {
+                page: (page) => `planningPaper:stop:page:${page}`,
+                lastUpdated: "planningPaper:stop:lastUpdated",
             },
             box: {
                 machine: (machine) => `planningBox:machine:${machine}`,
+                search: (machine) => `planningBox:search:${machine}`,
                 lastUpdated: "planningBox:lastUpdated",
             },
         },
@@ -107,9 +124,14 @@ exports.CacheManager = {
     },
     async clearPlanningPaper() {
         await this.clearByPrefix("planningPaper:machine:");
+        await this.clearByPrefix("planningPaper:search:");
+    },
+    async clearPlanningStop() {
+        await this.clearByPrefix("planningPaper:stop:");
     },
     async clearPlanningBox() {
         await this.clearByPrefix("planningBox:machine:");
+        await this.clearByPrefix("planningBox:search:");
     },
     async clearManufacturePaper() {
         await this.clearByPrefix("manufacturePaper:machine:");
@@ -123,6 +145,12 @@ exports.CacheManager = {
     async clearReportBox() {
         await this.clearByPrefix("reportBox:");
     },
+    async clearDbPlanning() {
+        await this.clearByPrefix("dashboard:planning:all:");
+    },
+    async clearDbPlanningDetail() {
+        await this.clearByPrefix("dashboard:detail:");
+    },
     /** Check lastChange cho 1 module */
     async check(models, module, options = {}) {
         const { setCache = true } = options;
@@ -134,11 +162,15 @@ exports.CacheManager = {
             orderAccept: this.keys.order.lastUpdatedAccept,
             planningOrder: this.keys.planning.order.lastUpdated,
             planningPaper: this.keys.planning.paper.lastUpdated,
+            planningOrderPaper: this.keys.planning.paper.lastUpdated, //using for cache planning order
+            planningStop: this.keys.planning.stop.lastUpdated,
             planningBox: this.keys.planning.box.lastUpdated,
             manufacturePaper: this.keys.manufacture.paper.lastUpdated,
             manufactureBox: this.keys.manufacture.box.lastUpdated,
             reportPaper: this.keys.report.paper.lastUpdated,
             reportBox: this.keys.report.box.lastUpdated,
+            dbPlanning: this.keys.dashboard.planning.lastUpdated,
+            dbDetail: this.keys.dashboard.details.lastUpdated,
         };
         const key = map[module];
         if (!key)

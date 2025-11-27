@@ -3,11 +3,9 @@ import authenticate from "../../middlewares/authMiddleware";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 import {
   changeMachinePlanning,
-  getOrderAccept,
   getPlanningByMachine,
   getPlanningPaperByfield,
   pauseOrAcceptLackQtyPLanning,
-  planningOrder,
   updateIndex_TimeRunning,
 } from "../../controller/user/planning/planningPaperController";
 import {
@@ -16,7 +14,12 @@ import {
   getPlanningBoxByfield,
   updateIndex_TimeRunningBox,
 } from "../../controller/user/planning/planningBoxController";
-import { getPlanningStop } from "../../controller/user/planning/planningStopController";
+import {
+  cancelOrContinuePlannning,
+  getOrderAccept,
+  getPlanningStop,
+  planningOrder,
+} from "../../controller/user/planning/planningStatusController";
 
 const router = Router();
 
@@ -59,5 +62,11 @@ router.put("/acceptLackQtyBox", authenticate, authorizeAnyPermission(["plan"]), 
 
 //=========================PLANNING BOX=========================
 router.get("/getPlanningStop", authenticate, authorizeAnyPermission(["plan"]), getPlanningStop);
+router.put(
+  "/updateStopById",
+  authenticate,
+  authorizeAnyPermission(["plan"]),
+  cancelOrContinuePlannning
+);
 
 export default router;

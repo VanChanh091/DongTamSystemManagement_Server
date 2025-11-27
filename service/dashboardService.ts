@@ -36,8 +36,7 @@ export const dashboardService = {
       const totalPlannings = await dashboardRepository.getDbPlanningCount();
       const totalPages = Math.ceil(totalPlannings / pageSize);
 
-      const whereCondition = { status: { [Op.ne]: "stop" } };
-      const data = await dashboardRepository.getAllDbPlanning({ page, pageSize, whereCondition });
+      const data = await dashboardRepository.getAllDbPlanning({ page, pageSize });
 
       const responseData = {
         message: "get all data paper from db",
