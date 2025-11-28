@@ -16,7 +16,7 @@ export const CacheManager = {
 
     dashboard: {
       planning: {
-        all: (page: number) => `dashboard:planning:all:${page}`,
+        all: (status: string, page: number) => `dashboard:planning:${status}:${page}`,
         lastUpdated: "db:planning:lastUpdated", //planning paper
       },
       details: {

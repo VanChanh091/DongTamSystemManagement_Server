@@ -25,3 +25,11 @@ export interface ExportExcelOptions<T> {
   columns: Partial<ExcelJS.Column>[];
   rows: (item: T, index: number) => Record<string, any>;
 }
+
+export interface RepoPayload {
+  model: any;
+  where?: any;
+  data?: any;
+  options?: any;
+  transaction?: any;
+}

@@ -9,7 +9,6 @@ import {
   formatDate,
   formatTimeToHHMMSS,
   getWorkShift,
-  isDuringBreak,
   parseTimeOnly,
   setTimeOnDay,
 } from "../../../utils/helper/modelHelper/planningHelper";
@@ -64,11 +63,11 @@ export const calTimeRunningPlanningBox = async ({
 
     if (feComplete.hasOverFlow) {
       // Lấy overflow mới nhất cho planning này & machine
-      const overflowRecord = await planningRepository.getModelById(
-        timeOverflowPlanning,
-        { planningBoxId: feComplete.planningBoxId, machine },
-        { transaction }
-      );
+      const overflowRecord = await planningRepository.getModelById({
+        model: timeOverflowPlanning,
+        where: { planningBoxId: feComplete.planningBoxId, machine },
+        options: { transaction },
+      });
 
       if (overflowRecord && overflowRecord.overflowDayStart && overflowRecord.overflowTimeRunning) {
         currentDay = new Date(overflowRecord.overflowDayStart);
@@ -247,19 +246,19 @@ const calculateTimeForOnePlanning = async ({
     result.timeRunning = formatTimeToHHMMSS(predictedEndTime);
     currentTime = predictedEndTime;
 
-    await planningRepository.deleteModelData(
-      timeOverflowPlanning,
-      { planningBoxId, machine },
-      transaction
-    );
+    await planningRepository.deleteModelData({
+      model: timeOverflowPlanning,
+      where: { planningBoxId, machine },
+      transaction,
+    });
   }
 
   // ✅ update hasOverFlow theo quantityCustomer
-  await planningRepository.updateDataModel(
-    PlanningBox,
-    { hasOverFlow: hasOverFlow && runningPlan > 0 },
-    { where: { planningBoxId }, transaction }
-  );
+  await planningRepository.updateDataModel({
+    model: PlanningBox,
+    data: { hasOverFlow: hasOverFlow && runningPlan > 0 },
+    options: { where: { planningBoxId }, transaction },
+  });
 
   // tính waste
   const wasteBoxValue = await calculateWasteBoxValue({
@@ -273,11 +272,11 @@ const calculateTimeForOnePlanning = async ({
     result.wasteBox = Math.round(wasteBoxValue);
   }
 
-  await planningRepository.updateDataModel(
-    PlanningBoxTime,
-    { ...result, sortPlanning },
-    { where: { planningBoxId, machine }, transaction }
-  );
+  await planningRepository.updateDataModel({
+    model: PlanningBoxTime,
+    data: { ...result, sortPlanning },
+    options: { where: { planningBoxId, machine }, transaction },
+  });
 
   // ================== LOG CHI TIẾT ==================
   // console.log("PlanningBox", {
@@ -354,22 +353,22 @@ const handleOverflow = async ({
     addMinutes(parseTimeOnly(timeStart), overflowMinutes)
   );
 
-  await planningRepository.deleteModelData(
-    timeOverflowPlanning,
-    { planningBoxId, machine },
-    transaction
-  );
+  await planningRepository.deleteModelData({
+    model: timeOverflowPlanning,
+    where: { planningBoxId, machine },
+    transaction,
+  });
 
-  await planningRepository.createPlanning(
-    timeOverflowPlanning,
-    {
+  await planningRepository.createPlanning({
+    model: timeOverflowPlanning,
+    data: {
       planningBoxId,
       machine,
       overflowDayStart: new Date(overflowDayStart),
       overflowTimeRunning,
     },
-    transaction
-  );
+    transaction,
+  });
 
   return {
     overflowDayStart,
@@ -394,11 +393,11 @@ const calculateWasteBoxValue = async ({
 }) => {
   if (runningPlan <= 0) return null;
 
-  const wasteNorm = await planningRepository.getModelById(
-    WasteNormBox,
-    { machineName: machine },
-    { transaction }
-  );
+  const wasteNorm = await planningRepository.getModelById({
+    model: WasteNormBox,
+    where: { machineName: machine },
+    options: { transaction },
+  });
   if (!wasteNorm) return null;
 
   const {
@@ -449,11 +448,11 @@ const getInitialCursor = async ({
   let currentDay = new Date(day);
 
   // A) Lấy đơn complete trong cùng ngày
-  const lastComplete = await planningRepository.getModelById(
-    PlanningBoxTime,
-    { machine: machine, status: "complete", dayStart: dayStr },
-    { order: [["timeRunning", "DESC"]], attributes: ["timeRunning"], transaction }
-  );
+  const lastComplete = await planningRepository.getModelById({
+    model: PlanningBoxTime,
+    where: { machine: machine, status: "complete", dayStart: dayStr },
+    options: { order: [["timeRunning", "DESC"]], attributes: ["timeRunning"], transaction },
+  });
 
   if (lastComplete?.timeRunning) {
     const time = combineDateAndHHMMSS(currentDay, lastComplete.timeRunning);

@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { planningStatusService } from "../../../service/planning/planningStatusService";
+import { planningPaperStatus } from "../../../models/planning/planningPaper";
 
 ///contain planning order and stop
 
@@ -49,7 +50,7 @@ export const getPlanningStop = async (req: Request, res: Response) => {
 export const cancelOrContinuePlannning = async (req: Request, res: Response) => {
   const { planningId, action } = req.body as {
     planningId: string | string[];
-    action: "cancel" | "continue";
+    action: planningPaperStatus;
   };
 
   try {

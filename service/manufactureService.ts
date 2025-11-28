@@ -153,7 +153,6 @@ export const manufactureService = {
 
       // update status dựa trên qtyProduced
       const isCompleted = newQtyProduced >= planning.runningPlan;
-      const newStatus = isCompleted ? "complete" : "lackQty";
 
       const isOverflowReport =
         planning.hasOverFlow &&
@@ -164,11 +163,11 @@ export const manufactureService = {
 
       //get timeOverflowPlanning
       if (planning.hasOverFlow) {
-        overflow = await planningRepository.getModelById(
-          timeOverflowPlanning,
-          { planningId },
-          { transaction, lock: transaction?.LOCK.UPDATE }
-        );
+        overflow = await planningRepository.getModelById({
+          model: timeOverflowPlanning,
+          where: { planningId },
+          options: { transaction, lock: transaction?.LOCK.UPDATE },
+        });
 
         if (!overflow) {
           await transaction?.rollback();
@@ -192,30 +191,26 @@ export const manufactureService = {
         otherData.shiftManagement
       );
 
-      await planningRepository.updateDataModel(
-        planning,
-        {
+      await planningRepository.updateDataModel({
+        model: planning,
+        data: {
           qtyProduced: newQtyProduced,
           qtyWasteNorm: newQtyWasteNorm,
-          status: newStatus,
+          status: isCompleted ? planning.status : "lackQty",
           dayCompleted: isOverflowReport ? planning.dayCompleted : dayReportValue,
           shiftProduction: updatedShiftProduction,
           shiftManagement: updatedShiftManagement,
         },
-        { transaction }
-      );
-
-      if (isCompleted && planning.hasOverFlow && overflow) {
-        planningRepository.updateDataModel(overflow, { status: "complete" }, { transaction });
-      }
+        options: { transaction },
+      });
 
       //update qty for planning box
       if (planning.hasBox) {
-        const planningBox = await planningRepository.getModelById(
-          PlanningBox,
-          { orderId: planning.orderId },
-          { transaction, lock: transaction?.LOCK.UPDATE }
-        );
+        const planningBox = await planningRepository.getModelById({
+          model: PlanningBox,
+          where: { orderId: planning.orderId },
+          options: { transaction, lock: transaction?.LOCK.UPDATE },
+        });
         if (!planningBox) {
           throw AppError.NotFound("PlanningBox not found", "PLANNING_BOX_NOT_FOUND");
         }
@@ -233,11 +228,11 @@ export const manufactureService = {
       const qtyManufacture = planning.Order?.quantityCustomer || 0;
 
       if (totalQtyProduced >= qtyManufacture) {
-        await planningRepository.updateDataModel(
-          Order,
-          { status: "planning" },
-          { where: { orderId: planning.orderId }, transaction }
-        );
+        await planningRepository.updateDataModel({
+          model: Order,
+          data: { status: "planning" },
+          options: { where: { orderId: planning.orderId }, transaction },
+        });
       }
 
       //3. tạo report theo số lần báo cáo
@@ -286,14 +281,7 @@ export const manufactureService = {
         transaction,
         lock: transaction?.LOCK.UPDATE, // lock để tránh race condition
       });
-      planningRepository.getModelById(
-        PlanningPaper,
-        { planningId },
-        {
-          transaction,
-          lock: transaction?.LOCK.UPDATE, // lock để tránh race condition
-        }
-      );
+
       if (!planning) {
         throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
       }
@@ -318,21 +306,25 @@ export const manufactureService = {
       }
 
       // Check if there's another planning in 'producing' status for the same machine
-      const existingProducing = await planningRepository.getModelById(
-        PlanningPaper,
-        { chooseMachine: machine, status: "producing" },
-        { transaction, lock: transaction?.LOCK.UPDATE }
-      );
+      const existingProducing = await planningRepository.getModelById({
+        model: PlanningPaper,
+        where: { chooseMachine: machine, status: "producing" },
+        options: { transaction, lock: transaction?.LOCK.UPDATE },
+      });
 
       if (existingProducing && existingProducing.planningId !== planningId) {
-        await planningRepository.updateDataModel(
-          existingProducing,
-          { status: "planning" },
-          { transaction }
-        );
+        await planningRepository.updateDataModel({
+          model: existingProducing,
+          data: { status: "planning" },
+          options: { transaction },
+        });
       }
 
-      await planningRepository.updateDataModel(planning, { status: "producing" }, { transaction });
+      await planningRepository.updateDataModel({
+        model: planning,
+        data: { status: "producing" },
+        options: { transaction },
+      });
 
       //clear cache
       await transaction?.commit();
@@ -492,11 +484,11 @@ export const manufactureService = {
 
       //get timeOverflowPlanning
       if (planning.PlanningBox.hasOverFlow) {
-        overflow = await planningRepository.getModelById(
-          timeOverflowPlanning,
-          { planningBoxId, machine },
-          { transaction, lock: transaction?.LOCK.UPDATE }
-        );
+        overflow = await planningRepository.getModelById({
+          model: timeOverflowPlanning,
+          where: { planningBoxId, machine },
+          options: { transaction, lock: transaction?.LOCK.UPDATE },
+        });
 
         if (!overflow) {
           await transaction?.rollback();
@@ -507,45 +499,39 @@ export const manufactureService = {
       if (isOverflowReport) {
         await overflow?.update({ overflowDayCompleted: new Date(dayCompleted) }, { transaction });
 
-        await planningRepository.updateDataModel(
-          planning,
-          {
+        await planningRepository.updateDataModel({
+          model: planning,
+          data: {
             qtyProduced: newQtyProduced,
             rpWasteLoss: newQtyWasteNorm,
             shiftManagement: mergedShift,
           },
-          { transaction }
-        );
+          options: { transaction },
+        });
 
         dayReportValue = overflow?.getDataValue("overflowDayCompleted");
       } else {
         //Cập nhật kế hoạch với số liệu mới
-        await planningRepository.updateDataModel(
-          planning,
-          {
+        await planningRepository.updateDataModel({
+          model: planning,
+          data: {
             dayCompleted: new Date(dayCompleted),
             qtyProduced: newQtyProduced,
             rpWasteLoss: newQtyWasteNorm,
             shiftManagement: mergedShift,
           },
-          { transaction }
-        );
+          options: { transaction },
+        });
 
         dayReportValue = planning.getDataValue("dayCompleted");
       }
 
-      //condition to complete
-      if (isCompletedOrder) {
-        await planningRepository.updateDataModel(planning, { status: "complete" }, { transaction });
-        if (isOverflowReport) {
-          await overflow?.update({ status: "complete" }, { transaction });
-        }
-      } else {
-        await planningRepository.updateDataModel(
-          planning,
-          { status: "lackOfQty" },
-          { transaction }
-        );
+      if (!isCompletedOrder) {
+        await planningRepository.updateDataModel({
+          model: planning,
+          data: { status: "lackOfQty" },
+          options: { transaction },
+        });
       }
 
       // 3. tạo report theo số lần báo cáo
@@ -573,7 +559,7 @@ export const manufactureService = {
           qtyWasteNorm: newQtyWasteNorm,
           dayCompleted,
           shiftManagement,
-          status: isCompletedOrder ? "complete" : "lackQty",
+          status: isCompletedOrder ? planning.status : "lackQty",
         },
       };
     } catch (error) {
@@ -594,11 +580,11 @@ export const manufactureService = {
       }
 
       // Lấy planning cần update
-      const planning = await planningRepository.getModelById(
-        PlanningBoxTime,
-        { planningBoxId, machine },
-        { transaction, lock: transaction?.LOCK.UPDATE, skipLocked: true }
-      );
+      const planning = await planningRepository.getModelById({
+        model: PlanningBoxTime,
+        where: { planningBoxId, machine },
+        options: { transaction, lock: transaction?.LOCK.UPDATE, skipLocked: true },
+      });
 
       if (!planning) {
         await transaction?.rollback();
@@ -632,7 +618,11 @@ export const manufactureService = {
       await manufactureRepository.updatePlanningBoxTime(planningBoxId, machine, transaction);
 
       // Update sang producing
-      await planningRepository.updateDataModel(planning, { status: "producing" }, { transaction });
+      await planningRepository.updateDataModel({
+        model: planning,
+        data: { status: "producing" },
+        options: { transaction },
+      });
 
       await transaction?.commit();
 

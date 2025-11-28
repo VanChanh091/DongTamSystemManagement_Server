@@ -48,6 +48,18 @@ export const changeMachinePlanning = async (req: Request, res: Response) => {
   }
 };
 
+//confirm complete
+export const confirmCompletePaper = async (req: Request, res: Response) => {
+  const { planningIds } = req.body as { planningIds: number[] };
+
+  try {
+    const response = await planningPaperService.confirmCompletePlanningPaper(planningIds);
+    return res.status(201).json(response);
+  } catch (error: any) {
+    return res.status(error.statusCode).json({ message: error.message });
+  }
+};
+
 //pause or accept lack of qty
 export const pauseOrAcceptLackQtyPLanning = async (req: Request, res: Response) => {
   const { planningIds, newStatus, rejectReason } = req.body as {

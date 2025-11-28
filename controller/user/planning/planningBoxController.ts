@@ -31,6 +31,17 @@ export const getPlanningBoxByfield = async (req: Request, res: Response) => {
   }
 };
 
+export const confirmCompleteBox = async (req: Request, res: Response) => {
+  const { planningIds, machine } = req.body as { planningIds: number[]; machine: string };
+
+  try {
+    const response = await planningBoxService.confirmCompletePlanningBox(planningIds, machine);
+    return res.status(201).json(response);
+  } catch (error: any) {
+    return res.status(error.statusCode).json({ message: error.message });
+  }
+};
+
 export const acceptLackQtyBox = async (req: Request, res: Response) => {
   const { planningBoxIds, newStatus, machine } = req.body as {
     planningBoxIds: number[];

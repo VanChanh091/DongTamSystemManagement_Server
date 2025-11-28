@@ -29,14 +29,14 @@ export const updateSortPlanning = async (
   const updates = updateIndex
     .filter((item) => item.sortPlanning)
     .map((item) =>
-      planningRepository.updateDataModel(
-        PlanningPaper,
-        { sortPlanning: item.sortPlanning },
-        {
+      planningRepository.updateDataModel({
+        model: PlanningPaper,
+        data: { sortPlanning: item.sortPlanning },
+        options: {
           where: { planningId: item.planningId, status: { [Op.ne]: "complete" } },
           transaction,
-        }
-      )
+        },
+      })
     );
   await Promise.all(updates);
 };
@@ -68,11 +68,11 @@ export const calculateTimeRunning = async ({
 
   if (feComplete) {
     const overflowRecord = feComplete.hasOverFlow
-      ? await planningRepository.getModelById(
-          timeOverflowPlanning,
-          { planningId: feComplete.planningId },
-          { transaction }
-        )
+      ? await planningRepository.getModelById({
+          model: timeOverflowPlanning,
+          where: { planningId: feComplete.planningId },
+          options: { transaction },
+        })
       : null;
 
     if (overflowRecord?.overflowTimeRunning && overflowRecord?.overflowDayStart) {
@@ -216,15 +216,15 @@ const calculateTimeForOnePlanning = async ({
     transaction,
   });
 
-  await planningRepository.updateDataModel(
-    PlanningPaper,
-    {
+  await planningRepository.updateDataModel({
+    model: PlanningPaper,
+    data: {
       dayStart: new Date(result.dayStart),
       timeRunning: result.timeRunning,
       hasOverFlow,
     },
-    { where: { planningId }, transaction }
-  );
+    options: { where: { planningId }, transaction },
+  });
 
   // console.log("🔍 [Tính toán đơn hàng]:", {
   //   planningId,
@@ -299,7 +299,11 @@ const handleOverflow = async ({
   transaction: any;
 }) => {
   if (!hasOverFlow) {
-    await planningRepository.deleteModelData(timeOverflowPlanning, { planningId }, transaction);
+    await planningRepository.deleteModelData({
+      model: timeOverflowPlanning,
+      where: { planningId },
+      transaction,
+    });
 
     return {
       dayStart: currentDay.toISOString().split("T")[0],
@@ -319,16 +323,20 @@ const handleOverflow = async ({
   const overflowEnd = new Date(startOverflow);
   overflowEnd.setMinutes(overflowEnd.getMinutes() + overflowMin);
 
-  await planningRepository.deleteModelData(timeOverflowPlanning, { planningId }, transaction);
-  await planningRepository.createPlanning(
-    timeOverflowPlanning,
-    {
+  await planningRepository.deleteModelData({
+    model: timeOverflowPlanning,
+    where: { planningId },
+    transaction,
+  });
+  await planningRepository.createPlanning({
+    model: timeOverflowPlanning,
+    data: {
       planningId,
       overflowDayStart: new Date(overflowDay.toISOString().split("T")[0]),
       overflowTimeRunning: formatTime(overflowEnd),
     },
-    transaction
-  );
+    transaction,
+  });
 
   return {
     dayStart: currentDay.toISOString().split("T")[0],

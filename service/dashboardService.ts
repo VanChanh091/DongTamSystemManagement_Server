@@ -16,8 +16,8 @@ const devEnvironment = process.env.NODE_ENV !== "production";
 const { planning, details, search } = CacheManager.keys.dashboard;
 
 export const dashboardService = {
-  getAllDashboardPlanning: async (page: number, pageSize: number) => {
-    const cacheKey = planning.all(page);
+  getAllDashboardPlanning: async (page: number, pageSize: number, status: string) => {
+    const cacheKey = planning.all(status, page);
 
     try {
       const { isChanged } = await CacheManager.check(PlanningPaper, "dbPlanning");
@@ -36,7 +36,11 @@ export const dashboardService = {
       const totalPlannings = await dashboardRepository.getDbPlanningCount();
       const totalPages = Math.ceil(totalPlannings / pageSize);
 
-      const data = await dashboardRepository.getAllDbPlanning({ page, pageSize });
+      const data = await dashboardRepository.getAllDbPlanning({
+        page,
+        pageSize,
+        whereCondition: { status },
+      });
 
       const responseData = {
         message: "get all data paper from db",

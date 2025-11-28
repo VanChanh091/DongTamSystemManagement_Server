@@ -3,10 +3,19 @@ import { dashboardService } from "../../service/dashboardService";
 
 //get all dashboard planning
 export const getAllDashboardPlanning = async (req: Request, res: Response) => {
-  const { page, pageSize } = req.query as { page: string; pageSize: string; refresh: string };
+  const { page, pageSize, status } = req.query as {
+    page: string;
+    pageSize: string;
+    refresh: string;
+    status: string;
+  };
 
   try {
-    const response = await dashboardService.getAllDashboardPlanning(Number(page), Number(pageSize));
+    const response = await dashboardService.getAllDashboardPlanning(
+      Number(page),
+      Number(pageSize),
+      status
+    );
     return res.status(200).json(response);
   } catch (error: any) {
     return res.status(error.statusCode).json({ message: error.message });

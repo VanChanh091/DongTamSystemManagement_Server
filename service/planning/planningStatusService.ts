@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import { AppError } from "../../utils/appError";
 import { CacheManager } from "../../utils/helper/cacheManager";
-import { PlanningPaper } from "../../models/planning/planningPaper";
+import { PlanningPaper, planningPaperStatus } from "../../models/planning/planningPaper";
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
 import { Op } from "sequelize";
 import redisCache from "../../configs/redisCache";
@@ -75,11 +75,15 @@ export const planningStatusService = {
       const { chooseMachine } = planningData;
 
       // 2) Lấy thông số định mức và hệ số sóng cho máy đã chọn
-      const wasteNorm = await planningRepository.getModelById(WasteNormPaper, {
-        machineName: chooseMachine,
+      const wasteNorm = await planningRepository.getModelById({
+        model: WasteNormPaper,
+        where: { machineName: chooseMachine },
       });
-      const waveCoeff = await planningRepository.getModelById(WaveCrestCoefficient, {
-        machineName: chooseMachine,
+      const waveCoeff = await planningRepository.getModelById({
+        model: WaveCrestCoefficient,
+        where: {
+          machineName: chooseMachine,
+        },
       });
 
       if (!wasteNorm || !waveCoeff) {
@@ -211,10 +215,13 @@ export const planningStatusService = {
       };
 
       // 6) Tạo kế hoạch làm giấy tấm
-      const paperPlan = await planningRepository.createPlanning(PlanningPaper, {
-        orderId,
-        status: "planning",
-        ...planningData,
+      const paperPlan = await planningRepository.createPlanning({
+        model: PlanningPaper,
+        data: {
+          orderId,
+          status: "planning",
+          ...planningData,
+        },
       });
 
       // 7) Tính phế liệu và cập nhật lại plan giấy tấm
@@ -235,30 +242,33 @@ export const planningStatusService = {
       // 8) Nếu đơn hàng có làm thùng, tạo thêm kế hoạch lam-thung (waiting)
       const box = order.box;
       if (order.isBox) {
-        boxPlan = await planningRepository.createPlanning(PlanningBox, {
-          planningId: paperPlan.planningId,
-          orderId,
+        boxPlan = await planningRepository.createPlanning({
+          model: PlanningBox,
+          data: {
+            planningId: paperPlan.planningId,
+            orderId,
 
-          day: paperPlan.dayReplace,
-          matE: paperPlan.matEReplace,
-          matB: paperPlan.matBReplace,
-          matC: paperPlan.matCReplace,
-          matE2: paperPlan.matE2Replace,
-          songE: paperPlan.songEReplace,
-          songB: paperPlan.songBReplace,
-          songC: paperPlan.songCReplace,
-          songE2: paperPlan.songE2Replace,
-          length: paperPlan.lengthPaperPlanning,
-          size: paperPlan.sizePaperPLaning,
+            day: paperPlan.dayReplace,
+            matE: paperPlan.matEReplace,
+            matB: paperPlan.matBReplace,
+            matC: paperPlan.matCReplace,
+            matE2: paperPlan.matE2Replace,
+            songE: paperPlan.songEReplace,
+            songB: paperPlan.songBReplace,
+            songC: paperPlan.songCReplace,
+            songE2: paperPlan.songE2Replace,
+            length: paperPlan.lengthPaperPlanning,
+            size: paperPlan.sizePaperPLaning,
 
-          hasIn: !!(box.inMatTruoc || box.inMatSau),
-          hasCanLan: !!box.canLan,
-          hasBe: !!box.be,
-          hasXa: !!box.Xa,
-          hasDan: !!(box.dan_1_Manh || box.dan_2_Manh),
-          hasCatKhe: !!box.catKhe,
-          hasCanMang: !!box.canMang,
-          hasDongGhim: !!(box.dongGhim1Manh || box.dongGhim2Manh),
+            hasIn: !!(box.inMatTruoc || box.inMatSau),
+            hasCanLan: !!box.canLan,
+            hasBe: !!box.be,
+            hasXa: !!box.Xa,
+            hasDan: !!(box.dan_1_Manh || box.dan_2_Manh),
+            hasCatKhe: !!box.catKhe,
+            hasCanMang: !!box.canMang,
+            hasDongGhim: !!(box.dongGhim1Manh || box.dongGhim2Manh),
+          },
         });
       }
 
@@ -345,17 +355,17 @@ export const planningStatusService = {
     action,
   }: {
     planningId: number | number[];
-    action: "cancel" | "continue";
+    action: planningPaperStatus;
   }) => {
     try {
       const ids = Array.isArray(planningId) ? planningId : [planningId];
 
-      const plannings = await planningRepository.getByIds(ids);
+      const plannings = await planningRepository.getStopByIds(ids);
       if (plannings.length == 0) {
         throw AppError.BadRequest("planning not found", "PLANNING_NOT_FOUND");
       }
 
-      await planningRepository.cancelOrContinuePlanning({
+      await planningRepository.updateStatusPlanning({
         planningIds: ids,
         action: action,
       });

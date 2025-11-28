@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
-import { Op } from "sequelize";
+import { Op, where } from "sequelize";
 import redisCache from "../../configs/redisCache";
 import { Order } from "../../models/order/order";
 import { machinePaperType, PlanningPaper } from "../../models/planning/planningPaper";
@@ -14,6 +14,8 @@ import { MachinePaper } from "../../models/admin/machinePaper";
 import { Request } from "express";
 import { calculateTimeRunning, updateSortPlanning } from "./helper/timeRunningPaper";
 import { getPlanningByField } from "../../utils/helper/modelHelper/planningHelper";
+import { userRole } from "../../models/user/user";
+import { options } from "axios";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper } = CacheManager.keys.planning;
@@ -267,7 +269,7 @@ export const planningPaperService = {
         throw AppError.BadRequest("Missing planningIds parameter", "MISSING_PARAMETERS");
       }
 
-      const plannings = await planningRepository.getPapersByPlanningId(planningIds);
+      const plannings = await planningRepository.getPapersById({ planningIds });
 
       if (plannings.length === 0) {
         throw AppError.NotFound("planning npt found", "PLANNING_NOT_FOUND");
@@ -287,6 +289,57 @@ export const planningPaperService = {
     }
   },
 
+  confirmCompletePlanningPaper: async (planningId: number | number[]) => {
+    try {
+      const ids = Array.isArray(planningId) ? planningId : [planningId];
+
+      const plannings = await planningRepository.getStopByIds(ids);
+      if (plannings.length == 0) {
+        throw AppError.BadRequest("planning not found", "PLANNING_NOT_FOUND");
+      }
+
+      const planningPaper = await planningRepository.getPapersById({
+        planningIds: ids,
+        options: {
+          attributes: ["planningId", "runningPlan", "qtyProduced", "status", "hasOverFlow"],
+        },
+      });
+
+      // Kiểm tra từng đơn
+      for (const paper of planningPaper) {
+        const { qtyProduced, runningPlan } = paper;
+
+        if ((qtyProduced ?? 0) < runningPlan) {
+          throw AppError.BadRequest("Lack quantity", "LACK_QUANTITY");
+        }
+      }
+
+      await planningRepository.updateDataModel({
+        model: PlanningPaper,
+        data: { status: "complete" },
+        options: { where: { planningId: ids } },
+      });
+
+      const overflowRows = await timeOverflowPlanning.findAll({
+        where: { planningId: ids },
+      });
+
+      if (overflowRows.length) {
+        await planningRepository.updateDataModel({
+          model: timeOverflowPlanning,
+          data: { status: "complete" },
+          options: { where: { planningId: ids } },
+        });
+      }
+
+      return { message: "planning paper updated successfully" };
+    } catch (error) {
+      console.log(`error confirm complete planning`, error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
   pauseOrAcceptLackQtyPLanning: async (
     planningIds: number[],
     newStatus: string,
@@ -297,7 +350,7 @@ export const planningPaperService = {
         throw AppError.BadRequest("Missing planningIds parameter", "MISSING_PARAMETERS");
       }
 
-      const plannings = await planningRepository.getPapersByPlanningId(planningIds);
+      const plannings = await planningRepository.getPapersById({ planningIds });
       if (plannings.length === 0) {
         throw AppError.NotFound("planning npt found", "PLANNING_NOT_FOUND");
       }
@@ -305,8 +358,9 @@ export const planningPaperService = {
       if (newStatus !== "complete") {
         for (const planning of plannings) {
           if (planning.orderId) {
-            const order = await planningRepository.getModelById(Order, {
-              orderId: planning.orderId,
+            const order = await planningRepository.getModelById({
+              model: Order,
+              where: { orderId: planning.orderId },
             });
 
             if (order) {
@@ -321,9 +375,12 @@ export const planningPaperService = {
                 }
 
                 // Trả order về reject
-                await planningRepository.updateDataModel(order, {
-                  status: newStatus,
-                  rejectReason,
+                await planningRepository.updateDataModel({
+                  model: order,
+                  data: {
+                    status: newStatus,
+                    rejectReason,
+                  },
                 });
 
                 // Trừ công nợ khách hàng
@@ -344,8 +401,9 @@ export const planningPaperService = {
                 const dependents = await planningRepository.getBoxByPlanningId(planning.planningId);
 
                 for (const box of dependents) {
-                  await planningRepository.deleteModelData(PlanningBoxTime, {
-                    planningBoxId: box.planningBoxId,
+                  await planningRepository.deleteModelData({
+                    model: PlanningBoxTime,
+                    where: { planningBoxId: box.planningBoxId },
                   });
 
                   await box.destroy();
@@ -361,26 +419,36 @@ export const planningPaperService = {
                 const dependents = await planningRepository.getBoxByPlanningId(planning.planningId);
 
                 if ((planning.qtyProduced ?? 0) > 0) {
-                  await planningRepository.updateDataModel(order, {
-                    status: newStatus,
-                    rejectReason: rejectReason,
+                  await planningRepository.updateDataModel({
+                    model: order,
+                    data: {
+                      status: newStatus,
+                      rejectReason: rejectReason,
+                    },
                   });
 
-                  await planningRepository.updateDataModel(planning, { status: newStatus });
+                  await planningRepository.updateDataModel({
+                    model: planning,
+                    data: { status: newStatus },
+                  });
 
                   for (const box of dependents) {
-                    await planningRepository.updateDataModel(
-                      PlanningBoxTime,
-                      { status: newStatus },
-                      { where: { planningBoxId: box.planningBoxId } }
-                    );
+                    await planningRepository.updateDataModel({
+                      model: PlanningBoxTime,
+                      data: { status: newStatus },
+                      options: { where: { planningBoxId: box.planningBoxId } },
+                    });
                   }
                 } else {
-                  await planningRepository.updateDataModel(order, { status: "accept" });
+                  await planningRepository.updateDataModel({
+                    model: order,
+                    data: { status: "accept" },
+                  });
 
                   for (const box of dependents) {
-                    await planningRepository.deleteModelData(PlanningBoxTime, {
-                      planningBoxId: box.planningBoxId,
+                    await planningRepository.deleteModelData({
+                      model: PlanningBoxTime,
+                      where: { planningBoxId: box.planningBoxId },
                     });
 
                     await box.destroy();
@@ -407,25 +475,28 @@ export const planningPaperService = {
           await planning.save();
 
           if (planning.hasOverFlow) {
-            await planningRepository.updateDataModel(
-              timeOverflowPlanning,
-              { status: newStatus },
-              { where: { planningId: planning.planningId } }
-            );
+            await planningRepository.updateDataModel({
+              model: timeOverflowPlanning,
+              data: { status: newStatus },
+              options: { where: { planningId: planning.planningId } },
+            });
           }
 
-          const planningBox = await planningRepository.getModelById(PlanningBox, {
-            planningId: planning.planningId,
+          const planningBox = await planningRepository.getModelById({
+            model: PlanningBox,
+            where: {
+              planningId: planning.planningId,
+            },
           });
           if (!planningBox) {
             continue;
           }
 
-          await planningRepository.updateDataModel(
-            PlanningBoxTime,
-            { runningPlan: planning.qtyProduced ?? 0 },
-            { where: { planningBoxId: planningBox.planningBoxId } }
-          );
+          await planningRepository.updateDataModel({
+            model: PlanningBoxTime,
+            data: { runningPlan: planning.qtyProduced ?? 0 },
+            options: { where: { planningBoxId: planningBox.planningBoxId } },
+          });
         }
       }
 
@@ -466,8 +537,9 @@ export const planningPaperService = {
       const plannings = await planningRepository.getPapersByUpdateIndex(updateIndex, transaction);
 
       // 3️⃣ Lấy thông tin máy
-      const machineInfo = await planningRepository.getModelById(MachinePaper, {
-        machineName: machine,
+      const machineInfo = await planningRepository.getModelById({
+        model: MachinePaper,
+        where: { machineName: machine },
       });
       if (!machineInfo) throw new Error("Machine not found");
 

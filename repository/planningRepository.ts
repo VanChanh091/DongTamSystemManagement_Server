@@ -1,31 +1,29 @@
 import { Op, Sequelize } from "sequelize";
 import { Customer } from "../models/customer/customer";
 import { Order } from "../models/order/order";
-import { PlanningPaper } from "../models/planning/planningPaper";
+import { PlanningPaper, planningPaperStatus } from "../models/planning/planningPaper";
 import { Product } from "../models/product/product";
 import { Box } from "../models/order/box";
 import { PlanningBox } from "../models/planning/planningBox";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
+import { RepoPayload } from "../interface/types";
 
 export const planningRepository = {
   //====================================FUNC GLOBAL========================================
-  getModelById: async (model: any, where: any, options: any = {}) => {
-    return await model.findOne({
-      where,
-      ...options,
-    });
+  getModelById: async ({ model, where, options = {} }: RepoPayload) => {
+    return await model.findOne({ where, ...options });
   },
 
-  updateDataModel: async (model: any, data: any, options: any = {}) => {
+  updateDataModel: async ({ model, data, options = {} }: RepoPayload) => {
     return await model.update(data, options);
   },
 
-  deleteModelData: async (model: any, where: any, transaction?: any) => {
+  deleteModelData: async ({ model, where, transaction }: RepoPayload) => {
     return await model.destroy({ where, transaction });
   },
 
-  createPlanning: async (model: any, data: any, transaction?: any) => {
+  createPlanning: async ({ model, data, transaction }: RepoPayload) => {
     return await model.create(data, { transaction });
   },
 
@@ -217,8 +215,18 @@ export const planningRepository = {
     });
   },
 
-  getPapersByPlanningId: async (planningIds: number[]) => {
+  getPapersById: async ({
+    planningIds,
+    options = {},
+  }: {
+    planningIds: number[];
+    options?: { attributes?: any; include?: any };
+  }) => {
+    const { attributes, include } = options;
+
     return await PlanningPaper.findAll({
+      attributes,
+      include,
       where: {
         planningId: { [Op.in]: planningIds },
       },
@@ -361,14 +369,22 @@ export const planningRepository = {
     });
   },
 
-  getBoxsById: async (planningBoxIds: number[], machine: string) => {
+  getBoxsById: async ({
+    planningBoxIds,
+    machine,
+    options = {},
+  }: {
+    planningBoxIds: number | number[];
+    machine: string;
+    options?: { attributes?: any; include?: any };
+  }) => {
+    const { attributes, include } = options;
+    const ids = Array.isArray(planningBoxIds) ? planningBoxIds : [planningBoxIds];
+
     return await PlanningBoxTime.findAll({
-      where: {
-        planningBoxId: {
-          [Op.in]: planningBoxIds,
-        },
-        machine,
-      },
+      attributes,
+      include,
+      where: { planningBoxId: { [Op.in]: ids }, machine },
     });
   },
 
@@ -432,11 +448,11 @@ export const planningRepository = {
 
   //====================================PLANNING STOP========================================
 
-  getByIds: async (planningIds: number[]) => {
+  getStopByIds: async (planningIds: number[]) => {
     return PlanningPaper.findAll({
       attributes: [
-        "dayCompleted",
         "planningId",
+        "dayCompleted",
         "dayStart",
         "timeRunning",
         "status",
@@ -446,26 +462,28 @@ export const planningRepository = {
     });
   },
 
-  cancelOrContinuePlanning: async ({
+  updateStatusPlanning: async ({
     planningIds,
     action,
   }: {
     planningIds: number[];
-    action: "cancel" | "continue";
+    action: planningPaperStatus;
   }) => {
     const data =
-      action === "cancel"
-        ? { status: "cancel" }
-        : {
-            status: "planning",
+      action === "planning"
+        ? {
+            status: action,
             dayCompleted: null,
             dayStart: null,
             timeRunning: null,
             sortPlanning: null,
-          };
+          }
+        : { status: action };
 
-    return planningRepository.updateDataModel(PlanningPaper, data, {
-      where: { planningId: { [Op.in]: planningIds } },
+    return planningRepository.updateDataModel({
+      model: PlanningPaper,
+      data,
+      options: { where: { planningId: { [Op.in]: planningIds } } },
     });
   },
 };

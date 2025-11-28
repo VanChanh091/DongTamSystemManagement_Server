@@ -249,12 +249,64 @@ export const planningBoxService = {
     }
   },
 
+  confirmCompletePlanningBox: async (planningBoxId: number | number[], machine: string) => {
+    try {
+      const ids = Array.isArray(planningBoxId) ? planningBoxId : [planningBoxId];
+
+      const plannings = await planningRepository.getStopByIds(ids);
+      if (plannings.length == 0) {
+        throw AppError.BadRequest("planning not found", "PLANNING_NOT_FOUND");
+      }
+
+      const planningBox = await planningRepository.getBoxsById({
+        planningBoxIds: ids,
+        machine,
+        options: {
+          attributes: ["runningPlan", "qtyProduced", "status", "machine"],
+          include: [{ model: PlanningBox, attributes: ["planningBoxId", "hasOverFlow"] }],
+        },
+      });
+
+      for (const box of planningBox) {
+        const { qtyProduced, runningPlan } = box;
+
+        if ((qtyProduced ?? 0) < (runningPlan ?? 0)) {
+          throw AppError.BadRequest("Lack quantity", "LACK_QUANTITY");
+        }
+      }
+
+      await planningRepository.updateDataModel({
+        model: PlanningBoxTime,
+        data: { status: "complete" },
+        options: { where: { planningBoxId: ids, machine } },
+      });
+
+      const overflowRows = await timeOverflowPlanning.findAll({
+        where: { planningBoxId: ids },
+      });
+
+      if (overflowRows.length) {
+        await planningRepository.updateDataModel({
+          model: timeOverflowPlanning,
+          data: { status: "complete" },
+          options: { where: { planningBoxId: ids } },
+        });
+      }
+
+      return { message: "planning box updated successfully" };
+    } catch (error) {
+      console.log(`error confirm complete planning`, error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
   acceptLackQtyBox: async (planningBoxIds: number[], newStatus: statusBoxType, machine: string) => {
     try {
       if (!Array.isArray(planningBoxIds) || planningBoxIds.length === 0) {
         throw AppError.BadRequest("Missing planningBoxIds parameter", "MISSING_PARAMETERS");
       }
-      const plannings = await planningRepository.getBoxsById(planningBoxIds, machine);
+      const plannings = await planningRepository.getBoxsById({ planningBoxIds, machine });
       if (plannings.length === 0) {
         throw AppError.NotFound("planning not found", "PLANNING_NOT_FOUND");
       }
@@ -271,11 +323,11 @@ export const planningBoxService = {
 
         await planning.save();
 
-        await planningRepository.updateDataModel(
-          timeOverflowPlanning,
-          { status: newStatus },
-          { where: { planningBoxId: planning.planningBoxId } }
-        );
+        await planningRepository.updateDataModel({
+          model: timeOverflowPlanning,
+          data: { status: newStatus },
+          options: { where: { planningBoxId: planning.planningBoxId } },
+        });
       }
 
       return { message: `Update status:${newStatus} successfully.` };
@@ -312,22 +364,22 @@ export const planningBoxService = {
       for (const item of updateIndex) {
         if (!item.sortPlanning) continue;
 
-        const boxTime = await planningRepository.getModelById(
-          PlanningBoxTime,
-          {
+        const boxTime = await planningRepository.getModelById({
+          model: PlanningBoxTime,
+          where: {
             planningBoxId: item.planningBoxId,
             machine,
             status: { [Op.ne]: "complete" }, //không cập nhật đơn đã complete
           },
-          { transaction }
-        );
+          options: { transaction },
+        });
 
         if (boxTime) {
-          planningRepository.updateDataModel(
-            boxTime,
-            { sortPlanning: item.sortPlanning },
-            { transaction }
-          );
+          planningRepository.updateDataModel({
+            model: boxTime,
+            data: { sortPlanning: item.sortPlanning },
+            options: { transaction },
+          });
         }
       }
 
@@ -339,8 +391,11 @@ export const planningBoxService = {
       );
 
       // 3. Tính toán thời gian chạy cho từng planning
-      const machineInfo = await planningRepository.getModelById(MachineBox, {
-        machineName: machine,
+      const machineInfo = await planningRepository.getModelById({
+        model: MachineBox,
+        where: {
+          machineName: machine,
+        },
       });
 
       if (!machineInfo) throw AppError.NotFound(`machine not found`, "MACHINE_NOT_FOUND");
