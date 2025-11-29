@@ -21,10 +21,6 @@ export const reportService = {
   //====================================PAPER========================================
   getReportPaper: async (machine: string, page: number, pageSize: number) => {
     try {
-      if (!machine) {
-        throw AppError.BadRequest("Missing machine parameter", "MISSING_PARAMETERS");
-      }
-
       const cacheKey = paper.all(page);
       const { isChanged } = await CacheManager.check(ReportPlanningPaper, "reportPaper");
 
@@ -106,10 +102,6 @@ export const reportService = {
   //====================================BOX========================================
   getReportBox: async (machine: string, page: number, pageSize: number) => {
     try {
-      if (!machine) {
-        throw AppError.BadRequest("Missing machine parameter", "MISSING_PARAMETERS");
-      }
-
       const cacheKey = box.all(page);
       const { isChanged } = await CacheManager.check(ReportPlanningBox, "reportBox");
 

@@ -1,12 +1,13 @@
 import dotenv from "dotenv";
 dotenv.config();
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { reportService } from "../../../service/reportService";
+import { AppError } from "../../../utils/appError";
 
 //===============================REPORT PAPER=====================================
 
 //get all report planning paper
-export const getReportPlanningPaper = async (req: Request, res: Response) => {
+export const getReportPlanningPaper = async (req: Request, res: Response, next: NextFunction) => {
   const {
     machine,
     page = 1,
@@ -14,16 +15,20 @@ export const getReportPlanningPaper = async (req: Request, res: Response) => {
   } = req.query as { machine: string; page?: string; pageSize?: string };
 
   try {
+    if (!machine) {
+      throw AppError.BadRequest("Missing machine parameter", "MISSING_PARAMETERS");
+    }
+
     const response = await reportService.getReportPaper(machine, Number(page), Number(pageSize));
 
     return res.status(200).json(response);
-  } catch (error: any) {
-    return res.status(error.statusCode).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };
 
 //get reported paper by field
-export const getReportedPaperByField = async (req: Request, res: Response) => {
+export const getReportedPaperByField = async (req: Request, res: Response, next: NextFunction) => {
   const {
     field,
     keyword,
@@ -48,15 +53,15 @@ export const getReportedPaperByField = async (req: Request, res: Response) => {
     );
 
     return res.status(200).json(response);
-  } catch (error: any) {
-    return res.status(error.statusCode).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };
 
 //===============================REPORT BOX=====================================
 
 //get all report planning box
-export const getReportPlanningBox = async (req: Request, res: Response) => {
+export const getReportPlanningBox = async (req: Request, res: Response, next: NextFunction) => {
   const {
     machine,
     page = 1,
@@ -64,16 +69,20 @@ export const getReportPlanningBox = async (req: Request, res: Response) => {
   } = req.query as { machine: string; page: string; pageSize: string };
 
   try {
+    if (!machine) {
+      throw AppError.BadRequest("Missing machine parameter", "MISSING_PARAMETERS");
+    }
+
     const response = await reportService.getReportBox(machine, Number(page), Number(pageSize));
 
     return res.status(200).json(response);
-  } catch (error: any) {
-    return res.status(error.statusCode).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };
 
 //get reported box by field
-export const getReportedBoxByField = async (req: Request, res: Response) => {
+export const getReportedBoxByField = async (req: Request, res: Response, next: NextFunction) => {
   const {
     field,
     keyword,
@@ -98,15 +107,15 @@ export const getReportedBoxByField = async (req: Request, res: Response) => {
     );
 
     return res.status(200).json(response);
-  } catch (error: any) {
-    return res.status(error.statusCode).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };
 
 //===============================EXPORT EXCEL=====================================
 
 //export excel paper
-export const exportExcelReportPaper = async (req: Request, res: Response) => {
+export const exportExcelReportPaper = async (req: Request, res: Response, next: NextFunction) => {
   const { fromDate, toDate, reportPaperId, machine } = req.body as {
     fromDate: string | Date;
     toDate: string | Date;
@@ -124,13 +133,13 @@ export const exportExcelReportPaper = async (req: Request, res: Response) => {
     );
 
     return res.status(200).json(response);
-  } catch (error: any) {
-    return res.status(error.statusCode).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };
 
 //export excel box
-export const exportExcelReportBox = async (req: Request, res: Response) => {
+export const exportExcelReportBox = async (req: Request, res: Response, next: NextFunction) => {
   const { fromDate, toDate, reportBoxId, machine } = req.body as {
     fromDate: string | Date;
     toDate: string | Date;
@@ -148,7 +157,7 @@ export const exportExcelReportBox = async (req: Request, res: Response) => {
     );
 
     return res.status(200).json(response);
-  } catch (error: any) {
-    return res.status(error.statusCode).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };

@@ -25,9 +25,6 @@ export const manufactureService = {
   //====================================PAPER========================================
   getPlanningPaper: async (machine: string) => {
     try {
-      if (!machine) {
-        throw AppError.BadRequest("Missing machine parameter", "MISSING_PARAMETERS");
-      }
       const cacheKey = paper.machine(machine);
       const { isChanged } = await CacheManager.check(
         [
@@ -129,20 +126,21 @@ export const manufactureService = {
       // 1. Tìm kế hoạch hiện tại
       const planning = await manufactureRepository.getPapersById(planningId, transaction);
       if (!planning) {
-        await transaction?.rollback();
         throw AppError.NotFound("Không tìm thấy kế hoạch", "PLANNING_NOT_FOUND");
       }
 
       const machine = planning.chooseMachine;
       const machineLabel = machineLabels[machine];
+      if (!machineLabel) {
+        throw AppError.BadRequest(`Invalid machine: ${machine}`, "INVALID_MACHINE");
+      }
 
       //check permission for machine
       if (role !== "admin" && role !== "manager") {
         if (!userPermissions.includes(machineLabel)) {
-          await transaction?.rollback();
           throw AppError.Unauthorized(
             `Access denied: You don't have permission to report for machine ${machine}`,
-            "UNAUTHORIZED_ACCESS"
+            "ACCESS_DENIED"
           );
         }
       }
@@ -170,7 +168,6 @@ export const manufactureService = {
         });
 
         if (!overflow) {
-          await transaction?.rollback();
           throw AppError.NotFound("Overflow plan not found", "OVERFLOW_PLAN_NOT_FOUND");
         }
       }
@@ -269,13 +266,9 @@ export const manufactureService = {
 
   confirmProducingPaper: async (planningId: number, user: any) => {
     const { role, permissions: userPermissions } = user;
-
     const transaction = await PlanningPaper.sequelize?.transaction();
-    try {
-      if (!planningId) {
-        throw AppError.BadRequest("Missing planningId parameter", "MISSING_PARAMETERS");
-      }
 
+    try {
       const planning = await PlanningPaper.findOne({
         where: { planningId },
         transaction,
@@ -289,11 +282,13 @@ export const manufactureService = {
       // check permission
       const machine = planning.chooseMachine;
       const machineLabel = machineLabels[machine];
+      if (!machineLabel) {
+        throw AppError.BadRequest(`Invalid machine: ${machine}`, "INVALID_MACHINE");
+      }
 
       if (role !== "admin" && role !== "manager") {
         if (!userPermissions.includes(machineLabel)) {
-          await transaction?.rollback();
-          throw AppError.Unauthorized(
+          throw AppError.Forbidden(
             `Access denied: You don't have permission to report for machine ${machine}`,
             "ACCESS_DENIED"
           );
@@ -344,10 +339,6 @@ export const manufactureService = {
   //====================================BOX========================================
   getPlanningBox: async (machine: string) => {
     try {
-      if (!machine) {
-        throw AppError.BadRequest("Missing machine parameter", "MISSING_PARAMETERS");
-      }
-
       const cacheKey = box.machine(machine);
       const { isChanged } = await CacheManager.check(
         [
@@ -454,7 +445,6 @@ export const manufactureService = {
       // 1. Tìm kế hoạch hiện tại
       const planning = await manufactureRepository.getBoxById(planningBoxId, machine, transaction);
       if (!planning) {
-        await transaction?.rollback();
         throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
       }
 
@@ -491,7 +481,6 @@ export const manufactureService = {
         });
 
         if (!overflow) {
-          await transaction?.rollback();
           throw AppError.NotFound("Overflow plan not found", "OVERFLOW_NOT_FOUND");
         }
       }
@@ -575,10 +564,6 @@ export const manufactureService = {
     const transaction = await PlanningBox.sequelize?.transaction();
 
     try {
-      if (!planningBoxId) {
-        throw AppError.BadRequest("Missing planningBoxId parameter", "MISSING_PARAMETERS");
-      }
-
       // Lấy planning cần update
       const planning = await planningRepository.getModelById({
         model: PlanningBoxTime,
@@ -587,30 +572,26 @@ export const manufactureService = {
       });
 
       if (!planning) {
-        await transaction?.rollback();
         throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
       }
 
       // check permission
-      const machineLabel = machineLabels[machine as keyof typeof machineLabels] ?? null;
+      // const machineLabel = machineLabels[machine as keyof typeof machineLabels] ?? null;
+      // if (!machineLabel) {
+      //   throw AppError.BadRequest(`Invalid machine: ${machine}`, "INVALID_MACHINE");
+      // }
 
-      if (!machineLabel) {
-        throw AppError.BadRequest(`Invalid machine: ${machine}`, "INVALID_MACHINE");
-      }
-
-      if (role !== "admin" && role !== "manager") {
-        if (!userPermissions.includes(machineLabel)) {
-          await transaction?.rollback();
-          throw AppError.Unauthorized(
-            `Access denied: You don't have permission to report for machine ${machine}`,
-            "ACCESS_DENIED"
-          );
-        }
-      }
+      // if (role !== "admin" && role !== "manager") {
+      //   if (!userPermissions.includes(machineLabel)) {
+      //     throw AppError.Forbidden(
+      //       `Access denied: You don't have permission to report for machine ${machine}`,
+      //       "ACCESS_DENIED"
+      //     );
+      //   }
+      // }
 
       // Check if already complete
       if (planning.status === "complete") {
-        await transaction?.rollback();
         throw AppError.Unauthorized("Planning already completed", "PLANNING_HAS_COMPLETED");
       }
 

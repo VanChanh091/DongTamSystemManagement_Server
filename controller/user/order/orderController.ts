@@ -1,10 +1,14 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { orderService } from "../../../service/orderService";
 
 //===============================ACCEPT AND PLANNING=====================================
 
 //get order status accept and planning
-export const getOrderAcceptAndPlanning = async (req: Request, res: Response) => {
+export const getOrderAcceptAndPlanning = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const {
     page = 1,
     pageSize = 20,
@@ -19,12 +23,12 @@ export const getOrderAcceptAndPlanning = async (req: Request, res: Response) => 
       req.user
     );
     return res.status(201).json(response);
-  } catch (error: any) {
-    return res.status(error.statusCode).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };
 
-export const getOrderByField = async (req: Request, res: Response) => {
+export const getOrderByField = async (req: Request, res: Response, next: NextFunction) => {
   const { field, keyword, page, pageSize } = req.query as {
     field: string;
     keyword: string;
@@ -41,55 +45,55 @@ export const getOrderByField = async (req: Request, res: Response) => {
       req.user
     );
     return res.status(201).json(response);
-  } catch (error: any) {
-    return res.status(error.statusCode).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };
 
 //===============================PENDING AND REJECT=====================================
 
 //get order pending and reject
-export const getOrderPendingAndReject = async (req: Request, res: Response) => {
+export const getOrderPendingAndReject = async (req: Request, res: Response, next: NextFunction) => {
   const { ownOnly = "false" } = req.query as { ownOnly?: string };
 
   try {
     const response = await orderService.getOrderPendingAndReject(ownOnly, req.user);
     return res.status(201).json(response);
-  } catch (error: any) {
-    return res.status(error.statusCode).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };
 
 //add order
-export const addOrder = async (req: Request, res: Response) => {
+export const addOrder = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const response = await orderService.createOrder(req.user, req.body);
     return res.status(201).json(response);
-  } catch (error: any) {
-    return res.status(error.statusCode).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };
 
 // update order
-export const updateOrder = async (req: Request, res: Response) => {
+export const updateOrder = async (req: Request, res: Response, next: NextFunction) => {
   const { orderId } = req.query as { orderId: string };
 
   try {
     const response = await orderService.updateOrder(req.body, orderId);
     return res.status(201).json(response);
-  } catch (error: any) {
-    return res.status(error.statusCode).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };
 
 // delete order
-export const deleteOrder = async (req: Request, res: Response) => {
+export const deleteOrder = async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.query as { id: string };
 
   try {
     const response = await orderService.deleteOrder(id);
     return res.status(201).json(response);
-  } catch (error: any) {
-    return res.status(error.statusCode).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };

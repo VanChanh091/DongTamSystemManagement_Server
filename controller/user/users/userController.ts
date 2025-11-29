@@ -1,7 +1,7 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { userService } from "../../../service/userService";
 
-export const updateProfileUser = async (req: Request, res: Response) => {
+export const updateProfileUser = async (req: Request, res: Response, next: NextFunction) => {
   const { userId } = req.query as { userId: string };
   const { newPassword, userUpdated } = req.body;
 
@@ -14,7 +14,7 @@ export const updateProfileUser = async (req: Request, res: Response) => {
     });
 
     return res.status(200).json(response);
-  } catch (error: any) {
-    res.status(error.statusCode).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };

@@ -20,10 +20,6 @@ export const planningBoxService = {
   //Planning Box
   getPlanningBox: async (machine: string) => {
     try {
-      if (!machine) {
-        throw AppError.BadRequest("Missing machine parameter", "MISSING_PARAMETERS");
-      }
-
       const cacheKey = box.machine(machine);
       const { isChanged } = await CacheManager.check(
         [
@@ -215,40 +211,6 @@ export const planningBoxService = {
     }
   },
 
-  getPlanningBoxByOrderId: async (machine: string, orderId: string) => {
-    try {
-      if (!machine || !orderId) {
-        throw AppError.BadRequest("Missing machine or orderId parameter", "MISSING_PARAMETERS");
-      }
-
-      const cacheKey = box.machine(machine);
-      const cachedData = await redisCache.get(cacheKey);
-      if (cachedData) {
-        if (devEnvironment) console.log("✅ Data planning from Redis");
-        const parsedData = JSON.parse(cachedData);
-
-        // Tìm kiếm tương đối trong cache
-        const filteredData = parsedData.filter((item: any) => {
-          return item.orderId?.toLowerCase().includes(orderId.toLowerCase());
-        });
-
-        return { message: "Get planning by orderId from cache", data: filteredData };
-      }
-
-      const planning = await planningRepository.getBoxsByOrderId(orderId);
-
-      if (!planning || planning.length === 0) {
-        throw AppError.NotFound(`Không tìm thấy kế hoạch chứa: ${orderId}`, "PLANNING_NOT_FOUND");
-      }
-
-      return { message: "Get planning by orderId from db", data: planning };
-    } catch (error) {
-      console.error("❌ get planning box by id failed:", error);
-      if (error instanceof AppError) throw error;
-      throw AppError.ServerError();
-    }
-  },
-
   confirmCompletePlanningBox: async (planningBoxId: number | number[], machine: string) => {
     try {
       const ids = Array.isArray(planningBoxId) ? planningBoxId : [planningBoxId];
@@ -303,9 +265,6 @@ export const planningBoxService = {
 
   acceptLackQtyBox: async (planningBoxIds: number[], newStatus: statusBoxType, machine: string) => {
     try {
-      if (!Array.isArray(planningBoxIds) || planningBoxIds.length === 0) {
-        throw AppError.BadRequest("Missing planningBoxIds parameter", "MISSING_PARAMETERS");
-      }
       const plannings = await planningRepository.getBoxsById({ planningBoxIds, machine });
       if (plannings.length === 0) {
         throw AppError.NotFound("planning not found", "PLANNING_NOT_FOUND");
@@ -356,10 +315,6 @@ export const planningBoxService = {
     const transaction = await PlanningBox.sequelize?.transaction();
 
     try {
-      if (!Array.isArray(updateIndex) || updateIndex.length === 0) {
-        throw AppError.BadRequest("Missing updateIndex parameter", "MISSING_PARAMETERS");
-      }
-
       // 1. Cập nhật sortPlanning
       for (const item of updateIndex) {
         if (!item.sortPlanning) continue;

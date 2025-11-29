@@ -53,8 +53,9 @@ app.use("/uploads", express.static("uploads")); //set up to upload product image
 //        ROUTES
 // ========================
 app.use("/auth", authRoutes);
-app.use("/api/admin", adminRoutes);
+app.use(authenticate);
 
+app.use("/api/admin", adminRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/customer", customerRoutes);
 app.use("/api/order", orderRoutes);
@@ -71,20 +72,10 @@ sequelize
   .then(() => console.log("✅ Database & tables synchronized"))
   .catch((err) => console.error("❌ Error syncing database:", err));
 
-app.use(authenticate);
-
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   // Lỗi nghiệp vụ (client gây ra)
   if (err instanceof AppError && err.isOperational) {
-    console.warn("⚠️ Operational error:", {
-      message: err.message,
-      errorCode: err.errorCode,
-      statusCode: err.statusCode,
-      path: req.originalUrl,
-    });
-
     return res.status(err.statusCode).json({
-      success: false,
       message: err.message,
       errorCode: err.errorCode,
     });
@@ -98,7 +89,6 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   });
 
   return res.status(500).json({
-    success: false,
     message: "Internal server error",
     errorCode: "SERVER_ERROR",
   });

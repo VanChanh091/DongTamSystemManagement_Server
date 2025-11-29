@@ -1,8 +1,8 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { employeeService } from "../../../service/employeeService";
 
 //get all
-export const getAllEmployees = async (req: Request, res: Response) => {
+export const getAllEmployees = async (req: Request, res: Response, next: NextFunction) => {
   const {
     page = 1,
     pageSize = 20,
@@ -17,13 +17,13 @@ export const getAllEmployees = async (req: Request, res: Response) => {
     });
 
     return res.status(200).json(response);
-  } catch (error: any) {
-    return res.status(error.statusCode).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };
 
 //get by field
-export const getEmployeesByField = async (req: Request, res: Response) => {
+export const getEmployeesByField = async (req: Request, res: Response, next: NextFunction) => {
   const { field, keyword, page, pageSize } = req.query as {
     field: string;
     keyword: string;
@@ -40,52 +40,52 @@ export const getEmployeesByField = async (req: Request, res: Response) => {
     });
 
     return res.status(200).json(response);
-  } catch (error: any) {
-    return res.status(error.statusCode).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };
 
 //add employee
-export const createEmployee = async (req: Request, res: Response) => {
+export const createEmployee = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const response = await employeeService.createEmployee(req.body);
     return res.status(201).json(response);
-  } catch (error: any) {
-    return res.status(error.statusCode).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };
 
 //update
-export const updateEmployee = async (req: Request, res: Response) => {
+export const updateEmployee = async (req: Request, res: Response, next: NextFunction) => {
   const { employeeId } = req.query as { employeeId: string };
 
   try {
     const response = await employeeService.updateEmployee(Number(employeeId), req.body);
     return res.status(201).json(response);
-  } catch (error: any) {
-    return res.status(error.statusCode).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };
 
 //delete
-export const deleteEmployee = async (req: Request, res: Response) => {
+export const deleteEmployee = async (req: Request, res: Response, next: NextFunction) => {
   const { employeeId } = req.query as { employeeId: string };
 
   try {
     const response = await employeeService.deleteEmployee(Number(employeeId));
     return res.status(200).json(response);
-  } catch (error: any) {
-    return res.status(error.statusCode).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };
 
 //export excel
-export const exportExcelEmployee = async (req: Request, res: Response) => {
+export const exportExcelEmployee = async (req: Request, res: Response, next: NextFunction) => {
   const { status, joinDate, all = false } = req.body;
 
   try {
     await employeeService.exportExcelEmployee(res, { status, joinDate, all });
-  } catch (error: any) {
-    return res.status(error.statusCode).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };

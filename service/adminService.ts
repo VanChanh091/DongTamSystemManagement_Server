@@ -240,10 +240,6 @@ export const adminService = {
 
   updateUserRole: async (userId: number, newRole: userRole) => {
     try {
-      if (!userId || !newRole) {
-        throw AppError.BadRequest("Missing userId or newRole", "MISSING_PARAMETERS");
-      }
-
       const validRoles = ["admin", "manager", "user"];
       if (!validRoles.includes(newRole)) {
         throw AppError.BadRequest("Invalid role provided", "INVALID_ROLE");

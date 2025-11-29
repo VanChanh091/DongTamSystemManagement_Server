@@ -64,10 +64,6 @@ export const planningStatusService = {
 
   planningOrder: async (orderId: string, planningData: any) => {
     try {
-      if (!orderId) {
-        throw AppError.BadRequest("Missing orderId or newStatus", "MISSING_PARAMETERS");
-      }
-
       // 1) Lấy thông tin Order kèm các quan hệ
       const order = await planningRepository.findOrderById(orderId);
       if (!order) throw AppError.NotFound("Order not found", "ORDER_NOT_FOUND");

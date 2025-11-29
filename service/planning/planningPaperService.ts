@@ -24,10 +24,6 @@ export const planningPaperService = {
   //====================================PLANNING PAPER========================================
   getPlanningByMachine: async (machine: string) => {
     try {
-      if (!machine) {
-        throw AppError.BadRequest("Missing machine parameter", "MISSING_PARAMETERS");
-      }
-
       const cacheKey = paper.machine(machine);
       const { isChanged } = await CacheManager.check(
         [
@@ -229,46 +225,8 @@ export const planningPaperService = {
     }
   },
 
-  getPlanningByOrderId: async (machine: string, orderId: string) => {
-    try {
-      if (!machine || !orderId) {
-        throw AppError.BadRequest("Missing orderId or machine parameter", "MISSING_PARAMETERS");
-      }
-
-      const cacheKey = paper.machine(machine);
-      const cachedData = await redisCache.get(cacheKey);
-      if (cachedData) {
-        if (devEnvironment) console.log("✅ Data planning from Redis");
-        return {
-          message: "Get planning by orderId from cache",
-          data: JSON.parse(cachedData),
-        };
-
-        // return { ...JSON.parse(cachedData), fromCache: true };
-      }
-
-      const planning = await planningRepository.getPapersByOrderId(orderId);
-      if (!planning || planning.length === 0) {
-        throw AppError.NotFound(
-          `Không tìm thấy kế hoạch với orderId chứa: ${orderId}`,
-          "PLANNING_NOT_FOUND"
-        );
-      }
-
-      return { message: "Get planning by orderId from db", data: planning };
-    } catch (error) {
-      console.error("❌ Lỗi khi tìm orderId:", error);
-      if (error instanceof AppError) throw error;
-      throw AppError.ServerError();
-    }
-  },
-
   changeMachinePlanning: async (planningIds: number[], newMachine: machinePaperType) => {
     try {
-      if (!Array.isArray(planningIds) || planningIds.length === 0) {
-        throw AppError.BadRequest("Missing planningIds parameter", "MISSING_PARAMETERS");
-      }
-
       const plannings = await planningRepository.getPapersById({ planningIds });
 
       if (plannings.length === 0) {
@@ -346,10 +304,6 @@ export const planningPaperService = {
     rejectReason?: string
   ) => {
     try {
-      if (!Array.isArray(planningIds) || planningIds.length === 0) {
-        throw AppError.BadRequest("Missing planningIds parameter", "MISSING_PARAMETERS");
-      }
-
       const plannings = await planningRepository.getPapersById({ planningIds });
       if (plannings.length === 0) {
         throw AppError.NotFound("planning npt found", "PLANNING_NOT_FOUND");
@@ -526,10 +480,6 @@ export const planningPaperService = {
     const transaction = await PlanningPaper.sequelize?.transaction();
 
     try {
-      if (!Array.isArray(updateIndex) || updateIndex.length === 0) {
-        throw AppError.BadRequest("Missing updateIndex parameter", "MISSING_PARAMETERS");
-      }
-
       // 1️⃣ Cập nhật sortPlanning
       await updateSortPlanning(updateIndex, transaction);
 
