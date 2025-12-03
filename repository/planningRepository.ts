@@ -393,7 +393,11 @@ export const planningRepository = {
       where: { planningBoxId: updateIndex.map((i) => i.planningBoxId) },
       include: [
         { model: timeOverflowPlanning, as: "timeOverFlow" },
-        { model: PlanningBoxTime, as: "boxTimes", where: { machine } },
+        {
+          model: PlanningBoxTime,
+          as: "boxTimes",
+          where: { machine, sortPlanning: updateIndex.map((i) => i.sortPlanning) },
+        },
         {
           model: Order,
           include: [{ model: Box, as: "box", attributes: ["inMatTruoc", "inMatSau"] }],

@@ -105,21 +105,23 @@ export const planningBoxService = {
 
       // Sắp xếp noSort theo flute (ưu tiên sóng)
       noSort.sort((a, b) => {
-        const wavePriorityMap = { C: 3, B: 2, E: 1 };
-
-        const getWavePriorityList = (flute: any) => {
-          if (!flute) return [];
-          return flute
-            .toUpperCase()
-            .replace(/[^A-Z]/g, "")
-            .split("")
-            .map((w: any) => wavePriorityMap[w as keyof typeof wavePriorityMap] ?? 0);
+        const wavePriorityMap: Record<"C" | "B" | "E", number> = {
+          C: 3,
+          B: 2,
+          E: 1,
         };
 
-        const waveA = getWavePriorityList(a.Order?.flute);
-        const waveB = getWavePriorityList(b.Order?.flute);
+        const getWavePriorityList = (flute: string) => {
+          if (!flute || flute.length < 2) return [];
+          const waves = flute.trim().slice(1).toUpperCase().split("");
+          return waves.map((w) => wavePriorityMap[w as keyof typeof wavePriorityMap] || 0);
+        };
 
-        for (let i = 0; i < Math.max(waveA.length, waveB.length); i++) {
+        const waveA = getWavePriorityList(a.Order?.flute ?? "");
+        const waveB = getWavePriorityList(b.Order?.flute ?? "");
+        const maxLength = Math.max(waveA.length, waveB.length);
+
+        for (let i = 0; i < maxLength; i++) {
           const priA = waveA[i] ?? 0;
           const priB = waveB[i] ?? 0;
           if (priB !== priA) return priB - priA;
@@ -135,7 +137,7 @@ export const planningBoxService = {
       sortedPlannings.forEach((planning) => {
         const original = {
           ...planning.toJSON(),
-          dayStart: planning.boxTimes?.[0].dayStart ?? null,
+          // dayStart: planning.boxTimes?.[0].dayStart ?? null,
         };
         allPlannings.push(original);
 
@@ -315,22 +317,24 @@ export const planningBoxService = {
     const transaction = await PlanningBox.sequelize?.transaction();
 
     try {
+      console.log(updateIndex);
+
       // 1. Cập nhật sortPlanning
       for (const item of updateIndex) {
-        if (!item.sortPlanning) continue;
+        if (item.sortPlanning == null) continue;
 
         const boxTime = await planningRepository.getModelById({
           model: PlanningBoxTime,
           where: {
             planningBoxId: item.planningBoxId,
             machine,
-            status: { [Op.ne]: "complete" }, //không cập nhật đơn đã complete
+            status: { [Op.ne]: "complete" }, //lọc đơn đã complete
           },
           options: { transaction },
         });
 
         if (boxTime) {
-          planningRepository.updateDataModel({
+          await planningRepository.updateDataModel({
             model: boxTime,
             data: { sortPlanning: item.sortPlanning },
             options: { transaction },
@@ -343,6 +347,10 @@ export const planningBoxService = {
         updateIndex,
         machine,
         transaction
+      );
+
+      console.log(
+        sortedPlannings.map((p) => ({ id: p.planningBoxId, sort: p.boxTimes?.[0]?.sortPlanning }))
       );
 
       // 3. Tính toán thời gian chạy cho từng planning

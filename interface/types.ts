@@ -33,3 +33,8 @@ export interface RepoPayload {
   options?: any;
   transaction?: any;
 }
+
+export interface RedisUserData {
+  email: string;
+  otp: number;
+}

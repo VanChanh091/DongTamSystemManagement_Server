@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
-import { Op, where } from "sequelize";
+import { Op } from "sequelize";
 import redisCache from "../../configs/redisCache";
 import { Order } from "../../models/order/order";
 import { machinePaperType, PlanningPaper } from "../../models/planning/planningPaper";
@@ -14,8 +14,6 @@ import { MachinePaper } from "../../models/admin/machinePaper";
 import { Request } from "express";
 import { calculateTimeRunning, updateSortPlanning } from "./helper/timeRunningPaper";
 import { getPlanningByField } from "../../utils/helper/modelHelper/planningHelper";
-import { userRole } from "../../models/user/user";
-import { options } from "axios";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper } = CacheManager.keys.planning;
@@ -408,10 +406,7 @@ export const planningPaperService = {
                     await box.destroy();
                   }
 
-                  //xóa planning paper
                   await planning.destroy();
-
-                  //clear cache
                   await CacheManager.clearOrderAccept();
                 }
               }
@@ -485,6 +480,8 @@ export const planningPaperService = {
 
       // 2️⃣ Lấy lại danh sách đã update
       const plannings = await planningRepository.getPapersByUpdateIndex(updateIndex, transaction);
+
+      // console.log(plannings.map((p) => ({ id: p.planningId, sort: p?.sortPlanning })));
 
       // 3️⃣ Lấy thông tin máy
       const machineInfo = await planningRepository.getModelById({

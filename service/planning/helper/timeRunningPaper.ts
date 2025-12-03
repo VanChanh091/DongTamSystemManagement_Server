@@ -388,11 +388,14 @@ const getInitialCursor = async ({
   let lastGhepKho = null;
 
   // A) Kiểm tra đơn complete trong cùng ngày
-  const lastComplete = await PlanningPaper.findOne({
+  const lastComplete = await planningRepository.getModelById({
+    model: PlanningPaper,
     where: { chooseMachine: machine, status: "complete", dayStart: dayStr },
-    order: [["timeRunning", "DESC"]],
-    attributes: ["timeRunning", "ghepKho"],
-    transaction,
+    options: {
+      order: [["timeRunning", "DESC"]],
+      attributes: ["timeRunning", "ghepKho"],
+      transaction,
+    },
   });
 
   if (lastComplete?.timeRunning) {

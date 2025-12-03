@@ -1,14 +1,10 @@
 import redisCache from "../configs/redisCache";
+import { RedisUserData } from "../interface/types";
 import generateToken from "../middlewares/jwtHelper";
 import { authRepository } from "../repository/authRepository";
 import { AppError } from "../utils/appError";
 import sendEmail from "../utils/sendMail";
 import bcrypt from "bcrypt";
-
-interface RedisUserData {
-  email: string;
-  otp: number;
-}
 
 const handleSendEmail = async (email: string, otp: number) => {
   try {
@@ -152,7 +148,7 @@ export const authService = {
     try {
       const redisData = await redisCache.get(`user:${email}`);
       if (!redisData) {
-        throw AppError.Unauthorized("Email đã hết hạn hoặc không hợp lệ", "INVALID_EMAIL");
+        throw AppError.Unauthorized("Email không hợp lệ", "INVALID_EMAIL");
       }
 
       if (newPassword !== confirmNewPW) {

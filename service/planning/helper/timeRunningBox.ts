@@ -31,12 +31,12 @@ import {
 
 // Tính thời gian cho danh sách planning
 export const calTimeRunningPlanningBox = async ({
+  plannings,
   machine,
   machineInfo,
   dayStart,
   timeStart,
   totalTimeWorking,
-  plannings,
   transaction,
 }: {
   machine: string;
@@ -100,14 +100,8 @@ export const calTimeRunningPlanningBox = async ({
     }
   } else {
     // fallback: lấy con trỏ từ DB
-    const initCursor = await getInitialCursor({
-      machine,
-      dayStart,
-      timeStart,
-      transaction,
-    });
-    currentTime = initCursor.currentTime;
-    currentDay = initCursor.currentDay;
+    const initCursor = await getInitialCursor({ machine, dayStart, timeStart, transaction });
+    ({ currentTime, currentDay } = initCursor);
   }
 
   for (const planning of plannings) {
@@ -130,6 +124,7 @@ export const calTimeRunningPlanningBox = async ({
 
     updated.push(data.result);
   }
+
   return updated;
 };
 
@@ -214,9 +209,6 @@ const calculateTimeForOnePlanning = async ({
     dayStart: currentDay.toISOString().split("T")[0],
   };
   let hasOverFlow = false;
-
-  //lưu giá trị để xem log
-  const startForLog = currentTime;
 
   // predictedEndTime: đã bao gồm productionMinutes + toàn bộ break
   const predictedEndTime = addMinutes(currentTime, productionMinutes);
@@ -441,7 +433,7 @@ const getInitialCursor = async ({
   const dayStr = day.toISOString().split("T")[0];
 
   // 1) base = dayStart + timeStart
-  let base = parseTimeOnly(timeStart);
+  const base = parseTimeOnly(timeStart);
   base.setFullYear(day.getFullYear(), day.getMonth(), day.getDate());
 
   let currentTime = base;
@@ -466,9 +458,12 @@ const getInitialCursor = async ({
 
   if (lastOverflow?.overflowTimeRunning) {
     const overflowDay = new Date(lastOverflow.overflowDayStart ?? "");
-    const time = combineDateAndHHMMSS(overflowDay, lastOverflow.overflowTimeRunning);
-    if (time > currentTime) {
-      currentTime = time;
+    const overflowTime = combineDateAndHHMMSS(overflowDay, lastOverflow.overflowTimeRunning);
+
+    // Nếu overflow mới hơn currentTime → cập nhật cursor
+    if (overflowTime > currentTime) {
+      currentTime = overflowTime;
+      currentDay = overflowDay;
     }
   }
 

@@ -6,7 +6,7 @@
     "build": "tsc",
     "dev": "cross-env NODE_ENV=development nodemon --watch . --ext ts,js,json --exec ts-node index.ts",
     "prod": "cross-env NODE_ENV=production node index.ts",
-    "test": "jest"
+    "test": "jest --silent"
   },
   "keywords": [],
   "author": "",
@@ -40,6 +40,7 @@
     "@types/express": "^5.0.5",
     "@types/jest": "^30.0.0",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/mocha": "^10.0.10",
     "@types/multer": "^2.0.0",
     "@types/node": "^20.19.24",
     "@types/nodemailer": "^7.0.3",
