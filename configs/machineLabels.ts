@@ -28,6 +28,7 @@ const validPermissions = [
   "machine2Layer",
   "MachineRollPaper",
   "step2Production",
+  "QC",
   "read",
 ];
 

@@ -6,9 +6,10 @@ import { Customer } from "../models/customer/customer";
 import { Box } from "../models/order/box";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { PlanningBox } from "../models/planning/planningBox";
-import { get } from "axios";
 
 export const manufactureRepository = {
+  //====================================PAPER========================================
+
   getManufacturePaper: async (machine: string) => {
     return await PlanningPaper.findAll({
       where: { chooseMachine: machine, dayStart: { [Op.ne]: null } },
@@ -71,6 +72,8 @@ export const manufactureRepository = {
       transaction,
     });
   },
+
+  //====================================BOX========================================
 
   getManufactureBox: async (machine: string) => {
     return await PlanningBox.findAll({

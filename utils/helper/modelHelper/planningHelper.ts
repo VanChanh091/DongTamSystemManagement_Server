@@ -260,7 +260,7 @@ export const parseTimeOnly = (timeStr: string) => {
   return d;
 };
 
-export const isDuringBreak = (start: Date, end: Date) => {
+const isDuringBreak = (start: Date, end: Date) => {
   const breaks: BreakTime[] = [
     { start: "11:30", end: "12:00", duration: 30 },
     { start: "17:00", end: "17:30", duration: 30 },

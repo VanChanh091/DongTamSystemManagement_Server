@@ -21,7 +21,7 @@ export const reportService = {
   //====================================PAPER========================================
   getReportPaper: async (machine: string, page: number, pageSize: number) => {
     try {
-      const cacheKey = paper.all(page);
+      const cacheKey = paper.all(machine, page);
       const { isChanged } = await CacheManager.check(ReportPlanningPaper, "reportPaper");
 
       if (isChanged) {
@@ -39,7 +39,7 @@ export const reportService = {
       const totalPages = Math.ceil(totalOrders / pageSize);
       const offset = (page - 1) * pageSize;
 
-      const data = await reportRepository.findAlReportPaper(machine, pageSize, offset);
+      const data = await reportRepository.findReportPaperByMachine(machine, pageSize, offset);
 
       const responseData = {
         message: "get all report planning paper successfully",
@@ -102,7 +102,7 @@ export const reportService = {
   //====================================BOX========================================
   getReportBox: async (machine: string, page: number, pageSize: number) => {
     try {
-      const cacheKey = box.all(page);
+      const cacheKey = box.all(machine, page);
       const { isChanged } = await CacheManager.check(ReportPlanningBox, "reportBox");
 
       if (isChanged) {

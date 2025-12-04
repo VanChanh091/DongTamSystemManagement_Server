@@ -99,12 +99,13 @@ export const pauseOrAcceptLackQtyPLanning = async (
 
 //update index & time running
 export const updateIndex_TimeRunning = async (req: Request, res: Response, next: NextFunction) => {
-  const { machine, updateIndex, dayStart, timeStart, totalTimeWorking } = req.body as {
+  const { machine, updateIndex, dayStart, timeStart, totalTimeWorking, isNewDay } = req.body as {
     machine: string;
     updateIndex: any[];
     dayStart: string | Date;
     timeStart: string;
     totalTimeWorking: number;
+    isNewDay: boolean;
   };
 
   try {
@@ -119,6 +120,7 @@ export const updateIndex_TimeRunning = async (req: Request, res: Response, next:
       dayStart: dayStart,
       timeStart: timeStart,
       totalTimeWorking: totalTimeWorking,
+      isNewDay,
     });
     return res.status(201).json(response);
   } catch (error) {

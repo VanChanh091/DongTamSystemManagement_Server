@@ -37,6 +37,7 @@ export const calTimeRunningPlanningBox = async ({
   dayStart,
   timeStart,
   totalTimeWorking,
+  isNewDay,
   transaction,
 }: {
   machine: string;
@@ -45,63 +46,76 @@ export const calTimeRunningPlanningBox = async ({
   timeStart: string;
   totalTimeWorking: number;
   plannings: any[];
+  isNewDay: boolean;
   transaction: any;
 }) => {
   const updated = [];
-  let currentTime, currentDay;
+  let currentDay, currentTime;
 
-  // ✅ Ưu tiên lấy đơn complete từ FE gửi xuống
-  const feComplete = plannings
-    .filter((p) => p.boxTimes && p.boxTimes[0] && p.boxTimes[0].status === "complete")
-    .sort(
-      (a, b) =>
-        new Date(b.boxTimes[0].dayStart).getTime() - new Date(a.boxTimes[0].dayStart).getTime()
-    )[0];
+  if (isNewDay) {
+    currentDay = new Date(dayStart);
+    const [hh, mm] = timeStart.split(":").map(Number);
 
-  if (feComplete) {
-    const feBox = feComplete.boxTimes[0];
+    currentTime = new Date(currentDay);
+    currentTime.setHours(hh, mm, 0, 0);
+  } else {
+    // ✅ Ưu tiên lấy đơn complete từ FE gửi xuống
+    const feComplete = plannings
+      .filter((p) => p.boxTimes && p.boxTimes[0] && p.boxTimes[0].status === "complete")
+      .sort(
+        (a, b) =>
+          new Date(b.boxTimes[0].dayStart).getTime() - new Date(a.boxTimes[0].dayStart).getTime()
+      )[0];
 
-    if (feComplete.hasOverFlow) {
-      // Lấy overflow mới nhất cho planning này & machine
-      const overflowRecord = await planningRepository.getModelById({
-        model: timeOverflowPlanning,
-        where: { planningBoxId: feComplete.planningBoxId, machine },
-        options: { transaction },
-      });
+    if (feComplete) {
+      const feBox = feComplete.boxTimes[0];
 
-      if (overflowRecord && overflowRecord.overflowDayStart && overflowRecord.overflowTimeRunning) {
-        currentDay = new Date(overflowRecord.overflowDayStart);
-        currentTime = combineDateAndHHMMSS(currentDay, overflowRecord.overflowTimeRunning);
-      } else if (feBox && feBox.dayStart && feBox.timeRunning) {
-        currentDay = new Date(feBox.dayStart);
-        currentTime = combineDateAndHHMMSS(currentDay, feBox.timeRunning);
-      } else if (feComplete.dayStart && feComplete.timeRunning) {
-        currentDay = new Date(feComplete.dayStart);
-        currentTime = combineDateAndHHMMSS(currentDay, feComplete.timeRunning);
-      } else {
-        const initCursor = await getInitialCursor({
-          machine,
-          dayStart,
-          timeStart,
-          transaction,
+      if (feComplete.hasOverFlow) {
+        // Lấy overflow mới nhất cho planning này & machine
+        const overflowRecord = await planningRepository.getModelById({
+          model: timeOverflowPlanning,
+          where: { planningBoxId: feComplete.planningBoxId, machine },
+          options: { transaction },
         });
-        currentTime = initCursor.currentTime;
-        currentDay = initCursor.currentDay;
+
+        if (
+          overflowRecord &&
+          overflowRecord.overflowDayStart &&
+          overflowRecord.overflowTimeRunning
+        ) {
+          currentDay = new Date(overflowRecord.overflowDayStart);
+          currentTime = combineDateAndHHMMSS(currentDay, overflowRecord.overflowTimeRunning);
+        } else if (feBox && feBox.dayStart && feBox.timeRunning) {
+          currentDay = new Date(feBox.dayStart);
+          currentTime = combineDateAndHHMMSS(currentDay, feBox.timeRunning);
+        } else if (feComplete.dayStart && feComplete.timeRunning) {
+          currentDay = new Date(feComplete.dayStart);
+          currentTime = combineDateAndHHMMSS(currentDay, feComplete.timeRunning);
+        } else {
+          const initCursor = await getInitialCursor({
+            machine,
+            dayStart,
+            timeStart,
+            transaction,
+          });
+          currentTime = initCursor.currentTime;
+          currentDay = initCursor.currentDay;
+        }
+      } else {
+        // không overflow -> ưu tiên boxTime, fallback planning
+        if (feBox && feBox.dayStart && feBox.timeRunning) {
+          currentDay = new Date(feBox.dayStart);
+          currentTime = combineDateAndHHMMSS(currentDay, feBox.timeRunning);
+        } else {
+          currentDay = new Date(feComplete.dayStart);
+          currentTime = combineDateAndHHMMSS(currentDay, feComplete.timeRunning);
+        }
       }
     } else {
-      // không overflow -> ưu tiên boxTime, fallback planning
-      if (feBox && feBox.dayStart && feBox.timeRunning) {
-        currentDay = new Date(feBox.dayStart);
-        currentTime = combineDateAndHHMMSS(currentDay, feBox.timeRunning);
-      } else {
-        currentDay = new Date(feComplete.dayStart);
-        currentTime = combineDateAndHHMMSS(currentDay, feComplete.timeRunning);
-      }
+      // fallback: lấy con trỏ từ DB
+      const initCursor = await getInitialCursor({ machine, dayStart, timeStart, transaction });
+      ({ currentTime, currentDay } = initCursor);
     }
-  } else {
-    // fallback: lấy con trỏ từ DB
-    const initCursor = await getInitialCursor({ machine, dayStart, timeStart, transaction });
-    ({ currentTime, currentDay } = initCursor);
   }
 
   for (const planning of plannings) {

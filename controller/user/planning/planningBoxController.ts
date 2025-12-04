@@ -71,7 +71,14 @@ export const updateIndex_TimeRunningBox = async (
   res: Response,
   next: NextFunction
 ) => {
-  const { machine, updateIndex, dayStart, timeStart, totalTimeWorking } = req.body;
+  const { machine, updateIndex, dayStart, timeStart, totalTimeWorking, isNewDay } = req.body as {
+    machine: string;
+    updateIndex: any[];
+    dayStart: string | Date;
+    timeStart: string;
+    totalTimeWorking: number;
+    isNewDay: boolean;
+  };
 
   try {
     if (!Array.isArray(updateIndex) || updateIndex.length === 0) {
@@ -85,6 +92,7 @@ export const updateIndex_TimeRunningBox = async (
       dayStart: dayStart,
       timeStart: timeStart,
       totalTimeWorking: totalTimeWorking,
+      isNewDay,
     });
     return res.status(201).json(response);
   } catch (error) {

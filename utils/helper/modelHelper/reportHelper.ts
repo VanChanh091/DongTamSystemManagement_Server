@@ -33,7 +33,7 @@ export const filterReportByField = async ({
   const lowerKeyword = keyword?.toLowerCase?.() || "";
 
   const { paper, box } = CacheManager.keys.report;
-  const cacheKey = isBox ? box.search : paper.search;
+  const cacheKey = isBox ? box.search(machine) : paper.search(machine);
 
   try {
     let allReports = await redisCache.get(cacheKey);
@@ -287,9 +287,7 @@ export const createReportPlanning = async ({
   const totalProduced = producedSoFar + Number(qtyProduced || 0);
 
   // Tính số lượng còn thiếu
-  let lackOfQtyValue = isBox
-    ? planning.PlanningBox.Order.quantityCustomer - totalProduced
-    : planning.Order.quantityCustomer - totalProduced;
+  let lackOfQtyValue = planning.runningPlan - totalProduced;
 
   let report;
   if (isBox) {

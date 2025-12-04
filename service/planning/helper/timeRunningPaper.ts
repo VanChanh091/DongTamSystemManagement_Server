@@ -48,6 +48,7 @@ export const calculateTimeRunning = async ({
   dayStart,
   timeStart,
   totalTimeWorking,
+  isNewDay,
   transaction,
 }: {
   plannings: any[];
@@ -56,43 +57,54 @@ export const calculateTimeRunning = async ({
   dayStart: string | Date;
   timeStart: string;
   totalTimeWorking: number;
+  isNewDay: boolean;
   transaction: any;
 }) => {
   const updated = [];
   let currentTime, currentDay, lastGhepKho;
 
-  // ✅ Xác định con trỏ bắt đầu
-  const feComplete = plannings
-    .filter((p) => p.status === "complete")
-    .sort((a, b) => new Date(b.dayStart as any).getTime() - new Date(a.dayStart).getTime())[0];
+  if (isNewDay) {
+    currentDay = new Date(dayStart);
+    const [hh, mm] = timeStart.split(":").map(Number);
 
-  if (feComplete) {
-    const overflowRecord = feComplete.hasOverFlow
-      ? await planningRepository.getModelById({
-          model: timeOverflowPlanning,
-          where: { planningId: feComplete.planningId },
-          options: { transaction },
-        })
-      : null;
+    currentTime = new Date(currentDay);
+    currentTime.setHours(hh, mm, 0, 0);
 
-    if (overflowRecord?.overflowTimeRunning && overflowRecord?.overflowDayStart) {
-      // Sử dụng overflow day + time làm con trỏ
-      currentDay = new Date(overflowRecord.overflowDayStart);
-      currentTime = combineDateAndHHMMSS(currentDay, overflowRecord.overflowTimeRunning);
-      lastGhepKho = feComplete.ghepKho ?? null;
-    } else if (feComplete.dayStart && feComplete.timeRunning) {
-      // fallback: nếu không tìm thấy record overflow trong DB, dùng dayStart/timeRunning từ FE
-      currentDay = new Date(feComplete.dayStart);
-      currentTime = combineDateAndHHMMSS(currentDay, feComplete.timeRunning);
-      lastGhepKho = feComplete.ghepKho ?? null;
+    lastGhepKho = null;
+  } else {
+    // ✅ Xác định con trỏ bắt đầu
+    const feComplete = plannings
+      .filter((p) => p.status === "complete")
+      .sort((a, b) => new Date(b.dayStart as any).getTime() - new Date(a.dayStart).getTime())[0];
+
+    if (feComplete) {
+      const overflowRecord = feComplete.hasOverFlow
+        ? await planningRepository.getModelById({
+            model: timeOverflowPlanning,
+            where: { planningId: feComplete.planningId },
+            options: { transaction },
+          })
+        : null;
+
+      if (overflowRecord?.overflowTimeRunning && overflowRecord?.overflowDayStart) {
+        // Sử dụng overflow day + time làm con trỏ
+        currentDay = new Date(overflowRecord.overflowDayStart);
+        currentTime = combineDateAndHHMMSS(currentDay, overflowRecord.overflowTimeRunning);
+        lastGhepKho = feComplete.ghepKho ?? null;
+      } else if (feComplete.dayStart && feComplete.timeRunning) {
+        // fallback: nếu không tìm thấy record overflow trong DB, dùng dayStart/timeRunning từ FE
+        currentDay = new Date(feComplete.dayStart);
+        currentTime = combineDateAndHHMMSS(currentDay, feComplete.timeRunning);
+        lastGhepKho = feComplete.ghepKho ?? null;
+      } else {
+        // fallback cuối cùng: dùng logic cũ lấy cursor từ DB
+        const initCursor = await getInitialCursor({ machine, dayStart, timeStart, transaction });
+        ({ currentTime, currentDay, lastGhepKho } = initCursor);
+      }
     } else {
-      // fallback cuối cùng: dùng logic cũ lấy cursor từ DB
       const initCursor = await getInitialCursor({ machine, dayStart, timeStart, transaction });
       ({ currentTime, currentDay, lastGhepKho } = initCursor);
     }
-  } else {
-    const initCursor = await getInitialCursor({ machine, dayStart, timeStart, transaction });
-    ({ currentTime, currentDay, lastGhepKho } = initCursor);
   }
 
   // ✅ Tính từng đơn

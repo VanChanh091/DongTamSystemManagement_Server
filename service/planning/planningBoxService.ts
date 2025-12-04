@@ -306,6 +306,7 @@ export const planningBoxService = {
     dayStart,
     timeStart,
     totalTimeWorking,
+    isNewDay,
   }: {
     req: Request;
     machine: string;
@@ -313,15 +314,14 @@ export const planningBoxService = {
     dayStart: string | Date;
     timeStart: string;
     totalTimeWorking: number;
+    isNewDay: boolean;
   }) => {
     const transaction = await PlanningBox.sequelize?.transaction();
 
     try {
-      console.log(updateIndex);
-
       // 1. Cập nhật sortPlanning
       for (const item of updateIndex) {
-        if (item.sortPlanning == null) continue;
+        if (!item.sortPlanning) continue;
 
         const boxTime = await planningRepository.getModelById({
           model: PlanningBoxTime,
@@ -349,9 +349,9 @@ export const planningBoxService = {
         transaction
       );
 
-      console.log(
-        sortedPlannings.map((p) => ({ id: p.planningBoxId, sort: p.boxTimes?.[0]?.sortPlanning }))
-      );
+      // console.log(
+      //   sortedPlannings.map((p) => ({ id: p.planningBoxId, sort: p.boxTimes?.[0]?.sortPlanning }))
+      // );
 
       // 3. Tính toán thời gian chạy cho từng planning
       const machineInfo = await planningRepository.getModelById({
@@ -363,6 +363,7 @@ export const planningBoxService = {
 
       if (!machineInfo) throw AppError.NotFound(`machine not found`, "MACHINE_NOT_FOUND");
 
+      // 4. Tính toán thời gian chạy
       const updatedPlannings = await calTimeRunningPlanningBox({
         plannings: sortedPlannings,
         machineInfo: machineInfo,
@@ -370,6 +371,7 @@ export const planningBoxService = {
         dayStart,
         timeStart,
         totalTimeWorking,
+        isNewDay,
         transaction,
       });
 

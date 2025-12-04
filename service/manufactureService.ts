@@ -1,10 +1,11 @@
 import dotenv from "dotenv";
+dotenv.config();
+import { Op } from "sequelize";
 import { CacheManager } from "../utils/helper/cacheManager";
 import { AppError } from "../utils/appError";
 import { PlanningPaper } from "../models/planning/planningPaper";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
-import { Op } from "sequelize";
 import redisCache from "../configs/redisCache";
 import { manufactureRepository } from "../repository/manufactureRepository";
 import { machineLabels } from "../configs/machineLabels";
@@ -15,7 +16,6 @@ import { ReportPlanningPaper } from "../models/report/reportPlanningPaper";
 import { createReportPlanning } from "../utils/helper/modelHelper/reportHelper";
 import { ReportPlanningBox } from "../models/report/reportPlanningBox";
 import { mergeShiftField } from "../utils/helper/modelHelper/planningHelper";
-dotenv.config();
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper } = CacheManager.keys.manufacture;

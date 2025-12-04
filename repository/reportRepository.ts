@@ -13,7 +13,7 @@ export const reportRepository = {
     return await model.count();
   },
 
-  findAlReportPaper: async (machine: string, pageSize: number, offset: number) => {
+  findReportPaperByMachine: async (machine: string, pageSize: number, offset: number) => {
     return await ReportPlanningPaper.findAll({
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [

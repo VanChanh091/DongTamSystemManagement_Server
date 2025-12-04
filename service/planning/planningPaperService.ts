@@ -41,7 +41,6 @@ export const planningPaperService = {
             message: `get all cache planning:machine:${machine}`,
             data: JSON.parse(cachedData),
           };
-          //   return { ...JSON.parse(cachedData), fromCache: true };
         }
       }
 
@@ -464,6 +463,7 @@ export const planningPaperService = {
     dayStart,
     timeStart,
     totalTimeWorking,
+    isNewDay,
   }: {
     req: Request;
     updateIndex: any[];
@@ -471,6 +471,7 @@ export const planningPaperService = {
     dayStart: string | Date;
     timeStart: string;
     totalTimeWorking: number;
+    isNewDay: boolean;
   }) => {
     const transaction = await PlanningPaper.sequelize?.transaction();
 
@@ -498,6 +499,7 @@ export const planningPaperService = {
         dayStart,
         timeStart,
         totalTimeWorking,
+        isNewDay,
         transaction,
       });
 

@@ -48,7 +48,6 @@ export const CacheManager = {
       lastUpdatedAccept: "order:accept_planning:lastUpdated",
     },
 
-    //planning và manufacture dùng chung cache
     planning: {
       order: {
         all: "orders:status:accept",
@@ -83,13 +82,13 @@ export const CacheManager = {
 
     report: {
       paper: {
-        all: (page: number) => `reportPaper:page:${page}`,
-        search: "reportPaper:search:all",
+        all: (machine: string, page: number) => `reportPaper:planning:${machine}:${page}`,
+        search: (machine: string) => `reportPaper:search:${machine}`,
         lastUpdated: "report:paper:lastUpdated",
       },
       box: {
-        all: (page: number) => `reportBox:page:${page}`,
-        search: "reportBox:search:all",
+        all: (machine: string, page: number) => `reportBox:planning:${machine}:${page}`,
+        search: (machine: string) => `reportBox:search:${machine}`,
         lastUpdated: "report:box:lastUpdated",
       },
     },
