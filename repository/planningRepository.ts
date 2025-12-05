@@ -23,7 +23,7 @@ export const planningRepository = {
     return await model.destroy({ where, transaction });
   },
 
-  createPlanning: async ({ model, data, transaction }: RepoPayload) => {
+  createData: async ({ model, data, transaction }: RepoPayload) => {
     return await model.create(data, { transaction });
   },
 

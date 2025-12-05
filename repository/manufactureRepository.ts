@@ -6,6 +6,7 @@ import { Customer } from "../models/customer/customer";
 import { Box } from "../models/order/box";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { PlanningBox } from "../models/planning/planningBox";
+import { InboundHistory } from "../models/warehouse/inboundHistory";
 
 export const manufactureRepository = {
   //====================================PAPER========================================
@@ -59,6 +60,7 @@ export const manufactureRepository = {
       include: [
         { model: timeOverflowPlanning, as: "timeOverFlow" },
         { model: Order, attributes: ["quantityCustomer"] },
+        { model: InboundHistory, attributes: ["inboundQty"] },
       ],
       transaction,
       lock: transaction?.LOCK.UPDATE,
@@ -165,6 +167,7 @@ export const manufactureRepository = {
           include: [
             { model: timeOverflowPlanning, as: "timeOverFlow" },
             { model: Order, attributes: ["quantityCustomer"] },
+            { model: InboundHistory, attributes: ["inboundQty"] },
           ],
         },
       ],

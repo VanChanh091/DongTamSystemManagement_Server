@@ -18,6 +18,7 @@ import {
   dashboardRoutes,
   reportRoutes,
   employeeRoutes,
+  warehouseRoutes,
 } from "./routes/index";
 
 //create table
@@ -65,6 +66,7 @@ app.use("/api/user", usersRoutes);
 app.use("/api/manufacture", manufactureRoutes);
 app.use("/api/report", reportRoutes);
 app.use("/api/employee", employeeRoutes);
+app.use("/api/warehouse", warehouseRoutes);
 
 sequelize
   // .sync({ alter: true })

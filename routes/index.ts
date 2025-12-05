@@ -9,6 +9,7 @@ import manufactureRoutes from "./userRouter/manufactureRoutes";
 import reportRoutes from "./userRouter/reportRoutes";
 import dashboardRoutes from "./dashboard/dashboardRoutes";
 import employeeRoutes from "./userRouter/employeeRoutes";
+import warehouseRoutes from "./userRouter/warehouseRoutes";
 
 export {
   customerRoutes,
@@ -22,4 +23,5 @@ export {
   reportRoutes,
   dashboardRoutes,
   employeeRoutes,
+  warehouseRoutes,
 };

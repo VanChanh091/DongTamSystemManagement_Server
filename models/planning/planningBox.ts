@@ -3,6 +3,7 @@ import { PlanningPaper } from "./planningPaper.js";
 import { PlanningBoxTime } from "./planningBoxMachineTime.js";
 import { timeOverflowPlanning } from "./timeOverflowPlanning.js";
 import { Order } from "../order/order.js";
+import { InboundHistory } from "../warehouse/inboundHistory.js";
 
 //định nghĩa trường trong bảng
 interface PlanningBoxAttributes {
@@ -112,6 +113,7 @@ export class PlanningBox
   declare boxTimes?: PlanningBoxTime[];
   declare allBoxTimes?: PlanningBoxTime[];
   declare timeOverFlow?: timeOverflowPlanning[];
+  declare InboundHistories?: InboundHistory[];
 }
 
 export function initPlanningBoxModel(sequelize: Sequelize): typeof PlanningBox {

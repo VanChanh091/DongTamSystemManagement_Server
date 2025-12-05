@@ -211,7 +211,7 @@ export const planningStatusService = {
       };
 
       // 6) Tạo kế hoạch làm giấy tấm
-      const paperPlan = await planningRepository.createPlanning({
+      const paperPlan = await planningRepository.createData({
         model: PlanningPaper,
         data: {
           orderId,
@@ -238,7 +238,7 @@ export const planningStatusService = {
       // 8) Nếu đơn hàng có làm thùng, tạo thêm kế hoạch lam-thung (waiting)
       const box = order.box;
       if (order.isBox) {
-        boxPlan = await planningRepository.createPlanning({
+        boxPlan = await planningRepository.createData({
           model: PlanningBox,
           data: {
             planningId: paperPlan.planningId,

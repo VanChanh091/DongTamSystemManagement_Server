@@ -340,7 +340,7 @@ const handleOverflow = async ({
     where: { planningId },
     transaction,
   });
-  await planningRepository.createPlanning({
+  await planningRepository.createData({
     model: timeOverflowPlanning,
     data: {
       planningId,

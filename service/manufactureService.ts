@@ -16,6 +16,7 @@ import { ReportPlanningPaper } from "../models/report/reportPlanningPaper";
 import { createReportPlanning } from "../utils/helper/modelHelper/reportHelper";
 import { ReportPlanningBox } from "../models/report/reportPlanningBox";
 import { mergeShiftField } from "../utils/helper/modelHelper/planningHelper";
+import { InboundHistory } from "../models/warehouse/inboundHistory";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper } = CacheManager.keys.manufacture;
@@ -321,7 +322,6 @@ export const manufactureService = {
         options: { transaction },
       });
 
-      //clear cache
       await transaction?.commit();
 
       return {
@@ -331,6 +331,49 @@ export const manufactureService = {
     } catch (error) {
       await transaction?.rollback();
       console.error("Error confirming producing paper:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  inboundQtyPaper: async (planningId: number, inboundQty: number) => {
+    const transaction = await PlanningPaper.sequelize?.transaction();
+
+    try {
+      const planning = await manufactureRepository.getPapersById(planningId, transaction);
+      if (!planning) {
+        throw AppError.NotFound("Không tìm thấy kế hoạch", "PLANNING_NOT_FOUND");
+      }
+
+      const totalInboundQty = planning.InboundHistories?.reduce((s, i) => s + i.inboundQty, 0) ?? 0;
+      if (totalInboundQty >= inboundQty) {
+        throw AppError.BadRequest(
+          "Số lượng nhập kho vượt quá số lượng sản xuất",
+          "INBOUND_EXCEED_PRODUCED"
+        );
+      }
+
+      const inboundRecord = await planningRepository.createData({
+        model: InboundHistory,
+        data: {
+          dateInbound: new Date(),
+          inboundQty: inboundQty,
+
+          planningId: planningId,
+          planningBoxId: null,
+        },
+        transaction,
+      });
+
+      await transaction?.commit();
+
+      return {
+        message: "Confirm producing paper successfully",
+        data: inboundRecord,
+      };
+    } catch (error) {
+      await transaction?.rollback();
+      console.error("Error inbound paper:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
@@ -611,6 +654,50 @@ export const manufactureService = {
     } catch (error) {
       await transaction?.rollback();
       console.error("Error confirming producing box:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  inboundQtyBox: async (planningBoxId: number, machine: string, inboundQty: number) => {
+    const transaction = await PlanningBox.sequelize?.transaction();
+
+    try {
+      const planning = await manufactureRepository.getBoxById(planningBoxId, machine, transaction);
+      if (!planning) {
+        throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
+      }
+
+      const totalInboundQty =
+        planning.PlanningBox.InboundHistories?.reduce((s, i) => s + i.inboundQty, 0) ?? 0;
+      if (totalInboundQty >= inboundQty) {
+        throw AppError.BadRequest(
+          "Số lượng nhập kho vượt quá số lượng sản xuất",
+          "INBOUND_EXCEED_PRODUCED"
+        );
+      }
+
+      const inboundRecord = await planningRepository.createData({
+        model: InboundHistory,
+        data: {
+          dateInbound: new Date(),
+          inboundQty: inboundQty,
+
+          planningId: null,
+          planningBoxId: planningBoxId,
+        },
+        transaction,
+      });
+
+      await transaction?.commit();
+
+      return {
+        message: "Confirm producing paper successfully",
+        data: inboundRecord,
+      };
+    } catch (error) {
+      await transaction?.rollback();
+      console.error("Error inbound box:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
