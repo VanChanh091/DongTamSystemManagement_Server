@@ -31,7 +31,10 @@ interface PlanningBoxAttributes {
   hasCatKhe?: boolean | null;
   hasCanMang?: boolean | null;
   hasDongGhim?: boolean | null;
+
   hasOverFlow?: boolean | null;
+
+  isRequestCheck: boolean;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -100,6 +103,8 @@ export class PlanningBox
 
   declare hasOverFlow?: boolean | null;
 
+  declare isRequestCheck: boolean;
+
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
 
@@ -113,7 +118,6 @@ export class PlanningBox
   declare boxTimes?: PlanningBoxTime[];
   declare allBoxTimes?: PlanningBoxTime[];
   declare timeOverFlow?: timeOverflowPlanning[];
-  declare InboundHistories?: InboundHistory[];
 }
 
 export function initPlanningBoxModel(sequelize: Sequelize): typeof PlanningBox {
@@ -147,11 +151,9 @@ export function initPlanningBoxModel(sequelize: Sequelize): typeof PlanningBox {
       hasCanMang: { type: DataTypes.BOOLEAN, defaultValue: false },
       hasDongGhim: { type: DataTypes.BOOLEAN, defaultValue: false },
 
-      hasOverFlow: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: false,
-      },
+      hasOverFlow: { type: DataTypes.BOOLEAN, defaultValue: false },
+
+      isRequestCheck: { type: DataTypes.BOOLEAN, defaultValue: false },
 
       orderId: { type: DataTypes.STRING, allowNull: false },
       planningId: { type: DataTypes.INTEGER, allowNull: false },

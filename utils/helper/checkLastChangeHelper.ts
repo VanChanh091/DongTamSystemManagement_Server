@@ -42,19 +42,12 @@ export const checkLastChange = async (models: any, cacheKey: string, { setCache 
 
   //So sánh với cache Redis
   const lastCached = await redisCache.get(cacheKey);
+
   const isChanged = lastCached !== combinedSignature;
 
   if (setCache && isChanged) {
     await redisCache.set(cacheKey, combinedSignature);
   }
-
-  // console.log(
-  //   "🔍 last changes by model:",
-  //   modelArray.map((item, i) => ({
-  //     model: item.model ? item.model.name : item.name,
-  //     last: new Date(lastChanges[i]).toISOString(),
-  //   }))
-  // );
 
   // 5️⃣ Log debug cho dev mode
   if (process.env.NODE_ENV !== "production") {

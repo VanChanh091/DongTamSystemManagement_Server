@@ -12,6 +12,8 @@ import { MachineBox } from "../../models/admin/machineBox";
 import { Request } from "express";
 import { calTimeRunningPlanningBox } from "./helper/timeRunningBox";
 import { getPlanningByField } from "../../utils/helper/modelHelper/planningHelper";
+import { InboundHistory } from "../../models/warehouse/inboundHistory";
+import { warehouseRepository } from "../../repository/warehouseRepository";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { box } = CacheManager.keys.planning;
@@ -227,18 +229,27 @@ export const planningBoxService = {
         machine,
         options: {
           attributes: ["runningPlan", "qtyProduced", "status", "machine"],
-          include: [{ model: PlanningBox, attributes: ["planningBoxId", "hasOverFlow"] }],
+          include: [
+            { model: PlanningBox, attributes: ["planningBoxId", "hasOverFlow", "orderId"] },
+          ],
         },
       });
 
       for (const box of planningBox) {
         const { qtyProduced, runningPlan } = box;
+        const { orderId } = box.PlanningBox;
 
         if ((qtyProduced ?? 0) < (runningPlan ?? 0)) {
           throw AppError.BadRequest("Lack quantity", "LACK_QUANTITY");
         }
+
+        const inboundRecords = await warehouseRepository.findAllInbound(orderId);
+        if (inboundRecords.length === 0) {
+          throw AppError.BadRequest(`Mã ${orderId} chưa từng được nhập kho`, "NO_INBOUND_HISTORY");
+        }
       }
 
+      //cập nhật status planning
       await planningRepository.updateDataModel({
         model: PlanningBoxTime,
         data: { status: "complete" },

@@ -6,7 +6,6 @@ import { Customer } from "../models/customer/customer";
 import { Box } from "../models/order/box";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { PlanningBox } from "../models/planning/planningBox";
-import { InboundHistory } from "../models/warehouse/inboundHistory";
 
 export const manufactureRepository = {
   //====================================PAPER========================================
@@ -19,33 +18,30 @@ export const manufactureRepository = {
         {
           model: timeOverflowPlanning,
           as: "timeOverFlow",
-          attributes: { exclude: ["createdAt", "updatedAt"] },
+          attributes: { exclude: ["createdAt", "updatedAt", "status"] },
         },
         {
           model: Order,
-          attributes: {
-            exclude: [
-              "acreage",
-              "dvt",
-              "price",
-              "pricePaper",
-              "discount",
-              "profit",
-              "vat",
-              "rejectReason",
-              "createdAt",
-              "updatedAt",
-              "lengthPaperCustomer",
-              "paperSizeCustomer",
-              "quantityCustomer",
-            ],
-          },
+          attributes: [
+            "orderId",
+            "dayReceiveOrder",
+            "flute",
+            "QC_box",
+            "canLan",
+            "daoXa",
+            "quantityManufacture",
+            "dateRequestShipping",
+            "instructSpecial",
+            "isBox",
+            "customerId",
+            "productId",
+          ],
           include: [
             { model: Customer, attributes: ["customerName", "companyName"] },
             {
               model: Box,
               as: "box",
-              attributes: { exclude: ["createdAt", "updatedAt"] },
+              attributes: { exclude: ["createdAt", "updatedAt", "orderId"] },
             },
           ],
         },
@@ -60,7 +56,6 @@ export const manufactureRepository = {
       include: [
         { model: timeOverflowPlanning, as: "timeOverFlow" },
         { model: Order, attributes: ["quantityCustomer"] },
-        { model: InboundHistory, attributes: ["inboundQty"] },
       ],
       transaction,
       lock: transaction?.LOCK.UPDATE,
@@ -89,6 +84,7 @@ export const manufactureRepository = {
           "hasCatKhe",
           "hasCanMang",
           "hasDongGhim",
+          "isRequestCheck",
           "createdAt",
           "updatedAt",
         ],
@@ -103,30 +99,15 @@ export const manufactureRepository = {
         {
           model: PlanningBoxTime,
           as: "allBoxTimes",
-          where: {
-            machine: { [Op.ne]: machine },
-          },
-          attributes: {
-            exclude: [
-              "timeRunning",
-              "dayStart",
-              "dayCompleted",
-              "wasteBox",
-              "shiftManagement",
-              "status",
-              "sortPlanning",
-              "rpWasteLoss",
-              "createdAt",
-              "updatedAt",
-            ],
-          },
+          where: { machine: { [Op.ne]: machine } },
+          attributes: ["boxTimeId", "qtyProduced", "machine"],
         },
         {
           model: timeOverflowPlanning,
           as: "timeOverFlow",
           required: false,
           where: { machine: machine },
-          attributes: { exclude: ["createdAt", "updatedAt"] },
+          attributes: { exclude: ["createdAt", "updatedAt", "status"] },
         },
         {
           model: Order,
@@ -149,7 +130,7 @@ export const manufactureRepository = {
             {
               model: Box,
               as: "box",
-              attributes: { exclude: ["createdAt", "updatedAt"] },
+              attributes: { exclude: ["createdAt", "updatedAt", "orderId"] },
             },
           ],
         },
@@ -167,12 +148,18 @@ export const manufactureRepository = {
           include: [
             { model: timeOverflowPlanning, as: "timeOverFlow" },
             { model: Order, attributes: ["quantityCustomer"] },
-            { model: InboundHistory, attributes: ["inboundQty"] },
           ],
         },
       ],
       transaction,
       lock: transaction?.LOCK.UPDATE,
+    });
+  },
+
+  getAllBoxTimeById: async (planningBoxId: number, transaction: any) => {
+    return await PlanningBoxTime.findAll({
+      where: { planningBoxId },
+      transaction,
     });
   },
 

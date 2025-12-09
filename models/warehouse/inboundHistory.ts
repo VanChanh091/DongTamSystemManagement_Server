@@ -1,21 +1,17 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
-import { PlanningBox } from "../planning/planningBox";
-import { PlanningPaper } from "../planning/planningPaper";
+import { Order } from "../order/order";
 
 //định nghĩa trường trong bảng
 interface InboundHistoryAttributes {
   inboundId: number;
   dateInbound: Date;
-  inboundQty: number;
+  qtyPaper: number;
+  qtyInbound: number;
   createdAt?: Date;
   updatedAt?: Date;
 
   //FK
-  planningId: number;
-  planningBoxId: number;
-
-  PlanningBox?: PlanningBox;
-  PlanningPaper?: PlanningPaper;
+  orderId: string;
 }
 
 //cho phép bỏ qua id khi tạo
@@ -31,16 +27,14 @@ export class InboundHistory
 {
   declare inboundId: number;
   declare dateInbound: Date;
-  declare inboundQty: number;
+  declare qtyPaper: number;
+  declare qtyInbound: number;
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
 
   //FK
-  declare planningId: number;
-  declare planningBoxId: number;
-
-  declare PlanningBox?: PlanningBox;
-  declare PlanningPaper?: PlanningPaper;
+  declare orderId: string;
+  declare Order: Order;
 }
 
 export function initInboundHistoryModel(sequelize: Sequelize): typeof InboundHistory {
@@ -48,11 +42,11 @@ export function initInboundHistoryModel(sequelize: Sequelize): typeof InboundHis
     {
       inboundId: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
       dateInbound: { type: DataTypes.DATE, allowNull: false },
-      inboundQty: { type: DataTypes.INTEGER, allowNull: false },
+      qtyPaper: { type: DataTypes.INTEGER, allowNull: false },
+      qtyInbound: { type: DataTypes.INTEGER, allowNull: false },
 
       //FK
-      planningId: { type: DataTypes.INTEGER },
-      planningBoxId: { type: DataTypes.INTEGER },
+      orderId: { type: DataTypes.STRING, allowNull: false },
     },
     { sequelize, tableName: "InboundHistory", timestamps: true }
   );

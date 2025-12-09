@@ -1,14 +1,37 @@
 import { Router } from "express";
 import authenticate from "../../middlewares/authMiddleware";
-import { getAllInboundHistory } from "../../controller/user/warehouse/inboundHistoryController";
+import {
+  getAllInboundHistory,
+  getBoxWaitingChecked,
+  getPaperWaitingChecked,
+  inboundQtyBox,
+  inboundQtyPaper,
+  searchInboundByField,
+} from "../../controller/user/warehouse/inboundHistoryController";
+import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
+import {
+  getAllOutboundHistory,
+  searchOutboundByField,
+} from "../../controller/user/warehouse/outboundHistoryController";
 
 const router = Router();
 
-//==================Report Planning Paper=====================
-router.get("/getAllInbound", authenticate, getAllInboundHistory);
-// router.get("/reportPaper/filter", authenticate, getReportedPaperByField);
+//=====================CHECK AND INBOUND QTY========================
 
-//==================EXPORT EXCEL=====================
-// router.post("/exportExcelBox", authenticate, exportExcelReportBox);
+router.get("/getPaperWaiting", authenticate, getPaperWaitingChecked);
+router.get("/getBoxWaiting", authenticate, getBoxWaitingChecked);
+
+router.post("/inboundPaper", authenticate, authorizeAnyPermission(["QC"]), inboundQtyPaper);
+router.post("/inboundBox", authenticate, authorizeAnyPermission(["QC"]), inboundQtyBox);
+
+//========================INBOUND HISTORY===========================
+
+router.get("/inbound", authenticate, getAllInboundHistory);
+router.get("/inbound/filter", authenticate, searchInboundByField);
+
+//========================OUTBOUND HISTORY===========================
+
+router.get("/outbound", authenticate, getAllOutboundHistory);
+router.get("/outbound/filter", authenticate, searchOutboundByField);
 
 export default router;

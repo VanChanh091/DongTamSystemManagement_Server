@@ -1,79 +1,233 @@
-import { Customer } from "../models/customer/customer";
-import { Order } from "../models/order/order";
-import { PlanningBox } from "../models/planning/planningBox";
-import { PlanningPaper } from "../models/planning/planningPaper";
-import { Product } from "../models/product/product";
+import { Op, Sequelize } from "sequelize";
 import { InboundHistory } from "../models/warehouse/inboundHistory";
+import { Order } from "../models/order/order";
+import { Customer } from "../models/customer/customer";
+import { Product } from "../models/product/product";
+import { PlanningPaper } from "../models/planning/planningPaper";
+import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
+import { Box } from "../models/order/box";
+import { PlanningBox } from "../models/planning/planningBox";
+import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
+import { OutboundHistory } from "../models/warehouse/outboundHistory";
 
 export const warehouseRepository = {
-  getAllInboundHistory: async (page: number, pageSize: number) => {
-    return await InboundHistory.findAll({
+  //====================================WAITING CHECK========================================
+
+  getPaperWaitingChecked: async () => {
+    return await PlanningPaper.findAll({
+      where: { dayStart: { [Op.ne]: null }, qtyProduced: { [Op.gt]: 0 } },
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {
-          model: PlanningPaper,
-          attributes: ["planningId", "qtyProduced"],
-          include: [
-            {
-              model: Order,
-              attributes: [
-                "orderId",
-                "flute",
-                "QC_box",
-                "day",
-                "matE",
-                "matB",
-                "matC",
-                "matE2",
-                "songE",
-                "songB",
-                "songC",
-                "songE2",
-                "lengthPaperCustomer",
-                "paperSizeCustomer",
-                "quantityCustomer",
-              ],
-              include: [
-                { model: Customer, attributes: ["customerName", "companyName"] },
-                { model: Product, attributes: ["typeProduct", "productName"] },
-              ],
-            },
-          ],
+          model: timeOverflowPlanning,
+          as: "timeOverFlow",
+          attributes: { exclude: ["createdAt", "updatedAt", "status"] },
         },
         {
-          model: PlanningBox,
-          attributes: ["planningBoxId"],
+          model: Order,
+          where: { isBox: false },
+          attributes: [
+            "orderId",
+            "dayReceiveOrder",
+            "flute",
+            "QC_box",
+            "canLan",
+            "daoXa",
+            "quantityManufacture",
+            "dateRequestShipping",
+            "instructSpecial",
+            "isBox",
+            "customerId",
+            "productId",
+          ],
           include: [
+            { model: Customer, attributes: ["customerName", "companyName"] },
             {
-              model: Order,
-              attributes: [
-                "orderId",
-                "flute",
-                "QC_box",
-                "day",
-                "matE",
-                "matB",
-                "matC",
-                "matE2",
-                "songE",
-                "songB",
-                "songC",
-                "songE2",
-                "lengthPaperCustomer",
-                "paperSizeCustomer",
-                "quantityCustomer",
-              ],
-              include: [
-                { model: Customer, attributes: ["customerName", "companyName"] },
-                { model: Product, attributes: ["typeProduct", "productName"] },
-              ],
+              model: Box,
+              as: "box",
+              attributes: { exclude: ["createdAt", "updatedAt", "orderId"] },
             },
           ],
         },
       ],
-      limit: pageSize,
-      offset: (page - 1) * pageSize,
-      order: [["inboundId", "ASC"]],
+      order: [["sortPlanning", "ASC"]],
     });
+  },
+
+  getBoxWaitingChecked: async () => {
+    return await PlanningBox.findAll({
+      where: { isRequestCheck: true },
+      attributes: {
+        exclude: [
+          "hasIn",
+          "hasBe",
+          "hasXa",
+          "hasDan",
+          "hasCanLan",
+          "hasCatKhe",
+          "hasCanMang",
+          "hasDongGhim",
+          "createdAt",
+          "updatedAt",
+        ],
+      },
+      include: [
+        {
+          model: PlanningBoxTime,
+          as: "allBoxTimes",
+          attributes: ["boxTimeId", "qtyProduced", "machine"],
+        },
+        {
+          model: timeOverflowPlanning,
+          as: "timeOverFlow",
+          attributes: { exclude: ["createdAt", "updatedAt", "status"] },
+        },
+        {
+          model: Order,
+          attributes: [
+            "orderId",
+            "dayReceiveOrder",
+            "flute",
+            "QC_box",
+            "numberChild",
+            "dateRequestShipping",
+            "customerId",
+            "productId",
+            "quantityCustomer",
+          ],
+          include: [
+            {
+              model: Customer,
+              attributes: ["customerName", "companyName"],
+            },
+            {
+              model: Box,
+              as: "box",
+              attributes: { exclude: ["createdAt", "updatedAt", "orderId"] },
+            },
+          ],
+        },
+      ],
+    });
+  },
+
+  //====================================INBOUND HISTORY========================================
+
+  inboundHistoryCount: async () => {
+    return await InboundHistory.count();
+  },
+
+  findAllInbound: async (orderId: string) => {
+    return await InboundHistory.findAll({
+      where: { orderId },
+      attributes: ["qtyInbound"],
+    });
+  },
+
+  findInboundByPage: async ({
+    page = 1,
+    pageSize = 20,
+    paginate = true,
+  }: {
+    page?: number;
+    pageSize?: number;
+    paginate?: boolean;
+  }) => {
+    const query: any = {
+      attributes: { exclude: ["createdAt", "updatedAt"] },
+      include: [
+        {
+          model: Order,
+          attributes: [
+            "QC_box",
+            "day",
+            "matE",
+            "matB",
+            "matC",
+            "matE2",
+            "songE",
+            "songB",
+            "songC",
+            "songE2",
+            "lengthPaperCustomer",
+            "paperSizeCustomer",
+            "quantityCustomer",
+          ],
+          include: [
+            { model: Customer, attributes: ["customerName", "companyName"] },
+            { model: Product, attributes: ["typeProduct", "productName"] },
+          ],
+        },
+      ],
+      order: [["dateInbound", "DESC"]],
+    };
+
+    if (paginate) {
+      query.offset = (page - 1) * pageSize;
+      query.limit = pageSize;
+    }
+
+    return await InboundHistory.findAll(query);
+  },
+
+  //====================================OUTBOUND HISTORY========================================
+
+  outboundHistoryCount: async () => {
+    return await OutboundHistory.count();
+  },
+
+  findOutboundByPage: async ({
+    page = 1,
+    pageSize = 20,
+    paginate = true,
+  }: {
+    page?: number;
+    pageSize?: number;
+    paginate?: boolean;
+  }) => {
+    const query: any = {
+      attributes: { exclude: ["createdAt", "updatedAt"] },
+      include: [
+        {
+          model: Order,
+          attributes: {
+            exclude: [
+              "dayReceiveOrder",
+              "flute",
+              "canLan",
+              "daoXa",
+              "lengthPaperManufacture",
+              "paperSizeManufacture",
+              "quantityManufacture",
+              "numberChild",
+              "acreage",
+              "dvt",
+              "price",
+              "pricePaper",
+              "discount",
+              "profit",
+              "dateRequestShipping",
+              "instructSpecial",
+              "isBox",
+              "status",
+              "rejectReason",
+              "userId",
+            ],
+          },
+          include: [
+            { model: Customer, attributes: ["customerName", "companyName"] },
+            { model: Product, attributes: ["typeProduct", "productName"] },
+          ],
+        },
+      ],
+      order: [["dateOutbound", "DESC"]],
+    };
+
+    if (paginate) {
+      query.offset = (page - 1) * pageSize;
+      query.limit = pageSize;
+    }
+
+    return await OutboundHistory.findAll(query);
   },
 };

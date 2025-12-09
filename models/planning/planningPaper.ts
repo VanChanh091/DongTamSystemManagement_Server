@@ -143,7 +143,6 @@ export class PlanningPaper
   declare Order: Order;
   declare PlanningBox?: PlanningBox;
   declare timeOverFlow?: timeOverflowPlanning;
-  declare InboundHistories?: InboundHistory[];
 }
 
 export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPaper {

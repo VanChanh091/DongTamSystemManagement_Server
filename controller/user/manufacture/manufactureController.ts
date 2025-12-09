@@ -52,25 +52,6 @@ export const confirmProducingPaper = async (req: Request, res: Response, next: N
   }
 };
 
-//inbound qty paper
-export const inboundQtyPaper = async (req: Request, res: Response, next: NextFunction) => {
-  const { planningId, inboundQty } = req.query as { planningId: string; inboundQty: string };
-
-  try {
-    if (!planningId) {
-      throw AppError.BadRequest("Missing planningId parameter", "MISSING_PARAMETERS");
-    }
-
-    const response = await manufactureService.inboundQtyPaper(
-      Number(planningId),
-      Number(inboundQty)
-    );
-    return res.status(201).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
 //===============================MANUFACTURE BOX=====================================
 
 //get all planning box
@@ -125,24 +106,16 @@ export const confirmProducingBox = async (req: Request, res: Response, next: Nex
   }
 };
 
-//inbound qty box
-export const inboundQtyBox = async (req: Request, res: Response, next: NextFunction) => {
-  const { planningBoxId, machine, inboundQty } = req.query as {
-    planningBoxId: string;
-    machine: string;
-    inboundQty: string;
-  };
+//send request to check quality product
+export const updateRequestStockCheck = async (req: Request, res: Response, next: NextFunction) => {
+  const { planningBoxId } = req.query as { planningBoxId: string };
 
   try {
-    if (!planningBoxId || !machine) {
+    if (!planningBoxId) {
       throw AppError.BadRequest("Missing planningBoxId parameter", "MISSING_PARAMETERS");
     }
 
-    const response = await manufactureService.inboundQtyBox(
-      Number(planningBoxId),
-      machine,
-      Number(inboundQty)
-    );
+    const response = await manufactureService.updateRequestStockCheck(Number(planningBoxId));
     return res.status(201).json(response);
   } catch (error) {
     next(error);

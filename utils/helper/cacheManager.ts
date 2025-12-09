@@ -92,6 +92,19 @@ export const CacheManager = {
         lastUpdated: "report:box:lastUpdated",
       },
     },
+
+    warehouse: {
+      inbound: {
+        page: (page: number) => `inboundHistory:page:${page}`,
+        search: (page: number) => `inboundHistory:search:${page}`,
+        lastUpdated: "inbound:lastUpdated",
+      },
+      outbound: {
+        page: (page: number) => `outboundHistory:page:${page}`,
+        search: (page: number) => `outboundHistory:search:${page}`,
+        lastUpdated: "outbound:lastUpdated",
+      },
+    },
   },
 
   // Xóa toàn bộ cache theo prefix
@@ -171,6 +184,14 @@ export const CacheManager = {
     await this.clearByPrefix("dashboard:detail:");
   },
 
+  async clearInbound() {
+    await this.clearByPrefix("inboundHistory:page:");
+  },
+
+  async clearOutbound() {
+    await this.clearByPrefix("outboundHistory:page:");
+  },
+
   /** Check lastChange cho 1 module */
   async check(models: any, module: string, options: { setCache?: boolean } = {}) {
     const { setCache = true } = options;
@@ -202,6 +223,10 @@ export const CacheManager = {
       //dashboard
       dbPlanning: this.keys.dashboard.planning.lastUpdated,
       dbDetail: this.keys.dashboard.details.lastUpdated,
+
+      //warehouse
+      inbound: this.keys.warehouse.inbound.lastUpdated,
+      outbound: this.keys.warehouse.outbound.lastUpdated,
     };
 
     const key = map[module];

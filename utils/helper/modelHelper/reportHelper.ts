@@ -10,6 +10,7 @@ import { Op } from "sequelize";
 import { CacheManager } from "../cacheManager";
 import redisCache from "../../../configs/redisCache";
 import { normalizeVN } from "../normalizeVN";
+import { AppError } from "../../appError";
 
 export const filterReportByField = async ({
   keyword,
@@ -71,7 +72,7 @@ export const filterReportByField = async ({
     };
   } catch (error) {
     console.error(error);
-    throw new Error("Lỗi server");
+    throw AppError.ServerError();
   }
 };
 
@@ -236,7 +237,7 @@ const findAllReportBox = async ({ isBox, machine }: { isBox: boolean; machine: s
     return data;
   } catch (error) {
     console.error(error);
-    throw new Error("Không lấy được data");
+    throw AppError.ServerError();
   }
 };
 

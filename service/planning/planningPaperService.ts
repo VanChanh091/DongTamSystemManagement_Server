@@ -14,6 +14,8 @@ import { MachinePaper } from "../../models/admin/machinePaper";
 import { Request } from "express";
 import { calculateTimeRunning, updateSortPlanning } from "./helper/timeRunningPaper";
 import { getPlanningByField } from "../../utils/helper/modelHelper/planningHelper";
+import { InboundHistory } from "../../models/warehouse/inboundHistory";
+import { warehouseRepository } from "../../repository/warehouseRepository";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper } = CacheManager.keys.planning;
@@ -177,8 +179,6 @@ export const planningPaperService = {
   },
 
   getPlanningByField: async (machine: string, field: string, keyword: string) => {
-    // console.log(`machine ${machine} - field: ${field} - keyword: ${keyword}`);
-
     try {
       const fieldMap = {
         orderId: (paper: PlanningPaper) => paper.orderId,
@@ -269,6 +269,17 @@ export const planningPaperService = {
         }
       }
 
+      //check đã nhập kho chưa
+      for (const paper of planningPaper) {
+        const { orderId } = paper;
+
+        const inboundRecords = await warehouseRepository.findAllInbound(orderId);
+        if (inboundRecords.length === 0) {
+          throw AppError.BadRequest(`Mã ${orderId} chưa từng được nhập kho`, "NO_INBOUND_HISTORY");
+        }
+      }
+
+      //cập nhật status planning
       await planningRepository.updateDataModel({
         model: PlanningPaper,
         data: { status: "complete" },

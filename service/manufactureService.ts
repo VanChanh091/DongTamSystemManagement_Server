@@ -1,12 +1,13 @@
 import dotenv from "dotenv";
 dotenv.config();
+
+import redisCache from "../configs/redisCache";
 import { Op } from "sequelize";
 import { CacheManager } from "../utils/helper/cacheManager";
 import { AppError } from "../utils/appError";
 import { PlanningPaper } from "../models/planning/planningPaper";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
-import redisCache from "../configs/redisCache";
 import { manufactureRepository } from "../repository/manufactureRepository";
 import { machineLabels } from "../configs/machineLabels";
 import { planningRepository } from "../repository/planningRepository";
@@ -16,7 +17,6 @@ import { ReportPlanningPaper } from "../models/report/reportPlanningPaper";
 import { createReportPlanning } from "../utils/helper/modelHelper/reportHelper";
 import { ReportPlanningBox } from "../models/report/reportPlanningBox";
 import { mergeShiftField } from "../utils/helper/modelHelper/planningHelper";
-import { InboundHistory } from "../models/warehouse/inboundHistory";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper } = CacheManager.keys.manufacture;
@@ -336,49 +336,6 @@ export const manufactureService = {
     }
   },
 
-  inboundQtyPaper: async (planningId: number, inboundQty: number) => {
-    const transaction = await PlanningPaper.sequelize?.transaction();
-
-    try {
-      const planning = await manufactureRepository.getPapersById(planningId, transaction);
-      if (!planning) {
-        throw AppError.NotFound("Không tìm thấy kế hoạch", "PLANNING_NOT_FOUND");
-      }
-
-      const totalInboundQty = planning.InboundHistories?.reduce((s, i) => s + i.inboundQty, 0) ?? 0;
-      if (totalInboundQty >= inboundQty) {
-        throw AppError.BadRequest(
-          "Số lượng nhập kho vượt quá số lượng sản xuất",
-          "INBOUND_EXCEED_PRODUCED"
-        );
-      }
-
-      const inboundRecord = await planningRepository.createData({
-        model: InboundHistory,
-        data: {
-          dateInbound: new Date(),
-          inboundQty: inboundQty,
-
-          planningId: planningId,
-          planningBoxId: null,
-        },
-        transaction,
-      });
-
-      await transaction?.commit();
-
-      return {
-        message: "Confirm producing paper successfully",
-        data: inboundRecord,
-      };
-    } catch (error) {
-      await transaction?.rollback();
-      console.error("Error inbound paper:", error);
-      if (error instanceof AppError) throw error;
-      throw AppError.ServerError();
-    }
-  },
-
   //====================================BOX========================================
   getPlanningBox: async (machine: string) => {
     try {
@@ -445,6 +402,7 @@ export const manufactureService = {
 
         // Chỉ push nếu dayStart khác null
         if (original.dayStart !== null) {
+          delete original.dayStart;
           allPlannings.push(original);
         }
 
@@ -659,45 +617,39 @@ export const manufactureService = {
     }
   },
 
-  inboundQtyBox: async (planningBoxId: number, machine: string, inboundQty: number) => {
+  updateRequestStockCheck: async (planningBoxId: number) => {
     const transaction = await PlanningBox.sequelize?.transaction();
 
     try {
-      const planning = await manufactureRepository.getBoxById(planningBoxId, machine, transaction);
-      if (!planning) {
+      // Lấy planning cần update
+      const planningBox = await PlanningBox.findByPk(planningBoxId, { transaction });
+      if (!planningBox) {
         throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
       }
 
-      const totalInboundQty =
-        planning.PlanningBox.InboundHistories?.reduce((s, i) => s + i.inboundQty, 0) ?? 0;
-      if (totalInboundQty >= inboundQty) {
+      if (planningBox.isRequestCheck === true) {
+        throw AppError.BadRequest("Đơn này đã yêu cầu kiểm tra rồi", "ALREADY_REQUESTED");
+      }
+
+      const steps = await manufactureRepository.getAllBoxTimeById(planningBoxId, transaction);
+
+      //check qty produced
+      const checkQtyProduced = steps.some((step) => step.qtyProduced == 0);
+      if (checkQtyProduced) {
         throw AppError.BadRequest(
-          "Số lượng nhập kho vượt quá số lượng sản xuất",
-          "INBOUND_EXCEED_PRODUCED"
+          "Có công đoạn chưa có số lượng. Không thể yêu cầu nhập kho.",
+          "STEP_QUANTITY_EQUAL_ZERO"
         );
       }
 
-      const inboundRecord = await planningRepository.createData({
-        model: InboundHistory,
-        data: {
-          dateInbound: new Date(),
-          inboundQty: inboundQty,
-
-          planningId: null,
-          planningBoxId: planningBoxId,
-        },
-        transaction,
-      });
+      await planningBox.update({ isRequestCheck: true }, { transaction });
 
       await transaction?.commit();
 
-      return {
-        message: "Confirm producing paper successfully",
-        data: inboundRecord,
-      };
+      return { message: "Yêu cầu nhập kho đã được gửi" };
     } catch (error) {
       await transaction?.rollback();
-      console.error("Error inbound box:", error);
+      console.error("Error confirming producing box:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
