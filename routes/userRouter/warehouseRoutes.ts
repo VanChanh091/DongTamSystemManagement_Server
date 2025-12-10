@@ -2,6 +2,7 @@ import { Router } from "express";
 import authenticate from "../../middlewares/authMiddleware";
 import {
   getAllInboundHistory,
+  getBoxCheckedDetail,
   getBoxWaitingChecked,
   getPaperWaitingChecked,
   inboundQtyBox,
@@ -20,6 +21,7 @@ const router = Router();
 
 router.get("/getPaperWaiting", authenticate, getPaperWaitingChecked);
 router.get("/getBoxWaiting", authenticate, getBoxWaitingChecked);
+router.get("/getBoxDetail", authenticate, getBoxCheckedDetail);
 
 router.post("/inboundPaper", authenticate, authorizeAnyPermission(["QC"]), inboundQtyPaper);
 router.post("/inboundBox", authenticate, authorizeAnyPermission(["QC"]), inboundQtyBox);

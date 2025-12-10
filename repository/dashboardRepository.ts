@@ -117,6 +117,16 @@ export const dashboardRepository = {
     });
   },
 
+  getAllTimeOverflow: async (planningBoxId: number) => {
+    return await timeOverflowPlanning.findAll({
+      where: { planningBoxId: planningBoxId },
+      attributes: {
+        exclude: ["createdAt", "updatedAt", "status", "planningId", "overflowId"],
+      },
+      raw: true,
+    });
+  },
+
   getDbPlanningSearch: async (whereCondition: any = {}) => {
     return await PlanningPaper.findAll({
       where: whereCondition,
@@ -131,16 +141,6 @@ export const dashboardRepository = {
           ],
         },
       ],
-    });
-  },
-
-  getAllTimeOverflow: async (planningBoxId: number) => {
-    return await timeOverflowPlanning.findAll({
-      where: { planningBoxId: planningBoxId },
-      attributes: {
-        exclude: ["createdAt", "updatedAt", "status", "planningId", "overflowId"],
-      },
-      raw: true,
     });
   },
 

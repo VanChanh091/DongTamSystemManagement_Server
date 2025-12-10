@@ -23,6 +23,17 @@ export const getBoxWaitingChecked = async (req: Request, res: Response, next: Ne
   }
 };
 
+export const getBoxCheckedDetail = async (req: Request, res: Response, next: NextFunction) => {
+  const { planningBoxId } = req.query as { planningBoxId: string };
+
+  try {
+    const response = await inboundService.getBoxCheckedDetail(Number(planningBoxId));
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
 //inbound paper
 export const inboundQtyPaper = async (req: Request, res: Response, next: NextFunction) => {
   const { planningId, inboundQty } = req.query as { planningId: string; inboundQty: string };

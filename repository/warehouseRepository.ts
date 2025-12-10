@@ -1,4 +1,4 @@
-import { Op, Sequelize } from "sequelize";
+import { Op } from "sequelize";
 import { InboundHistory } from "../models/warehouse/inboundHistory";
 import { Order } from "../models/order/order";
 import { Customer } from "../models/customer/customer";
@@ -13,6 +13,7 @@ import { OutboundHistory } from "../models/warehouse/outboundHistory";
 export const warehouseRepository = {
   //====================================WAITING CHECK========================================
 
+  //paper
   getPaperWaitingChecked: async () => {
     return await PlanningPaper.findAll({
       where: { dayStart: { [Op.ne]: null }, qtyProduced: { [Op.gt]: 0 } },
@@ -54,6 +55,7 @@ export const warehouseRepository = {
     });
   },
 
+  //box
   getBoxWaitingChecked: async () => {
     return await PlanningBox.findAll({
       where: { isRequestCheck: true },
@@ -67,21 +69,13 @@ export const warehouseRepository = {
           "hasCatKhe",
           "hasCanMang",
           "hasDongGhim",
+          "hasOverFlow",
+          "isRequestCheck",
           "createdAt",
           "updatedAt",
         ],
       },
       include: [
-        {
-          model: PlanningBoxTime,
-          as: "allBoxTimes",
-          attributes: ["boxTimeId", "qtyProduced", "machine"],
-        },
-        {
-          model: timeOverflowPlanning,
-          as: "timeOverFlow",
-          attributes: { exclude: ["createdAt", "updatedAt", "status"] },
-        },
         {
           model: Order,
           attributes: [
@@ -106,6 +100,21 @@ export const warehouseRepository = {
               attributes: { exclude: ["createdAt", "updatedAt", "orderId"] },
             },
           ],
+        },
+      ],
+    });
+  },
+
+  getBoxCheckedDetail: async (planningBoxId: number) => {
+    return await PlanningBox.findByPk(planningBoxId, {
+      attributes: ["planningBoxId", "qtyPaper", "hasOverFlow", "orderId", "planningId"],
+      include: [
+        {
+          model: PlanningBoxTime,
+          as: "boxTimes",
+          attributes: {
+            exclude: ["createdAt", "updatedAt", "boxTimeId", "status", "sortPlanning"],
+          },
         },
       ],
     });

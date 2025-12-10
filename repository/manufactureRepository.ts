@@ -76,6 +76,8 @@ export const manufactureRepository = {
     return await PlanningBox.findAll({
       attributes: {
         exclude: [
+          "dayStart",
+          "dayCompleted",
           "hasIn",
           "hasBe",
           "hasXa",

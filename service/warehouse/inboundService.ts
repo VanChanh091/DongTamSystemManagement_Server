@@ -12,12 +12,13 @@ import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
 import { CacheManager } from "../../utils/helper/cacheManager";
 import redisCache from "../../configs/redisCache";
 import { getInboundByField } from "../../utils/helper/modelHelper/warehouseHelper";
+import { dashboardRepository } from "../../repository/dashboardRepository";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inbound } = CacheManager.keys.warehouse;
 
 export const inboundService = {
-  //====================================CHECK AND INBOUND QTY========================================
+  //====================================WAITING CHECK AND INBOUND QTY========================================
 
   getPaperWaitingChecked: async () => {
     try {
@@ -64,39 +65,40 @@ export const inboundService = {
     try {
       const planning = await warehouseRepository.getBoxWaitingChecked();
 
-      const allPlannings: any[] = [];
+      return { message: `get planning by machine waiting check`, data: planning };
+    } catch (error) {
+      console.error("Failed to get box waiting checked", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
 
-      planning.forEach((planning) => {
-        const original = {
-          ...planning.toJSON(),
-          dayStart: planning.boxTimes?.[0]?.dayStart,
-        };
+  getBoxCheckedDetail: async (planningBoxId: number) => {
+    try {
+      //get data detail
+      const detail = await warehouseRepository.getBoxCheckedDetail(planningBoxId);
+      if (!detail) {
+        throw AppError.NotFound("detail not found", "DETAIL_NOT_FOUND");
+      }
 
-        // Chỉ push nếu dayStart khác null
-        if (original.dayStart !== null) {
-          delete original.dayStart;
-          allPlannings.push(original);
-        }
+      //get stage
+      const normalStages = detail?.boxTimes?.map((stage) => stage.toJSON()) ?? [];
 
-        if (planning.timeOverFlow && planning.timeOverFlow.length > 0) {
-          planning.timeOverFlow.forEach((of) => {
-            const overflowPlanning = {
-              ...original,
-              boxTimes: (planning.boxTimes || []).map((bt) => ({
-                ...bt.dataValues,
-                dayStart: of.overflowDayStart,
-                dayCompleted: of.overflowDayCompleted,
-                timeRunning: of.overflowTimeRunning,
-              })),
-            };
-            allPlannings.push(overflowPlanning);
-          });
-        }
+      //get all time overflow
+      const allOverflow = await dashboardRepository.getAllTimeOverflow(detail.planningBoxId);
 
-        return allPlannings;
-      });
+      const overflowByMachine: Record<string, any> = {};
+      for (const ov of allOverflow) {
+        overflowByMachine[ov.machine as string] = ov;
+        delete ov.overflowDayStart;
+      }
 
-      return { message: `get planning by machine waiting check`, data: allPlannings };
+      const stages = normalStages.map((stage) => ({
+        ...stage,
+        timeOverFlow: overflowByMachine[String(stage.machine)] ?? null,
+      }));
+
+      return { message: "get db planning detail succesfully", data: stages };
     } catch (error) {
       console.error("Failed to get box waiting checked", error);
       if (error instanceof AppError) throw error;

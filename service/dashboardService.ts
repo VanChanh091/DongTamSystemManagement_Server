@@ -94,6 +94,7 @@ export const dashboardService = {
       const overflowByMachine: Record<string, any> = {};
       for (const ov of allOverflow) {
         overflowByMachine[ov.machine as string] = ov;
+        delete ov.overflowDayStart;
       }
 
       const stages = normalStages.map((stage) => ({
