@@ -93,6 +93,15 @@ export const CacheManager = {
       },
     },
 
+    waitingCheck: {
+      paper: { all: "waiting:paper:all", lastUpdated: "waitingPaper:lastUpdated" },
+      box: { all: "waiting:box:all", lastUpdated: "waitingBox:lastUpdated" },
+      boxDetail: {
+        all: (planningBoxId: number) => `box:detail:${planningBoxId}`,
+        lastUpdated: "boxDetail:lastUpdated",
+      },
+    },
+
     warehouse: {
       inbound: {
         page: (page: number) => `inboundHistory:page:${page}`,
@@ -107,10 +116,10 @@ export const CacheManager = {
     },
   },
 
-  // Xóa toàn bộ cache theo prefix
+  //Xóa toàn bộ cache theo prefix
   async clearByPrefix(prefix: string) {
     const keys = await redisCache.keys(`${prefix}*`);
-    // console.log(keys);
+    //console.log(keys);
 
     if (keys.length > 0) {
       await redisCache.del(...keys);
@@ -118,7 +127,7 @@ export const CacheManager = {
     }
   },
 
-  //   Xóa cache cho nhóm cụ thể
+  //Xóa cache cho nhóm cụ thể
   async clearCustomer() {
     await this.clearByPrefix("customers:");
   },
@@ -131,6 +140,7 @@ export const CacheManager = {
     await this.clearByPrefix("employees:");
   },
 
+  //clear order
   async clearOrderAcceptPlanning(role: string) {
     await this.clearByPrefix(`orders:${role}:accept_planning:`);
 
@@ -146,6 +156,7 @@ export const CacheManager = {
     await this.clearByPrefix("orders:status:accept");
   },
 
+  //clear planning
   async clearPlanningPaper() {
     await this.clearByPrefix("planningPaper:machine:");
     await this.clearByPrefix("planningPaper:search:");
@@ -160,6 +171,7 @@ export const CacheManager = {
     await this.clearByPrefix("planningBox:search:");
   },
 
+  //clear manufacture
   async clearManufacturePaper() {
     await this.clearByPrefix("manufacturePaper:machine:");
   },
@@ -168,6 +180,7 @@ export const CacheManager = {
     await this.clearByPrefix("manufactureBox:machine:");
   },
 
+  //clear report
   async clearReportPaper() {
     await this.clearByPrefix("reportPaper:");
   },
@@ -176,14 +189,28 @@ export const CacheManager = {
     await this.clearByPrefix("reportBox:");
   },
 
+  //clear dashboard
   async clearDbPlanning() {
     await this.clearByPrefix("dashboard:planning:all:");
+    await this.clearByPrefix("dashboard:search:all");
   },
 
   async clearDbPlanningDetail() {
     await this.clearByPrefix("dashboard:detail:");
   },
 
+  //wating check
+  async clearWaitingPaper() {
+    await this.clearByPrefix("waiting:paper:all");
+  },
+  async clearWaitingBox() {
+    await this.clearByPrefix("waiting:box:all");
+  },
+  async clearBoxDetail() {
+    await this.clearByPrefix("box:detail:");
+  },
+
+  //clear inbound
   async clearInbound() {
     await this.clearByPrefix("inboundHistory:page:");
   },
@@ -223,6 +250,11 @@ export const CacheManager = {
       //dashboard
       dbPlanning: this.keys.dashboard.planning.lastUpdated,
       dbDetail: this.keys.dashboard.details.lastUpdated,
+
+      //waiting check
+      waitingPaper: this.keys.waitingCheck.paper.lastUpdated,
+      waitingBox: this.keys.waitingCheck.box.lastUpdated,
+      boxDetail: this.keys.waitingCheck.boxDetail.lastUpdated,
 
       //warehouse
       inbound: this.keys.warehouse.inbound.lastUpdated,

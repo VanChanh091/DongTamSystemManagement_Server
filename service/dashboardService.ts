@@ -11,7 +11,10 @@ import { Request, Response } from "express";
 import { dbPlanningColumns, mappingDbPlanningRow } from "../utils/mapping/dbPlanningRowAndColumn";
 import { exportExcelDbPlanning } from "../utils/helper/excelExporter";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
-import { getDbPlanningByField } from "../utils/helper/modelHelper/planningHelper";
+import {
+  buildStagesDetails,
+  getDbPlanningByField,
+} from "../utils/helper/modelHelper/planningHelper";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { planning, details, search } = CacheManager.keys.dashboard;
@@ -85,22 +88,12 @@ export const dashboardService = {
 
       const box = detail.PlanningBox;
 
-      //get stage
-      const normalStages = box?.boxTimes?.map((stage) => stage.toJSON()) ?? [];
-
-      //get all time overflow
-      const allOverflow = await dashboardRepository.getAllTimeOverflow(box?.planningBoxId ?? 0);
-
-      const overflowByMachine: Record<string, any> = {};
-      for (const ov of allOverflow) {
-        overflowByMachine[ov.machine as string] = ov;
-        delete ov.overflowDayStart;
-      }
-
-      const stages = normalStages.map((stage) => ({
-        ...stage,
-        timeOverFlow: overflowByMachine[String(stage.machine)] ?? null,
-      }));
+      const stages = await buildStagesDetails({
+        detail: box,
+        getBoxTimes: (d) => d.boxTimes,
+        getPlanningBoxId: (d) => d.planningBoxId,
+        getAllOverflow: (id) => dashboardRepository.getAllTimeOverflow(id),
+      });
 
       await redisCache.set(cacheKey, JSON.stringify(stages), "EX", 1800);
 

@@ -121,7 +121,14 @@ export const dashboardRepository = {
     return await timeOverflowPlanning.findAll({
       where: { planningBoxId: planningBoxId },
       attributes: {
-        exclude: ["createdAt", "updatedAt", "status", "planningId", "overflowId"],
+        exclude: [
+          "createdAt",
+          "updatedAt",
+          "status",
+          "planningId",
+          "overflowId",
+          "overflowDayStart",
+        ],
       },
       raw: true,
     });

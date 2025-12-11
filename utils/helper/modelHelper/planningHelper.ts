@@ -306,3 +306,36 @@ export const mergeShiftField = (currentValue: string, incoming?: string) => {
 
   return currentValue;
 };
+
+export const buildStagesDetails = async ({
+  detail,
+  getBoxTimes,
+  getPlanningBoxId,
+  getAllOverflow,
+}: {
+  detail: any;
+  getBoxTimes: (d: any) => any[];
+  getPlanningBoxId: (d: any) => number;
+  getAllOverflow: (planningBoxId: number) => Promise<any[]>;
+}) => {
+  // lấy toàn bộ stages bình thường
+  const normalStages = getBoxTimes(detail)?.map((s) => s.toJSON()) ?? [];
+
+  // lấy overflow theo planningBoxId
+  const planningBoxId = getPlanningBoxId(detail);
+  const allOverflow = await getAllOverflow(planningBoxId);
+
+  // gom overflow theo machine
+  const overflowByMachine: Record<string, any> = {};
+  for (const ov of allOverflow) {
+    overflowByMachine[ov.machine as string] = ov;
+  }
+
+  // merge stage + overflow tương ứng
+  const stages = normalStages.map((stage) => ({
+    ...stage,
+    timeOverFlow: overflowByMachine[String(stage.machine)] ?? null,
+  }));
+
+  return stages;
+};
