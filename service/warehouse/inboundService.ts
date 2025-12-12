@@ -232,6 +232,8 @@ export const inboundService = {
         );
       }
 
+      await planning.update({ statusRequest: "completed" }, { transaction });
+
       const inboundRecord = await planningRepository.createData({
         model: InboundHistory,
         data: {

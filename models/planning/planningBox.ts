@@ -4,6 +4,8 @@ import { PlanningBoxTime } from "./planningBoxMachineTime.js";
 import { timeOverflowPlanning } from "./timeOverflowPlanning.js";
 import { Order } from "../order/order.js";
 
+export type statusRequestInbound = "none" | "requested" | "reject" | "complete";
+
 //định nghĩa trường trong bảng
 interface PlanningBoxAttributes {
   planningBoxId: number;
@@ -33,7 +35,7 @@ interface PlanningBoxAttributes {
 
   hasOverFlow?: boolean | null;
 
-  isRequestCheck: boolean;
+  statusRequest: statusRequestInbound;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -66,6 +68,7 @@ type PlanningBoxCreationAttributes = Optional<
   | "hasCanMang"
   | "hasDongGhim"
   | "hasOverFlow"
+  | "statusRequest"
   | "createdAt"
   | "updatedAt"
 >;
@@ -102,7 +105,7 @@ export class PlanningBox
 
   declare hasOverFlow?: boolean | null;
 
-  declare isRequestCheck: boolean;
+  declare statusRequest: statusRequestInbound;
 
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
@@ -152,7 +155,10 @@ export function initPlanningBoxModel(sequelize: Sequelize): typeof PlanningBox {
 
       hasOverFlow: { type: DataTypes.BOOLEAN, defaultValue: false },
 
-      isRequestCheck: { type: DataTypes.BOOLEAN, defaultValue: false },
+      statusRequest: {
+        type: DataTypes.ENUM("none", "requested", "reject", "complete"),
+        defaultValue: "none",
+      },
 
       orderId: { type: DataTypes.STRING, allowNull: false },
       planningId: { type: DataTypes.INTEGER, allowNull: false },

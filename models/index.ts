@@ -18,6 +18,7 @@ import { initReportPlanningBoxModel } from "./report/reportPlanningBox";
 import { initReportPlanningPaperModel } from "./report/reportPlanningPaper";
 import { initUserModel } from "./user/user";
 import { initInboundHistoryModel } from "./warehouse/inboundHistory";
+import { initOutboundDetailModel } from "./warehouse/outboundDetail";
 import { initOutboundHistoryModel } from "./warehouse/outboundHistory";
 
 const User = initUserModel(sequelize);
@@ -40,6 +41,7 @@ const WasteNormBox = initWasteNormBoxModel(sequelize);
 const WaveCrestCoefficient = initWaveCrestCoefficientModel(sequelize);
 const InboundHistory = initInboundHistoryModel(sequelize);
 const OutboundHistory = initOutboundHistoryModel(sequelize);
+const OutboundDetail = initOutboundDetailModel(sequelize);
 
 const models = {
   User,
@@ -65,6 +67,7 @@ const models = {
   //warehouse
   InboundHistory,
   OutboundHistory,
+  OutboundDetail,
 
   //admin
   MachinePaper,
@@ -136,8 +139,10 @@ ReportPlanningBox.belongsTo(PlanningBox, { foreignKey: "planningBoxId" });
 Order.hasMany(InboundHistory, { foreignKey: "orderId", onDelete: "CASCADE" });
 InboundHistory.belongsTo(Order, { foreignKey: "orderId" });
 
-Order.hasMany(OutboundHistory, { foreignKey: "orderId", onDelete: "CASCADE" });
-OutboundHistory.belongsTo(Order, { foreignKey: "orderId" });
+OutboundHistory.hasMany(OutboundDetail, { foreignKey: "outboundId", onDelete: "CASCADE" });
+OutboundDetail.belongsTo(OutboundHistory, { foreignKey: "outboundId" });
+Order.hasMany(OutboundDetail, { foreignKey: "orderId", onDelete: "CASCADE" });
+OutboundDetail.belongsTo(Order, { foreignKey: "orderId" });
 
 //timeOverflowPlanning
 PlanningPaper.hasOne(timeOverflowPlanning, {

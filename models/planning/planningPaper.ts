@@ -2,7 +2,6 @@ import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { Order } from "../order/order";
 import { timeOverflowPlanning } from "./timeOverflowPlanning";
 import { PlanningBox } from "./planningBox";
-import { InboundHistory } from "../warehouse/inboundHistory";
 
 export type machinePaperType = "Máy 1350" | "Máy 1900" | "Máy 2 Lớp" | "Máy Quấn Cuồn";
 export type planningPaperStatus =
@@ -12,6 +11,7 @@ export type planningPaperStatus =
   | "producing"
   | "stop"
   | "cancel";
+export type statusRequestInbound = "none" | "requested" | "reject" | "complete";
 
 //định nghĩa trường trong bảng
 interface PlanningPaperAttributes {
@@ -49,6 +49,7 @@ interface PlanningPaperAttributes {
   shiftProduction?: string | null;
   shiftManagement?: string | null;
   status: planningPaperStatus;
+  statusRequest: statusRequestInbound;
   hasOverFlow?: boolean | null;
   hasBox?: boolean | null;
   sortPlanning?: number | null;
@@ -88,6 +89,8 @@ type PlanningPaperCreationAttributes = Optional<
   | "qtyWasteNorm"
   | "shiftProduction"
   | "shiftManagement"
+  | "status"
+  | "statusRequest"
   | "hasOverFlow"
   | "hasBox"
   | "sortPlanning"
@@ -131,6 +134,7 @@ export class PlanningPaper
   declare shiftProduction?: string | null;
   declare shiftManagement?: string | null;
   declare status: planningPaperStatus;
+  declare statusRequest: statusRequestInbound;
   declare hasOverFlow?: boolean | null;
   declare hasBox?: boolean | null;
   declare sortPlanning?: number | null;
@@ -196,6 +200,10 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
         type: DataTypes.ENUM("planning", "complete", "lackQty", "producing", "stop", "cancel"),
         allowNull: false,
         defaultValue: "planning",
+      },
+      statusRequest: {
+        type: DataTypes.ENUM("none", "requested", "reject", "complete"),
+        defaultValue: "none",
       },
       hasOverFlow: {
         type: DataTypes.BOOLEAN,

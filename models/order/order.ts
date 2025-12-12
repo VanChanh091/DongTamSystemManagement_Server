@@ -50,7 +50,7 @@ interface OrderAttributes {
   createdAt?: Date;
   updatedAt?: Date;
 
-  //FK
+  //association
   customerId: string;
   productId: string;
   userId: number;

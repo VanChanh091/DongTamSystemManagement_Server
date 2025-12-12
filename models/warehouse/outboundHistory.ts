@@ -1,18 +1,19 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { Order } from "../order/order";
+import { OutboundDetail } from "./outboundDetail";
 
 //định nghĩa trường trong bảng
 interface OutboundHistoryAttributes {
   outboundId: number;
   dateOutbound: Date;
   outboundSlipCode: string;
-  deliveredQty: number;
-  outboundQty: number;
+  totalPriceOrder: number;
+  totalVAT?: number;
+  totalPricePayment: number;
+  totalOutboundQty: number;
+  totalDeliveredQty: number;
   createdAt?: Date;
   updatedAt?: Date;
-
-  //FK
-  orderId: string;
 }
 
 //cho phép bỏ qua id khi tạo
@@ -29,14 +30,16 @@ export class OutboundHistory
   declare outboundId: number;
   declare dateOutbound: Date;
   declare outboundSlipCode: string;
-  declare deliveredQty: number;
-  declare outboundQty: number;
+  declare totalPriceOrder: number;
+  declare totalVAT?: number;
+  declare totalPricePayment: number;
+  declare totalOutboundQty: number;
+  declare totalDeliveredQty: number;
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
 
-  //FK
-  declare orderId: string;
-  declare Order: Order;
+  //association
+  declare outboundDetail: OutboundDetail;
 }
 
 export function initOutboundHistoryModel(sequelize: Sequelize): typeof OutboundHistory {
@@ -45,11 +48,11 @@ export function initOutboundHistoryModel(sequelize: Sequelize): typeof OutboundH
       outboundId: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
       dateOutbound: { type: DataTypes.DATE, allowNull: false },
       outboundSlipCode: { type: DataTypes.STRING, allowNull: false },
-      deliveredQty: { type: DataTypes.INTEGER, allowNull: false },
-      outboundQty: { type: DataTypes.INTEGER, allowNull: false },
-
-      //FK
-      orderId: { type: DataTypes.STRING, allowNull: false },
+      totalPriceOrder: { type: DataTypes.DOUBLE, allowNull: false },
+      totalVAT: { type: DataTypes.DOUBLE },
+      totalPricePayment: { type: DataTypes.DOUBLE, allowNull: false },
+      totalOutboundQty: { type: DataTypes.INTEGER, allowNull: false },
+      totalDeliveredQty: { type: DataTypes.INTEGER, allowNull: false },
     },
     { sequelize, tableName: "OutboundHistory", timestamps: true }
   );

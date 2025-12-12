@@ -244,6 +244,9 @@ export const manufactureService = {
         transaction,
       });
 
+      //chuyển sang trang chờ kiểm
+      await planning.update({ statusRequest: "requested" }, { transaction });
+
       //4. Commit + clear cache
       await transaction?.commit();
 
@@ -627,7 +630,7 @@ export const manufactureService = {
         throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
       }
 
-      if (planningBox.isRequestCheck === true) {
+      if (planningBox.statusRequest == "requested") {
         throw AppError.BadRequest("Đơn này đã yêu cầu kiểm tra rồi", "ALREADY_REQUESTED");
       }
 
@@ -642,7 +645,7 @@ export const manufactureService = {
         );
       }
 
-      await planningBox.update({ isRequestCheck: true }, { transaction });
+      await planningBox.update({ statusRequest: "requested" }, { transaction });
 
       await transaction?.commit();
 

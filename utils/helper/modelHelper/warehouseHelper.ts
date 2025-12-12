@@ -85,7 +85,7 @@ export const getOutboundByField = async <T>({
     let sourceMessage = "";
 
     if (!allData) {
-      allData = await warehouseRepository.findOutboundByPage({ paginate: false });
+      allData = await warehouseRepository.getOutboundByPage({ paginate: false });
       await redisCache.set(cacheKey, JSON.stringify(allData), "EX", 900);
       sourceMessage = `Get outbound from DB`;
     } else {

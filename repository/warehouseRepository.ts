@@ -9,6 +9,7 @@ import { Box } from "../models/order/box";
 import { PlanningBox } from "../models/planning/planningBox";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { OutboundHistory } from "../models/warehouse/outboundHistory";
+import { OutboundDetail } from "../models/warehouse/outboundDetail";
 
 export const warehouseRepository = {
   //====================================WAITING CHECK========================================
@@ -58,7 +59,7 @@ export const warehouseRepository = {
   //box
   getBoxWaitingChecked: async () => {
     return await PlanningBox.findAll({
-      where: { isRequestCheck: true },
+      where: { statusRequest: "requested" },
       attributes: {
         exclude: [
           "hasIn",
@@ -150,6 +151,7 @@ export const warehouseRepository = {
           attributes: [
             "QC_box",
             "day",
+            "flute",
             "matE",
             "matB",
             "matC",
@@ -158,6 +160,7 @@ export const warehouseRepository = {
             "songB",
             "songC",
             "songE2",
+            "dayReceiveOrder",
             "lengthPaperCustomer",
             "paperSizeCustomer",
             "quantityCustomer",
@@ -185,7 +188,7 @@ export const warehouseRepository = {
     return await OutboundHistory.count();
   },
 
-  findOutboundByPage: async ({
+  getOutboundByPage: async ({
     page = 1,
     pageSize = 20,
     paginate = true,
@@ -198,34 +201,16 @@ export const warehouseRepository = {
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {
-          model: Order,
-          attributes: {
-            exclude: [
-              "dayReceiveOrder",
-              "flute",
-              "canLan",
-              "daoXa",
-              "lengthPaperManufacture",
-              "paperSizeManufacture",
-              "quantityManufacture",
-              "numberChild",
-              "acreage",
-              "dvt",
-              "price",
-              "pricePaper",
-              "discount",
-              "profit",
-              "dateRequestShipping",
-              "instructSpecial",
-              "isBox",
-              "status",
-              "rejectReason",
-              "userId",
-            ],
-          },
+          model: OutboundDetail,
+          attributes: ["outboundDetailId"],
+          separate: true,
+          limit: 1,
           include: [
-            { model: Customer, attributes: ["customerName", "companyName"] },
-            { model: Product, attributes: ["typeProduct", "productName"] },
+            {
+              model: Order,
+              attributes: ["orderId"],
+              include: [{ model: Customer, attributes: ["customerName", "companyName"] }],
+            },
           ],
         },
       ],
@@ -238,5 +223,32 @@ export const warehouseRepository = {
     }
 
     return await OutboundHistory.findAll(query);
+  },
+
+  getOutboundDetail: async (outboundId: number) => {
+    return await OutboundDetail.findAll({
+      attributes: { exclude: ["createdAt", "updatedAt"] },
+      where: { outboundId },
+      include: [
+        {
+          model: Order,
+          attributes: [
+            "orderId",
+            "flute",
+            "QC_box",
+            "lengthPaperCustomer",
+            "paperSizeCustomer",
+            "quantityCustomer",
+            "dvt",
+            "price",
+            "pricePaper",
+            "discount",
+            "vat",
+            "totalPriceVAT",
+          ],
+          include: [{ model: Product, attributes: ["typeProduct", "productName"] }],
+        },
+      ],
+    });
   },
 };

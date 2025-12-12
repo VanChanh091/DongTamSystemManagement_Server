@@ -11,7 +11,9 @@ import {
 } from "../../controller/user/warehouse/inboundHistoryController";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 import {
+  createOutbound,
   getAllOutboundHistory,
+  getOutboundDetail,
   searchOutboundByField,
 } from "../../controller/user/warehouse/outboundHistoryController";
 
@@ -34,6 +36,10 @@ router.get("/inbound/filter", authenticate, searchInboundByField);
 //========================OUTBOUND HISTORY===========================
 
 router.get("/outbound", authenticate, getAllOutboundHistory);
+router.get("/outbound/detail", authenticate, getOutboundDetail);
+router.get("/createOutbound", authenticate, createOutbound);
+// router.get("/updateOutbound", authenticate, createOutbound);
+// router.get("/deleteOutbound", authenticate, createOutbound);
 router.get("/outbound/filter", authenticate, searchOutboundByField);
 
 export default router;

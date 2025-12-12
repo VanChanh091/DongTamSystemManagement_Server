@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { outboundService } from "../../../service/warehouse/outboundService";
+import { AppError } from "../../../utils/appError";
 
 //===============================OUTBOUND HISTORY=====================================
 
@@ -8,6 +9,35 @@ export const getAllOutboundHistory = async (req: Request, res: Response, next: N
 
   try {
     const response = await outboundService.getAllOutboundHistory(Number(page), Number(pageSize));
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getOutboundDetail = async (req: Request, res: Response, next: NextFunction) => {
+  const { outboundId } = req.query as { outboundId: string };
+
+  try {
+    const response = await outboundService.getOutboundDetail(Number(outboundId));
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createOutbound = async (req: Request, res: Response, next: NextFunction) => {
+  let { outboundQty, orderIds } = req.body as { outboundQty: number; orderIds: string[] };
+
+  try {
+    if (!Array.isArray(orderIds)) {
+      if (!orderIds) {
+        throw AppError.BadRequest("orderIds phải là mảng hoặc giá trị hợp lệ", "INVALID_ORDER_IDS");
+      }
+      orderIds = [orderIds];
+    }
+
+    const response = await outboundService.createOutbound({ outboundQty, orderIds });
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -30,6 +60,17 @@ export const searchOutboundByField = async (req: Request, res: Response, next: N
       pageSize: Number(pageSize),
     });
     return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const exportFileOutbound = async (req: Request, res: Response, next: NextFunction) => {
+  // const { outboundId } = req.query as { outboundId: string };
+
+  try {
+    // const response = await outboundService.exportFileOutbound(Number(outboundId));
+    // return res.status(200).json(response);
   } catch (error) {
     next(error);
   }
