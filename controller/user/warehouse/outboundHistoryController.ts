@@ -27,17 +27,21 @@ export const getOutboundDetail = async (req: Request, res: Response, next: NextF
 };
 
 export const createOutbound = async (req: Request, res: Response, next: NextFunction) => {
-  let { outboundQty, orderIds } = req.body as { outboundQty: number; orderIds: string[] };
+  let { outboundDetails } = req.body as {
+    outboundDetails: { orderId: string; outboundQty: number }[] | any;
+  };
 
   try {
-    if (!Array.isArray(orderIds)) {
-      if (!orderIds) {
-        throw AppError.BadRequest("orderIds phải là mảng hoặc giá trị hợp lệ", "INVALID_ORDER_IDS");
+    if (!Array.isArray(outboundDetails)) {
+      if (!outboundDetails) {
+        throw AppError.BadRequest(
+          "outboundDetails phải là mảng hoặc giá trị hợp lệ",
+          "INVALID_ORDER_IDS"
+        );
       }
-      orderIds = [orderIds];
+      outboundDetails = [outboundDetails];
     }
-
-    const response = await outboundService.createOutbound({ outboundQty, orderIds });
+    const response = await outboundService.createOutbound({ outboundDetails });
     return res.status(200).json(response);
   } catch (error) {
     next(error);

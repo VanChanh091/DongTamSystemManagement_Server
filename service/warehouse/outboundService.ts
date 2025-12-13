@@ -67,7 +67,7 @@ export const outboundService = {
 
       const details = await warehouseRepository.getOutboundDetail(outboundId);
 
-      return details;
+      return { message: "get outbound detail successfully", data: details };
     } catch (error) {
       console.error("Failed to get all outbound detail:", error);
       if (error instanceof AppError) throw error;
@@ -76,108 +76,132 @@ export const outboundService = {
   },
 
   createOutbound: async ({
-    outboundQty,
-    orderIds,
+    outboundDetails,
   }: {
-    outboundQty: number;
-    orderIds: string[];
+    outboundDetails: { orderId: string; outboundQty: number }[];
   }) => {
     const transaction = await OutboundHistory.sequelize?.transaction();
 
-    // try {
-    //   if (!orderIds || orderIds.length === 0) {
-    //     throw AppError.BadRequest("Phải chọn ít nhất 1 đơn hàng", "EMPTY_ORDER_LIST");
-    //   }
+    try {
+      if (!outboundDetails || outboundDetails.length === 0) {
+        throw AppError.BadRequest("Phải chọn ít nhất 1 đơn hàng", "EMPTY_ORDER_LIST");
+      }
 
-    //   let customerId: string | null = null;
-    //   let totalPriceOrder = 0;
-    //   let totalVAT = 0;
-    //   let totalPricePayment = 0;
-    //   let deliveredQty = 0;
+      let customerId: string | null = null;
+      let totalPriceOrder = 0;
+      let totalPriceVAT = 0;
+      let totalPricePayment = 0;
+      let totalOutboundQty = 0;
 
-    //   // Validate order + inbound + customer
-    //   for (const orderId of orderIds) {
-    //     const order = await Order.findByPk(orderId, { transaction });
-    //     if (!order) {
-    //       throw AppError.NotFound(`Order ${orderId} không tồn tại`, "ORDER_NOT_FOUND");
-    //     }
+      const preparedDetails: {
+        orderId: string;
+        outboundQty: number;
+        price: number;
+        totalPriceOutbound: number;
+        deliveredQty: number;
+      }[] = [];
 
-    //     // const inbound = await InboundHistory.findOne({
-    //     //   where: { orderId },
-    //     //   transaction,
-    //     // });
-    //     // if (!inbound) {
-    //     //   throw AppError.BadRequest(`Order ${orderId} chưa nhập kho`, "ORDER_NOT_INBOUND");
-    //     // }
+      for (const item of outboundDetails) {
+        // check order is exist
+        const order = await Order.findByPk(item.orderId, { transaction });
+        if (!order) {
+          throw AppError.NotFound(`Order ${item.orderId} không tồn tại`, "ORDER_NOT_FOUND");
+        }
 
-    //     if (customerId === null) {
-    //       customerId = order.customerId;
-    //     } else if (customerId !== order.customerId) {
-    //       throw AppError.BadRequest("Các đơn hàng không cùng khách hàng", "CUSTOMER_MISMATCH");
-    //     }
+        // check inbound
+        // const inbound = await InboundHistory.findOne({
+        //   where: { orderId: item.orderId },
+        //   transaction,
+        // });
+        // if (!inbound) {
+        //   throw AppError.BadRequest(`Order ${item.orderId} chưa nhập kho`, "ORDER_NOT_INBOUND");
+        // }
 
-    //     const oldOutboundDetails = await OutboundDetail.findAll({
-    //       where: { orderId },
-    //       attributes: ["outboundId"],
-    //       transaction,
-    //     });
+        // check customer
+        if (customerId === null) {
+          customerId = order.customerId;
+        } else if (customerId !== order.customerId) {
+          throw AppError.BadRequest("Các đơn hàng không cùng khách hàng", "CUSTOMER_MISMATCH");
+        }
 
-    //     if (oldOutboundDetails.length > 0) {
-    //       const outboundIds = oldOutboundDetails.map((d) => d.outboundId);
+        // check xuất vượt số lượng order
+        const exportedQty = await OutboundDetail.sum("outboundQty", {
+          where: { orderId: item.orderId },
+          transaction,
+        });
 
-    //       const sumQty = await OutboundHistory.sum("outboundQty", {
-    //         where: { outboundId: outboundIds },
-    //         transaction,
-    //       });
+        const deliveredQty = Number(exportedQty ?? 0);
+        if (deliveredQty + item.outboundQty > order.quantityCustomer) {
+          throw AppError.BadRequest(
+            `Xuất vượt số lượng cho order ${item.orderId}`,
+            "OUTBOUND_QTY_EXCEED"
+          );
+        }
 
-    //       deliveredQty += Number(sumQty ?? 0);
-    //     }
+        //total price for outbound detail
+        const totalPriceOutbound = order.price * item.outboundQty;
 
-    //     totalPriceOrder += order.totalPrice ?? 0;
-    //     totalVAT += order.vat ?? 0;
-    //     totalPricePayment += order.totalPriceVAT ?? 0;
-    //   }
+        // outbound history
+        const vatRate = (order?.vat ?? 0) / 100;
+        const vatAmount = totalPriceOutbound * vatRate;
 
-    //   // Generate slip code
-    //   const now = new Date();
-    //   const slipCode = `XK/${now.getDate()}/${now.getMonth() + 1}/${now
-    //     .getFullYear()
-    //     .toString()
-    //     .slice(-2)}`;
+        totalPriceOrder += totalPriceOutbound;
+        totalPriceVAT += vatAmount;
+        totalPricePayment += totalPriceOutbound + vatAmount;
+        totalOutboundQty += item.outboundQty;
 
-    //   // Tạo outbound
-    //   const outbound = await OutboundHistory.create(
-    //     {
-    //       dateOutbound: now,
-    //       outboundSlipCode: slipCode,
-    //       outboundQty,
-    //       deliveredQty,
-    //       totalPriceOrder,
-    //       totalVAT,
-    //       totalPricePayment,
-    //     },
-    //     { transaction }
-    //   );
+        preparedDetails.push({
+          orderId: item.orderId,
+          outboundQty: item.outboundQty,
+          price: order.price,
+          totalPriceOutbound,
+          deliveredQty,
+        });
+      }
 
-    //   // 4️⃣ Tạo outbound detail
-    //   for (const orderId of orderIds) {
-    //     await OutboundDetail.create(
-    //       {
-    //         outboundId: outbound.outboundId,
-    //         orderId,
-    //       },
-    //       { transaction }
-    //     );
-    //   }
+      // Generate slip code
+      const now = new Date();
+      const slipCode = `XK/${now.getDate()}/${now.getMonth() + 1}/${now
+        .getFullYear()
+        .toString()
+        .slice(-2)}`;
 
-    //   await transaction?.commit();
-    //   return outbound;
-    // } catch (error) {
-    //   await transaction?.rollback();
-    //   console.error("Error create outbound:", error);
-    //   if (error instanceof AppError) throw error;
-    //   throw AppError.ServerError();
-    // }
+      // Tạo outbound
+      const outbound = await OutboundHistory.create(
+        {
+          dateOutbound: now,
+          outboundSlipCode: slipCode,
+          totalPriceOrder,
+          totalPriceVAT,
+          totalPricePayment,
+          totalOutboundQty,
+        },
+        { transaction }
+      );
+
+      // 4️⃣ Tạo outbound detail
+      for (const item of preparedDetails) {
+        await OutboundDetail.create(
+          {
+            outboundId: outbound.outboundId,
+            orderId: item.orderId,
+            outboundQty: item.outboundQty,
+            price: item.price,
+            totalPriceOutbound: item.totalPriceOutbound,
+            deliveredQty: item.deliveredQty,
+          },
+          { transaction }
+        );
+      }
+
+      await transaction?.commit();
+      return outbound;
+    } catch (error) {
+      await transaction?.rollback();
+      console.error("Error create outbound:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
   },
 
   searchOutboundByField: async ({

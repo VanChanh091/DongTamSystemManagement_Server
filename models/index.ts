@@ -139,7 +139,11 @@ ReportPlanningBox.belongsTo(PlanningBox, { foreignKey: "planningBoxId" });
 Order.hasMany(InboundHistory, { foreignKey: "orderId", onDelete: "CASCADE" });
 InboundHistory.belongsTo(Order, { foreignKey: "orderId" });
 
-OutboundHistory.hasMany(OutboundDetail, { foreignKey: "outboundId", onDelete: "CASCADE" });
+OutboundHistory.hasMany(OutboundDetail, {
+  foreignKey: "outboundId",
+  as: "detail",
+  onDelete: "CASCADE",
+});
 OutboundDetail.belongsTo(OutboundHistory, { foreignKey: "outboundId" });
 Order.hasMany(OutboundDetail, { foreignKey: "orderId", onDelete: "CASCADE" });
 OutboundDetail.belongsTo(Order, { foreignKey: "orderId" });

@@ -202,13 +202,14 @@ export const warehouseRepository = {
       include: [
         {
           model: OutboundDetail,
+          as: "detail",
           attributes: ["outboundDetailId"],
           separate: true,
           limit: 1,
           include: [
             {
               model: Order,
-              attributes: ["orderId"],
+              attributes: ["orderId", "dayReceiveOrder"],
               include: [{ model: Customer, attributes: ["customerName", "companyName"] }],
             },
           ],
@@ -232,20 +233,7 @@ export const warehouseRepository = {
       include: [
         {
           model: Order,
-          attributes: [
-            "orderId",
-            "flute",
-            "QC_box",
-            "lengthPaperCustomer",
-            "paperSizeCustomer",
-            "quantityCustomer",
-            "dvt",
-            "price",
-            "pricePaper",
-            "discount",
-            "vat",
-            "totalPriceVAT",
-          ],
+          attributes: ["dayReceiveOrder", "flute", "QC_box", "quantityCustomer", "dvt", "discount"],
           include: [{ model: Product, attributes: ["typeProduct", "productName"] }],
         },
       ],

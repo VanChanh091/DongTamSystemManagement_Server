@@ -1,5 +1,4 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
-import { Order } from "../order/order";
 import { OutboundDetail } from "./outboundDetail";
 
 //định nghĩa trường trong bảng
@@ -8,10 +7,9 @@ interface OutboundHistoryAttributes {
   dateOutbound: Date;
   outboundSlipCode: string;
   totalPriceOrder: number;
-  totalVAT?: number;
+  totalPriceVAT?: number;
   totalPricePayment: number;
   totalOutboundQty: number;
-  totalDeliveredQty: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -31,10 +29,9 @@ export class OutboundHistory
   declare dateOutbound: Date;
   declare outboundSlipCode: string;
   declare totalPriceOrder: number;
-  declare totalVAT?: number;
+  declare totalPriceVAT?: number;
   declare totalPricePayment: number;
   declare totalOutboundQty: number;
-  declare totalDeliveredQty: number;
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
 
@@ -49,10 +46,9 @@ export function initOutboundHistoryModel(sequelize: Sequelize): typeof OutboundH
       dateOutbound: { type: DataTypes.DATE, allowNull: false },
       outboundSlipCode: { type: DataTypes.STRING, allowNull: false },
       totalPriceOrder: { type: DataTypes.DOUBLE, allowNull: false },
-      totalVAT: { type: DataTypes.DOUBLE },
+      totalPriceVAT: { type: DataTypes.DOUBLE },
       totalPricePayment: { type: DataTypes.DOUBLE, allowNull: false },
       totalOutboundQty: { type: DataTypes.INTEGER, allowNull: false },
-      totalDeliveredQty: { type: DataTypes.INTEGER, allowNull: false },
     },
     { sequelize, tableName: "OutboundHistory", timestamps: true }
   );

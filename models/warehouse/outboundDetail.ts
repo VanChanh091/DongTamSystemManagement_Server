@@ -6,6 +6,8 @@ import { OutboundHistory } from "./outboundHistory";
 interface OutboundDetailAttributes {
   outboundDetailId: number;
   outboundQty: number;
+  price: number;
+  totalPriceOutbound: number;
   deliveredQty: number;
   createdAt?: Date;
   updatedAt?: Date;
@@ -28,6 +30,8 @@ export class OutboundDetail
 {
   declare outboundDetailId: number;
   declare outboundQty: number;
+  declare price: number;
+  declare totalPriceOutbound: number;
   declare deliveredQty: number;
 
   declare readonly createdAt?: Date;
@@ -46,6 +50,8 @@ export function initOutboundDetailModel(sequelize: Sequelize): typeof OutboundDe
     {
       outboundDetailId: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
       outboundQty: { type: DataTypes.INTEGER, allowNull: false },
+      price: { type: DataTypes.DOUBLE, allowNull: false },
+      totalPriceOutbound: { type: DataTypes.DOUBLE, allowNull: false },
       deliveredQty: { type: DataTypes.INTEGER, allowNull: false },
 
       //FK
