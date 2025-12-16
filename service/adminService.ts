@@ -59,9 +59,7 @@ export const adminService = {
         throw AppError.NotFound("machine not found", "MACHINE_NOT_FOUND");
       }
 
-      await existingMachine.update({
-        ...machineUpdated,
-      });
+      await existingMachine.update({ ...machineUpdated });
 
       return { message: "update machine successfully", data: existingMachine };
     } catch (error) {

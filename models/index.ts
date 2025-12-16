@@ -14,6 +14,9 @@ import { initPlanningBoxTimeModel } from "./planning/planningBoxMachineTime";
 import { initPlanningPaperModel } from "./planning/planningPaper";
 import { initTimeOverflowPlanningModel } from "./planning/timeOverflowPlanning";
 import { initProductModel } from "./product/product";
+import { initQcCriteriaModel } from "./qualityControl/qcCriteria";
+import { initQcSamepleResultModel } from "./qualityControl/qcSampleResult";
+import { initQcSessionModel } from "./qualityControl/qcSession";
 import { initReportPlanningBoxModel } from "./report/reportPlanningBox";
 import { initReportPlanningPaperModel } from "./report/reportPlanningPaper";
 import { initUserModel } from "./user/user";
@@ -21,27 +24,43 @@ import { initInboundHistoryModel } from "./warehouse/inboundHistory";
 import { initOutboundDetailModel } from "./warehouse/outboundDetail";
 import { initOutboundHistoryModel } from "./warehouse/outboundHistory";
 
+//other
 const User = initUserModel(sequelize);
 const Customer = initCustomerModel(sequelize);
 const Order = initOrderModel(sequelize);
 const Box = initBoxModel(sequelize);
 const Product = initProductModel(sequelize);
+
+//planning
 const PlanningPaper = initPlanningPaperModel(sequelize);
 const PlanningBox = initPlanningBoxModel(sequelize);
 const timeOverflowPlanning = initTimeOverflowPlanningModel(sequelize);
 const PlanningBoxTime = initPlanningBoxTimeModel(sequelize);
+
+//report
 const ReportPlanningPaper = initReportPlanningPaperModel(sequelize);
 const ReportPlanningBox = initReportPlanningBoxModel(sequelize);
+
+//employee
 const EmployeeBasicInfo = initEmployeeBasicInfoModel(sequelize);
 const EmployeeCompanyInfo = initEmployeeCompanyInfoModel(sequelize);
+
+//admin
 const MachinePaper = initMachinePaperModel(sequelize);
 const MachineBox = initMachineBoxModel(sequelize);
 const WasteNormPaper = initWasteNormPaperModel(sequelize);
 const WasteNormBox = initWasteNormBoxModel(sequelize);
 const WaveCrestCoefficient = initWaveCrestCoefficientModel(sequelize);
+
+//warehouse
 const InboundHistory = initInboundHistoryModel(sequelize);
 const OutboundHistory = initOutboundHistoryModel(sequelize);
 const OutboundDetail = initOutboundDetailModel(sequelize);
+
+//QC
+const QcSession = initQcSessionModel(sequelize);
+const QcCriteria = initQcCriteriaModel(sequelize);
+const QcSampleResult = initQcSamepleResultModel(sequelize);
 
 const models = {
   User,
@@ -145,6 +164,7 @@ OutboundHistory.hasMany(OutboundDetail, {
   onDelete: "CASCADE",
 });
 OutboundDetail.belongsTo(OutboundHistory, { foreignKey: "outboundId" });
+
 Order.hasMany(OutboundDetail, { foreignKey: "orderId", onDelete: "CASCADE" });
 OutboundDetail.belongsTo(Order, { foreignKey: "orderId" });
 
@@ -155,10 +175,7 @@ PlanningPaper.hasOne(timeOverflowPlanning, {
   onDelete: "CASCADE",
   constraints: false,
 });
-timeOverflowPlanning.belongsTo(PlanningPaper, {
-  foreignKey: "planningId",
-  constraints: false,
-});
+timeOverflowPlanning.belongsTo(PlanningPaper, { foreignKey: "planningId", constraints: false });
 
 PlanningBox.hasMany(timeOverflowPlanning, {
   foreignKey: "planningBoxId",
@@ -166,10 +183,7 @@ PlanningBox.hasMany(timeOverflowPlanning, {
   onDelete: "CASCADE",
   constraints: false,
 });
-timeOverflowPlanning.belongsTo(PlanningBox, {
-  foreignKey: "planningBoxId",
-  constraints: false,
-});
+timeOverflowPlanning.belongsTo(PlanningBox, { foreignKey: "planningBoxId", constraints: false });
 
 //employee
 EmployeeBasicInfo.hasOne(EmployeeCompanyInfo, {
@@ -177,9 +191,13 @@ EmployeeBasicInfo.hasOne(EmployeeCompanyInfo, {
   as: "companyInfo",
   onDelete: "CASCADE",
 });
-EmployeeCompanyInfo.belongsTo(EmployeeBasicInfo, {
-  foreignKey: "employeeId",
-  as: "basicInfo",
-});
+EmployeeCompanyInfo.belongsTo(EmployeeBasicInfo, { foreignKey: "employeeId", as: "basicInfo" });
+
+//QC session
+PlanningPaper.hasOne(QcSession, { foreignKey: "planningId", onDelete: "CASCADE" });
+QcSession.belongsTo(PlanningPaper, { foreignKey: "planningId" });
+
+PlanningBox.hasOne(QcSession, { foreignKey: "planningBoxId", onDelete: "CASCADE" });
+QcSession.belongsTo(PlanningBox, { foreignKey: "planningBoxId" });
 
 export default models;

@@ -182,6 +182,13 @@ export const warehouseRepository = {
     return await InboundHistory.findAll(query);
   },
 
+  findByOrderId: async ({ orderId, transaction }: { orderId: string; transaction: any }) => {
+    return await InboundHistory.findOne({
+      where: { orderId },
+      transaction,
+    });
+  },
+
   //====================================OUTBOUND HISTORY========================================
 
   outboundHistoryCount: async () => {
@@ -237,6 +244,19 @@ export const warehouseRepository = {
           include: [{ model: Product, attributes: ["typeProduct", "productName"] }],
         },
       ],
+    });
+  },
+
+  findByPK: async (outboundId: number) => {
+    return await OutboundHistory.findByPk(outboundId, {
+      attributes: ["outboundId"],
+    });
+  },
+
+  sumOutboundQty: async ({ orderId, transaction }: { orderId: string; transaction: any }) => {
+    return await OutboundDetail.sum("outboundQty", {
+      where: { orderId },
+      transaction,
     });
   },
 };

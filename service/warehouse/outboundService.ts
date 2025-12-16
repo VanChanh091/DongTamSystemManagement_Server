@@ -8,6 +8,7 @@ import { warehouseRepository } from "../../repository/warehouseRepository";
 import { OutboundDetail } from "../../models/warehouse/outboundDetail";
 import { Order } from "../../models/order/order";
 import { InboundHistory } from "../../models/warehouse/inboundHistory";
+import { planningRepository } from "../../repository/planningRepository";
 dotenv.config();
 
 const devEnvironment = process.env.NODE_ENV !== "production";
@@ -58,9 +59,7 @@ export const outboundService = {
         throw AppError.BadRequest("missing parameters", "INVALID_OUTBOUND_ID");
       }
 
-      const outbound = await OutboundHistory.findByPk(outboundId, {
-        attributes: ["outboundId"],
-      });
+      const outbound = await warehouseRepository.findByPK(outboundId);
       if (!outbound) {
         throw AppError.NotFound("Phiếu xuất kho không tồn tại", "OUTBOUND_NOT_FOUND");
       }
@@ -109,13 +108,13 @@ export const outboundService = {
         }
 
         // check inbound
-        // const inbound = await InboundHistory.findOne({
-        //   where: { orderId: item.orderId },
-        //   transaction,
-        // });
-        // if (!inbound) {
-        //   throw AppError.BadRequest(`Order ${item.orderId} chưa nhập kho`, "ORDER_NOT_INBOUND");
-        // }
+        const inbound = await warehouseRepository.findByOrderId({
+          orderId: item.orderId,
+          transaction,
+        });
+        if (!inbound) {
+          throw AppError.BadRequest(`Order ${item.orderId} chưa nhập kho`, "ORDER_NOT_INBOUND");
+        }
 
         // check customer
         if (customerId === null) {
@@ -125,8 +124,8 @@ export const outboundService = {
         }
 
         // check xuất vượt số lượng order
-        const exportedQty = await OutboundDetail.sum("outboundQty", {
-          where: { orderId: item.orderId },
+        const exportedQty = await warehouseRepository.sumOutboundQty({
+          orderId: item.orderId,
           transaction,
         });
 
@@ -167,8 +166,9 @@ export const outboundService = {
         .slice(-2)}`;
 
       // Tạo outbound
-      const outbound = await OutboundHistory.create(
-        {
+      const outbound = await planningRepository.createData({
+        model: OutboundHistory,
+        data: {
           dateOutbound: now,
           outboundSlipCode: slipCode,
           totalPriceOrder,
@@ -176,13 +176,14 @@ export const outboundService = {
           totalPricePayment,
           totalOutboundQty,
         },
-        { transaction }
-      );
+        transaction,
+      });
 
       // 4️⃣ Tạo outbound detail
       for (const item of preparedDetails) {
-        await OutboundDetail.create(
-          {
+        await planningRepository.createData({
+          model: OutboundDetail,
+          data: {
             outboundId: outbound.outboundId,
             orderId: item.orderId,
             outboundQty: item.outboundQty,
@@ -190,8 +191,8 @@ export const outboundService = {
             totalPriceOutbound: item.totalPriceOutbound,
             deliveredQty: item.deliveredQty,
           },
-          { transaction }
-        );
+          transaction,
+        });
       }
 
       await transaction?.commit();
