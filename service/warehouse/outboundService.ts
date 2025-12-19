@@ -9,6 +9,7 @@ import { OutboundDetail } from "../../models/warehouse/outboundDetail";
 import { Order } from "../../models/order/order";
 import { InboundHistory } from "../../models/warehouse/inboundHistory";
 import { planningRepository } from "../../repository/planningRepository";
+import { runInTransaction } from "../../utils/helper/transactionHelper";
 dotenv.config();
 
 const devEnvironment = process.env.NODE_ENV !== "production";
@@ -79,126 +80,124 @@ export const outboundService = {
   }: {
     outboundDetails: { orderId: string; outboundQty: number }[];
   }) => {
-    const transaction = await OutboundHistory.sequelize?.transaction();
-
     try {
-      if (!outboundDetails || outboundDetails.length === 0) {
-        throw AppError.BadRequest("Phải chọn ít nhất 1 đơn hàng", "EMPTY_ORDER_LIST");
-      }
-
-      let customerId: string | null = null;
-      let totalPriceOrder = 0;
-      let totalPriceVAT = 0;
-      let totalPricePayment = 0;
-      let totalOutboundQty = 0;
-
-      const preparedDetails: {
-        orderId: string;
-        outboundQty: number;
-        price: number;
-        totalPriceOutbound: number;
-        deliveredQty: number;
-      }[] = [];
-
-      for (const item of outboundDetails) {
-        // check order is exist
-        const order = await Order.findByPk(item.orderId, { transaction });
-        if (!order) {
-          throw AppError.NotFound(`Order ${item.orderId} không tồn tại`, "ORDER_NOT_FOUND");
+      return await runInTransaction(async (transaction) => {
+        if (!outboundDetails || outboundDetails.length === 0) {
+          throw AppError.BadRequest("Phải chọn ít nhất 1 đơn hàng", "EMPTY_ORDER_LIST");
         }
 
-        // check inbound
-        const inbound = await warehouseRepository.findByOrderId({
-          orderId: item.orderId,
-          transaction,
-        });
-        if (!inbound) {
-          throw AppError.BadRequest(`Order ${item.orderId} chưa nhập kho`, "ORDER_NOT_INBOUND");
-        }
+        let customerId: string | null = null;
+        let totalPriceOrder = 0;
+        let totalPriceVAT = 0;
+        let totalPricePayment = 0;
+        let totalOutboundQty = 0;
 
-        // check customer
-        if (customerId === null) {
-          customerId = order.customerId;
-        } else if (customerId !== order.customerId) {
-          throw AppError.BadRequest("Các đơn hàng không cùng khách hàng", "CUSTOMER_MISMATCH");
-        }
+        const preparedDetails: {
+          orderId: string;
+          outboundQty: number;
+          price: number;
+          totalPriceOutbound: number;
+          deliveredQty: number;
+        }[] = [];
 
-        // check xuất vượt số lượng order
-        const exportedQty = await warehouseRepository.sumOutboundQty({
-          orderId: item.orderId,
-          transaction,
-        });
+        for (const item of outboundDetails) {
+          // check order is exist
+          const order = await Order.findByPk(item.orderId, { transaction });
+          if (!order) {
+            throw AppError.NotFound(`Order ${item.orderId} không tồn tại`, "ORDER_NOT_FOUND");
+          }
 
-        const deliveredQty = Number(exportedQty ?? 0);
-        if (deliveredQty + item.outboundQty > order.quantityCustomer) {
-          throw AppError.BadRequest(
-            `Xuất vượt số lượng cho order ${item.orderId}`,
-            "OUTBOUND_QTY_EXCEED"
-          );
-        }
+          // check inbound
+          const inbound = await warehouseRepository.findByOrderId({
+            orderId: item.orderId,
+            transaction,
+          });
+          if (!inbound) {
+            throw AppError.BadRequest(`Order ${item.orderId} chưa nhập kho`, "ORDER_NOT_INBOUND");
+          }
 
-        //total price for outbound detail
-        const totalPriceOutbound = order.price * item.outboundQty;
+          // check customer
+          if (customerId === null) {
+            customerId = order.customerId;
+          } else if (customerId !== order.customerId) {
+            throw AppError.BadRequest("Các đơn hàng không cùng khách hàng", "CUSTOMER_MISMATCH");
+          }
 
-        // outbound history
-        const vatRate = (order?.vat ?? 0) / 100;
-        const vatAmount = totalPriceOutbound * vatRate;
+          // check xuất vượt số lượng order
+          const exportedQty = await warehouseRepository.sumOutboundQty({
+            orderId: item.orderId,
+            transaction,
+          });
 
-        totalPriceOrder += totalPriceOutbound;
-        totalPriceVAT += vatAmount;
-        totalPricePayment += totalPriceOutbound + vatAmount;
-        totalOutboundQty += item.outboundQty;
+          const deliveredQty = Number(exportedQty ?? 0);
+          if (deliveredQty + item.outboundQty > order.quantityCustomer) {
+            throw AppError.BadRequest(
+              `Xuất vượt số lượng cho order ${item.orderId}`,
+              "OUTBOUND_QTY_EXCEED"
+            );
+          }
 
-        preparedDetails.push({
-          orderId: item.orderId,
-          outboundQty: item.outboundQty,
-          price: order.price,
-          totalPriceOutbound,
-          deliveredQty,
-        });
-      }
+          //total price for outbound detail
+          const totalPriceOutbound = order.price * item.outboundQty;
 
-      // Generate slip code
-      const now = new Date();
-      const slipCode = `XK/${now.getDate()}/${now.getMonth() + 1}/${now
-        .getFullYear()
-        .toString()
-        .slice(-2)}`;
+          // outbound history
+          const vatRate = (order?.vat ?? 0) / 100;
+          const vatAmount = totalPriceOutbound * vatRate;
 
-      // Tạo outbound
-      const outbound = await planningRepository.createData({
-        model: OutboundHistory,
-        data: {
-          dateOutbound: now,
-          outboundSlipCode: slipCode,
-          totalPriceOrder,
-          totalPriceVAT,
-          totalPricePayment,
-          totalOutboundQty,
-        },
-        transaction,
-      });
+          totalPriceOrder += totalPriceOutbound;
+          totalPriceVAT += vatAmount;
+          totalPricePayment += totalPriceOutbound + vatAmount;
+          totalOutboundQty += item.outboundQty;
 
-      // 4️⃣ Tạo outbound detail
-      for (const item of preparedDetails) {
-        await planningRepository.createData({
-          model: OutboundDetail,
-          data: {
-            outboundId: outbound.outboundId,
+          preparedDetails.push({
             orderId: item.orderId,
             outboundQty: item.outboundQty,
-            price: item.price,
-            totalPriceOutbound: item.totalPriceOutbound,
-            deliveredQty: item.deliveredQty,
+            price: order.price,
+            totalPriceOutbound,
+            deliveredQty,
+          });
+        }
+
+        // Generate slip code
+        const now = new Date();
+        const slipCode = `XK/${now.getDate()}/${now.getMonth() + 1}/${now
+          .getFullYear()
+          .toString()
+          .slice(-2)}`;
+
+        // Tạo outbound
+        const outbound = await planningRepository.createData({
+          model: OutboundHistory,
+          data: {
+            dateOutbound: now,
+            outboundSlipCode: slipCode,
+            totalPriceOrder,
+            totalPriceVAT,
+            totalPricePayment,
+            totalOutboundQty,
           },
           transaction,
         });
-      }
 
-      await transaction?.commit();
-      return outbound;
+        // 4️⃣ Tạo outbound detail
+        for (const item of preparedDetails) {
+          await planningRepository.createData({
+            model: OutboundDetail,
+            data: {
+              outboundId: outbound.outboundId,
+              orderId: item.orderId,
+              outboundQty: item.outboundQty,
+              price: item.price,
+              totalPriceOutbound: item.totalPriceOutbound,
+              deliveredQty: item.deliveredQty,
+            },
+            transaction,
+          });
+        }
+
+        return outbound;
+      });
     } catch (error) {
-      await transaction?.rollback();
       console.error("Error create outbound:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
@@ -243,8 +242,8 @@ export const outboundService = {
 
   exportFileOutbound: async () => {
     try {
+      return await runInTransaction(async (transaction) => {});
     } catch (error) {
-      // await transaction?.rollback();
       console.error("Error export file outbound:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();

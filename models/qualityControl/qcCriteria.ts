@@ -40,7 +40,7 @@ export function initQcCriteriaModel(sequelize: Sequelize): typeof QcCriteria {
     {
       qcCriteriaId: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
       processType: { type: DataTypes.ENUM("paper", "box"), allowNull: false },
-      criteriaCode: { type: DataTypes.STRING, allowNull: false, unique: true },
+      criteriaCode: { type: DataTypes.STRING, allowNull: false },
       criteriaName: { type: DataTypes.STRING, allowNull: false },
       isRequired: { type: DataTypes.BOOLEAN, allowNull: false },
     },

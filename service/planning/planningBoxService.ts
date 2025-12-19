@@ -14,6 +14,7 @@ import { calTimeRunningPlanningBox } from "./helper/timeRunningBox";
 import { getPlanningByField } from "../../utils/helper/modelHelper/planningHelper";
 import { InboundHistory } from "../../models/warehouse/inboundHistory";
 import { warehouseRepository } from "../../repository/warehouseRepository";
+import { runInTransaction } from "../../utils/helper/transactionHelper";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { box } = CacheManager.keys.planning;
@@ -327,81 +328,78 @@ export const planningBoxService = {
     totalTimeWorking: number;
     isNewDay: boolean;
   }) => {
-    const transaction = await PlanningBox.sequelize?.transaction();
-
     try {
-      // 1. Cập nhật sortPlanning
-      for (const item of updateIndex) {
-        if (!item.sortPlanning) continue;
+      return await runInTransaction(async (transaction) => {
+        // 1. Cập nhật sortPlanning
+        for (const item of updateIndex) {
+          if (!item.sortPlanning) continue;
 
-        const boxTime = await planningRepository.getModelById({
-          model: PlanningBoxTime,
-          where: {
-            planningBoxId: item.planningBoxId,
-            machine,
-            status: { [Op.ne]: "complete" }, //lọc đơn đã complete
-          },
-          options: { transaction },
-        });
-
-        if (boxTime) {
-          await planningRepository.updateDataModel({
-            model: boxTime,
-            data: { sortPlanning: item.sortPlanning },
+          const boxTime = await planningRepository.getModelById({
+            model: PlanningBoxTime,
+            where: {
+              planningBoxId: item.planningBoxId,
+              machine,
+              status: { [Op.ne]: "complete" }, //lọc đơn đã complete
+            },
             options: { transaction },
           });
+
+          if (boxTime) {
+            await planningRepository.updateDataModel({
+              model: boxTime,
+              data: { sortPlanning: item.sortPlanning },
+              options: { transaction },
+            });
+          }
         }
-      }
 
-      // 2. Lấy lại danh sách planning đã được update
-      const sortedPlannings = await planningRepository.getBoxesByUpdateIndex(
-        updateIndex,
-        machine,
-        transaction
-      );
+        // 2. Lấy lại danh sách planning đã được update
+        const sortedPlannings = await planningRepository.getBoxesByUpdateIndex(
+          updateIndex,
+          machine,
+          transaction
+        );
 
-      // console.log(
-      //   sortedPlannings.map((p) => ({ id: p.planningBoxId, sort: p.boxTimes?.[0]?.sortPlanning }))
-      // );
+        // console.log(
+        //   sortedPlannings.map((p) => ({ id: p.planningBoxId, sort: p.boxTimes?.[0]?.sortPlanning }))
+        // );
 
-      // 3. Tính toán thời gian chạy cho từng planning
-      const machineInfo = await planningRepository.getModelById({
-        model: MachineBox,
-        where: {
-          machineName: machine,
-        },
+        // 3. Tính toán thời gian chạy cho từng planning
+        const machineInfo = await planningRepository.getModelById({
+          model: MachineBox,
+          where: {
+            machineName: machine,
+          },
+        });
+
+        if (!machineInfo) throw AppError.NotFound(`machine not found`, "MACHINE_NOT_FOUND");
+
+        // 4. Tính toán thời gian chạy
+        const updatedPlannings = await calTimeRunningPlanningBox({
+          plannings: sortedPlannings,
+          machineInfo: machineInfo,
+          machine,
+          dayStart,
+          timeStart,
+          totalTimeWorking,
+          isNewDay,
+          transaction,
+        });
+
+        //socket
+        const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
+        req.io?.to(roomName).emit("planningBoxUpdated", {
+          machine,
+          message: `Kế hoạch của ${machine} đã được cập nhật.`,
+        });
+
+        return {
+          message: "✅ Cập nhật sortPlanning + tính thời gian thành công",
+          data: updatedPlannings,
+        };
       });
-
-      if (!machineInfo) throw AppError.NotFound(`machine not found`, "MACHINE_NOT_FOUND");
-
-      // 4. Tính toán thời gian chạy
-      const updatedPlannings = await calTimeRunningPlanningBox({
-        plannings: sortedPlannings,
-        machineInfo: machineInfo,
-        machine,
-        dayStart,
-        timeStart,
-        totalTimeWorking,
-        isNewDay,
-        transaction,
-      });
-
-      await transaction?.commit();
-
-      //socket
-      const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
-      req.io?.to(roomName).emit("planningBoxUpdated", {
-        machine,
-        message: `Kế hoạch của ${machine} đã được cập nhật.`,
-      });
-
-      return {
-        message: "✅ Cập nhật sortPlanning + tính thời gian thành công",
-        data: updatedPlannings,
-      };
     } catch (error) {
       console.error("❌ update index & time running failed:", error);
-      await transaction?.rollback();
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }

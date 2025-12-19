@@ -16,6 +16,7 @@ import { Request, Response } from "express";
 import cloudinary from "../configs/connectCloudinary";
 import { exportExcelResponse } from "../utils/helper/excelExporter";
 import { mappingProductRow, productColumns } from "../utils/mapping/productRowAndColumn";
+import { runInTransaction } from "../utils/helper/transactionHelper";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { product } = CacheManager.keys;
@@ -119,47 +120,47 @@ export const productService = {
     const { prefix = "CUSTOM", product } = data;
     const parsedProduct = typeof product === "string" ? JSON.parse(product) : product;
 
-    const transaction = await Product.sequelize?.transaction();
-
     try {
-      const sanitizedPrefix = prefix.trim().replace(/\s+/g, "").toUpperCase();
+      return await runInTransaction(async (transaction) => {
+        const sanitizedPrefix = prefix.trim().replace(/\s+/g, "").toUpperCase();
 
-      // Check prefix đã tồn tại chưa
-      const prefixExists = await productRepository.checkPrefixProduct(sanitizedPrefix, transaction);
-
-      if (prefixExists) {
-        throw AppError.Conflict(
-          `Prefix '${sanitizedPrefix}' đã tồn tại, vui lòng chọn prefix khác`,
-          "PREFIX_ALREADY_EXISTS"
+        // Check prefix đã tồn tại chưa
+        const prefixExists = await productRepository.checkPrefixProduct(
+          sanitizedPrefix,
+          transaction
         );
-      }
 
-      const products = await productRepository.findAllById(transaction);
+        if (prefixExists) {
+          throw AppError.Conflict(
+            `Prefix '${sanitizedPrefix}' đã tồn tại, vui lòng chọn prefix khác`,
+            "PREFIX_ALREADY_EXISTS"
+          );
+        }
 
-      //custom productId
-      const allProductIds = products.map((p) => p.productId);
-      const newProductId = generateNextId(allProductIds, sanitizedPrefix, 4);
+        const products = await productRepository.findAllById(transaction);
 
-      if (req.file) {
-        const webpBuffer = await convertToWebp(req.file.buffer);
-        const result = await uploadImageToCloudinary(
-          webpBuffer,
-          "products",
-          newProductId.replace(/\s+/g, "_")
+        //custom productId
+        const allProductIds = products.map((p) => p.productId);
+        const newProductId = generateNextId(allProductIds, sanitizedPrefix, 4);
+
+        if (req.file) {
+          const webpBuffer = await convertToWebp(req.file.buffer);
+          const result = await uploadImageToCloudinary(
+            webpBuffer,
+            "products",
+            newProductId.replace(/\s+/g, "_")
+          );
+          parsedProduct.productImage = result.secure_url;
+        }
+
+        const newProduct = await productRepository.createProduct(
+          { productId: newProductId, ...parsedProduct },
+          transaction
         );
-        parsedProduct.productImage = result.secure_url;
-      }
 
-      const newProduct = await productRepository.createProduct(
-        { productId: newProductId, ...parsedProduct },
-        transaction
-      );
-
-      await transaction?.commit();
-
-      return { message: "Product created successfully", data: newProduct };
+        return { message: "Product created successfully", data: newProduct };
+      });
     } catch (error) {
-      await transaction?.rollback();
       console.error("❌ add product failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
@@ -167,34 +168,31 @@ export const productService = {
   },
 
   updatedProduct: async (req: Request, producId: string, productData: any) => {
-    const transaction = await Product.sequelize?.transaction();
-
     try {
-      const existingProduct = await productRepository.findProductByPk(producId);
-      if (!existingProduct) {
-        throw AppError.NotFound("Product not found", "PRODUCT_NOT_FOUND");
-      }
-
-      // Nếu có ảnh mới được upload
-      if (req.file) {
-        if (req.file) {
-          const webpBuffer = await convertToWebp(req.file.buffer);
-          const result = await uploadImageToCloudinary(webpBuffer, "products", producId);
-          productData.productImage = result.secure_url;
+      return await runInTransaction(async (transaction) => {
+        const existingProduct = await productRepository.findProductByPk(producId);
+        if (!existingProduct) {
+          throw AppError.NotFound("Product not found", "PRODUCT_NOT_FOUND");
         }
-      }
 
-      const result = await productRepository.updateProduct(
-        existingProduct,
-        productData,
-        transaction
-      );
+        // Nếu có ảnh mới được upload
+        if (req.file) {
+          if (req.file) {
+            const webpBuffer = await convertToWebp(req.file.buffer);
+            const result = await uploadImageToCloudinary(webpBuffer, "products", producId);
+            productData.productImage = result.secure_url;
+          }
+        }
 
-      await transaction?.commit();
+        const result = await productRepository.updateProduct(
+          existingProduct,
+          productData,
+          transaction
+        );
 
-      return { message: "Product updated successfully", data: result };
+        return { message: "Product updated successfully", data: result };
+      });
     } catch (error) {
-      await transaction?.rollback();
       console.error("❌ Update product error:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
@@ -202,30 +200,27 @@ export const productService = {
   },
 
   deletedProduct: async (producId: string) => {
-    const transaction = await Product.sequelize?.transaction();
-
     try {
-      const product = await productRepository.findProductByPk(producId);
-      if (!product) {
-        throw AppError.NotFound("Product not found", "PRODUCT_NOT_FOUND");
-      }
-
-      const imageName = product.productImage;
-
-      await product.destroy();
-
-      if (imageName && imageName.includes("cloudinary.com")) {
-        const publicId = getCloudinaryPublicId(imageName);
-        if (publicId) {
-          await cloudinary.uploader.destroy(publicId);
+      return await runInTransaction(async (transaction) => {
+        const product = await productRepository.findProductByPk(producId);
+        if (!product) {
+          throw AppError.NotFound("Product not found", "PRODUCT_NOT_FOUND");
         }
-      }
 
-      await transaction?.commit();
+        const imageName = product.productImage;
 
-      return { message: "Product deleted successfully" };
+        await product.destroy();
+
+        if (imageName && imageName.includes("cloudinary.com")) {
+          const publicId = getCloudinaryPublicId(imageName);
+          if (publicId) {
+            await cloudinary.uploader.destroy(publicId);
+          }
+        }
+
+        return { message: "Product deleted successfully" };
+      });
     } catch (error) {
-      await transaction?.rollback();
       console.error("❌ Delete product error:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();

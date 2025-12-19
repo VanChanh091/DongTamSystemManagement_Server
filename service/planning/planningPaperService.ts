@@ -14,8 +14,8 @@ import { MachinePaper } from "../../models/admin/machinePaper";
 import { Request } from "express";
 import { calculateTimeRunning, updateSortPlanning } from "./helper/timeRunningPaper";
 import { getPlanningByField } from "../../utils/helper/modelHelper/planningHelper";
-import { InboundHistory } from "../../models/warehouse/inboundHistory";
 import { warehouseRepository } from "../../repository/warehouseRepository";
+import { runInTransaction } from "../../utils/helper/transactionHelper";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper } = CacheManager.keys.planning;
@@ -484,51 +484,48 @@ export const planningPaperService = {
     totalTimeWorking: number;
     isNewDay: boolean;
   }) => {
-    const transaction = await PlanningPaper.sequelize?.transaction();
-
     try {
-      // 1️⃣ Cập nhật sortPlanning
-      await updateSortPlanning(updateIndex, transaction);
+      return await runInTransaction(async (transaction) => {
+        // 1️⃣ Cập nhật sortPlanning
+        await updateSortPlanning(updateIndex, transaction);
 
-      // 2️⃣ Lấy lại danh sách đã update
-      const plannings = await planningRepository.getPapersByUpdateIndex(updateIndex, transaction);
+        // 2️⃣ Lấy lại danh sách đã update
+        const plannings = await planningRepository.getPapersByUpdateIndex(updateIndex, transaction);
 
-      // console.log(plannings.map((p) => ({ id: p.planningId, sort: p?.sortPlanning })));
+        // console.log(plannings.map((p) => ({ id: p.planningId, sort: p?.sortPlanning })));
 
-      // 3️⃣ Lấy thông tin máy
-      const machineInfo = await planningRepository.getModelById({
-        model: MachinePaper,
-        where: { machineName: machine },
+        // 3️⃣ Lấy thông tin máy
+        const machineInfo = await planningRepository.getModelById({
+          model: MachinePaper,
+          where: { machineName: machine },
+        });
+        if (!machineInfo) throw new Error("Machine not found");
+
+        // 4️⃣ Tính toán thời gian chạy
+        const updatedPlannings = await calculateTimeRunning({
+          plannings,
+          machineInfo,
+          machine,
+          dayStart,
+          timeStart,
+          totalTimeWorking,
+          isNewDay,
+          transaction,
+        });
+
+        // 5️⃣ Phát socket
+        const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
+        req.io?.to(roomName).emit("planningPaperUpdated", {
+          machine,
+          message: `Kế hoạch của ${machine} đã được cập nhật.`,
+        });
+
+        return {
+          message: "✅ Cập nhật sortPlanning + tính thời gian thành công",
+          data: updatedPlannings,
+        };
       });
-      if (!machineInfo) throw new Error("Machine not found");
-
-      // 4️⃣ Tính toán thời gian chạy
-      const updatedPlannings = await calculateTimeRunning({
-        plannings,
-        machineInfo,
-        machine,
-        dayStart,
-        timeStart,
-        totalTimeWorking,
-        isNewDay,
-        transaction,
-      });
-
-      await transaction?.commit();
-
-      // 5️⃣ Phát socket
-      const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
-      req.io?.to(roomName).emit("planningPaperUpdated", {
-        machine,
-        message: `Kế hoạch của ${machine} đã được cập nhật.`,
-      });
-
-      return {
-        message: "✅ Cập nhật sortPlanning + tính thời gian thành công",
-        data: updatedPlannings,
-      };
     } catch (error) {
-      await transaction?.rollback();
       console.error("❌Lỗi khi cập nhật và tính toán thời gian:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();

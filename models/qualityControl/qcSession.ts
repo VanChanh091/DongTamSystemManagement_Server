@@ -1,4 +1,5 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
+import { QcSampleResult } from "./qcSampleResult";
 
 export type statusQcSession = "checking" | "pass" | "fail" | "finalized";
 export type processTypeQC = "paper" | "box";
@@ -42,6 +43,8 @@ export class QcSession
   //FK
   declare planningId: number;
   declare planningBoxId: number;
+
+  declare samples: QcSampleResult;
 }
 
 export function initQcSessionModel(sequelize: Sequelize): typeof QcSession {

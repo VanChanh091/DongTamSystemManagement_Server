@@ -1,5 +1,8 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { Order } from "../order/order";
+import { QcSession } from "../qualityControl/qcSession";
+import { PlanningPaper } from "../planning/planningPaper";
+import { PlanningBox } from "../planning/planningBox";
 
 //định nghĩa trường trong bảng
 interface InboundHistoryAttributes {
@@ -12,6 +15,9 @@ interface InboundHistoryAttributes {
 
   //FK
   orderId: string;
+  planningId: number;
+  planningBoxId: number;
+  qcSessionId: number;
 }
 
 //cho phép bỏ qua id khi tạo
@@ -35,6 +41,14 @@ export class InboundHistory
   //FK
   declare orderId: string;
   declare Order: Order;
+
+  declare planningId: number;
+  declare planningBoxId: number;
+  declare Planning: PlanningPaper;
+  declare PlanningBox: PlanningBox;
+
+  declare qcSessionId: number;
+  declare QcSession: QcSession;
 }
 
 export function initInboundHistoryModel(sequelize: Sequelize): typeof InboundHistory {
@@ -47,6 +61,9 @@ export function initInboundHistoryModel(sequelize: Sequelize): typeof InboundHis
 
       //FK
       orderId: { type: DataTypes.STRING, allowNull: false },
+      planningId: { type: DataTypes.STRING },
+      planningBoxId: { type: DataTypes.STRING },
+      qcSessionId: { type: DataTypes.INTEGER, allowNull: false },
     },
     { sequelize, tableName: "InboundHistory", timestamps: true }
   );

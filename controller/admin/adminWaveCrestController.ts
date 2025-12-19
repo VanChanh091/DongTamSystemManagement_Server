@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { WaveCrestCreationAttributes } from "../../models/admin/waveCrestCoefficient";
-import { adminService } from "../../service/adminService";
+import { adminService } from "../../service/admin/adminService";
 
 //get all wave crest coefficient
 export const getAllWaveCrestCoefficient = async (

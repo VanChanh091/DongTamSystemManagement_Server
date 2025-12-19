@@ -11,7 +11,7 @@ export type planningPaperStatus =
   | "producing"
   | "stop"
   | "cancel";
-export type statusRequestInbound = "none" | "requested" | "reject" | "complete";
+export type statusRequestInbound = "none" | "requested" | "inbounded" | "finalize";
 
 //định nghĩa trường trong bảng
 interface PlanningPaperAttributes {
@@ -202,7 +202,7 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
         defaultValue: "planning",
       },
       statusRequest: {
-        type: DataTypes.ENUM("none", "requested", "reject", "complete"),
+        type: DataTypes.ENUM("none", "requested", "inbounded", "finalize"),
         defaultValue: "none",
       },
       hasOverFlow: {

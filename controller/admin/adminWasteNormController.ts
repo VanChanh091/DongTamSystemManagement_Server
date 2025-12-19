@@ -4,7 +4,7 @@ import {
 } from "../../models/admin/wasteNormPaper";
 import { WasteNormBox, WasteNormBoxCreationAttributes } from "../../models/admin/wasteNormBox";
 import { NextFunction, Request, Response } from "express";
-import { adminService } from "../../service/adminService";
+import { adminService } from "../../service/admin/adminService";
 
 //===============================WASTE PAPER=====================================
 

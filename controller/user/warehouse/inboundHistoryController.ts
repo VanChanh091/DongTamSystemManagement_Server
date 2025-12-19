@@ -34,30 +34,6 @@ export const getBoxCheckedDetail = async (req: Request, res: Response, next: Nex
   }
 };
 
-//inbound paper
-export const inboundQtyPaper = async (req: Request, res: Response, next: NextFunction) => {
-  const { planningId, inboundQty } = req.query as { planningId: string; inboundQty: string };
-
-  try {
-    const response = await inboundService.inboundQtyPaper(Number(planningId), Number(inboundQty));
-    return res.status(200).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
-//inbound box
-export const inboundQtyBox = async (req: Request, res: Response, next: NextFunction) => {
-  const { planningId, inboundQty } = req.query as { planningId: string; inboundQty: string };
-
-  try {
-    const response = await inboundService.inboundQtyBox(Number(planningId), Number(inboundQty));
-    return res.status(200).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
 //===============================INBOUND HISTORY=====================================
 
 export const getAllInboundHistory = async (req: Request, res: Response, next: NextFunction) => {

@@ -1,14 +1,15 @@
 import { processTypeQC } from "../../models/qualityControl/qcCriteria";
 import { QcSession, statusQcSession } from "../../models/qualityControl/qcSession";
 import { User } from "../../models/user/user";
+import { planningRepository } from "../../repository/planningRepository";
+import { qcRepository } from "../../repository/qcRepository";
 import { AppError } from "../../utils/appError";
+import { runInTransaction } from "../../utils/helper/transactionHelper";
 
 export const qcSessionService = {
   getAllQcSession: async () => {
     try {
-      const allSession = await QcSession.findAll({
-        order: [["createdAt", "DESC"]],
-      });
+      const allSession = await qcRepository.getAllQcSession();
 
       return { message: `get Qc allCriteria successfully`, data: allSession };
     } catch (error) {
@@ -17,20 +18,35 @@ export const qcSessionService = {
     }
   },
 
-  // getQcSessionById: async (isPaper: boolean) => {
-  //   try {
-  //     const whereCondition = isPaper ? planningId : planningBoxId;
+  getSessionByFk: async ({
+    planningId,
+    planningBoxId,
+  }: {
+    planningId?: number;
+    planningBoxId?: number;
+  }) => {
+    try {
+      if (!planningId && !planningBoxId) {
+        throw AppError.BadRequest("planningId or planningBoxId is required", "MISSING_FK");
+      }
 
-  //     const allSession = await QcSession.findOne({
-  //       where: {},
-  //     });
+      if (planningId && planningBoxId) {
+        throw AppError.BadRequest(
+          "Only one of planningId or planningBoxId is allowed",
+          "INVALID_FK"
+        );
+      }
 
-  //     return { message: `get Qc allCriteria successfully`, data: allSession };
-  //   } catch (error) {
-  //     console.error("get all QC session failed:", error);
-  //     throw AppError.ServerError();
-  //   }
-  // },
+      const whereCondition = planningId ? { planningId } : { planningBoxId };
+
+      const session = await qcRepository.findOneSession(whereCondition);
+
+      return { message: "get QC session successfully", data: session };
+    } catch (error) {
+      console.error("get all QC session failed:", error);
+      throw AppError.ServerError();
+    }
+  },
 
   getSessionByField: async (field: string) => {
     try {
@@ -45,16 +61,16 @@ export const qcSessionService = {
     planningId,
     planningBoxId,
     totalSample = 3,
+    transaction,
     user,
   }: {
     processType: processTypeQC;
     planningId?: number;
     planningBoxId?: number;
     totalSample?: number;
+    transaction?: any;
     user: any;
   }) => {
-    const transaction = await QcSession.sequelize?.transaction();
-
     const { userId } = user;
 
     try {
@@ -62,21 +78,12 @@ export const qcSessionService = {
       if (processType === "paper" && !planningId) {
         throw AppError.BadRequest("planningId is required for paper QC", "PLANNINGID_IS_REQUIRED");
       }
+
       if (processType === "box" && !planningBoxId) {
         throw AppError.BadRequest(
           "planningBoxId is required for box QC",
           "PLANNINGBOXID_IS_REQUIRED"
         );
-      }
-
-      // check session đã tồn tại chưa
-      const existed = await QcSession.findOne({
-        where:
-          processType === "paper" ? { processType, planningId } : { processType, planningBoxId },
-        transaction,
-      });
-      if (existed) {
-        throw AppError.NotFound("QcSession is existed", "QC_SESSION_IS_EXISTED");
       }
 
       if (totalSample !== undefined && totalSample < 1) {
@@ -86,12 +93,13 @@ export const qcSessionService = {
         );
       }
 
-      const existedUser = await User.findOne({ where: { userId } });
+      const existedUser = await planningRepository.getModelById({ model: User, where: { userId } });
       if (!existedUser) {
         throw AppError.BadRequest("user not found", "USER_NOT_FOUND");
       }
 
-      const session = await QcSession.create(
+      //create session
+      const session = await qcRepository.createNewSession(
         {
           processType,
           planningId: processType === "paper" ? planningId! : (null as any),
@@ -100,14 +108,11 @@ export const qcSessionService = {
           checkedBy: existedUser.fullName,
           status: "checking",
         },
-        { transaction }
+        transaction
       );
-
-      await transaction?.commit();
 
       return { message: "create QC Session successfully", data: session };
     } catch (error) {
-      await transaction?.rollback();
       console.error("create QC session failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
@@ -123,31 +128,24 @@ export const qcSessionService = {
     status?: statusQcSession;
     totalSample?: number;
   }) => {
-    const transaction = await QcSession.sequelize?.transaction();
-
     try {
-      const session = await QcSession.findByPk(qcSessionId);
-      if (!session) {
-        throw AppError.NotFound("QC session not found", "QC_SESSION_NOT_FOUND");
-      }
+      return await runInTransaction(async (transaction) => {
+        const session = await qcRepository.findByPk(QcSession, qcSessionId, transaction);
+        if (!session) {
+          throw AppError.NotFound("QC session not found", "QC_SESSION_NOT_FOUND");
+        }
 
-      // đã chốt thì không cho sửa
-      // if (session.status !== "checking") {
-      //   throw AppError.BadRequest("QC session has been finalized");
-      // }
+        if (totalSample !== undefined && totalSample < 1) {
+          throw AppError.BadRequest("totalSample must be greater than 0");
+        }
 
-      if (totalSample !== undefined && totalSample < 1) {
-        throw AppError.BadRequest("totalSample must be greater than 0");
-      }
+        await session.update({
+          status: status ?? session.status,
+          totalSample: totalSample ?? session.totalSample,
+        });
 
-      await session.update({
-        status: status ?? session.status,
-        totalSample: totalSample ?? session.totalSample,
+        return { message: `update QC Session id=${qcSessionId} successfully`, data: session };
       });
-
-      await transaction?.commit();
-
-      return { message: `update QC Session id=${qcSessionId} successfully`, data: session };
     } catch (error) {
       console.error("update QC session failed:", error);
       if (error instanceof AppError) throw error;

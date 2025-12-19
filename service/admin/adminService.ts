@@ -1,12 +1,13 @@
 import bcrypt from "bcrypt";
-import cloudinary from "../configs/connectCloudinary";
-import { validPermissions } from "../configs/machineLabels";
-import { OrderStatus } from "../models/order/order";
-import { userRole } from "../models/user/user";
-import { adminRepository } from "../repository/adminRepository";
-import { AppError } from "../utils/appError";
-import { getCloudinaryPublicId } from "../utils/image/converToWebp";
-import { WaveCrestCoefficient } from "../models/admin/waveCrestCoefficient";
+import cloudinary from "../../configs/connectCloudinary";
+import { validPermissions } from "../../configs/machineLabels";
+import { OrderStatus } from "../../models/order/order";
+import { userRole } from "../../models/user/user";
+import { adminRepository } from "../../repository/adminRepository";
+import { AppError } from "../../utils/appError";
+import { getCloudinaryPublicId } from "../../utils/image/converToWebp";
+import { WaveCrestCoefficient } from "../../models/admin/waveCrestCoefficient";
+import { runInTransaction } from "../../utils/helper/transactionHelper";
 
 export const adminService = {
   //===============================ADMIN MACHINE=====================================
@@ -37,16 +38,13 @@ export const adminService = {
   },
 
   createMachine: async (model: any, data: any) => {
-    const transaction = await model.sequelize?.transaction();
-
     try {
-      const newMachine = await adminRepository.createMachine(model, data, transaction);
+      return await runInTransaction(async (transaction) => {
+        const newMachine = await adminRepository.createMachine(model, data, transaction);
 
-      await transaction?.commit();
-
-      return { message: "Create machine successfully", data: newMachine };
+        return { message: "Create machine successfully", data: newMachine };
+      });
     } catch (error) {
-      await transaction?.rollback();
       console.error("❌ Failed to create machine:", error);
       throw AppError.ServerError();
     }
@@ -396,16 +394,13 @@ export const adminService = {
   },
 
   createWaste: async (model: any, data: any) => {
-    const transaction = await model.sequelize?.transaction();
-
     try {
-      const newWasteNorm = await adminRepository.createWaste(model, data, transaction);
+      return await runInTransaction(async (transaction) => {
+        const newWasteNorm = await adminRepository.createWaste(model, data, transaction);
 
-      await transaction?.commit();
-
-      return { message: "create waste successfully", data: newWasteNorm };
+        return { message: "create waste successfully", data: newWasteNorm };
+      });
     } catch (error) {
-      await transaction?.rollback();
       console.error("failed to create waste", error);
       throw AppError.ServerError();
     }
@@ -473,20 +468,17 @@ export const adminService = {
   },
 
   createWaveCrestCoefficient: async (data: any) => {
-    const transaction = await WaveCrestCoefficient.sequelize?.transaction();
-
     try {
-      const newWasteNorm = await adminRepository.createWaste(
-        WaveCrestCoefficient,
-        data,
-        transaction
-      );
+      return await runInTransaction(async (transaction) => {
+        const newWasteNorm = await adminRepository.createWaste(
+          WaveCrestCoefficient,
+          data,
+          transaction
+        );
 
-      await transaction?.commit();
-
-      return { message: "create wave crest coefficient successfully", data: newWasteNorm };
+        return { message: "create wave crest coefficient successfully", data: newWasteNorm };
+      });
     } catch (error) {
-      await transaction?.rollback();
       console.error("failed to create wave crest coefficient", error);
       throw AppError.ServerError();
     }

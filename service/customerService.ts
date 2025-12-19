@@ -10,6 +10,7 @@ import { filterDataFromCache } from "../utils/helper/modelHelper/orderHelpers";
 import { customerColumns, mappingCustomerRow } from "../utils/mapping/customerRowAndColumn";
 import { Response } from "express";
 import dotenv from "dotenv";
+import { runInTransaction } from "../utils/helper/transactionHelper";
 dotenv.config();
 
 const devEnvironment = process.env.NODE_ENV !== "production";
@@ -115,46 +116,41 @@ export const customerService = {
 
   createCustomer: async (data: any) => {
     const { prefix = "CUSTOM", ...customerData } = data;
-    const transaction = await Customer.sequelize?.transaction();
 
     try {
-      const customers = await customerRepository.findAllIds(transaction);
+      return await runInTransaction(async (transaction) => {
+        const customers = await customerRepository.findAllIds(transaction);
 
-      const allCustomerIds = customers.map((c) => c.customerId);
-      const sanitizedPrefix = prefix.trim().replace(/\s+/g, "").toUpperCase();
-      const newCustomerId = generateNextId(allCustomerIds, sanitizedPrefix, 4);
+        const allCustomerIds = customers.map((c) => c.customerId);
+        const sanitizedPrefix = prefix.trim().replace(/\s+/g, "").toUpperCase();
+        const newCustomerId = generateNextId(allCustomerIds, sanitizedPrefix, 4);
 
-      const newCustomer = await customerRepository.createCustomer(
-        { customerId: newCustomerId, ...customerData },
-        transaction
-      );
+        const newCustomer = await customerRepository.createCustomer(
+          { customerId: newCustomerId, ...customerData },
+          transaction
+        );
 
-      await transaction?.commit();
-
-      return { message: "Customer created successfully", data: newCustomer };
+        return { message: "Customer created successfully", data: newCustomer };
+      });
     } catch (error) {
-      await transaction?.rollback();
       console.error("❌ Failed to create customer:", error);
       throw AppError.ServerError();
     }
   },
 
   updateCustomer: async (customerId: string, customerData: any) => {
-    const transaction = await Customer.sequelize?.transaction();
-
     try {
-      const customer = await customerRepository.findByCustomerId(customerId, transaction);
-      if (!customer) {
-        throw AppError.NotFound("Customer not found", "CUSTOMER_NOT_FOUND");
-      }
+      return await runInTransaction(async (transaction) => {
+        const customer = await customerRepository.findByCustomerId(customerId, transaction);
+        if (!customer) {
+          throw AppError.NotFound("Customer not found", "CUSTOMER_NOT_FOUND");
+        }
 
-      const result = await customerRepository.updateCustomer(customer, customerData, transaction);
+        const result = await customerRepository.updateCustomer(customer, customerData, transaction);
 
-      await transaction?.commit();
-
-      return { message: "Customer updated successfully", data: result };
+        return { message: "Customer updated successfully", data: result };
+      });
     } catch (error) {
-      await transaction?.rollback();
       console.error("❌ Update customer failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
@@ -162,21 +158,16 @@ export const customerService = {
   },
 
   deleteCustomer: async (customerId: string) => {
-    const transaction = await Customer.sequelize?.transaction();
-
     try {
-      const deletedCustomer = await customerRepository.deleteCustomer(customerId, transaction);
+      return await runInTransaction(async (transaction) => {
+        const deletedCustomer = await customerRepository.deleteCustomer(customerId, transaction);
 
-      if (!deletedCustomer) {
-        await transaction?.rollback();
-        throw AppError.NotFound("Customer not found", "CUSTOMER_NOT_FOUND");
-      }
-
-      await transaction?.commit();
-
-      return { message: "Customer deleted successfully" };
+        if (!deletedCustomer) {
+          throw AppError.NotFound("Customer not found", "CUSTOMER_NOT_FOUND");
+        }
+        return { message: "Customer deleted successfully" };
+      });
     } catch (error) {
-      await transaction?.rollback();
       console.error("❌ Delete customer failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();

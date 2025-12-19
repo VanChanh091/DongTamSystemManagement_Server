@@ -1,7 +1,7 @@
 //===============================ADMIN ORDER=====================================
 
 import { adminRepository } from "../../repository/adminRepository";
-import { adminService } from "../../service/adminService";
+import { adminService } from "../../service/admin/adminService";
 
 jest.mock("../../repository/adminRepository", () => ({
   adminRepository: {

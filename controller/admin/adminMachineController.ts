@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { MachinePaper, MachinePaperCreationAttributes } from "../../models/admin/machinePaper";
 import { MachineBox, MachineBoxCreationAttributes } from "../../models/admin/machineBox";
-import { adminService } from "../../service/adminService";
+import { adminService } from "../../service/admin/adminService";
 
 //===============================PAPER=====================================
 

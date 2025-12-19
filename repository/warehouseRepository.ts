@@ -1,4 +1,3 @@
-import { Op } from "sequelize";
 import { InboundHistory } from "../models/warehouse/inboundHistory";
 import { Order } from "../models/order/order";
 import { Customer } from "../models/customer/customer";
@@ -10,6 +9,7 @@ import { PlanningBox } from "../models/planning/planningBox";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { OutboundHistory } from "../models/warehouse/outboundHistory";
 import { OutboundDetail } from "../models/warehouse/outboundDetail";
+import { Op } from "sequelize";
 
 export const warehouseRepository = {
   //====================================WAITING CHECK========================================
@@ -17,7 +17,7 @@ export const warehouseRepository = {
   //paper
   getPaperWaitingChecked: async () => {
     return await PlanningPaper.findAll({
-      where: { dayStart: { [Op.ne]: null }, qtyProduced: { [Op.gt]: 0 } },
+      where: { statusRequest: { [Op.ne]: "finalize" }, hasBox: false },
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {
@@ -59,7 +59,7 @@ export const warehouseRepository = {
   //box
   getBoxWaitingChecked: async () => {
     return await PlanningBox.findAll({
-      where: { statusRequest: "requested" },
+      where: { statusRequest: { [Op.ne]: "finalize" } },
       attributes: {
         exclude: [
           "hasIn",

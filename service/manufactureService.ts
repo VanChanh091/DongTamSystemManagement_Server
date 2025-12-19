@@ -17,6 +17,7 @@ import { ReportPlanningPaper } from "../models/report/reportPlanningPaper";
 import { createReportPlanning } from "../utils/helper/modelHelper/reportHelper";
 import { ReportPlanningBox } from "../models/report/reportPlanningBox";
 import { mergeShiftField } from "../utils/helper/modelHelper/planningHelper";
+import { runInTransaction } from "../utils/helper/transactionHelper";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper } = CacheManager.keys.manufacture;
@@ -118,150 +119,147 @@ export const manufactureService = {
     const { role, permissions: userPermissions } = user;
     const { qtyProduced, qtyWasteNorm, dayCompleted, ...otherData } = data;
 
-    const transaction = await PlanningPaper.sequelize?.transaction();
     try {
-      if (!planningId || !qtyProduced || !dayCompleted || !qtyWasteNorm) {
-        throw AppError.BadRequest("Missing required fields", "MISSING_PARAMETERS");
-      }
-
-      // 1. Tìm kế hoạch hiện tại
-      const planning = await manufactureRepository.getPapersById(planningId, transaction);
-      if (!planning) {
-        throw AppError.NotFound("Không tìm thấy kế hoạch", "PLANNING_NOT_FOUND");
-      }
-
-      const machine = planning.chooseMachine;
-      const machineLabel = machineLabels[machine];
-      if (!machineLabel) {
-        throw AppError.BadRequest(`Invalid machine: ${machine}`, "INVALID_MACHINE");
-      }
-
-      //check permission for machine
-      if (role !== "admin" && role !== "manager") {
-        if (!userPermissions.includes(machineLabel)) {
-          throw AppError.Unauthorized(
-            `Access denied: You don't have permission to report for machine ${machine}`,
-            "ACCESS_DENIED"
-          );
-        }
-      }
-
-      // 2. Cộng dồn số lượng mới vào số đã có
-      const newQtyProduced = Number(planning.qtyProduced || 0) + Number(qtyProduced || 0);
-      const newQtyWasteNorm = Number(planning.qtyWasteNorm || 0) + Number(qtyWasteNorm || 0);
-
-      // update status dựa trên qtyProduced
-      const isCompleted = newQtyProduced >= planning.runningPlan;
-
-      const isOverflowReport =
-        planning.hasOverFlow &&
-        planning.timeOverFlow &&
-        new Date(dayCompleted) >= new Date(planning.timeOverFlow?.overflowDayStart ?? "");
-
-      let overflow, dayReportValue;
-
-      //get timeOverflowPlanning
-      if (planning.hasOverFlow) {
-        overflow = await planningRepository.getModelById({
-          model: timeOverflowPlanning,
-          where: { planningId },
-          options: { transaction, lock: transaction?.LOCK.UPDATE },
-        });
-
-        if (!overflow) {
-          throw AppError.NotFound("Overflow plan not found", "OVERFLOW_PLAN_NOT_FOUND");
-        }
-      }
-
-      dayReportValue = new Date(dayCompleted);
-      if (isOverflowReport) {
-        await overflow?.update({ overflowDayCompleted: dayReportValue }, { transaction });
-      }
-
-      // Merge shift fields
-      let updatedShiftProduction = mergeShiftField(
-        planning.shiftProduction || "",
-        otherData.shiftProduction
-      );
-
-      let updatedShiftManagement = mergeShiftField(
-        planning.shiftManagement || "",
-        otherData.shiftManagement
-      );
-
-      await planningRepository.updateDataModel({
-        model: planning,
-        data: {
-          qtyProduced: newQtyProduced,
-          qtyWasteNorm: newQtyWasteNorm,
-          status: isCompleted ? planning.status : "lackQty",
-          dayCompleted: isOverflowReport ? planning.dayCompleted : dayReportValue,
-          shiftProduction: updatedShiftProduction,
-          shiftManagement: updatedShiftManagement,
-        },
-        options: { transaction },
-      });
-
-      //update qty for planning box
-      if (planning.hasBox) {
-        const planningBox = await planningRepository.getModelById({
-          model: PlanningBox,
-          where: { orderId: planning.orderId },
-          options: { transaction, lock: transaction?.LOCK.UPDATE },
-        });
-        if (!planningBox) {
-          throw AppError.NotFound("PlanningBox not found", "PLANNING_BOX_NOT_FOUND");
+      return await runInTransaction(async (transaction) => {
+        if (!planningId || !qtyProduced || !dayCompleted || !qtyWasteNorm) {
+          throw AppError.BadRequest("Missing required fields", "MISSING_PARAMETERS");
         }
 
-        await planningBox.update({ qtyPaper: newQtyProduced }, { transaction });
-      }
+        // 1. Tìm kế hoạch hiện tại
+        const planning = await manufactureRepository.getPapersById(planningId, transaction);
+        if (!planning) {
+          throw AppError.NotFound("Không tìm thấy kế hoạch", "PLANNING_NOT_FOUND");
+        }
 
-      //check qty to change status order
-      const allPlans = await manufactureRepository.getPapersByOrderId(
-        planning.orderId,
-        transaction
-      );
+        const machine = planning.chooseMachine;
+        const machineLabel = machineLabels[machine];
+        if (!machineLabel) {
+          throw AppError.BadRequest(`Invalid machine: ${machine}`, "INVALID_MACHINE");
+        }
 
-      const totalQtyProduced = allPlans.reduce((sum, p) => sum + Number(p.qtyProduced || 0), 0);
-      const qtyManufacture = planning.Order?.quantityCustomer || 0;
+        //check permission for machine
+        if (role !== "admin" && role !== "manager") {
+          if (!userPermissions.includes(machineLabel)) {
+            throw AppError.Unauthorized(
+              `Access denied: You don't have permission to report for machine ${machine}`,
+              "ACCESS_DENIED"
+            );
+          }
+        }
 
-      if (totalQtyProduced >= qtyManufacture) {
+        // 2. Cộng dồn số lượng mới vào số đã có
+        const newQtyProduced = Number(planning.qtyProduced || 0) + Number(qtyProduced || 0);
+        const newQtyWasteNorm = Number(planning.qtyWasteNorm || 0) + Number(qtyWasteNorm || 0);
+
+        // update status dựa trên qtyProduced
+        const isCompleted = newQtyProduced >= planning.runningPlan;
+
+        const isOverflowReport =
+          planning.hasOverFlow &&
+          planning.timeOverFlow &&
+          new Date(dayCompleted) >= new Date(planning.timeOverFlow?.overflowDayStart ?? "");
+
+        let overflow, dayReportValue;
+
+        //get timeOverflowPlanning
+        if (planning.hasOverFlow) {
+          overflow = await planningRepository.getModelById({
+            model: timeOverflowPlanning,
+            where: { planningId },
+            options: { transaction, lock: transaction?.LOCK.UPDATE },
+          });
+
+          if (!overflow) {
+            throw AppError.NotFound("Overflow plan not found", "OVERFLOW_PLAN_NOT_FOUND");
+          }
+        }
+
+        dayReportValue = new Date(dayCompleted);
+        if (isOverflowReport) {
+          await overflow?.update({ overflowDayCompleted: dayReportValue }, { transaction });
+        }
+
+        // Merge shift fields
+        let updatedShiftProduction = mergeShiftField(
+          planning.shiftProduction || "",
+          otherData.shiftProduction
+        );
+
+        let updatedShiftManagement = mergeShiftField(
+          planning.shiftManagement || "",
+          otherData.shiftManagement
+        );
+
         await planningRepository.updateDataModel({
-          model: Order,
-          data: { status: "planning" },
-          options: { where: { orderId: planning.orderId }, transaction },
+          model: planning,
+          data: {
+            qtyProduced: newQtyProduced,
+            qtyWasteNorm: newQtyWasteNorm,
+            status: isCompleted ? planning.status : "lackQty",
+            dayCompleted: isOverflowReport ? planning.dayCompleted : dayReportValue,
+            shiftProduction: updatedShiftProduction,
+            shiftManagement: updatedShiftManagement,
+          },
+          options: { transaction },
         });
-      }
 
-      //3. tạo report theo số lần báo cáo
-      await createReportPlanning({
-        planning: planning.toJSON(),
-        model: ReportPlanningPaper,
-        qtyProduced,
-        qtyWasteNorm,
-        dayReportValue,
-        otherData,
-        transaction,
+        //update qty for planning box
+        if (planning.hasBox) {
+          const planningBox = await planningRepository.getModelById({
+            model: PlanningBox,
+            where: { orderId: planning.orderId },
+            options: { transaction, lock: transaction?.LOCK.UPDATE },
+          });
+          if (!planningBox) {
+            throw AppError.NotFound("PlanningBox not found", "PLANNING_BOX_NOT_FOUND");
+          }
+
+          await planningBox.update({ qtyPaper: newQtyProduced }, { transaction });
+        }
+
+        //check qty to change status order
+        const allPlans = await manufactureRepository.getPapersByOrderId(
+          planning.orderId,
+          transaction
+        );
+
+        const totalQtyProduced = allPlans.reduce((sum, p) => sum + Number(p.qtyProduced || 0), 0);
+        const quantityCustomer = planning.Order?.quantityCustomer || 0;
+
+        if (totalQtyProduced >= quantityCustomer) {
+          await planningRepository.updateDataModel({
+            model: Order,
+            data: { status: "planning" },
+            options: { where: { orderId: planning.orderId }, transaction },
+          });
+        }
+
+        //3. tạo report theo số lần báo cáo
+        await createReportPlanning({
+          planning: planning.toJSON(),
+          model: ReportPlanningPaper,
+          qtyProduced,
+          qtyWasteNorm,
+          dayReportValue,
+          otherData,
+          transaction,
+        });
+
+        //chuyển sang trang chờ kiểm
+        await planning.update({ statusRequest: "requested" }, { transaction });
+
+        return {
+          message: "Add Report Production successfully",
+          data: {
+            planningId,
+            qtyProduced: newQtyProduced,
+            qtyWasteNorm: newQtyWasteNorm,
+            dayCompleted,
+            ...otherData,
+          },
+        };
       });
-
-      //chuyển sang trang chờ kiểm
-      await planning.update({ statusRequest: "requested" }, { transaction });
-
-      //4. Commit + clear cache
-      await transaction?.commit();
-
-      return {
-        message: "Add Report Production successfully",
-        data: {
-          planningId,
-          qtyProduced: newQtyProduced,
-          qtyWasteNorm: newQtyWasteNorm,
-          dayCompleted,
-          ...otherData,
-        },
-      };
     } catch (error) {
-      await transaction?.rollback();
       console.error("Error add Report Production:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
@@ -270,69 +268,64 @@ export const manufactureService = {
 
   confirmProducingPaper: async (planningId: number, user: any) => {
     const { role, permissions: userPermissions } = user;
-    const transaction = await PlanningPaper.sequelize?.transaction();
 
     try {
-      const planning = await PlanningPaper.findOne({
-        where: { planningId },
-        transaction,
-        lock: transaction?.LOCK.UPDATE, // lock để tránh race condition
-      });
+      return await runInTransaction(async (transaction) => {
+        const planning = await PlanningPaper.findOne({
+          where: { planningId },
+          transaction,
+          lock: transaction?.LOCK.UPDATE, // lock để tránh race condition
+        });
 
-      if (!planning) {
-        throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
-      }
-
-      // check permission
-      const machine = planning.chooseMachine;
-      const machineLabel = machineLabels[machine];
-      if (!machineLabel) {
-        throw AppError.BadRequest(`Invalid machine: ${machine}`, "INVALID_MACHINE");
-      }
-
-      if (role !== "admin" && role !== "manager") {
-        if (!userPermissions.includes(machineLabel)) {
-          throw AppError.Forbidden(
-            `Access denied: You don't have permission to report for machine ${machine}`,
-            "ACCESS_DENIED"
-          );
+        if (!planning) {
+          throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
         }
-      }
 
-      // Check if the planning is already completed
-      if (planning.status === "complete") {
-        throw AppError.Conflict("Planning already completed", "PLANNING_COMPLETED");
-      }
+        // check permission
+        const machine = planning.chooseMachine;
+        const machineLabel = machineLabels[machine];
+        if (!machineLabel) {
+          throw AppError.BadRequest(`Invalid machine: ${machine}`, "INVALID_MACHINE");
+        }
 
-      // Check if there's another planning in 'producing' status for the same machine
-      const existingProducing = await planningRepository.getModelById({
-        model: PlanningPaper,
-        where: { chooseMachine: machine, status: "producing" },
-        options: { transaction, lock: transaction?.LOCK.UPDATE },
-      });
+        if (role !== "admin" && role !== "manager") {
+          if (!userPermissions.includes(machineLabel)) {
+            throw AppError.Forbidden(
+              `Access denied: You don't have permission to report for machine ${machine}`,
+              "ACCESS_DENIED"
+            );
+          }
+        }
 
-      if (existingProducing && existingProducing.planningId !== planningId) {
+        // Check if the planning is already completed
+        if (planning.status === "complete") {
+          throw AppError.Conflict("Planning already completed", "PLANNING_COMPLETED");
+        }
+
+        // Check if there's another planning in 'producing' status for the same machine
+        const existingProducing = await planningRepository.getModelById({
+          model: PlanningPaper,
+          where: { chooseMachine: machine, status: "producing" },
+          options: { transaction, lock: transaction?.LOCK.UPDATE },
+        });
+
+        if (existingProducing && existingProducing.planningId !== planningId) {
+          await planningRepository.updateDataModel({
+            model: existingProducing,
+            data: { status: "planning" },
+            options: { transaction },
+          });
+        }
+
         await planningRepository.updateDataModel({
-          model: existingProducing,
-          data: { status: "planning" },
+          model: planning,
+          data: { status: "producing" },
           options: { transaction },
         });
-      }
 
-      await planningRepository.updateDataModel({
-        model: planning,
-        data: { status: "producing" },
-        options: { transaction },
+        return { message: "Confirm producing paper successfully", data: planning };
       });
-
-      await transaction?.commit();
-
-      return {
-        message: "Confirm producing paper successfully",
-        data: planning,
-      };
     } catch (error) {
-      await transaction?.rollback();
       console.error("Error confirming producing paper:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
@@ -439,124 +432,125 @@ export const manufactureService = {
 
   addReportBox: async (planningBoxId: number, machine: string, data: any) => {
     const { qtyProduced, rpWasteLoss, dayCompleted, shiftManagement } = data;
-    const transaction = await PlanningBoxTime.sequelize?.transaction();
 
     try {
-      if (!planningBoxId || !qtyProduced || !dayCompleted || !rpWasteLoss || !shiftManagement) {
-        throw AppError.BadRequest("Missing required fields", "MISSING_PARAMETERS");
-      }
-
-      // 1. Tìm kế hoạch hiện tại
-      const planning = await manufactureRepository.getBoxById(planningBoxId, machine, transaction);
-      if (!planning) {
-        throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
-      }
-
-      // 2. Cộng dồn số lượng mới vào số đã có
-      const newQtyProduced = Number(planning.qtyProduced || 0) + Number(qtyProduced || 0);
-      const newQtyWasteNorm = Number(planning.rpWasteLoss || 0) + Number(rpWasteLoss || 0);
-
-      const mergedShift = mergeShiftField(planning.shiftManagement ?? "", shiftManagement);
-
-      const isCompletedOrder = newQtyProduced >= (planning.runningPlan || 0);
-
-      const timeOverFlow = (
-        Array.isArray(planning.PlanningBox.timeOverFlow) &&
-        planning.PlanningBox.timeOverFlow.length > 0
-          ? planning.PlanningBox.timeOverFlow[0]
-          : planning.PlanningBox.timeOverFlow
-      ) as timeOverflowPlanning | undefined;
-
-      //condition
-      const isOverflowReport =
-        planning.PlanningBox.hasOverFlow &&
-        planning.PlanningBox.timeOverFlow &&
-        timeOverFlow &&
-        new Date(dayCompleted) >= new Date(timeOverFlow.overflowDayStart ?? "");
-
-      let overflow, dayReportValue;
-
-      //get timeOverflowPlanning
-      if (planning.PlanningBox.hasOverFlow) {
-        overflow = await planningRepository.getModelById({
-          model: timeOverflowPlanning,
-          where: { planningBoxId, machine },
-          options: { transaction, lock: transaction?.LOCK.UPDATE },
-        });
-
-        if (!overflow) {
-          throw AppError.NotFound("Overflow plan not found", "OVERFLOW_NOT_FOUND");
+      return await runInTransaction(async (transaction) => {
+        if (!planningBoxId || !qtyProduced || !dayCompleted || !rpWasteLoss || !shiftManagement) {
+          throw AppError.BadRequest("Missing required fields", "MISSING_PARAMETERS");
         }
-      }
 
-      if (isOverflowReport) {
-        await overflow?.update({ overflowDayCompleted: new Date(dayCompleted) }, { transaction });
-
-        await planningRepository.updateDataModel({
-          model: planning,
-          data: {
-            qtyProduced: newQtyProduced,
-            rpWasteLoss: newQtyWasteNorm,
-            shiftManagement: mergedShift,
-          },
-          options: { transaction },
-        });
-
-        dayReportValue = overflow?.getDataValue("overflowDayCompleted");
-      } else {
-        //Cập nhật kế hoạch với số liệu mới
-        await planningRepository.updateDataModel({
-          model: planning,
-          data: {
-            dayCompleted: new Date(dayCompleted),
-            qtyProduced: newQtyProduced,
-            rpWasteLoss: newQtyWasteNorm,
-            shiftManagement: mergedShift,
-          },
-          options: { transaction },
-        });
-
-        dayReportValue = planning.getDataValue("dayCompleted");
-      }
-
-      if (!isCompletedOrder) {
-        await planningRepository.updateDataModel({
-          model: planning,
-          data: { status: "lackOfQty" },
-          options: { transaction },
-        });
-      }
-
-      // 3. tạo report theo số lần báo cáo
-      await createReportPlanning({
-        planning: planning.toJSON(),
-        model: ReportPlanningBox,
-        qtyProduced: qtyProduced,
-        qtyWasteNorm: rpWasteLoss,
-        dayReportValue: new Date(dayReportValue ?? ""),
-        shiftManagementBox: shiftManagement,
-        machine: planning.machine,
-        transaction,
-        isBox: true,
-      });
-
-      // 4. Commit + clear cache
-      await transaction?.commit();
-
-      return {
-        message: "Add Report Production successfully",
-        data: {
+        // 1. Tìm kế hoạch hiện tại
+        const planning = await manufactureRepository.getBoxById(
           planningBoxId,
           machine,
-          qtyProduced: newQtyProduced,
-          qtyWasteNorm: newQtyWasteNorm,
-          dayCompleted,
-          shiftManagement,
-          status: isCompletedOrder ? planning.status : "lackQty",
-        },
-      };
+          transaction
+        );
+        if (!planning) {
+          throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
+        }
+
+        // 2. Cộng dồn số lượng mới vào số đã có
+        const newQtyProduced = Number(planning.qtyProduced || 0) + Number(qtyProduced || 0);
+        const newQtyWasteNorm = Number(planning.rpWasteLoss || 0) + Number(rpWasteLoss || 0);
+
+        const mergedShift = mergeShiftField(planning.shiftManagement ?? "", shiftManagement);
+
+        const isCompletedOrder = newQtyProduced >= (planning.runningPlan || 0);
+
+        const timeOverFlow = (
+          Array.isArray(planning.PlanningBox.timeOverFlow) &&
+          planning.PlanningBox.timeOverFlow.length > 0
+            ? planning.PlanningBox.timeOverFlow[0]
+            : planning.PlanningBox.timeOverFlow
+        ) as timeOverflowPlanning | undefined;
+
+        //condition
+        const isOverflowReport =
+          planning.PlanningBox.hasOverFlow &&
+          planning.PlanningBox.timeOverFlow &&
+          timeOverFlow &&
+          new Date(dayCompleted) >= new Date(timeOverFlow.overflowDayStart ?? "");
+
+        let overflow, dayReportValue;
+
+        //get timeOverflowPlanning
+        if (planning.PlanningBox.hasOverFlow) {
+          overflow = await planningRepository.getModelById({
+            model: timeOverflowPlanning,
+            where: { planningBoxId, machine },
+            options: { transaction, lock: transaction?.LOCK.UPDATE },
+          });
+
+          if (!overflow) {
+            throw AppError.NotFound("Overflow plan not found", "OVERFLOW_NOT_FOUND");
+          }
+        }
+
+        if (isOverflowReport) {
+          await overflow?.update({ overflowDayCompleted: new Date(dayCompleted) }, { transaction });
+
+          await planningRepository.updateDataModel({
+            model: planning,
+            data: {
+              qtyProduced: newQtyProduced,
+              rpWasteLoss: newQtyWasteNorm,
+              shiftManagement: mergedShift,
+            },
+            options: { transaction },
+          });
+
+          dayReportValue = overflow?.getDataValue("overflowDayCompleted");
+        } else {
+          //Cập nhật kế hoạch với số liệu mới
+          await planningRepository.updateDataModel({
+            model: planning,
+            data: {
+              dayCompleted: new Date(dayCompleted),
+              qtyProduced: newQtyProduced,
+              rpWasteLoss: newQtyWasteNorm,
+              shiftManagement: mergedShift,
+            },
+            options: { transaction },
+          });
+
+          dayReportValue = planning.getDataValue("dayCompleted");
+        }
+
+        if (!isCompletedOrder) {
+          await planningRepository.updateDataModel({
+            model: planning,
+            data: { status: "lackOfQty" },
+            options: { transaction },
+          });
+        }
+
+        // 3. tạo report theo số lần báo cáo
+        await createReportPlanning({
+          planning: planning.toJSON(),
+          model: ReportPlanningBox,
+          qtyProduced: qtyProduced,
+          qtyWasteNorm: rpWasteLoss,
+          dayReportValue: new Date(dayReportValue ?? ""),
+          shiftManagementBox: shiftManagement,
+          machine: planning.machine,
+          transaction,
+          isBox: true,
+        });
+
+        return {
+          message: "Add Report Production successfully",
+          data: {
+            planningBoxId,
+            machine,
+            qtyProduced: newQtyProduced,
+            qtyWasteNorm: newQtyWasteNorm,
+            dayCompleted,
+            shiftManagement,
+            status: isCompletedOrder ? planning.status : "lackQty",
+          },
+        };
+      });
     } catch (error) {
-      await transaction?.rollback();
       console.error("Error add Report Production:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
@@ -565,93 +559,105 @@ export const manufactureService = {
 
   confirmProducingBox: async (planningBoxId: number, machine: string, user: any) => {
     const { role, permissions: userPermissions } = user;
-    const transaction = await PlanningBox.sequelize?.transaction();
 
     try {
-      // Lấy planning cần update
-      const planning = await planningRepository.getModelById({
-        model: PlanningBoxTime,
-        where: { planningBoxId, machine },
-        options: { transaction, lock: transaction?.LOCK.UPDATE, skipLocked: true },
+      return await runInTransaction(async (transaction) => {
+        // Lấy planning cần update
+        const planning = await planningRepository.getModelById({
+          model: PlanningBoxTime,
+          where: { planningBoxId, machine },
+          options: { transaction, lock: transaction?.LOCK.UPDATE, skipLocked: true },
+        });
+
+        if (!planning) {
+          throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
+        }
+
+        // check permission
+        // const machineLabel = machineLabels[machine as keyof typeof machineLabels] ?? null;
+        // if (!machineLabel) {
+        //   throw AppError.BadRequest(`Invalid machine: ${machine}`, "INVALID_MACHINE");
+        // }
+
+        // if (role !== "admin" && role !== "manager") {
+        //   if (!userPermissions.includes(machineLabel)) {
+        //     throw AppError.Forbidden(
+        //       `Access denied: You don't have permission to report for machine ${machine}`,
+        //       "ACCESS_DENIED"
+        //     );
+        //   }
+        // }
+
+        // Check if already complete
+        if (planning.status === "complete") {
+          throw AppError.Unauthorized("Planning already completed", "PLANNING_HAS_COMPLETED");
+        }
+
+        // Reset những thằng đang "producing"
+        await manufactureRepository.updatePlanningBoxTime(planningBoxId, machine, transaction);
+
+        // Update sang producing
+        await planningRepository.updateDataModel({
+          model: planning,
+          data: { status: "producing" },
+          options: { transaction },
+        });
+
+        return { message: "Confirm producing box successfully", data: planning };
       });
-
-      if (!planning) {
-        throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
-      }
-
-      // check permission
-      // const machineLabel = machineLabels[machine as keyof typeof machineLabels] ?? null;
-      // if (!machineLabel) {
-      //   throw AppError.BadRequest(`Invalid machine: ${machine}`, "INVALID_MACHINE");
-      // }
-
-      // if (role !== "admin" && role !== "manager") {
-      //   if (!userPermissions.includes(machineLabel)) {
-      //     throw AppError.Forbidden(
-      //       `Access denied: You don't have permission to report for machine ${machine}`,
-      //       "ACCESS_DENIED"
-      //     );
-      //   }
-      // }
-
-      // Check if already complete
-      if (planning.status === "complete") {
-        throw AppError.Unauthorized("Planning already completed", "PLANNING_HAS_COMPLETED");
-      }
-
-      // Reset những thằng đang "producing"
-      await manufactureRepository.updatePlanningBoxTime(planningBoxId, machine, transaction);
-
-      // Update sang producing
-      await planningRepository.updateDataModel({
-        model: planning,
-        data: { status: "producing" },
-        options: { transaction },
-      });
-
-      await transaction?.commit();
-
-      return { message: "Confirm producing box successfully", data: planning };
     } catch (error) {
-      await transaction?.rollback();
       console.error("Error confirming producing box:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
   },
 
-  updateRequestStockCheck: async (planningBoxId: number) => {
-    const transaction = await PlanningBox.sequelize?.transaction();
-
+  updateRequestStockCheck: async (planningBoxId: number, machine: string) => {
     try {
-      // Lấy planning cần update
-      const planningBox = await PlanningBox.findByPk(planningBoxId, { transaction });
-      if (!planningBox) {
-        throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
-      }
+      return await runInTransaction(async (transaction) => {
+        // Lấy planning cần update
+        const planningBox = await PlanningBox.findByPk(planningBoxId, {
+          include: [
+            {
+              model: PlanningBoxTime,
+              where: { machine, dayStart: { [Op.ne]: null } },
+              as: "boxTimes",
+              attributes: ["boxTimeId", "qtyProduced", "machine", "isRequest"],
+            },
+          ],
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+        if (!planningBox) {
+          throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
+        }
 
-      if (planningBox.statusRequest == "requested") {
-        throw AppError.BadRequest("Đơn này đã yêu cầu kiểm tra rồi", "ALREADY_REQUESTED");
-      }
+        if (planningBox.statusRequest == "requested") {
+          throw AppError.BadRequest("Đơn này đã yêu cầu kiểm tra rồi", "ALREADY_REQUESTED");
+        }
 
-      const steps = await manufactureRepository.getAllBoxTimeById(planningBoxId, transaction);
+        const steps = await manufactureRepository.getAllBoxTimeById(planningBoxId, transaction);
 
-      //check qty produced
-      const checkQtyProduced = steps.some((step) => step.qtyProduced == 0);
-      if (checkQtyProduced) {
-        throw AppError.BadRequest(
-          "Có công đoạn chưa có số lượng. Không thể yêu cầu nhập kho.",
-          "STEP_QUANTITY_EQUAL_ZERO"
+        //check qty produced
+        const checkQtyProduced = steps.some(
+          (step) => step.qtyProduced == null || step.qtyProduced <= 0
         );
-      }
 
-      await planningBox.update({ statusRequest: "requested" }, { transaction });
+        console.log(checkQtyProduced);
 
-      await transaction?.commit();
+        if (checkQtyProduced) {
+          throw AppError.BadRequest(
+            "Có công đoạn chưa có số lượng. Không thể yêu cầu nhập kho.",
+            "STEP_QUANTITY_EQUAL_ZERO"
+          );
+        }
 
-      return { message: "Yêu cầu nhập kho đã được gửi" };
+        await planningBox.update({ statusRequest: "requested" }, { transaction });
+        await planningBox.boxTimes?.[0].update({ isRequest: true }, { transaction });
+
+        return { message: "Yêu cầu nhập kho đã được gửi" };
+      });
     } catch (error) {
-      await transaction?.rollback();
       console.error("Error confirming producing box:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();

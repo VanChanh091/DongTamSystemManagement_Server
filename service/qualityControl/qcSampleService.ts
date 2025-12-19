@@ -1,16 +1,16 @@
-import { QcCriteria } from "../../models/qualityControl/qcCriteria";
+import { PlanningBox } from "../../models/planning/planningBox";
+import { PlanningPaper } from "../../models/planning/planningPaper";
 import { qcChecklistData, QcSampleResult } from "../../models/qualityControl/qcSampleResult";
 import { QcSession } from "../../models/qualityControl/qcSession";
+import { planningRepository } from "../../repository/planningRepository";
+import { qcRepository } from "../../repository/qcRepository";
 import { AppError } from "../../utils/appError";
+import { runInTransaction } from "../../utils/helper/transactionHelper";
 
 export const qcSampleService = {
   getAllQcResult: async (qcSessionId: number) => {
     try {
-      const data = await QcSampleResult.findAll({
-        where: { qcSessionId },
-        attributes: { exclude: ["createdAt", "updatedAt"] },
-        order: [["sampleIndex", "ASC"]],
-      });
+      const data = await qcRepository.getAllQcResult(qcSessionId);
 
       return { message: `get QC Result successfully`, data };
     } catch (error) {
@@ -30,17 +30,17 @@ export const qcSampleService = {
   createNewResult: async ({
     qcSessionId,
     samples,
+    transaction,
   }: {
     qcSessionId: number;
     samples: Array<{
       sampleIndex: number;
       checklist: qcChecklistData;
     }>;
+    transaction?: any;
   }) => {
-    const transaction = await QcSampleResult.sequelize?.transaction();
-
     try {
-      const session = await QcSession.findByPk(qcSessionId, { transaction });
+      const session = await qcRepository.findByPk(QcSession, qcSessionId, transaction);
       if (!session) {
         throw AppError.NotFound("QC session not found", "QC_SESSION_NOT_FOUND");
       }
@@ -66,7 +66,6 @@ export const qcSampleService = {
 
       // Validate sampleIndex
       const sampleIndexSet = new Set<number>();
-
       for (const s of samples) {
         if (s.sampleIndex < 1 || s.sampleIndex > session.totalSample) {
           throw AppError.BadRequest(
@@ -86,14 +85,10 @@ export const qcSampleService = {
       }
 
       // Lấy criteria REQUIRED
-      const requiredCriteria = await QcCriteria.findAll({
-        where: {
-          processType: session.processType,
-          isRequired: true,
-        },
-        attributes: ["criteriaCode"],
-        transaction,
-      });
+      const requiredCriteria = await qcRepository.getRequiredQcCriteria(
+        session.processType,
+        transaction
+      );
 
       const requiredCriteriaCode = requiredCriteria.map((c) => String(c.criteriaCode));
 
@@ -127,13 +122,12 @@ export const qcSampleService = {
 
       await session.update({ status: sessionHasFail ? "fail" : "pass" }, { transaction });
 
-      await transaction?.commit();
       return {
         message: "create QC checklist successfully",
+        sessionStatus: sessionHasFail ? "fail" : "pass",
         data: session,
       };
     } catch (error) {
-      await transaction?.rollback();
       console.error("create Qc Sample Result failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
@@ -142,96 +136,85 @@ export const qcSampleService = {
 
   updateResult: async ({
     qcSessionId,
-    sampleIndex,
-    checklist,
+    samples,
   }: {
     qcSessionId: number;
-    sampleIndex: number;
-    checklist: Record<string, boolean>;
+    samples: Array<{
+      sampleIndex: number;
+      checklist: qcChecklistData;
+    }>;
   }) => {
-    const transaction = await QcSampleResult.sequelize?.transaction();
-
     try {
-      const session = await QcSession.findByPk(qcSessionId, { transaction });
-      if (!session) {
-        throw AppError.NotFound("QC session not found", "QC_SESSION_NOT_FOUND");
-      }
-
-      if (session.status == "finalized") {
-        throw AppError.BadRequest("QC session finalized", "QC_SESSION_FINALIZED");
-      }
-
-      // Validate sampleIndex
-      if (sampleIndex < 1 || sampleIndex > session.totalSample) {
-        throw AppError.BadRequest("Invalid sample index", "INVALID_SAMPLE_INDEX");
-      }
-
-      // Lấy sample result
-      const sampleResult = await QcSampleResult.findOne({
-        where: {
-          qcSessionId,
-          sampleIndex,
-        },
-        transaction,
-      });
-
-      if (!sampleResult) {
-        throw AppError.NotFound(`QC sample ${sampleIndex} not found`, "QC_SAMPLE_NOT_FOUND");
-      }
-
-      // Lấy criteria REQUIRED
-      const requiredCriteria = await QcCriteria.findAll({
-        where: {
-          processType: session.processType,
-          isRequired: true,
-        },
-        attributes: ["criteriaCode"],
-        transaction,
-      });
-
-      const normalize = (s: string) => s.trim().toUpperCase();
-      const checklistKeys = Object.keys(checklist).map(normalize);
-      const requiredCodes = requiredCriteria.map((c) => normalize(c.criteriaCode));
-
-      // Validate checklist
-      for (const code of requiredCodes) {
-        if (!checklistKeys.includes(code)) {
-          throw AppError.BadRequest(
-            `Missing required criteria ${code} at sample ${sampleIndex}`,
-            "MISSING_REQUIRED_CRITERIA"
-          );
+      return await runInTransaction(async (transaction) => {
+        // 1️⃣ Lấy session
+        const session = await qcRepository.findByPk(QcSession, qcSessionId, transaction);
+        if (!session) {
+          throw AppError.NotFound("QC session not found", "QC_SESSION_NOT_FOUND");
         }
-      }
 
-      // Update sample checklist
-      const hasFail = Object.values(checklist).some((v) => v === false);
+        if (session.status === "finalized") {
+          throw AppError.BadRequest("QC session finalized", "QC_SESSION_FINALIZED");
+        }
 
-      await sampleResult.update(
-        {
-          checklist,
-          hasFail,
-        },
-        { transaction }
-      );
+        // Lấy criteria REQUIRED
+        const requiredCriteria = await qcRepository.getRequiredQcCriteria(
+          session.processType,
+          transaction
+        );
 
-      // Re-calc trạng thái session
-      const allSamples = await QcSampleResult.findAll({
-        where: { qcSessionId },
-        attributes: ["hasFail"],
-        transaction,
+        const normalize = (s: string) => s.trim().toUpperCase();
+        const requiredCodes = requiredCriteria.map((c) => normalize(c.criteriaCode));
+
+        for (const sample of samples) {
+          const { sampleIndex, checklist } = sample;
+
+          if (sampleIndex < 1 || sampleIndex > session.totalSample) {
+            throw AppError.BadRequest(
+              `Invalid sample index ${sampleIndex}`,
+              "INVALID_SAMPLE_INDEX"
+            );
+          }
+
+          const sampleResult = await planningRepository.getModelById({
+            model: QcSampleResult,
+            where: { qcSessionId, sampleIndex },
+            options: { transaction },
+          });
+          if (!sampleResult) {
+            throw AppError.NotFound(`QC sample ${sampleIndex} not found`, "QC_SAMPLE_NOT_FOUND");
+          }
+
+          // Validate checklist REQUIRED
+          const checklistKeys = Object.keys(checklist).map(normalize);
+
+          for (const code of requiredCodes) {
+            if (!checklistKeys.includes(code)) {
+              throw AppError.BadRequest(
+                `Missing required criteria ${code} at sample ${sampleIndex}`,
+                "MISSING_REQUIRED_CRITERIA"
+              );
+            }
+          }
+
+          // Update sample
+          const hasFail = Object.values(checklist).some((v) => v === false);
+
+          await sampleResult.update({ checklist, hasFail }, { transaction });
+        }
+
+        // Re-calc trạng thái session (sau khi update tất cả)
+        const allSamples = await qcRepository.getAllSample(qcSessionId, transaction);
+
+        const sessionHasFail = allSamples.some((s) => s.hasFail === true);
+
+        await session.update({ status: sessionHasFail ? "fail" : "pass" }, { transaction });
+
+        return {
+          message: "update QC checklist successfully",
+          data: allSamples,
+        };
       });
-
-      const sessionHasFail = allSamples.some((s) => s.hasFail === true);
-
-      await session.update({ status: sessionHasFail ? "fail" : "pass" }, { transaction });
-
-      await transaction?.commit();
-      return {
-        message: "update QC checklist successfully",
-        data: sampleResult,
-      };
     } catch (error) {
-      await transaction?.rollback();
       console.error("update Qc Result failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
@@ -247,29 +230,38 @@ export const qcSampleService = {
     planningBoxId?: number;
     isPaper: boolean;
   }) => {
-    const transaction = await QcSession.sequelize?.transaction();
-
     try {
-      const session = await QcSession.findOne({
-        where: isPaper ? { planningId } : { planningBoxId },
-        transaction,
+      return await runInTransaction(async (transaction) => {
+        console.log(planningId);
+
+        const session = await planningRepository.getModelById({
+          model: QcSession,
+          where: isPaper ? { planningId } : { planningBoxId },
+          options: { transaction },
+        });
+        if (!session) {
+          throw AppError.NotFound("QC session not found", "QC_SESSION_NOT_FOUND");
+        }
+
+        if (session.status == "finalized") {
+          throw AppError.BadRequest("QC session already finalized", "QC_SESSION_ALREADY_FINALIZED");
+        }
+
+        await session.update({ status: "finalized" });
+
+        //update status request in planning
+        const planning = isPaper
+          ? await PlanningPaper.findOne({ where: { planningId: session.planningId }, transaction })
+          : await PlanningBox.findOne({
+              where: { planningBoxId: session.planningBoxId },
+              transaction,
+            });
+
+        await (planning as any)?.update({ statusRequest: "finalize" }, { transaction });
+
+        return { message: "finalize QC session successfully", data: session };
       });
-      if (!session) {
-        throw AppError.NotFound("QC session not found", "QC_SESSION_NOT_FOUND");
-      }
-
-      if (session.status == "finalized") {
-        throw AppError.BadRequest("QC session already finalized", "QC_SESSION_ALREADY_FINALIZED");
-      }
-
-      await session.update({ status: "finalized" });
-
-      return {
-        message: "finalize QC session successfully",
-        data: session,
-      };
     } catch (error) {
-      await transaction?.rollback();
       console.error("create Qc Sample Result failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();

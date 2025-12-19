@@ -4,7 +4,7 @@ import { PlanningBoxTime } from "./planningBoxMachineTime.js";
 import { timeOverflowPlanning } from "./timeOverflowPlanning.js";
 import { Order } from "../order/order.js";
 
-export type statusRequestInbound = "none" | "requested" | "reject" | "complete";
+export type statusRequestInbound = "none" | "requested" | "inbounded" | "finalize";
 
 //định nghĩa trường trong bảng
 interface PlanningBoxAttributes {
@@ -156,7 +156,7 @@ export function initPlanningBoxModel(sequelize: Sequelize): typeof PlanningBox {
       hasOverFlow: { type: DataTypes.BOOLEAN, defaultValue: false },
 
       statusRequest: {
-        type: DataTypes.ENUM("none", "requested", "reject", "complete"),
+        type: DataTypes.ENUM("none", "requested", "inbounded", "finalize"),
         defaultValue: "none",
       },
 

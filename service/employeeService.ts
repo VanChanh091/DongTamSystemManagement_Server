@@ -10,6 +10,7 @@ import { Op } from "sequelize";
 import { exportExcelResponse } from "../utils/helper/excelExporter";
 import { employeeColumns, mappingEmployeeRow } from "../utils/mapping/employeeRowAndColumn";
 import { Response } from "express";
+import { runInTransaction } from "../utils/helper/transactionHelper";
 dotenv.config();
 
 const devEnvironment = process.env.NODE_ENV !== "production";
@@ -122,28 +123,26 @@ export const employeeService = {
 
   createEmployee: async (data: any) => {
     const { companyInfo, ...basicInfo } = data;
-    const transaction = await EmployeeBasicInfo.sequelize?.transaction();
 
     try {
-      const newBasicInfo = await employeeRepository.createEmployee(
-        EmployeeBasicInfo,
-        basicInfo,
-        transaction
-      );
+      return await runInTransaction(async (transaction) => {
+        const newBasicInfo = await employeeRepository.createEmployee(
+          EmployeeBasicInfo,
+          basicInfo,
+          transaction
+        );
 
-      await employeeRepository.createEmployee(
-        EmployeeCompanyInfo,
-        { employeeId: newBasicInfo.employeeId, ...companyInfo },
-        transaction
-      );
+        await employeeRepository.createEmployee(
+          EmployeeCompanyInfo,
+          { employeeId: newBasicInfo.employeeId, ...companyInfo },
+          transaction
+        );
 
-      await transaction?.commit();
+        const createdEmployee = await employeeRepository.findEmployeeById(newBasicInfo.employeeId);
 
-      const createdEmployee = await employeeRepository.findEmployeeById(newBasicInfo.employeeId);
-
-      return { message: "create new employee successfully", data: createdEmployee };
+        return { message: "create new employee successfully", data: createdEmployee };
+      });
     } catch (error) {
-      await transaction?.rollback();
       console.error("create employee failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
@@ -152,58 +151,51 @@ export const employeeService = {
 
   updateEmployee: async (employeeId: number, data: any) => {
     const { companyInfo, ...basicInfo } = data;
-    const transaction = await EmployeeBasicInfo.sequelize?.transaction();
-
     try {
-      const employee = await employeeRepository.findEmployeeByPk(employeeId, transaction);
-      if (!employee) {
-        throw AppError.NotFound("Employee not found", "EMPLOYEE_NOT_FOUND");
-      }
+      return await runInTransaction(async (transaction) => {
+        const employee = await employeeRepository.findEmployeeByPk(employeeId, transaction);
+        if (!employee) {
+          throw AppError.NotFound("Employee not found", "EMPLOYEE_NOT_FOUND");
+        }
 
-      if (basicInfo) {
-        await employeeRepository.updateEmployee(employee, basicInfo, transaction);
-      }
+        if (basicInfo) {
+          await employeeRepository.updateEmployee(employee, basicInfo, transaction);
+        }
 
-      if (companyInfo && employee.companyInfo) {
-        await employeeRepository.updateEmployee(employee.companyInfo, companyInfo, transaction);
-      } else if (companyInfo) {
-        await employeeRepository.createEmployee(
-          EmployeeCompanyInfo,
-          { employeeId: employee.employeeId, ...companyInfo },
-          transaction
-        );
-      }
+        if (companyInfo && employee.companyInfo) {
+          await employeeRepository.updateEmployee(employee.companyInfo, companyInfo, transaction);
+        } else if (companyInfo) {
+          await employeeRepository.createEmployee(
+            EmployeeCompanyInfo,
+            { employeeId: employee.employeeId, ...companyInfo },
+            transaction
+          );
+        }
 
-      await transaction?.commit();
+        const updatedEmployee = await employeeRepository.findEmployeeById(employeeId);
 
-      const updatedEmployee = await employeeRepository.findEmployeeById(employeeId);
-
-      return { message: "Cập nhật nhân viên thành công", data: updatedEmployee };
+        return { message: "Cập nhật nhân viên thành công", data: updatedEmployee };
+      });
     } catch (error) {
-      await transaction?.rollback();
-      console.error("update employees failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
   },
 
   deleteEmployee: async (employeeId: number) => {
-    const transaction = await EmployeeBasicInfo.sequelize?.transaction();
-
     try {
-      const employee = await employeeRepository.findEmployeeByPk(employeeId);
-      if (!employee) {
-        throw AppError.NotFound("Employee not found", "EMPLOYEE_NOT_FOUND");
-      }
+      return await runInTransaction(async (transaction) => {
+        const employee = await employeeRepository.findEmployeeByPk(employeeId);
+        if (!employee) {
+          throw AppError.NotFound("Employee not found", "EMPLOYEE_NOT_FOUND");
+        }
 
-      // Xóa bản ghi chính
-      await employee.destroy({ transaction });
+        // Xóa bản ghi chính
+        await employee.destroy({ transaction });
 
-      await transaction?.commit();
-
-      return { message: "delete employee successfully" };
+        return { message: "delete employee successfully" };
+      });
     } catch (error) {
-      await transaction?.rollback();
       console.error("delete employees failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();

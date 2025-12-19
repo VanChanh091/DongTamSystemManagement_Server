@@ -5,11 +5,8 @@ import {
   getBoxCheckedDetail,
   getBoxWaitingChecked,
   getPaperWaitingChecked,
-  inboundQtyBox,
-  inboundQtyPaper,
   searchInboundByField,
 } from "../../controller/user/warehouse/inboundHistoryController";
-import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 import {
   createOutbound,
   getAllOutboundHistory,
@@ -24,9 +21,6 @@ const router = Router();
 router.get("/getPaperWaiting", authenticate, getPaperWaitingChecked);
 router.get("/getBoxWaiting", authenticate, getBoxWaitingChecked);
 router.get("/getBoxDetail", authenticate, getBoxCheckedDetail);
-
-router.post("/inboundPaper", authenticate, authorizeAnyPermission(["QC"]), inboundQtyPaper);
-router.post("/inboundBox", authenticate, authorizeAnyPermission(["QC"]), inboundQtyBox);
 
 //========================INBOUND HISTORY===========================
 

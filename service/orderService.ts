@@ -14,6 +14,7 @@ import redisCache from "../configs/redisCache";
 import { CacheManager } from "../utils/helper/cacheManager";
 import { Box } from "../models/order/box";
 import { Order } from "../models/order/order";
+import { runInTransaction } from "../utils/helper/transactionHelper";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { order } = CacheManager.keys;
@@ -153,37 +154,42 @@ export const orderService = {
     const { prefix, customerId, productId, box, ...orderData } = data;
 
     try {
-      if (!userId) {
-        throw AppError.BadRequest("Invalid userId parameter", "INVALID_FIELD");
-      }
-
-      const validation = await validateCustomerAndProduct(customerId, productId);
-      if (!validation.success) throw AppError.NotFound(validation.message);
-
-      //create id + number auto increase
-      const newOrderId = await generateOrderId(prefix);
-
-      //create order
-      const newOrder = await Order.create({
-        orderId: newOrderId,
-        customerId: customerId,
-        productId: productId,
-        userId: userId,
-        ...orderData,
-      });
-
-      //create table data
-      if (newOrder.isBox) {
-        try {
-          await createDataTable(newOrderId, Box, box);
-        } catch (error) {
-          console.error("Error creating related data:", error);
-          if (error instanceof AppError) throw error;
-          throw AppError.ServerError();
+      return await runInTransaction(async (transaction) => {
+        if (!userId) {
+          throw AppError.BadRequest("Invalid userId parameter", "INVALID_FIELD");
         }
-      }
 
-      return { order: newOrder, orderId: newOrderId };
+        const validation = await validateCustomerAndProduct(customerId, productId);
+        if (!validation.success) throw AppError.NotFound(validation.message);
+
+        //create id + number auto increase
+        const newOrderId = await generateOrderId(prefix);
+
+        //create order
+        const newOrder = await Order.create(
+          {
+            orderId: newOrderId,
+            customerId: customerId,
+            productId: productId,
+            userId: userId,
+            ...orderData,
+          },
+          { transaction }
+        );
+
+        //create table data
+        if (newOrder.isBox) {
+          try {
+            await createDataTable(newOrderId, Box, box);
+          } catch (error) {
+            console.error("Error creating related data:", error);
+            if (error instanceof AppError) throw error;
+            throw AppError.ServerError();
+          }
+        }
+
+        return { order: newOrder, orderId: newOrderId };
+      });
     } catch (error) {
       console.error("Error in getOrderPendingAndReject:", error);
       if (error instanceof AppError) throw error;
@@ -196,22 +202,22 @@ export const orderService = {
     const { box, ...orderData } = data;
 
     try {
-      const order = await Order.findOne({ where: { orderId } });
-      if (!order) {
-        throw AppError.NotFound("Order not found");
-      }
+      return await runInTransaction(async (transaction) => {
+        const order = await Order.findOne({ where: { orderId } });
+        if (!order) {
+          throw AppError.NotFound("Order not found");
+        }
 
-      await order.update({
-        ...orderData,
+        await order.update({ ...orderData }, transaction);
+
+        if (order.isBox) {
+          await updateChildOrder(orderId, Box, box);
+        } else {
+          await Box.destroy({ where: { orderId } });
+        }
+
+        return { message: "Order updated successfully", data: order };
       });
-
-      if (order.isBox) {
-        await updateChildOrder(orderId, Box, box);
-      } else {
-        await Box.destroy({ where: { orderId } });
-      }
-
-      return { message: "Order updated successfully", data: order };
     } catch (error) {
       console.error("Error in getOrderPendingAndReject:", error);
       if (error instanceof AppError) throw error;
@@ -222,12 +228,14 @@ export const orderService = {
   //delete order service
   deleteOrder: async (orderId: string) => {
     try {
-      const deleted = await Order.destroy({ where: { orderId } });
-      if (deleted === 0) {
-        throw AppError.NotFound("Order không tồn tại");
-      }
+      return await runInTransaction(async (transaction) => {
+        const deleted = await Order.destroy({ where: { orderId }, transaction });
+        if (deleted === 0) {
+          throw AppError.NotFound("Order không tồn tại");
+        }
 
-      return { message: "Order deleted successfully" };
+        return { message: "Order deleted successfully" };
+      });
     } catch (error) {
       console.error("Error in getOrderPendingAndReject:", error);
       if (error instanceof AppError) throw error;

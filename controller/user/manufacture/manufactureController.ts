@@ -108,14 +108,17 @@ export const confirmProducingBox = async (req: Request, res: Response, next: Nex
 
 //send request to check quality product
 export const updateRequestStockCheck = async (req: Request, res: Response, next: NextFunction) => {
-  const { planningBoxId } = req.query as { planningBoxId: string };
+  const { planningBoxId, machine } = req.query as { planningBoxId: string; machine: string };
 
   try {
     if (!planningBoxId) {
       throw AppError.BadRequest("Missing planningBoxId parameter", "MISSING_PARAMETERS");
     }
 
-    const response = await manufactureService.updateRequestStockCheck(Number(planningBoxId));
+    const response = await manufactureService.updateRequestStockCheck(
+      Number(planningBoxId),
+      machine
+    );
     return res.status(201).json(response);
   } catch (error) {
     next(error);

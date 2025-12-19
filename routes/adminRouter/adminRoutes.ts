@@ -43,6 +43,12 @@ import {
   getWaveCrestById,
   updateWaveCrestById,
 } from "../../controller/admin/adminWaveCrestController";
+import {
+  createNewCriteria,
+  deleteCriteria,
+  getAllQcCriteria,
+  updateCriteria,
+} from "../../controller/admin/adminCriteriaController";
 
 const router = Router();
 
@@ -99,5 +105,11 @@ router.get("/getWaveCrestById", authenticate, authorizeRole(["admin"]), getWaveC
 router.post("/createWaveCrest", authenticate, authorizeRole(["admin"]), createWaveCrestCoefficient);
 router.put("/updateWaveCrestById", authenticate, authorizeRole(["admin"]), updateWaveCrestById);
 router.delete("/deleteWaveCrestById", authenticate, authorizeRole(["admin"]), deleteWaveCrestById);
+
+//admin criteria
+router.get("/getCriteria", authenticate, authorizeRole(["admin"]), getAllQcCriteria);
+router.post("/newCriteria", authenticate, authorizeRole(["admin"]), createNewCriteria);
+router.put("/updateCriteria", authenticate, authorizeRole(["admin"]), updateCriteria);
+router.delete("/deleteCriteria", authenticate, authorizeRole(["admin"]), deleteCriteria);
 
 export default router;

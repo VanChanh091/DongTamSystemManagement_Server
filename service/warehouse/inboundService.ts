@@ -152,9 +152,17 @@ export const inboundService = {
   },
 
   //inbound paper
-  inboundQtyPaper: async (planningId: number, inboundQty: number) => {
-    const transaction = await PlanningPaper.sequelize?.transaction();
-
+  inboundQtyPaper: async ({
+    planningId,
+    inboundQty,
+    qcSessionId,
+    transaction,
+  }: {
+    planningId: number;
+    inboundQty: number;
+    qcSessionId: number;
+    transaction?: any;
+  }) => {
     try {
       const planning = await manufactureRepository.getPapersById(planningId, transaction);
       if (!planning) {
@@ -163,37 +171,42 @@ export const inboundService = {
 
       const totalInboundQty =
         (await InboundHistory.sum("qtyInbound", {
-          where: { orderId: planning.orderId },
+          where: { planningId: planning.planningId },
         })) ?? 0;
-      const producedQty = planning.qtyProduced ?? 0;
 
-      if (totalInboundQty + inboundQty > producedQty) {
+      const qtyProduced = planning.qtyProduced ?? 0;
+      if (totalInboundQty + inboundQty > qtyProduced) {
         throw AppError.BadRequest(
           "Số lượng nhập kho vượt quá số lượng sản xuất",
           "INBOUND_EXCEED_PRODUCED"
         );
       }
 
+      const isFirstInbound = totalInboundQty === 0;
+
       const inboundRecord = await planningRepository.createData({
         model: InboundHistory,
         data: {
           dateInbound: new Date(),
-          qtyPaper: planning.qtyProduced,
+          qtyPaper: qtyProduced,
           qtyInbound: inboundQty,
 
           orderId: planning.orderId,
+          planningId,
+          qcSessionId,
         },
         transaction,
       });
 
-      await transaction?.commit();
+      if (isFirstInbound) {
+        await planning.update({ statusRequest: "inbounded" }, { transaction });
+      }
 
       return {
         message: "Confirm producing paper successfully",
         data: inboundRecord,
       };
     } catch (error) {
-      await transaction?.rollback();
       console.error("Error inbound paper:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
@@ -201,59 +214,71 @@ export const inboundService = {
   },
 
   //inbound box
-  inboundQtyBox: async (planningBoxId: number, inboundQty: number) => {
-    const transaction = await PlanningBox.sequelize?.transaction();
-
+  inboundQtyBox: async ({
+    planningBoxId,
+    inboundQty,
+    qcSessionId,
+    transaction,
+  }: {
+    planningBoxId: number;
+    inboundQty: number;
+    qcSessionId: number;
+    transaction?: any;
+  }) => {
     try {
       const planning = await planningRepository.getModelById({
         model: PlanningBox,
         where: { planningBoxId },
         options: {
-          include: [{ model: PlanningBoxTime, as: "boxtimes", where: { planningBoxId } }],
+          include: [
+            { model: PlanningBoxTime, as: "boxTimes", where: { planningBoxId, isRequest: true } },
+          ],
           transaction,
           lock: transaction?.LOCK.UPDATE,
         },
       });
-
       if (!planning) {
         throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
       }
 
       const totalInboundQty =
         (await InboundHistory.sum("qtyInbound", {
-          where: { orderId: planning.orderId },
+          where: { planningBoxId: planning.planningBoxId },
         })) ?? 0;
-      const producedQty = planning.qtyProduced ?? 0;
 
-      if (totalInboundQty + inboundQty > producedQty) {
+      const qtyProduced = planning.boxTimes?.[0].qtyProduced ?? 0;
+      if (totalInboundQty + inboundQty > qtyProduced) {
         throw AppError.BadRequest(
           "Số lượng nhập kho vượt quá số lượng sản xuất",
           "INBOUND_EXCEED_PRODUCED"
         );
       }
 
-      await planning.update({ statusRequest: "completed" }, { transaction });
+      const isFirstInbound = totalInboundQty === 0;
 
       const inboundRecord = await planningRepository.createData({
         model: InboundHistory,
         data: {
           dateInbound: new Date(),
-          qtyPaper: planning.PlanningPaper.qtyProduced,
+          qtyPaper: planning.qtyPaper,
           qtyInbound: inboundQty,
 
           orderId: planning.orderId,
+          planningBoxId,
+          qcSessionId,
         },
         transaction,
       });
 
-      await transaction?.commit();
+      if (isFirstInbound) {
+        await planning.update({ statusRequest: "inbounded" }, { transaction });
+      }
 
       return {
         message: "Confirm producing paper successfully",
         data: inboundRecord,
       };
     } catch (error) {
-      await transaction?.rollback();
       console.error("Error inbound box:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();

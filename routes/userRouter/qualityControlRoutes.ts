@@ -2,37 +2,37 @@ import { Router } from "express";
 import authenticate from "../../middlewares/authMiddleware";
 import {
   confirmFinalizeSession,
-  createNewCriteria,
   createNewResult,
   createNewSession,
-  getAllQcCriteria,
   getAllQcResult,
   getAllQcSession,
+  getSessionByFk,
   submitQC,
-  updateCriteria,
   updateResult,
   updateSession,
 } from "../../controller/QC/qcController";
+import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 
 const router = Router();
 
-//==================QC CRITERIA=====================
-router.get("/getCriteria", authenticate, getAllQcCriteria);
-router.post("/newCriteria", authenticate, createNewCriteria);
-router.put("/updateCriteria", authenticate, updateCriteria);
-
 //==================QC SESSION======================
 router.get("/getSession", authenticate, getAllQcSession);
-router.post("/newSession", authenticate, createNewSession);
-router.put("/updateSession", authenticate, updateSession);
+router.get("/getSessionByFk", authenticate, getSessionByFk);
+router.post("/newSession", authenticate, authorizeAnyPermission(["QC"]), createNewSession);
+router.put("/updateSession", authenticate, authorizeAnyPermission(["QC"]), updateSession);
 
 //==================QC RESULT=======================
 router.get("/getResult", authenticate, getAllQcResult);
-router.post("/newResult", authenticate, createNewResult);
-router.put("/updateResult", authenticate, updateResult);
-router.put("/confirmFinalize", authenticate, confirmFinalizeSession);
+router.post("/newResult", authorizeAnyPermission(["QC"]), authenticate, createNewResult);
+router.put("/updateResult", authorizeAnyPermission(["QC"]), authenticate, updateResult);
+router.put(
+  "/confirmFinalize",
+  authorizeAnyPermission(["QC"]),
+  authenticate,
+  confirmFinalizeSession
+);
 
 //==================ORCHESTRATOR=======================
-router.post("/submitQC", authenticate, submitQC);
+router.post("/submitQC", authenticate, authorizeAnyPermission(["QC"]), submitQC);
 
 export default router;

@@ -88,6 +88,11 @@ const models = {
   OutboundHistory,
   OutboundDetail,
 
+  //QC
+  QcCriteria,
+  QcSession,
+  QcSampleResult,
+
   //admin
   MachinePaper,
   MachineBox,
@@ -194,10 +199,24 @@ EmployeeBasicInfo.hasOne(EmployeeCompanyInfo, {
 EmployeeCompanyInfo.belongsTo(EmployeeBasicInfo, { foreignKey: "employeeId", as: "basicInfo" });
 
 //QC session
-PlanningPaper.hasOne(QcSession, { foreignKey: "planningId", onDelete: "CASCADE" });
+PlanningPaper.hasMany(QcSession, { foreignKey: "planningId", onDelete: "CASCADE" });
 QcSession.belongsTo(PlanningPaper, { foreignKey: "planningId" });
 
 PlanningBox.hasOne(QcSession, { foreignKey: "planningBoxId", onDelete: "CASCADE" });
 QcSession.belongsTo(PlanningBox, { foreignKey: "planningBoxId" });
+
+QcSession.hasMany(QcSampleResult, {
+  foreignKey: "qcSessionId",
+  as: "samples",
+  onDelete: "CASCADE",
+});
+QcSampleResult.belongsTo(QcSession, { foreignKey: "qcSessionId" });
+
+QcSession.hasMany(InboundHistory, {
+  foreignKey: "qcSessionId",
+  as: "inbound",
+  onDelete: "CASCADE",
+});
+InboundHistory.belongsTo(QcSession, { foreignKey: "qcSessionId" });
 
 export default models;

@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { adminService } from "../../service/adminService";
+import { adminService } from "../../service/admin/adminService";
 import { userRole } from "../../models/user/user";
 import { AppError } from "../../utils/appError";
 

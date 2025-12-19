@@ -26,6 +26,8 @@ interface PlanningBoxTimeAttributes {
   shiftManagement?: string | null;
   status: statusBoxType;
   sortPlanning?: number | null;
+  isRequest: boolean;
+
   createdAt?: Date;
   updatedAt?: Date;
 
@@ -46,6 +48,7 @@ type PlanningBoxTimeCreationAttributes = Optional<
   | "qtyProduced"
   | "shiftManagement"
   | "sortPlanning"
+  | "isRequest"
   | "createdAt"
   | "updatedAt"
 >;
@@ -67,6 +70,8 @@ export class PlanningBoxTime
   declare shiftManagement?: string | null;
   declare status: statusBoxType;
   declare sortPlanning?: number | null;
+  declare isRequest: boolean;
+
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
 
@@ -118,6 +123,7 @@ export function initPlanningBoxTimeModel(sequelize: Sequelize): typeof PlanningB
         defaultValue: "planning",
       },
       sortPlanning: { type: DataTypes.INTEGER },
+      isRequest: { type: DataTypes.BOOLEAN, defaultValue: false },
 
       //FK
       planningBoxId: { type: DataTypes.INTEGER, allowNull: false },

@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { adminService } from "../../service/adminService";
+import { adminService } from "../../service/admin/adminService";
 
 //getOrderPending
 export const getOrderPending = async (req: Request, res: Response, next: NextFunction) => {
