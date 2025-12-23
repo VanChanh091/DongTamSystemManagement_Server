@@ -45,6 +45,17 @@ export const getEmployeesByField = async (req: Request, res: Response, next: Nex
   }
 };
 
+//get by field
+export const getEmployeeByPosition = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const response = await employeeService.getEmployeeByPosition();
+
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
 //add employee
 export const createEmployee = async (req: Request, res: Response, next: NextFunction) => {
   try {

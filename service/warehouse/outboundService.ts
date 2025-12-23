@@ -1,16 +1,20 @@
 import dotenv from "dotenv";
+dotenv.config();
+
 import { CacheManager } from "../../utils/helper/cacheManager";
 import { AppError } from "../../utils/appError";
 import { OutboundHistory } from "../../models/warehouse/outboundHistory";
-import { getOutboundByField } from "../../utils/helper/modelHelper/warehouseHelper";
-import redisCache from "../../configs/redisCache";
 import { warehouseRepository } from "../../repository/warehouseRepository";
 import { OutboundDetail } from "../../models/warehouse/outboundDetail";
 import { Order } from "../../models/order/order";
-import { InboundHistory } from "../../models/warehouse/inboundHistory";
 import { planningRepository } from "../../repository/planningRepository";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
-dotenv.config();
+import redisCache from "../../configs/redisCache";
+import { InboundHistory } from "../../models/warehouse/inboundHistory";
+import { Customer } from "../../models/customer/customer";
+import { Product } from "../../models/product/product";
+import { User } from "../../models/user/user";
+import { getOutboundByField } from "../../utils/helper/modelHelper/warehouseHelper";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { outbound } = CacheManager.keys.warehouse;
@@ -18,20 +22,20 @@ const { outbound } = CacheManager.keys.warehouse;
 export const outboundService = {
   getAllOutboundHistory: async (page: number, pageSize: number) => {
     try {
-      // const cacheKey = outbound.page(page);
+      const cacheKey = outbound.page(page);
 
-      // const { isChanged } = await CacheManager.check(OutboundHistory, "outbound");
+      const { isChanged } = await CacheManager.check(OutboundHistory, "outbound");
 
-      // if (isChanged) {
-      //   await CacheManager.clearOutbound();
-      // } else {
-      //   const cachedData = await redisCache.get(cacheKey);
-      //   if (cachedData) {
-      //     if (devEnvironment) console.log("✅ Data outbound from Redis");
-      //     const parsed = JSON.parse(cachedData);
-      //     return { ...parsed, message: `Get all outbound from cache` };
-      //   }
-      // }
+      if (isChanged) {
+        await CacheManager.clearOutbound();
+      } else {
+        const cachedData = await redisCache.get(cacheKey);
+        if (cachedData) {
+          if (devEnvironment) console.log("✅ Data outbound from Redis");
+          const parsed = JSON.parse(cachedData);
+          return { ...parsed, message: `Get all outbound from cache` };
+        }
+      }
 
       const totalOutbounds = await warehouseRepository.outboundHistoryCount();
       const totalPages = Math.ceil(totalOutbounds / pageSize);
@@ -70,6 +74,55 @@ export const outboundService = {
       return { message: "get outbound detail successfully", data: details };
     } catch (error) {
       console.error("Failed to get all outbound detail:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  //this func use to get planning has qtyProduced > 0
+  //chưa xong
+  getOrderInboundQty: async (orderId: string) => {
+    try {
+      const totalInbound = (await InboundHistory.sum("qtyInbound", { where: { orderId } })) ?? 0;
+
+      const totalOutbound = (await OutboundDetail.sum("outboundQty", { where: { orderId } })) ?? 0;
+
+      const remainingQty = totalInbound - totalOutbound;
+
+      // const data = await warehouseRepository.getOrderInboundQty(orderId);
+
+      const order = await Order.findOne({
+        where: { orderId },
+        attributes: [
+          "orderId",
+          "flute",
+          "QC_box",
+          "quantityCustomer",
+          "dvt",
+          "price",
+          "discount",
+          "vat",
+        ],
+        include: [
+          { model: Customer, attributes: ["customerName", "companyName"] },
+          { model: Product, attributes: ["typeProduct", "productName"] },
+          { model: User, attributes: ["fullName"] },
+        ],
+      });
+
+      if (!order) {
+        throw AppError.NotFound("Order not found", "ORDER_NOT_FOUND");
+      }
+
+      return {
+        message: "Get all employee by position sucessfully",
+        data: {
+          ...order.toJSON(),
+          remainingQty,
+        },
+      };
+    } catch (error) {
+      console.error(`Failed to get employees by position`, error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
@@ -216,24 +269,27 @@ export const outboundService = {
     pageSize: number;
   }) => {
     try {
-      // const fieldMap = {
-      //   outboundSlipCode: (outbound: OutboundHistory) => outbound.orderId,
-      //   dateOutbound: (outbound: OutboundHistory) => outbound.dateOutbound,
-      //   companyName: (outbound: OutboundHistory) => outbound.Order.Customer.companyName,
-      //   productName: (outbound: OutboundHistory) => outbound.Order.Product.productName,
-      // } as const;
-      // const key = field as keyof typeof fieldMap;
-      // if (!fieldMap[key]) {
-      //   throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
-      // }
-      // const result = await getOutboundByField({
-      //   keyword: keyword,
-      //   getFieldValue: fieldMap[key],
-      //   page,
-      //   pageSize,
-      //   message: `get all by ${field} from filtered cache`,
-      // });
-      // return result;
+      const fieldMap = {
+        orderId: (outbound: OutboundHistory) => outbound.outboundDetail.orderId,
+        outboundSlipCode: (outbound: OutboundHistory) => outbound.outboundSlipCode,
+        dateOutbound: (outbound: OutboundHistory) => outbound.dateOutbound,
+        companyName: (outbound: OutboundHistory) =>
+          outbound.outboundDetail.Order.Customer.companyName,
+        productName: (outbound: OutboundHistory) =>
+          outbound.outboundDetail.Order.Product.productName,
+      } as const;
+      const key = field as keyof typeof fieldMap;
+      if (!fieldMap[key]) {
+        throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
+      }
+      const result = await getOutboundByField({
+        keyword: keyword,
+        getFieldValue: fieldMap[key],
+        page,
+        pageSize,
+        message: `get all by ${field} from filtered cache`,
+      });
+      return result;
     } catch (error) {
       console.error(`Failed to get outbound history by ${field}:`, error);
       throw AppError.ServerError();

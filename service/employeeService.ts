@@ -1,4 +1,6 @@
 import dotenv from "dotenv";
+dotenv.config();
+
 import { CacheManager } from "../utils/helper/cacheManager";
 import { AppError } from "../utils/appError";
 import { EmployeeBasicInfo } from "../models/employee/employeeBasicInfo";
@@ -11,7 +13,6 @@ import { exportExcelResponse } from "../utils/helper/excelExporter";
 import { employeeColumns, mappingEmployeeRow } from "../utils/mapping/employeeRowAndColumn";
 import { Response } from "express";
 import { runInTransaction } from "../utils/helper/transactionHelper";
-dotenv.config();
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { employee } = CacheManager.keys;
@@ -116,6 +117,19 @@ export const employeeService = {
       return result;
     } catch (error) {
       console.error(`Failed to get employees by ${field}:`, error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  //this func use to get list shift management for report manufacture
+  getEmployeeByPosition: async () => {
+    try {
+      const data = await employeeRepository.findEmployeeByPosition();
+
+      return { message: "Get all employee by position sucessfully", data };
+    } catch (error) {
+      console.error(`Failed to get employees by position`, error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }

@@ -10,6 +10,7 @@ import {
 import {
   createOutbound,
   getAllOutboundHistory,
+  getOrderInboundQty,
   getOutboundDetail,
   searchOutboundByField,
 } from "../../controller/user/warehouse/outboundHistoryController";
@@ -35,5 +36,6 @@ router.post("/createOutbound", authenticate, createOutbound);
 // router.get("/updateOutbound", authenticate, createOutbound);
 // router.get("/deleteOutbound", authenticate, createOutbound);
 router.get("/outbound/filter", authenticate, searchOutboundByField);
+router.get("/getOrderInboundQty", authenticate, getOrderInboundQty);
 
 export default router;

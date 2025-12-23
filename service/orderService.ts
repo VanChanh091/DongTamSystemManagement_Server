@@ -118,6 +118,7 @@ export const orderService = {
 
     try {
       const fieldMap = {
+        orderId: (order: Order) => order.orderId,
         customerName: (order: Order) => order?.Customer?.customerName,
         productName: (order: Order) => order?.Product?.productName,
         qcBox: (order: Order) => order?.QC_box,

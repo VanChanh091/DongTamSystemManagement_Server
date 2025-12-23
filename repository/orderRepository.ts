@@ -53,6 +53,7 @@ export const orderRepository = {
             exclude: ["boxId", "createdAt", "updatedAt", "orderId"],
           },
         },
+        { model: User, attributes: ["fullName"] },
       ],
       order: [["createdAt", "DESC"]],
     });

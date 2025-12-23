@@ -10,6 +10,7 @@ import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { OutboundHistory } from "../models/warehouse/outboundHistory";
 import { OutboundDetail } from "../models/warehouse/outboundDetail";
 import { Op } from "sequelize";
+import { User } from "../models/user/user";
 
 export const warehouseRepository = {
   //====================================WAITING CHECK========================================
@@ -17,7 +18,7 @@ export const warehouseRepository = {
   //paper
   getPaperWaitingChecked: async () => {
     return await PlanningPaper.findAll({
-      where: { statusRequest: { [Op.ne]: "finalize" }, hasBox: false },
+      where: { statusRequest: { [Op.in]: ["requested", "inbounded"] }, hasBox: false },
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {
@@ -51,6 +52,7 @@ export const warehouseRepository = {
             },
           ],
         },
+        { model: InboundHistory, as: "inbound", attributes: ["dateInbound", "qtyInbound"] },
       ],
       order: [["sortPlanning", "ASC"]],
     });
@@ -59,7 +61,7 @@ export const warehouseRepository = {
   //box
   getBoxWaitingChecked: async () => {
     return await PlanningBox.findAll({
-      where: { statusRequest: { [Op.ne]: "finalize" } },
+      where: { statusRequest: { [Op.in]: ["requested", "inbounded"] } },
       attributes: {
         exclude: [
           "hasIn",
@@ -210,7 +212,7 @@ export const warehouseRepository = {
         {
           model: OutboundDetail,
           as: "detail",
-          attributes: ["outboundDetailId"],
+          attributes: ["outboundDetailId", "orderId"],
           separate: true,
           limit: 1,
           include: [
@@ -242,6 +244,33 @@ export const warehouseRepository = {
           model: Order,
           attributes: ["dayReceiveOrder", "flute", "QC_box", "quantityCustomer", "dvt", "discount"],
           include: [{ model: Product, attributes: ["typeProduct", "productName"] }],
+        },
+      ],
+    });
+  },
+
+  getOrderInboundQty: async (orderId: string) => {
+    return await InboundHistory.findAll({
+      where: { orderId },
+      attributes: ["qtyPaper", "qtyInbound", "orderId"],
+      include: [
+        {
+          model: Order,
+          attributes: [
+            "orderId",
+            "flute",
+            "QC_box",
+            "quantityCustomer",
+            "dvt",
+            "price",
+            "discount",
+            "vat",
+          ],
+          include: [
+            { model: Customer, attributes: ["customerName", "companyName"] },
+            { model: Product, attributes: ["typeProduct", "productName"] },
+            { model: User, attributes: ["fullName"] },
+          ],
         },
       ],
     });

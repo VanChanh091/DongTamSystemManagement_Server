@@ -87,6 +87,7 @@ export const dashboardService = {
       }
 
       const box = detail.PlanningBox;
+      if (!box) return { message: "Planning is not box type", data: [] };
 
       const stages = await buildStagesDetails({
         detail: box,

@@ -5,7 +5,8 @@ module.exports = {
     {
       name: "dongtam-api",
       script: "dist/index.js",
-      exec_mode: "cluster", // cluster mode để cân bằng tải
+      // exec_mode: "cluster", // cluster mode để cân bằng tải
+      exec_mode: "fork", // cluster mode để cân bằng tải
       autorestart: true,
       watch: false,
       merge_logs: true,

@@ -1,4 +1,4 @@
-import { Sequelize } from "sequelize";
+import { col, fn, Op, Sequelize, where } from "sequelize";
 import { EmployeeBasicInfo } from "../models/employee/employeeBasicInfo";
 import { EmployeeCompanyInfo } from "../models/employee/employeeCompanyInfo";
 
@@ -49,6 +49,22 @@ export const employeeRepository = {
       order: [
         //lấy 3 số cuối -> ép chuỗi thành số để so sánh -> sort
         [Sequelize.literal("CAST(RIGHT(`companyInfo`.`employeeCode`, 3) AS UNSIGNED)"), "ASC"],
+      ],
+    });
+  },
+
+  findEmployeeByPosition: async () => {
+    return await EmployeeBasicInfo.findAll({
+      attributes: ["employeeId", "fullName"],
+      include: [
+        {
+          model: EmployeeCompanyInfo,
+          as: "companyInfo",
+          attributes: ["position"],
+          where: where(fn("LOWER", col("companyInfo.position")), {
+            [Op.like]: "%trưởng máy%",
+          }),
+        },
       ],
     });
   },

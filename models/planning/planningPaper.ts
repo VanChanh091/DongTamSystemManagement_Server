@@ -2,6 +2,7 @@ import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { Order } from "../order/order";
 import { timeOverflowPlanning } from "./timeOverflowPlanning";
 import { PlanningBox } from "./planningBox";
+import { InboundHistory } from "../warehouse/inboundHistory";
 
 export type machinePaperType = "Máy 1350" | "Máy 1900" | "Máy 2 Lớp" | "Máy Quấn Cuồn";
 export type planningPaperStatus =
@@ -147,6 +148,7 @@ export class PlanningPaper
   declare Order: Order;
   declare PlanningBox?: PlanningBox;
   declare timeOverFlow?: timeOverflowPlanning;
+  declare inbound: InboundHistory[];
 }
 
 export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPaper {
