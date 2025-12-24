@@ -178,7 +178,7 @@ const calculateTimeForOnePlanning = async ({
     };
   }
 
-  // ✅ chỉ dùng quantityCustomer làm runningPlan
+  // chỉ dùng quantityCustomer làm runningPlan
   const boxTime = planning.boxTimes && planning.boxTimes[0] ? planning.boxTimes[0] : null;
   const runningPlan = boxTime.runningPlan;
 
@@ -222,10 +222,13 @@ const calculateTimeForOnePlanning = async ({
     planningBoxId,
     dayStart: currentDay.toISOString().split("T")[0],
   };
+
   let hasOverFlow = false;
 
   // predictedEndTime: đã bao gồm productionMinutes + toàn bộ break
   const predictedEndTime = addMinutes(currentTime, productionMinutes);
+
+  console.log(predictedEndTime > endOfWorkTime);
 
   if (predictedEndTime > endOfWorkTime) {
     hasOverFlow = true;
@@ -259,7 +262,9 @@ const calculateTimeForOnePlanning = async ({
     });
   }
 
-  // ✅ update hasOverFlow theo quantityCustomer
+  console.log(`hasOverFlow: ${hasOverFlow}`);
+  console.log(`hasOverFlow && runningPlan > 0: ${hasOverFlow && runningPlan > 0}`);
+
   await planningRepository.updateDataModel({
     model: PlanningBox,
     data: { hasOverFlow: hasOverFlow && runningPlan > 0 },

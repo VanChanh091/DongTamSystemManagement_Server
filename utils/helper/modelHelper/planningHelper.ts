@@ -284,10 +284,10 @@ const isDuringBreak = (start: Date, end: Date) => {
   return totalBreak;
 };
 
-export const setTimeOnDay = (dayDate: Date, timeStrOrDate: string | Date) => {
+export const setTimeOnDay = (date: Date, timeStrOrDate: string | Date) => {
   const t =
     typeof timeStrOrDate === "string" ? parseTimeOnly(timeStrOrDate) : new Date(timeStrOrDate);
-  t.setFullYear(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate());
+  t.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
   return t;
 };
 

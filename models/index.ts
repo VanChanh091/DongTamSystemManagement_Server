@@ -21,6 +21,7 @@ import { initReportPlanningBoxModel } from "./report/reportPlanningBox";
 import { initReportPlanningPaperModel } from "./report/reportPlanningPaper";
 import { initUserModel } from "./user/user";
 import { initInboundHistoryModel } from "./warehouse/inboundHistory";
+import { initInventoryModel } from "./warehouse/inventory";
 import { initOutboundDetailModel } from "./warehouse/outboundDetail";
 import { initOutboundHistoryModel } from "./warehouse/outboundHistory";
 
@@ -52,15 +53,18 @@ const WasteNormPaper = initWasteNormPaperModel(sequelize);
 const WasteNormBox = initWasteNormBoxModel(sequelize);
 const WaveCrestCoefficient = initWaveCrestCoefficientModel(sequelize);
 
+//QC
+const QcSession = initQcSessionModel(sequelize);
+const QcCriteria = initQcCriteriaModel(sequelize);
+const QcSampleResult = initQcSamepleResultModel(sequelize);
+
 //warehouse
 const InboundHistory = initInboundHistoryModel(sequelize);
 const OutboundHistory = initOutboundHistoryModel(sequelize);
 const OutboundDetail = initOutboundDetailModel(sequelize);
 
-//QC
-const QcSession = initQcSessionModel(sequelize);
-const QcCriteria = initQcCriteriaModel(sequelize);
-const QcSampleResult = initQcSamepleResultModel(sequelize);
+//inventory
+const Inventory = initInventoryModel(sequelize);
 
 const models = {
   User,
@@ -83,15 +87,16 @@ const models = {
   EmployeeBasicInfo,
   EmployeeCompanyInfo,
 
-  //warehouse
-  InboundHistory,
-  OutboundHistory,
-  OutboundDetail,
-
   //QC
   QcCriteria,
   QcSession,
   QcSampleResult,
+
+  //warehouse
+  InboundHistory,
+  OutboundHistory,
+  OutboundDetail,
+  Inventory,
 
   //admin
   MachinePaper,
@@ -159,34 +164,6 @@ PlanningBox.hasMany(ReportPlanningBox, {
 });
 ReportPlanningBox.belongsTo(PlanningBox, { foreignKey: "planningBoxId" });
 
-//inbound and outbound history
-Order.hasMany(InboundHistory, { foreignKey: "orderId", onDelete: "CASCADE" });
-InboundHistory.belongsTo(Order, { foreignKey: "orderId" });
-
-PlanningPaper.hasMany(InboundHistory, {
-  foreignKey: "planningId",
-  as: "inbound",
-  onDelete: "CASCADE",
-});
-InboundHistory.belongsTo(PlanningPaper, { foreignKey: "planningId" });
-
-PlanningBox.hasMany(InboundHistory, {
-  foreignKey: "planningBoxId",
-  as: "inbound",
-  onDelete: "CASCADE",
-});
-InboundHistory.belongsTo(PlanningBox, { foreignKey: "planningBoxId" });
-
-OutboundHistory.hasMany(OutboundDetail, {
-  foreignKey: "outboundId",
-  as: "detail",
-  onDelete: "CASCADE",
-});
-OutboundDetail.belongsTo(OutboundHistory, { foreignKey: "outboundId" });
-
-Order.hasMany(OutboundDetail, { foreignKey: "orderId", onDelete: "CASCADE" });
-OutboundDetail.belongsTo(Order, { foreignKey: "orderId" });
-
 //timeOverflowPlanning
 PlanningPaper.hasOne(timeOverflowPlanning, {
   foreignKey: "planningId",
@@ -232,5 +209,37 @@ QcSession.hasMany(InboundHistory, {
   onDelete: "CASCADE",
 });
 InboundHistory.belongsTo(QcSession, { foreignKey: "qcSessionId" });
+
+//inbound and outbound history
+Order.hasMany(InboundHistory, { foreignKey: "orderId", onDelete: "CASCADE" });
+InboundHistory.belongsTo(Order, { foreignKey: "orderId" });
+
+PlanningPaper.hasMany(InboundHistory, {
+  foreignKey: "planningId",
+  as: "inbound",
+  onDelete: "CASCADE",
+});
+InboundHistory.belongsTo(PlanningPaper, { foreignKey: "planningId" });
+
+PlanningBox.hasMany(InboundHistory, {
+  foreignKey: "planningBoxId",
+  as: "inbound",
+  onDelete: "CASCADE",
+});
+InboundHistory.belongsTo(PlanningBox, { foreignKey: "planningBoxId" });
+
+OutboundHistory.hasMany(OutboundDetail, {
+  foreignKey: "outboundId",
+  as: "detail",
+  onDelete: "CASCADE",
+});
+OutboundDetail.belongsTo(OutboundHistory, { foreignKey: "outboundId" });
+
+Order.hasMany(OutboundDetail, { foreignKey: "orderId", onDelete: "CASCADE" });
+OutboundDetail.belongsTo(Order, { foreignKey: "orderId" });
+
+//inventory
+Order.hasOne(Inventory, { foreignKey: "orderId", onDelete: "CASCADE" });
+Inventory.belongsTo(Order, { foreignKey: "orderId" });
 
 export default models;

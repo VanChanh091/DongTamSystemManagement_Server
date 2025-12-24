@@ -69,6 +69,17 @@ export const searchOutboundByField = async (req: Request, res: Response, next: N
   }
 };
 
+export const searchOrderIds = async (req: Request, res: Response, next: NextFunction) => {
+  const { orderId } = req.query as { orderId: string };
+
+  try {
+    const response = await outboundService.searchOrderIds(orderId);
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getOrderInboundQty = async (req: Request, res: Response, next: NextFunction) => {
   const { orderId } = req.query as { orderId: string };
 

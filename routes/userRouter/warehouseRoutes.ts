@@ -12,8 +12,13 @@ import {
   getAllOutboundHistory,
   getOrderInboundQty,
   getOutboundDetail,
+  searchOrderIds,
   searchOutboundByField,
 } from "../../controller/user/warehouse/outboundHistoryController";
+import {
+  createNewInventory,
+  getAllInventory,
+} from "../../controller/user/warehouse/inventoryController";
 
 const router = Router();
 
@@ -36,6 +41,12 @@ router.post("/createOutbound", authenticate, createOutbound);
 // router.get("/updateOutbound", authenticate, createOutbound);
 // router.get("/deleteOutbound", authenticate, createOutbound);
 router.get("/outbound/filter", authenticate, searchOutboundByField);
+
+router.get("/searchOrderIds", authenticate, searchOrderIds);
 router.get("/getOrderInboundQty", authenticate, getOrderInboundQty);
+
+//========================INVENTORY===========================
+router.get("/getAllInventory", authenticate, getAllInventory);
+router.post("/createInventory", authenticate, createNewInventory);
 
 export default router;

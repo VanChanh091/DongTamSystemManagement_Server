@@ -457,34 +457,19 @@ export const manufactureService = {
 
         const isCompletedOrder = newQtyProduced >= (planning.runningPlan || 0);
 
-        const timeOverFlow = (
-          Array.isArray(planning.PlanningBox.timeOverFlow) &&
-          planning.PlanningBox.timeOverFlow.length > 0
-            ? planning.PlanningBox.timeOverFlow[0]
-            : planning.PlanningBox.timeOverFlow
-        ) as timeOverflowPlanning | undefined;
+        const overflow = await planningRepository.getModelById({
+          model: timeOverflowPlanning,
+          where: { planningBoxId, machine },
+          options: { transaction, lock: transaction?.LOCK.UPDATE },
+        });
 
         //condition
         const isOverflowReport =
-          planning.PlanningBox.hasOverFlow &&
-          planning.PlanningBox.timeOverFlow &&
-          timeOverFlow &&
-          new Date(dayCompleted) >= new Date(timeOverFlow.overflowDayStart ?? "");
+          !!overflow &&
+          overflow.overflowDayStart &&
+          new Date(dayCompleted) >= new Date(overflow.overflowDayStart);
 
-        let overflow, dayReportValue;
-
-        //get timeOverflowPlanning
-        if (planning.PlanningBox.hasOverFlow) {
-          overflow = await planningRepository.getModelById({
-            model: timeOverflowPlanning,
-            where: { planningBoxId, machine },
-            options: { transaction, lock: transaction?.LOCK.UPDATE },
-          });
-
-          if (!overflow) {
-            throw AppError.NotFound("Overflow plan not found", "OVERFLOW_NOT_FOUND");
-          }
-        }
+        let dayReportValue;
 
         if (isOverflowReport) {
           await overflow?.update({ overflowDayCompleted: new Date(dayCompleted) }, { transaction });

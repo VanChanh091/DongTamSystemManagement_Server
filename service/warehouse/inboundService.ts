@@ -1,45 +1,30 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+import redisCache from "../../configs/redisCache";
 import { AppError } from "../../utils/appError";
 import { InboundHistory } from "../../models/warehouse/inboundHistory";
 import { warehouseRepository } from "../../repository/warehouseRepository";
 import { manufactureRepository } from "../../repository/manufactureRepository";
-import { PlanningPaper } from "../../models/planning/planningPaper";
 import { planningRepository } from "../../repository/planningRepository";
 import { PlanningBox } from "../../models/planning/planningBox";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
 import { CacheManager } from "../../utils/helper/cacheManager";
-import redisCache from "../../configs/redisCache";
 import { getInboundByField } from "../../utils/helper/modelHelper/warehouseHelper";
 import { dashboardRepository } from "../../repository/dashboardRepository";
 import { buildStagesDetails } from "../../utils/helper/modelHelper/planningHelper";
+import { Inventory } from "../../models/warehouse/inventory";
+import { inventoryService } from "./inventoryService";
+import { Order } from "../../models/order/order";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inbound } = CacheManager.keys.warehouse;
-const { paper, box, boxDetail } = CacheManager.keys.waitingCheck;
 
 export const inboundService = {
   //====================================WAITING CHECK AND INBOUND QTY========================================
 
   getPaperWaitingChecked: async () => {
-    const cacheKey = paper.all;
     try {
-      const { isChanged } = await CacheManager.check(PlanningPaper, "waitingPaper");
-
-      if (isChanged) {
-        await CacheManager.clearWaitingPaper();
-      } else {
-        const cachedData = await redisCache.get(cacheKey);
-        if (cachedData) {
-          if (devEnvironment) console.log("✅ Data paper waiting check from Redis");
-          return {
-            message: `Get all paper waiting check from cache`,
-            data: JSON.parse(cachedData),
-          };
-        }
-      }
-
       const planning = await warehouseRepository.getPaperWaitingChecked();
 
       const allPlannings: any[] = [];
@@ -72,8 +57,6 @@ export const inboundService = {
         }
       });
 
-      await redisCache.set(cacheKey, JSON.stringify(allPlannings), "EX", 1800);
-
       return { message: `get planning paper waiting check`, data: allPlannings };
     } catch (error) {
       console.error("Failed to get paper waiting checked:", error);
@@ -82,24 +65,8 @@ export const inboundService = {
   },
 
   getBoxWaitingChecked: async () => {
-    const cacheKey = box.all;
-
     try {
-      const { isChanged } = await CacheManager.check(PlanningBox, "waitingBox");
-
-      if (isChanged) {
-        await CacheManager.clearWaitingBox();
-      } else {
-        const cachedData = await redisCache.get(cacheKey);
-        if (cachedData) {
-          if (devEnvironment) console.log("✅ Data box wating check from Redis");
-          return { message: `Get all box wating check from cache`, data: JSON.parse(cachedData) };
-        }
-      }
-
       const planning = await warehouseRepository.getBoxWaitingChecked();
-
-      await redisCache.set(cacheKey, JSON.stringify(planning), "EX", 1800);
 
       return { message: `get planning by machine waiting check`, data: planning };
     } catch (error) {
@@ -110,24 +77,7 @@ export const inboundService = {
   },
 
   getBoxCheckedDetail: async (planningBoxId: number) => {
-    const cacheKey = boxDetail.all(planningBoxId);
-
     try {
-      const { isChanged } = await CacheManager.check(PlanningBoxTime, "boxDetail");
-
-      if (isChanged) {
-        await CacheManager.clearBoxDetail();
-      } else {
-        const cachedData = await redisCache.get(cacheKey);
-        if (cachedData) {
-          if (devEnvironment) console.log("✅ Data box detail wating check from Redis");
-          return {
-            message: `Get all box detail wating check from cache`,
-            data: JSON.parse(cachedData),
-          };
-        }
-      }
-
       //get data detail
       const detail = await warehouseRepository.getBoxCheckedDetail(planningBoxId);
       if (!detail) {
@@ -140,8 +90,6 @@ export const inboundService = {
         getPlanningBoxId: (d) => d.planningBoxId,
         getAllOverflow: (id) => dashboardRepository.getAllTimeOverflow(id),
       });
-
-      await redisCache.set(cacheKey, JSON.stringify(stages), "EX", 1800);
 
       return { message: "get db planning detail succesfully", data: stages };
     } catch (error) {
@@ -184,6 +132,9 @@ export const inboundService = {
 
       const isFirstInbound = totalInboundQty === 0;
 
+      //create inventory
+      await inventoryService.createNewInventory(planning.orderId, transaction);
+
       const inboundRecord = await planningRepository.createData({
         model: InboundHistory,
         data: {
@@ -197,6 +148,19 @@ export const inboundService = {
         },
         transaction,
       });
+
+      //update inventory
+      await Inventory.increment(
+        {
+          totalQtyInbound: inboundQty,
+          qtyInventory: inboundQty,
+          valueInventory: inboundQty * planning.Order.price,
+        },
+        {
+          where: { orderId: planning.orderId },
+          transaction,
+        }
+      );
 
       if (isFirstInbound) {
         await planning.update({ statusRequest: "inbounded" }, { transaction });
@@ -232,6 +196,7 @@ export const inboundService = {
         options: {
           include: [
             { model: PlanningBoxTime, as: "boxTimes", where: { planningBoxId, isRequest: true } },
+            { model: Order, attributes: ["quantityCustomer", "price"] },
           ],
           transaction,
           lock: transaction?.LOCK.UPDATE,
@@ -256,6 +221,9 @@ export const inboundService = {
 
       const isFirstInbound = totalInboundQty === 0;
 
+      //create inventory
+      await inventoryService.createNewInventory(planning.orderId, transaction);
+
       const inboundRecord = await planningRepository.createData({
         model: InboundHistory,
         data: {
@@ -269,6 +237,19 @@ export const inboundService = {
         },
         transaction,
       });
+
+      //update inventory
+      await Inventory.increment(
+        {
+          totalQtyInbound: inboundQty,
+          qtyInventory: inboundQty,
+          valueInventory: inboundQty * planning.Order.price,
+        },
+        {
+          where: { orderId: planning.orderId },
+          transaction,
+        }
+      );
 
       if (isFirstInbound) {
         await planning.update({ statusRequest: "inbounded" }, { transaction });

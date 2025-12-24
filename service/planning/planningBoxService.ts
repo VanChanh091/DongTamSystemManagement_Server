@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
+
 import { CacheManager } from "../../utils/helper/cacheManager";
 import { planningRepository } from "../../repository/planningRepository";
 import redisCache from "../../configs/redisCache";
@@ -12,7 +13,6 @@ import { MachineBox } from "../../models/admin/machineBox";
 import { Request } from "express";
 import { calTimeRunningPlanningBox } from "./helper/timeRunningBox";
 import { getPlanningByField } from "../../utils/helper/modelHelper/planningHelper";
-import { InboundHistory } from "../../models/warehouse/inboundHistory";
 import { warehouseRepository } from "../../repository/warehouseRepository";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 

@@ -232,8 +232,6 @@ export const qcSampleService = {
   }) => {
     try {
       return await runInTransaction(async (transaction) => {
-        console.log(planningId);
-
         const session = await planningRepository.getModelById({
           model: QcSession,
           where: isPaper ? { planningId } : { planningBoxId },

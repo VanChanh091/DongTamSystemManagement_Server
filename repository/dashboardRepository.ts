@@ -7,6 +7,7 @@ import { PlanningPaper } from "../models/planning/planningPaper";
 import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
 import { Product } from "../models/product/product";
 import { User } from "../models/user/user";
+import { Inventory } from "../models/warehouse/inventory";
 
 export const dashboardRepository = {
   getDbPlanningCount: async () => {
@@ -75,6 +76,7 @@ export const dashboardRepository = {
             { model: Customer, attributes: ["customerName", "companyName"] },
             { model: Product, attributes: ["typeProduct", "productName", "maKhuon"] },
             { model: User, attributes: ["fullName"] },
+            { model: Inventory, attributes: ["totalQtyOutbound"] },
           ],
         },
       ],

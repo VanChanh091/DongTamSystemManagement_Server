@@ -73,7 +73,6 @@ export const qcSubmitService = {
         return { message: "submit QC dialog successfully" };
       });
     } catch (error) {
-      console.error("submit QC dialog failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }

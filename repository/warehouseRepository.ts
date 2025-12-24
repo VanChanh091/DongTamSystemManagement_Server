@@ -11,6 +11,7 @@ import { OutboundHistory } from "../models/warehouse/outboundHistory";
 import { OutboundDetail } from "../models/warehouse/outboundDetail";
 import { Op } from "sequelize";
 import { User } from "../models/user/user";
+import { Inventory } from "../models/warehouse/inventory";
 
 export const warehouseRepository = {
   //====================================WAITING CHECK========================================
@@ -104,6 +105,7 @@ export const warehouseRepository = {
             },
           ],
         },
+        { model: InboundHistory, as: "inbound", attributes: ["dateInbound", "qtyInbound"] },
       ],
     });
   },
@@ -184,13 +186,6 @@ export const warehouseRepository = {
     return await InboundHistory.findAll(query);
   },
 
-  findByOrderId: async ({ orderId, transaction }: { orderId: string; transaction: any }) => {
-    return await InboundHistory.findOne({
-      where: { orderId },
-      transaction,
-    });
-  },
-
   //====================================OUTBOUND HISTORY========================================
 
   outboundHistoryCount: async () => {
@@ -249,36 +244,53 @@ export const warehouseRepository = {
     });
   },
 
+  findByPK: async (outboundId: number) => {
+    return await OutboundHistory.findByPk(outboundId, {
+      attributes: ["outboundId"],
+    });
+  },
+
   getOrderInboundQty: async (orderId: string) => {
-    return await InboundHistory.findAll({
+    return await Order.findOne({
       where: { orderId },
-      attributes: ["qtyPaper", "qtyInbound", "orderId"],
+      attributes: [
+        "orderId",
+        "dayReceiveOrder",
+        "flute",
+        "QC_box",
+        "quantityCustomer",
+        "dvt",
+        "price",
+        "discount",
+        "vat",
+      ],
       include: [
-        {
-          model: Order,
-          attributes: [
-            "orderId",
-            "flute",
-            "QC_box",
-            "quantityCustomer",
-            "dvt",
-            "price",
-            "discount",
-            "vat",
-          ],
-          include: [
-            { model: Customer, attributes: ["customerName", "companyName"] },
-            { model: Product, attributes: ["typeProduct", "productName"] },
-            { model: User, attributes: ["fullName"] },
-          ],
-        },
+        { model: Customer, attributes: ["customerName", "companyName"] },
+        { model: Product, attributes: ["typeProduct", "productName"] },
+        { model: User, attributes: ["fullName"] },
       ],
     });
   },
 
-  findByPK: async (outboundId: number) => {
-    return await OutboundHistory.findByPk(outboundId, {
-      attributes: ["outboundId"],
+  searchOrderIds: async (keyword: string) => {
+    return await Order.findAll({
+      where: {
+        orderId: {
+          [Op.startsWith]: keyword,
+        },
+      },
+      attributes: ["orderId", "dayReceiveOrder"],
+      include: [
+        { model: Customer, attributes: ["customerName"] },
+        {
+          model: InboundHistory,
+          attributes: [],
+          required: true,
+          where: { qtyInbound: { [Op.gt]: 0 } },
+        },
+      ],
+      limit: 20,
+      order: [["orderId", "ASC"]],
     });
   },
 
@@ -286,6 +298,62 @@ export const warehouseRepository = {
     return await OutboundDetail.sum("outboundQty", {
       where: { orderId },
       transaction,
+    });
+  },
+
+  //====================================INVENTORY========================================
+
+  inventoryCount: async () => {
+    return await Inventory.count();
+  },
+
+  getInventoryByPage: async (page: number, pageSize: number) => {
+    return await Inventory.findAll({
+      attributes: { exclude: ["createdAt", "updatedAt"] },
+      include: [
+        {
+          model: Order,
+          attributes: [
+            "orderId",
+            "dayReceiveOrder",
+            "flute",
+            "day",
+            "matE",
+            "matB",
+            "matC",
+            "matE2",
+            "songE",
+            "songB",
+            "songC",
+            "songE2",
+            "lengthPaperCustomer",
+            "paperSizeCustomer",
+            "quantityCustomer",
+            "dvt",
+            "price",
+            "totalPrice",
+            "vat",
+            "totalPriceVAT",
+          ],
+        },
+      ],
+      offset: (page - 1) * pageSize,
+      limit: pageSize,
+    });
+  },
+
+  findInventoryByOrderId: async (orderId: string) => {
+    return await Inventory.findOne({
+      where: { orderId },
+      attributes: ["qtyInventory"],
+    });
+  },
+
+  findByOrderId: async ({ orderId, transaction }: { orderId: string; transaction: any }) => {
+    return await Inventory.findOne({
+      where: { orderId },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
     });
   },
 };

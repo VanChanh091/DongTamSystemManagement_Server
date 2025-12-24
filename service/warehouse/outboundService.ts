@@ -10,11 +10,8 @@ import { Order } from "../../models/order/order";
 import { planningRepository } from "../../repository/planningRepository";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import redisCache from "../../configs/redisCache";
-import { InboundHistory } from "../../models/warehouse/inboundHistory";
-import { Customer } from "../../models/customer/customer";
-import { Product } from "../../models/product/product";
-import { User } from "../../models/user/user";
 import { getOutboundByField } from "../../utils/helper/modelHelper/warehouseHelper";
+import { Inventory } from "../../models/warehouse/inventory";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { outbound } = CacheManager.keys.warehouse;
@@ -49,7 +46,7 @@ export const outboundService = {
         currentPage: page,
       };
 
-      // await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+      await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
 
       return responseData;
     } catch (error) {
@@ -73,56 +70,39 @@ export const outboundService = {
 
       return { message: "get outbound detail successfully", data: details };
     } catch (error) {
-      console.error("Failed to get all outbound detail:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
   },
 
+  searchOrderIds: async (keyword: string) => {
+    try {
+      const orders = await warehouseRepository.searchOrderIds(keyword);
+
+      return { message: "Get orderId suggestions successfully", data: orders };
+    } catch (error) {
+      console.error("Error search orderIds:", error);
+      throw AppError.ServerError();
+    }
+  },
+
   //this func use to get planning has qtyProduced > 0
-  //chưa xong
   getOrderInboundQty: async (orderId: string) => {
     try {
-      const totalInbound = (await InboundHistory.sum("qtyInbound", { where: { orderId } })) ?? 0;
-
-      const totalOutbound = (await OutboundDetail.sum("outboundQty", { where: { orderId } })) ?? 0;
-
-      const remainingQty = totalInbound - totalOutbound;
-
-      // const data = await warehouseRepository.getOrderInboundQty(orderId);
-
-      const order = await Order.findOne({
-        where: { orderId },
-        attributes: [
-          "orderId",
-          "flute",
-          "QC_box",
-          "quantityCustomer",
-          "dvt",
-          "price",
-          "discount",
-          "vat",
-        ],
-        include: [
-          { model: Customer, attributes: ["customerName", "companyName"] },
-          { model: Product, attributes: ["typeProduct", "productName"] },
-          { model: User, attributes: ["fullName"] },
-        ],
-      });
-
+      const order = await warehouseRepository.getOrderInboundQty(orderId);
       if (!order) {
         throw AppError.NotFound("Order not found", "ORDER_NOT_FOUND");
       }
 
+      const inventory = await warehouseRepository.findInventoryByOrderId(orderId);
+
+      const remainingQty = inventory?.qtyInventory ?? 0;
+
       return {
         message: "Get all employee by position sucessfully",
-        data: {
-          ...order.toJSON(),
-          remainingQty,
-        },
+        data: { ...order.toJSON(), remainingQty },
       };
     } catch (error) {
-      console.error(`Failed to get employees by position`, error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
@@ -160,20 +140,31 @@ export const outboundService = {
             throw AppError.NotFound(`Order ${item.orderId} không tồn tại`, "ORDER_NOT_FOUND");
           }
 
-          // check inbound
-          const inbound = await warehouseRepository.findByOrderId({
-            orderId: item.orderId,
-            transaction,
-          });
-          if (!inbound) {
-            throw AppError.BadRequest(`Order ${item.orderId} chưa nhập kho`, "ORDER_NOT_INBOUND");
-          }
-
           // check customer
           if (customerId === null) {
             customerId = order.customerId;
           } else if (customerId !== order.customerId) {
             throw AppError.BadRequest("Các đơn hàng không cùng khách hàng", "CUSTOMER_MISMATCH");
+          }
+
+          // check inventory
+          const inventory = await warehouseRepository.findByOrderId({
+            orderId: item.orderId,
+            transaction,
+          });
+
+          if (!inventory) {
+            throw AppError.BadRequest(
+              `Order: ${item.orderId} chưa có tồn kho`,
+              "INVENTORY_NOT_FOUND"
+            );
+          }
+
+          if (inventory.qtyInventory < item.outboundQty) {
+            throw AppError.BadRequest(
+              `Xuất vượt tồn kho cho order ${item.orderId}`,
+              "OUTBOUND_EXCEED_INVENTORY"
+            );
           }
 
           // check xuất vượt số lượng order
@@ -185,7 +176,7 @@ export const outboundService = {
           const deliveredQty = Number(exportedQty ?? 0);
           if (deliveredQty + item.outboundQty > order.quantityCustomer) {
             throw AppError.BadRequest(
-              `Xuất vượt số lượng cho order ${item.orderId}`,
+              `Xuất vượt số lượng bán cho order ${item.orderId}`,
               "OUTBOUND_QTY_EXCEED"
             );
           }
@@ -246,12 +237,23 @@ export const outboundService = {
             },
             transaction,
           });
+
+          await Inventory.increment(
+            {
+              totalQtyOutbound: item.outboundQty,
+              qtyInventory: -item.outboundQty,
+              valueInventory: -(item.outboundQty * item.price),
+            },
+            {
+              where: { orderId: item.orderId },
+              transaction,
+            }
+          );
         }
 
         return outbound;
       });
     } catch (error) {
-      console.error("Error create outbound:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }

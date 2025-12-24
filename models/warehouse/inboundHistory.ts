@@ -61,11 +61,16 @@ export function initInboundHistoryModel(sequelize: Sequelize): typeof InboundHis
 
       //FK
       orderId: { type: DataTypes.STRING, allowNull: false },
-      planningId: { type: DataTypes.STRING },
-      planningBoxId: { type: DataTypes.STRING },
+      planningId: { type: DataTypes.INTEGER },
+      planningBoxId: { type: DataTypes.INTEGER },
       qcSessionId: { type: DataTypes.INTEGER, allowNull: false },
     },
-    { sequelize, tableName: "InboundHistory", timestamps: true }
+    {
+      sequelize,
+      tableName: "InboundHistory",
+      timestamps: true,
+      indexes: [{ fields: ["orderId"] }],
+    }
   );
 
   return InboundHistory;

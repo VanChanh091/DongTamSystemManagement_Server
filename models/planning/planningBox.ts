@@ -34,6 +34,11 @@ interface PlanningBoxAttributes {
   hasCanMang?: boolean | null;
   hasDongGhim?: boolean | null;
 
+  /**
+   * @deprecated
+   * Chỉ dùng cho tổng quan / UI.
+   * KHÔNG dùng cho logic theo machine.
+   */
   hasOverFlow?: boolean | null;
 
   statusRequest: statusRequestInbound;
