@@ -46,7 +46,6 @@ export const initSocket = (server: HttpServer) => {
 
       const decoded = jwt.verify(token, key as string) as DecodedToken;
       socket.user = decoded;
-      // console.log("✅ Token ok:", decoded);
       next();
     } catch (err) {
       if (devEnvironment) console.log("❌ Reject: Invalid token", err);
@@ -59,12 +58,12 @@ export const initSocket = (server: HttpServer) => {
     //machine
     socket.on("join-machine", (roomName: string) => {
       socket.join(roomName);
-      if (devEnvironment) console.log(`📌 socket joined ${roomName}`);
+      if (devEnvironment) console.log(`📌 socket joined: ${roomName}`);
     });
 
     socket.on("leave-room", (room: string) => {
       socket.leave(room);
-      if (devEnvironment) console.log(`📌 socket left ${room}`);
+      if (devEnvironment) console.log(`📌 socket left: ${room}`);
     });
   });
 

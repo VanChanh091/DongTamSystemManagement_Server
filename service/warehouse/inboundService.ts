@@ -16,6 +16,7 @@ import { buildStagesDetails } from "../../utils/helper/modelHelper/planningHelpe
 import { Inventory } from "../../models/warehouse/inventory";
 import { inventoryService } from "./inventoryService";
 import { Order } from "../../models/order/order";
+import { PlanningPaper } from "../../models/planning/planningPaper";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inbound } = CacheManager.keys.warehouse;
@@ -253,6 +254,16 @@ export const inboundService = {
 
       if (isFirstInbound) {
         await planning.update({ statusRequest: "inbounded" }, { transaction });
+
+        const paper = await PlanningPaper.findOne({
+          where: { planningId: planning.planningId },
+          attributes: ["planningId", "statusRequest"],
+        });
+        if (!paper) {
+          throw AppError.BadRequest("planning paper not found", "PLANNING_PAPER_NOT_FOUND");
+        }
+
+        await paper.update({ statusRequest: "inbounded" }, { transaction });
       }
 
       return {

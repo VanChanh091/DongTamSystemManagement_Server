@@ -114,7 +114,6 @@ export const updateIndex_TimeRunning = async (req: Request, res: Response, next:
     }
 
     const response = await planningPaperService.updateIndex_TimeRunning({
-      req,
       machine: machine,
       updateIndex: updateIndex,
       dayStart: dayStart,
@@ -122,6 +121,18 @@ export const updateIndex_TimeRunning = async (req: Request, res: Response, next:
       totalTimeWorking: totalTimeWorking,
       isNewDay,
     });
+    return res.status(201).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+//update index & time running
+export const notifyUpdatePlanning = async (req: Request, res: Response, next: NextFunction) => {
+  const { machine, keyName } = req.body as { machine: string; keyName: string };
+
+  try {
+    const response = await planningPaperService.notifyUpdatePlanning(req, machine, keyName);
     return res.status(201).json(response);
   } catch (error) {
     next(error);

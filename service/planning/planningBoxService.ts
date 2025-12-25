@@ -220,11 +220,6 @@ export const planningBoxService = {
     try {
       const ids = Array.isArray(planningBoxId) ? planningBoxId : [planningBoxId];
 
-      const plannings = await planningRepository.getStopByIds(ids);
-      if (plannings.length == 0) {
-        throw AppError.BadRequest("planning not found", "PLANNING_NOT_FOUND");
-      }
-
       const planningBox = await planningRepository.getBoxsById({
         planningBoxIds: ids,
         machine,
@@ -235,6 +230,9 @@ export const planningBoxService = {
           ],
         },
       });
+      if (planningBox.length !== ids.length) {
+        throw AppError.BadRequest("planning not found", "PLANNING_NOT_FOUND");
+      }
 
       for (const box of planningBox) {
         const { qtyProduced, runningPlan } = box;
@@ -384,13 +382,6 @@ export const planningBoxService = {
           totalTimeWorking,
           isNewDay,
           transaction,
-        });
-
-        //socket
-        const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
-        req.io?.to(roomName).emit("planningBoxUpdated", {
-          machine,
-          message: `Kế hoạch của ${machine} đã được cập nhật.`,
         });
 
         return {

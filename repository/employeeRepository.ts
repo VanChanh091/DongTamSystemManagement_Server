@@ -60,7 +60,7 @@ export const employeeRepository = {
         {
           model: EmployeeCompanyInfo,
           as: "companyInfo",
-          attributes: ["position"],
+          attributes: ["position", "department"],
           where: where(fn("LOWER", col("companyInfo.position")), {
             [Op.like]: "%trưởng máy%",
           }),

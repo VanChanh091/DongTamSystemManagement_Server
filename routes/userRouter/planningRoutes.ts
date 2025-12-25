@@ -6,6 +6,7 @@ import {
   confirmCompletePaper,
   getPlanningByMachine,
   getPlanningPaperByfield,
+  notifyUpdatePlanning,
   pauseOrAcceptLackQtyPLanning,
   updateIndex_TimeRunning,
 } from "../../controller/user/planning/planningPaperController";
@@ -37,6 +38,12 @@ router.post(
   authenticate,
   authorizeAnyPermission(["plan"]),
   updateIndex_TimeRunning
+);
+router.post(
+  "/notifyPlanning",
+  authenticate,
+  authorizeAnyPermission(["plan"]),
+  notifyUpdatePlanning
 );
 router.put(
   "/changeMachinePaper",

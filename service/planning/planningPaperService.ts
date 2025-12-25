@@ -248,17 +248,22 @@ export const planningPaperService = {
     try {
       const ids = Array.isArray(planningId) ? planningId : [planningId];
 
-      const plannings = await planningRepository.getStopByIds(ids);
-      if (plannings.length == 0) {
-        throw AppError.BadRequest("planning not found", "PLANNING_NOT_FOUND");
-      }
-
       const planningPaper = await planningRepository.getPapersById({
         planningIds: ids,
         options: {
-          attributes: ["planningId", "runningPlan", "qtyProduced", "status", "hasOverFlow"],
+          attributes: [
+            "planningId",
+            "runningPlan",
+            "qtyProduced",
+            "status",
+            "hasOverFlow",
+            "orderId",
+          ],
         },
       });
+      if (planningPaper.length !== ids.length) {
+        throw AppError.BadRequest("planning not found", "PLANNING_NOT_FOUND");
+      }
 
       // Kiểm tra từng đơn
       for (const paper of planningPaper) {
@@ -468,7 +473,6 @@ export const planningPaperService = {
   },
 
   updateIndex_TimeRunning: async ({
-    req,
     updateIndex,
     machine,
     dayStart,
@@ -476,7 +480,6 @@ export const planningPaperService = {
     totalTimeWorking,
     isNewDay,
   }: {
-    req: Request;
     updateIndex: any[];
     machine: string;
     dayStart: string | Date;
@@ -486,22 +489,22 @@ export const planningPaperService = {
   }) => {
     try {
       return await runInTransaction(async (transaction) => {
-        // 1️⃣ Cập nhật sortPlanning
+        // Cập nhật sortPlanning
         await updateSortPlanning(updateIndex, transaction);
 
-        // 2️⃣ Lấy lại danh sách đã update
+        // Lấy lại danh sách đã update
         const plannings = await planningRepository.getPapersByUpdateIndex(updateIndex, transaction);
 
         // console.log(plannings.map((p) => ({ id: p.planningId, sort: p?.sortPlanning })));
 
-        // 3️⃣ Lấy thông tin máy
+        // Lấy thông tin máy
         const machineInfo = await planningRepository.getModelById({
           model: MachinePaper,
           where: { machineName: machine },
         });
-        if (!machineInfo) throw new Error("Machine not found");
+        if (!machineInfo) throw AppError.NotFound("Machine not found", "MACHINE_NOT_FOUND");
 
-        // 4️⃣ Tính toán thời gian chạy
+        // Tính toán thời gian chạy
         const updatedPlannings = await calculateTimeRunning({
           plannings,
           machineInfo,
@@ -513,20 +516,30 @@ export const planningPaperService = {
           transaction,
         });
 
-        // 5️⃣ Phát socket
-        const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
-        req.io?.to(roomName).emit("planningPaperUpdated", {
-          machine,
-          message: `Kế hoạch của ${machine} đã được cập nhật.`,
-        });
-
         return {
-          message: "✅ Cập nhật sortPlanning + tính thời gian thành công",
+          message: "Cập nhật sortPlanning + tính thời gian thành công",
           data: updatedPlannings,
         };
       });
     } catch (error) {
-      console.error("❌Lỗi khi cập nhật và tính toán thời gian:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  //planningPaperUpdated or planningBoxUpdated
+  notifyUpdatePlanning: async (req: Request, machine: string, keyName: string) => {
+    try {
+      const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
+
+      req.io?.to(roomName).emit(keyName, {
+        machine,
+        message: `Kế hoạch của ${machine} đã được cập nhật.`,
+      });
+
+      return { message: "Đã gửi thông báo cập nhật kế hoạch" };
+    } catch (error) {
+      console.error("❌Lỗi khi gửi socket:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
