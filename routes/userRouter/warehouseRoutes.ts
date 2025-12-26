@@ -9,11 +9,14 @@ import {
 } from "../../controller/user/warehouse/inboundHistoryController";
 import {
   createOutbound,
+  deleteOutbound,
+  exportFileOutbound,
   getAllOutboundHistory,
   getOrderInboundQty,
   getOutboundDetail,
   searchOrderIds,
   searchOutboundByField,
+  updateOutbound,
 } from "../../controller/user/warehouse/outboundHistoryController";
 import {
   createNewInventory,
@@ -37,13 +40,15 @@ router.get("/inbound/filter", authenticate, searchInboundByField);
 
 router.get("/outbound", authenticate, getAllOutboundHistory);
 router.get("/outbound/detail", authenticate, getOutboundDetail);
-router.post("/createOutbound", authenticate, createOutbound);
-// router.get("/updateOutbound", authenticate, createOutbound);
-// router.get("/deleteOutbound", authenticate, createOutbound);
 router.get("/outbound/filter", authenticate, searchOutboundByField);
+router.post("/outbound/exportFile", authenticate, exportFileOutbound);
+router.post("/outbound/createOutbound", authenticate, createOutbound);
+router.put("/outbound/updateOutbound", authenticate, updateOutbound);
+router.delete("/outbound/deleteOutbound", authenticate, deleteOutbound);
 
-router.get("/searchOrderIds", authenticate, searchOrderIds);
-router.get("/getOrderInboundQty", authenticate, getOrderInboundQty);
+//auto complete dialog
+router.get("/outbound/searchOrderIds", authenticate, searchOrderIds);
+router.get("/outbound/getInboundQty", authenticate, getOrderInboundQty);
 
 //========================INVENTORY===========================
 router.get("/getAllInventory", authenticate, getAllInventory);

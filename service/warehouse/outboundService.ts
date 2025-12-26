@@ -182,7 +182,7 @@ export const outboundService = {
           }
 
           //total price for outbound detail
-          const totalPriceOutbound = order.price * item.outboundQty;
+          const totalPriceOutbound = order.pricePaper * item.outboundQty;
 
           // outbound history
           const vatRate = (order?.vat ?? 0) / 100;
@@ -196,7 +196,7 @@ export const outboundService = {
           preparedDetails.push({
             orderId: item.orderId,
             outboundQty: item.outboundQty,
-            price: order.price,
+            price: order.pricePaper,
             totalPriceOutbound,
             deliveredQty,
           });
@@ -223,7 +223,7 @@ export const outboundService = {
           transaction,
         });
 
-        // 4️⃣ Tạo outbound detail
+        // Tạo outbound detail
         for (const item of preparedDetails) {
           await planningRepository.createData({
             model: OutboundDetail,
@@ -254,6 +254,222 @@ export const outboundService = {
         return outbound;
       });
     } catch (error) {
+      console.log("err to create outbound: ", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  updateOutbound: async ({
+    outboundId,
+    outboundDetails,
+  }: {
+    outboundId: number;
+    outboundDetails: { orderId: string; outboundQty: number }[];
+  }) => {
+    try {
+      return await runInTransaction(async (transaction) => {
+        if (!outboundDetails || outboundDetails.length === 0) {
+          throw AppError.BadRequest("Danh sách đơn hàng trống", "EMPTY_ORDER_LIST");
+        }
+
+        const outbound = await OutboundHistory.findByPk(outboundId, {
+          include: [{ model: OutboundDetail, as: "detail" }],
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+        if (!outbound) {
+          throw AppError.NotFound("Phiếu xuất kho không tồn tại", "OUTBOUND_NOT_FOUND");
+        }
+
+        const oldDetails = outbound.detail ?? [];
+
+        const oldDetailMap = new Map<string, OutboundDetail>();
+        for (const detail of oldDetails) {
+          oldDetailMap.set(detail.orderId, detail);
+        }
+
+        let totalPriceOrder = 0;
+        let totalPriceVAT = 0;
+        let totalPricePayment = 0;
+        let totalOutboundQty = 0;
+
+        const handledOrderIds = new Set<string>();
+
+        // UPDATE
+        for (const item of outboundDetails) {
+          const order = await Order.findByPk(item.orderId, { transaction });
+          if (!order) {
+            throw AppError.NotFound(`Order ${item.orderId} không tồn tại`, "ORDER_NOT_FOUND");
+          }
+
+          const inventory = await warehouseRepository.findByOrderId({
+            orderId: item.orderId,
+            transaction,
+          });
+          if (!inventory) {
+            throw AppError.BadRequest(
+              `Order ${item.orderId} chưa có tồn kho`,
+              "INVENTORY_NOT_FOUND"
+            );
+          }
+
+          const oldDetail = oldDetailMap.get(item.orderId);
+          const oldQty = oldDetail ? oldDetail.outboundQty : 0;
+          const deltaQty = item.outboundQty - oldQty;
+
+          // check tồn kho nếu xuất thêm
+          if (deltaQty > 0 && inventory.qtyInventory < deltaQty) {
+            throw AppError.BadRequest(
+              `Xuất vượt tồn kho cho order ${item.orderId}`,
+              "OUTBOUND_EXCEED_INVENTORY"
+            );
+          }
+
+          // check vượt số lượng bán
+          const exportedQty = await warehouseRepository.sumOutboundQtyExcludeOutbound({
+            orderId: item.orderId,
+            outboundId,
+            transaction,
+          });
+
+          const deliveredQty = Number(exportedQty ?? 0);
+          if (deliveredQty + item.outboundQty > order.quantityCustomer) {
+            throw AppError.BadRequest(
+              `Xuất vượt số lượng bán cho order ${item.orderId}`,
+              "OUTBOUND_QTY_EXCEED"
+            );
+          }
+
+          // cập nhật tồn kho theo delta
+          if (deltaQty !== 0) {
+            await Inventory.increment(
+              {
+                totalQtyOutbound: deltaQty,
+                qtyInventory: -deltaQty,
+                valueInventory: -(deltaQty * order.pricePaper),
+              },
+              { where: { orderId: item.orderId }, transaction }
+            );
+          }
+
+          const totalPriceOutbound = order.pricePaper * item.outboundQty;
+          const vatRate = (order.vat ?? 0) / 100;
+          const vatAmount = totalPriceOutbound * vatRate;
+
+          totalPriceOrder += totalPriceOutbound;
+          totalPriceVAT += vatAmount;
+          totalPricePayment += totalPriceOutbound + vatAmount;
+          totalOutboundQty += item.outboundQty;
+
+          if (oldDetail) {
+            // UPDATE
+            await oldDetail.update(
+              {
+                outboundQty: item.outboundQty,
+                price: order.pricePaper,
+                totalPriceOutbound,
+              },
+              { transaction }
+            );
+          } else {
+            // ADD
+            await OutboundDetail.create(
+              {
+                outboundId,
+                orderId: item.orderId,
+                outboundQty: item.outboundQty,
+                price: order.pricePaper,
+                totalPriceOutbound,
+                deliveredQty,
+              },
+              { transaction }
+            );
+          }
+
+          handledOrderIds.add(item.orderId);
+        }
+
+        // XỬ LÝ DELETE đơn bị xóa khỏi phiếu
+        for (const oldDetail of oldDetails) {
+          if (!handledOrderIds.has(oldDetail.orderId)) {
+            // hoàn kho
+            await Inventory.increment(
+              {
+                totalQtyOutbound: -oldDetail.outboundQty,
+                qtyInventory: oldDetail.outboundQty,
+                valueInventory: oldDetail.outboundQty * oldDetail.price,
+              },
+              { where: { orderId: oldDetail.orderId }, transaction }
+            );
+
+            await oldDetail.destroy({ transaction });
+          }
+        }
+
+        // 4️⃣ Cập nhật outbound header
+        await outbound.update(
+          {
+            totalPriceOrder,
+            totalPriceVAT,
+            totalPricePayment,
+            totalOutboundQty,
+          },
+          { transaction }
+        );
+
+        return outbound;
+      });
+    } catch (error) {
+      console.log("err to update outbound: ", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  deleteOutbound: async (outboundId: number) => {
+    try {
+      return await runInTransaction(async (transaction) => {
+        const outbound = await OutboundHistory.findByPk(outboundId, {
+          include: [{ model: OutboundDetail, as: "detail" }],
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+
+        if (!outbound) {
+          throw AppError.NotFound("Phiếu xuất kho không tồn tại", "OUTBOUND_NOT_FOUND");
+        }
+
+        const details = outbound.detail ?? [];
+
+        // Hoàn kho cho từng order
+        for (const detail of details) {
+          await Inventory.increment(
+            {
+              totalQtyOutbound: -detail.outboundQty,
+              qtyInventory: detail.outboundQty,
+              valueInventory: detail.outboundQty * detail.price,
+            },
+            {
+              where: { orderId: detail.orderId },
+              transaction,
+            }
+          );
+        }
+
+        // Xóa outbound detail
+        await OutboundDetail.destroy({
+          where: { outboundId },
+          transaction,
+        });
+
+        // Xóa outbound history
+        await outbound.destroy({ transaction });
+
+        return { message: "Hủy phiếu xuất kho thành công" };
+      });
+    } catch (error) {
+      console.log("err to delete outbound: ", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
@@ -271,34 +487,34 @@ export const outboundService = {
     pageSize: number;
   }) => {
     try {
-      const fieldMap = {
-        orderId: (outbound: OutboundHistory) => outbound.outboundDetail.orderId,
-        outboundSlipCode: (outbound: OutboundHistory) => outbound.outboundSlipCode,
-        dateOutbound: (outbound: OutboundHistory) => outbound.dateOutbound,
-        companyName: (outbound: OutboundHistory) =>
-          outbound.outboundDetail.Order.Customer.companyName,
-        productName: (outbound: OutboundHistory) =>
-          outbound.outboundDetail.Order.Product.productName,
-      } as const;
-      const key = field as keyof typeof fieldMap;
-      if (!fieldMap[key]) {
-        throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
-      }
-      const result = await getOutboundByField({
-        keyword: keyword,
-        getFieldValue: fieldMap[key],
-        page,
-        pageSize,
-        message: `get all by ${field} from filtered cache`,
-      });
-      return result;
+      // const fieldMap = {
+      //   orderId: (outbound: OutboundHistory) => outbound.detail.orderId,
+      //   outboundSlipCode: (outbound: OutboundHistory) => outbound.outboundSlipCode,
+      //   dateOutbound: (outbound: OutboundHistory) => outbound.dateOutbound,
+      //   companyName: (outbound: OutboundHistory) =>
+      //     outbound.outboundDetail.Order.Customer.companyName,
+      //   productName: (outbound: OutboundHistory) =>
+      //     outbound.outboundDetail.Order.Product.productName,
+      // } as const;
+      // const key = field as keyof typeof fieldMap;
+      // if (!fieldMap[key]) {
+      //   throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
+      // }
+      // const result = await getOutboundByField({
+      //   keyword: keyword,
+      //   getFieldValue: fieldMap[key],
+      //   page,
+      //   pageSize,
+      //   message: `get all by ${field} from filtered cache`,
+      // });
+      // return result;
     } catch (error) {
       console.error(`Failed to get outbound history by ${field}:`, error);
       throw AppError.ServerError();
     }
   },
 
-  exportFileOutbound: async () => {
+  exportFileOutbound: async (outboundId: number) => {
     try {
       return await runInTransaction(async (transaction) => {});
     } catch (error) {

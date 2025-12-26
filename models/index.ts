@@ -210,7 +210,7 @@ QcSession.hasMany(InboundHistory, {
 });
 InboundHistory.belongsTo(QcSession, { foreignKey: "qcSessionId" });
 
-//inbound and outbound history
+//inbound history
 Order.hasMany(InboundHistory, { foreignKey: "orderId", onDelete: "CASCADE" });
 InboundHistory.belongsTo(Order, { foreignKey: "orderId" });
 
@@ -228,6 +228,7 @@ PlanningBox.hasMany(InboundHistory, {
 });
 InboundHistory.belongsTo(PlanningBox, { foreignKey: "planningBoxId" });
 
+//outbound
 OutboundHistory.hasMany(OutboundDetail, {
   foreignKey: "outboundId",
   as: "detail",

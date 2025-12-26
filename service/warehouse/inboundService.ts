@@ -155,7 +155,7 @@ export const inboundService = {
         {
           totalQtyInbound: inboundQty,
           qtyInventory: inboundQty,
-          valueInventory: inboundQty * planning.Order.price,
+          valueInventory: inboundQty * planning.Order.pricePaper,
         },
         {
           where: { orderId: planning.orderId },
@@ -197,7 +197,7 @@ export const inboundService = {
         options: {
           include: [
             { model: PlanningBoxTime, as: "boxTimes", where: { planningBoxId, isRequest: true } },
-            { model: Order, attributes: ["quantityCustomer", "price"] },
+            { model: Order, attributes: ["quantityCustomer", "pricePaper"] },
           ],
           transaction,
           lock: transaction?.LOCK.UPDATE,
@@ -244,7 +244,7 @@ export const inboundService = {
         {
           totalQtyInbound: inboundQty,
           qtyInventory: inboundQty,
-          valueInventory: inboundQty * planning.Order.price,
+          valueInventory: inboundQty * planning.Order.pricePaper,
         },
         {
           where: { orderId: planning.orderId },

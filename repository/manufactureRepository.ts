@@ -55,7 +55,7 @@ export const manufactureRepository = {
       where: { planningId },
       include: [
         { model: timeOverflowPlanning, as: "timeOverFlow" },
-        { model: Order, attributes: ["quantityCustomer", "price"] },
+        { model: Order, attributes: ["quantityCustomer", "pricePaper"] },
       ],
       transaction,
       lock: transaction?.LOCK.UPDATE,

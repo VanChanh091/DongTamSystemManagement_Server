@@ -36,7 +36,7 @@ export class OutboundHistory
   declare readonly updatedAt?: Date;
 
   //association
-  declare outboundDetail: OutboundDetail;
+  declare detail: OutboundDetail[];
 }
 
 export function initOutboundHistoryModel(sequelize: Sequelize): typeof OutboundHistory {

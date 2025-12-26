@@ -48,6 +48,40 @@ export const createOutbound = async (req: Request, res: Response, next: NextFunc
   }
 };
 
+export const updateOutbound = async (req: Request, res: Response, next: NextFunction) => {
+  let { outboundId, outboundDetails } = req.body as {
+    outboundId: number;
+    outboundDetails: { orderId: string; outboundQty: number }[] | any;
+  };
+
+  try {
+    if (!Array.isArray(outboundDetails)) {
+      if (!outboundDetails) {
+        throw AppError.BadRequest(
+          "outboundDetails phải là mảng hoặc giá trị hợp lệ",
+          "INVALID_ORDER_IDS"
+        );
+      }
+      outboundDetails = [outboundDetails];
+    }
+    const response = await outboundService.updateOutbound({ outboundId, outboundDetails });
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteOutbound = async (req: Request, res: Response, next: NextFunction) => {
+  let { outboundId } = req.query as { outboundId: string };
+
+  try {
+    const response = await outboundService.deleteOutbound(Number(outboundId));
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const searchOutboundByField = async (req: Request, res: Response, next: NextFunction) => {
   const { field, keyword, page, pageSize } = req.query as {
     field: string;
@@ -92,11 +126,11 @@ export const getOrderInboundQty = async (req: Request, res: Response, next: Next
 };
 
 export const exportFileOutbound = async (req: Request, res: Response, next: NextFunction) => {
-  // const { outboundId } = req.query as { outboundId: string };
+  const { outboundId } = req.query as { outboundId: string };
 
   try {
-    // const response = await outboundService.exportFileOutbound(Number(outboundId));
-    // return res.status(200).json(response);
+    const response = await outboundService.exportFileOutbound(Number(outboundId));
+    return res.status(200).json(response);
   } catch (error) {
     next(error);
   }

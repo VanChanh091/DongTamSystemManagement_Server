@@ -238,7 +238,10 @@ export const warehouseRepository = {
         {
           model: Order,
           attributes: ["dayReceiveOrder", "flute", "QC_box", "quantityCustomer", "dvt", "discount"],
-          include: [{ model: Product, attributes: ["typeProduct", "productName"] }],
+          include: [
+            { model: Customer, attributes: ["customerName", "companyName"] },
+            { model: Product, attributes: ["typeProduct", "productName"] },
+          ],
         },
       ],
     });
@@ -260,7 +263,7 @@ export const warehouseRepository = {
         "QC_box",
         "quantityCustomer",
         "dvt",
-        "price",
+        "pricePaper",
         "discount",
         "vat",
       ],
@@ -301,6 +304,24 @@ export const warehouseRepository = {
     });
   },
 
+  sumOutboundQtyExcludeOutbound: async ({
+    orderId,
+    outboundId,
+    transaction,
+  }: {
+    orderId: string;
+    outboundId: number;
+    transaction?: any;
+  }) => {
+    return await OutboundDetail.sum("outboundQty", {
+      where: {
+        orderId,
+        outboundId: { [Op.ne]: outboundId },
+      },
+      transaction,
+    });
+  },
+
   //====================================INVENTORY========================================
 
   inventoryCount: async () => {
@@ -330,7 +351,7 @@ export const warehouseRepository = {
             "paperSizeCustomer",
             "quantityCustomer",
             "dvt",
-            "price",
+            "pricePaper",
             "totalPrice",
             "vat",
             "totalPriceVAT",
