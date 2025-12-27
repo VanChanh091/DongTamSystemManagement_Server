@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import redisCache from "../configs/redisCache";
+import redisCache from "../assest/configs/redisCache";
 import { dashboardRepository } from "../repository/dashboardRepository";
 import { AppError } from "../utils/appError";
 import { CacheManager } from "../utils/helper/cacheManager";

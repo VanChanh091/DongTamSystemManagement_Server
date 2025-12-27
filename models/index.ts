@@ -1,4 +1,4 @@
-import { sequelize } from "../configs/connectDB";
+import { sequelize } from "../assest/configs/connectDB";
 import { initMachineBoxModel } from "./admin/machineBox";
 import { initMachinePaperModel } from "./admin/machinePaper";
 import { initWasteNormBoxModel } from "./admin/wasteNormBox";

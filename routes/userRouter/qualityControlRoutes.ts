@@ -10,7 +10,7 @@ import {
   submitQC,
   updateResult,
   updateSession,
-} from "../../controller/QC/qcController";
+} from "../../controller/user/QC/qcController";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 
 const router = Router();

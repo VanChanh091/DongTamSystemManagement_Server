@@ -3,7 +3,7 @@ dotenv.config();
 
 import { CacheManager } from "../../utils/helper/cacheManager";
 import { planningRepository } from "../../repository/planningRepository";
-import redisCache from "../../configs/redisCache";
+import redisCache from "../../assest/configs/redisCache";
 import { AppError } from "../../utils/appError";
 import { PlanningBox } from "../../models/planning/planningBox";
 import { PlanningBoxTime, statusBoxType } from "../../models/planning/planningBoxMachineTime";

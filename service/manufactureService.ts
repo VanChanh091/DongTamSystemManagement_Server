@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import redisCache from "../configs/redisCache";
+import redisCache from "../assest/configs/redisCache";
 import { Op } from "sequelize";
 import { CacheManager } from "../utils/helper/cacheManager";
 import { AppError } from "../utils/appError";
@@ -9,7 +9,7 @@ import { PlanningPaper } from "../models/planning/planningPaper";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
 import { manufactureRepository } from "../repository/manufactureRepository";
-import { machineLabels } from "../configs/machineLabels";
+import { machineLabels } from "../assest/configs/machineLabels";
 import { planningRepository } from "../repository/planningRepository";
 import { PlanningBox } from "../models/planning/planningBox";
 import { Order } from "../models/order/order";

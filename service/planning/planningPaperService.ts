@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 import { Op } from "sequelize";
-import redisCache from "../../configs/redisCache";
+import redisCache from "../../assest/configs/redisCache";
 import { Order } from "../../models/order/order";
 import { machinePaperType, PlanningPaper } from "../../models/planning/planningPaper";
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";

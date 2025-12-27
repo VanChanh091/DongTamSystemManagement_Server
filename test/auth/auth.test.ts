@@ -1,5 +1,5 @@
 import bcrypt from "bcrypt";
-import redisCache from "../../configs/redisCache";
+import redisCache from "../../assest/configs/redisCache";
 import sendEmail from "../../utils/sendMail";
 import { authService } from "../../service/authService";
 import { authRepository } from "../../repository/authRepository";

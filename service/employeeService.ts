@@ -4,7 +4,7 @@ dotenv.config();
 import { CacheManager } from "../utils/helper/cacheManager";
 import { AppError } from "../utils/appError";
 import { EmployeeBasicInfo } from "../models/employee/employeeBasicInfo";
-import redisCache from "../configs/redisCache";
+import redisCache from "../assest/configs/redisCache";
 import { employeeRepository } from "../repository/employeeRepository";
 import { filterDataFromCache } from "../utils/helper/modelHelper/orderHelpers";
 import { EmployeeCompanyInfo } from "../models/employee/employeeCompanyInfo";

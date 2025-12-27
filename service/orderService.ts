@@ -10,7 +10,7 @@ import {
   validateCustomerAndProduct,
 } from "../utils/helper/modelHelper/orderHelpers";
 import { AppError } from "../utils/appError";
-import redisCache from "../configs/redisCache";
+import redisCache from "../assest/configs/redisCache";
 import { CacheManager } from "../utils/helper/cacheManager";
 import { Box } from "../models/order/box";
 import { Order } from "../models/order/order";

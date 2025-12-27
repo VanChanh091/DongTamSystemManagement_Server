@@ -241,21 +241,54 @@ export const qcSampleService = {
           throw AppError.NotFound("QC session not found", "QC_SESSION_NOT_FOUND");
         }
 
+        // Check đã finalize chưa
         if (session.status == "finalized") {
           throw AppError.BadRequest("QC session already finalized", "QC_SESSION_ALREADY_FINALIZED");
+        }
+
+        // Validate loại session khớp với isPaper
+        if (isPaper && !session.planningId) {
+          throw AppError.BadRequest(
+            "QC session không thuộc planning giấy",
+            "INVALID_QC_SESSION_TYPE"
+          );
+        }
+
+        if (!isPaper && !session.planningBoxId) {
+          throw AppError.BadRequest(
+            "QC session không thuộc planning thùng",
+            "INVALID_QC_SESSION_TYPE"
+          );
         }
 
         await session.update({ status: "finalized" });
 
         //update status request in planning
-        const planning = isPaper
-          ? await PlanningPaper.findOne({ where: { planningId: session.planningId }, transaction })
-          : await PlanningBox.findOne({
-              where: { planningBoxId: session.planningBoxId },
-              transaction,
-            });
+        let planning: PlanningPaper | PlanningBox | null = null;
 
-        await (planning as any)?.update({ statusRequest: "finalize" }, { transaction });
+        planning = isPaper
+          ? await PlanningPaper.findByPk(session.planningId!, { transaction })
+          : await PlanningBox.findByPk(session.planningBoxId!, { transaction });
+
+        if (!planning) {
+          throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
+        }
+
+        //update statusRequest
+        if (planning instanceof PlanningPaper) {
+          await planning.update({ statusRequest: "finalize" }, { transaction });
+        } else if (planning instanceof PlanningBox) {
+          await planning.update({ statusRequest: "finalize" }, { transaction });
+        }
+
+        //update statusRequest planning
+        if (!isPaper && planning instanceof PlanningBox) {
+          await planningRepository.updateDataModel({
+            model: PlanningPaper,
+            data: { statusRequest: "finalize" },
+            options: { where: { planningId: planning.planningId }, transaction },
+          });
+        }
 
         return { message: "finalize QC session successfully", data: session };
       });

@@ -4,7 +4,7 @@ import http from "http";
 import dotenv from "dotenv";
 dotenv.config();
 
-import { connectDB, sequelize } from "./configs/connectDB";
+import { connectDB, sequelize } from "./assest/configs/connectDB";
 import authenticate from "./middlewares/authMiddleware";
 import {
   authRoutes,

@@ -2,7 +2,7 @@ import { Op } from "sequelize";
 import { Customer } from "../../../models/customer/customer";
 import { Product } from "../../../models/product/product";
 import { Order } from "../../../models/order/order";
-import redisCache from "../../../configs/redisCache";
+import redisCache from "../../../assest/configs/redisCache";
 import { FilterDataFromCacheProps } from "../../../interface/types";
 import { orderRepository } from "../../../repository/orderRepository";
 import { normalizeVN } from "../normalizeVN";

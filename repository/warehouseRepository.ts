@@ -241,6 +241,7 @@ export const warehouseRepository = {
           include: [
             { model: Customer, attributes: ["customerName", "companyName"] },
             { model: Product, attributes: ["typeProduct", "productName"] },
+            { model: Inventory, attributes: ["qtyInventory"] },
           ],
         },
       ],
@@ -290,6 +291,12 @@ export const warehouseRepository = {
           attributes: [],
           required: true,
           where: { qtyInbound: { [Op.gt]: 0 } },
+        },
+        {
+          model: Inventory,
+          attributes: [],
+          required: true,
+          where: { qtyInventory: { [Op.ne]: 0 } },
         },
       ],
       limit: 20,

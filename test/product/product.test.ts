@@ -1,5 +1,5 @@
-import cloudinary from "../../configs/connectCloudinary";
-import redisCache from "../../configs/redisCache";
+import cloudinary from "../../assest/configs/connectCloudinary";
+import redisCache from "../../assest/configs/redisCache";
 import { Product } from "../../models/product/product";
 import { productRepository } from "../../repository/productRepository";
 import { productService } from "../../service/productService";

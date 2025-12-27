@@ -1,4 +1,4 @@
-import redisCache from "../../configs/redisCache";
+import redisCache from "../../assest/configs/redisCache";
 import { CacheManager } from "../../utils/helper/cacheManager";
 import { planningRepository } from "../../repository/planningRepository";
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";

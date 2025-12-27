@@ -1,4 +1,4 @@
-import redisCache from "../../configs/redisCache";
+import redisCache from "../../assest/configs/redisCache";
 import { checkLastChange } from "./checkLastChangeHelper";
 import dotenv from "dotenv";
 dotenv.config();

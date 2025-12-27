@@ -1,5 +1,5 @@
 import { Op } from "sequelize";
-import redisCache from "../configs/redisCache";
+import redisCache from "../assest/configs/redisCache";
 import { Customer } from "../models/customer/customer";
 import { customerRepository } from "../repository/customerRepository";
 import { AppError } from "../utils/appError";

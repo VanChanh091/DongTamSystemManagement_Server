@@ -9,9 +9,10 @@ import { OutboundDetail } from "../../models/warehouse/outboundDetail";
 import { Order } from "../../models/order/order";
 import { planningRepository } from "../../repository/planningRepository";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
-import redisCache from "../../configs/redisCache";
-import { getOutboundByField } from "../../utils/helper/modelHelper/warehouseHelper";
+import redisCache from "../../assest/configs/redisCache";
 import { Inventory } from "../../models/warehouse/inventory";
+import { exportWarehouseSaleByOutboundId } from "../../utils/helper/exportPDF";
+import { Response } from "express";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { outbound } = CacheManager.keys.warehouse;
@@ -75,6 +76,7 @@ export const outboundService = {
     }
   },
 
+  //use to auto complet
   searchOrderIds: async (keyword: string) => {
     try {
       const orders = await warehouseRepository.searchOrderIds(keyword);
@@ -204,7 +206,7 @@ export const outboundService = {
 
         // Generate slip code
         const now = new Date();
-        const slipCode = `XK/${now.getDate()}/${now.getMonth() + 1}/${now
+        const slipCode = `XK${now.getDate()}${now.getMonth() + 1}${now
           .getFullYear()
           .toString()
           .slice(-2)}`;
@@ -289,6 +291,7 @@ export const outboundService = {
           oldDetailMap.set(detail.orderId, detail);
         }
 
+        let customerId: string | null = null;
         let totalPriceOrder = 0;
         let totalPriceVAT = 0;
         let totalPricePayment = 0;
@@ -301,6 +304,13 @@ export const outboundService = {
           const order = await Order.findByPk(item.orderId, { transaction });
           if (!order) {
             throw AppError.NotFound(`Order ${item.orderId} không tồn tại`, "ORDER_NOT_FOUND");
+          }
+
+          // check customer
+          if (customerId === null) {
+            customerId = order.customerId;
+          } else if (customerId !== order.customerId) {
+            throw AppError.BadRequest("Các đơn hàng không cùng khách hàng", "CUSTOMER_MISMATCH");
           }
 
           const inventory = await warehouseRepository.findByOrderId({
@@ -514,9 +524,13 @@ export const outboundService = {
     }
   },
 
-  exportFileOutbound: async (outboundId: number) => {
+  exportFileOutbound: async (res: Response, outboundId: number) => {
     try {
-      return await runInTransaction(async (transaction) => {});
+      return await runInTransaction(async (transaction) => {
+        const result = await exportWarehouseSaleByOutboundId(res, outboundId);
+
+        return result;
+      });
     } catch (error) {
       console.error("Error export file outbound:", error);
       if (error instanceof AppError) throw error;

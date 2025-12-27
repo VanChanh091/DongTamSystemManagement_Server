@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
-import redisCache from "../configs/redisCache";
+import redisCache from "../assest/configs/redisCache";
 import { Product } from "../models/product/product";
 import { productRepository } from "../repository/productRepository";
 import { AppError } from "../utils/appError";
@@ -13,7 +13,7 @@ import {
 } from "../utils/image/converToWebp";
 import { generateNextId } from "../utils/helper/generateNextId";
 import { Request, Response } from "express";
-import cloudinary from "../configs/connectCloudinary";
+import cloudinary from "../assest/configs/connectCloudinary";
 import { exportExcelResponse } from "../utils/helper/excelExporter";
 import { mappingProductRow, productColumns } from "../utils/mapping/productRowAndColumn";
 import { runInTransaction } from "../utils/helper/transactionHelper";

@@ -1,6 +1,6 @@
 import bcrypt from "bcrypt";
-import cloudinary from "../../configs/connectCloudinary";
-import { validPermissions } from "../../configs/machineLabels";
+import cloudinary from "../../assest/configs/connectCloudinary";
+import { validPermissions } from "../../assest/configs/machineLabels";
 import { OrderStatus } from "../../models/order/order";
 import { userRole } from "../../models/user/user";
 import { adminRepository } from "../../repository/adminRepository";

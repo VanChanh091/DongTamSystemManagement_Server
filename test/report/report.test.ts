@@ -1,4 +1,4 @@
-import redisCache from "../../configs/redisCache";
+import redisCache from "../../assest/configs/redisCache";
 import { CacheManager } from "../../utils/helper/cacheManager";
 import { reportRepository } from "../../repository/reportRepository";
 import { filterReportByField } from "../../utils/helper/modelHelper/reportHelper";

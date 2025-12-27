@@ -1,4 +1,4 @@
-import redisCache from "../../configs/redisCache";
+import redisCache from "../../assest/configs/redisCache";
 import { EmployeeBasicInfo } from "../../models/employee/employeeBasicInfo";
 import { employeeRepository } from "../../repository/employeeRepository";
 import { employeeService } from "../../service/employeeService";

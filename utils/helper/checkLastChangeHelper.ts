@@ -1,4 +1,4 @@
-import redisCache from "../../configs/redisCache";
+import redisCache from "../../assest/configs/redisCache";
 import dotenv from "dotenv";
 dotenv.config();
 

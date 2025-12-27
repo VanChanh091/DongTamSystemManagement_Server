@@ -1,10 +1,10 @@
 import { NextFunction, Request, Response } from "express";
-import { processTypeQC } from "../../models/qualityControl/qcCriteria";
-import { statusQcSession } from "../../models/qualityControl/qcSession";
-import { qcChecklistData } from "../../models/qualityControl/qcSampleResult";
-import { qcSessionService } from "../../service/qualityControl/qcSessionService";
-import { qcSampleService } from "../../service/qualityControl/qcSampleService";
-import { qcSubmitService } from "../../service/qualityControl/orchestratorService";
+import { qcSessionService } from "../../../service/qualityControl/qcSessionService";
+import { processTypeQC } from "../../../models/qualityControl/qcCriteria";
+import { statusQcSession } from "../../../models/qualityControl/qcSession";
+import { qcSampleService } from "../../../service/qualityControl/qcSampleService";
+import { qcChecklistData } from "../../../models/qualityControl/qcSampleResult";
+import { qcSubmitService } from "../../../service/qualityControl/orchestratorService";
 
 //===============================QC SESSION=================================
 

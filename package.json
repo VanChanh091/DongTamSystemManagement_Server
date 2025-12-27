@@ -45,6 +45,7 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^20.19.24",
     "@types/nodemailer": "^7.0.3",
+    "@types/pdfkit": "^0.17.4",
     "@types/streamifier": "^0.1.2",
     "cross-env": "^10.0.0",
     "eslint": "^9.39.1",

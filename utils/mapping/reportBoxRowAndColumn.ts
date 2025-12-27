@@ -1,4 +1,4 @@
-import { MACHINE_FIELD_MAP } from "../../configs/machineLabels";
+import { MACHINE_FIELD_MAP } from "../../assest/configs/machineLabels";
 import { ReportPlanningBox } from "../../models/report/reportPlanningBox";
 import { formatterStructureOrder } from "../helper/modelHelper/orderHelpers";
 import ExcelJS from "exceljs";

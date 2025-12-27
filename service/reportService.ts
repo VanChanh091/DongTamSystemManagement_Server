@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import { CacheManager } from "../utils/helper/cacheManager";
 import { AppError } from "../utils/appError";
 import { ReportPlanningPaper } from "../models/report/reportPlanningPaper";
-import redisCache from "../configs/redisCache";
+import redisCache from "../assest/configs/redisCache";
 import { reportRepository } from "../repository/reportRepository";
 import { filterReportByField } from "../utils/helper/modelHelper/reportHelper";
 import { ReportPlanningBox } from "../models/report/reportPlanningBox";

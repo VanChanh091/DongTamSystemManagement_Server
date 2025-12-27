@@ -1,5 +1,5 @@
 import { Transaction } from "sequelize";
-import { sequelize } from "../../configs/connectDB";
+import { sequelize } from "../../assest/configs/connectDB";
 
 export const runInTransaction = async <T>(fn: (t: Transaction) => Promise<T>): Promise<T> => {
   const t = await sequelize.transaction();
