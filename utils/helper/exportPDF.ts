@@ -14,8 +14,9 @@ const FONT_BOLD = path.join(process.cwd(), "assest/fonts/NotoSerif-Bold.ttf");
 const FONT_ITALIC = path.join(process.cwd(), "assest/fonts/NotoSerif-Italic.ttf");
 const FONT_BOLD_ITALIC = path.join(process.cwd(), "assest/fonts/NotoSerif-BoldItalic.ttf");
 
-export async function exportWarehouseSaleByOutboundId(res: Response, outboundId: number) {
+export async function exportWarehouseSale(res: Response, outboundId: number) {
   const outbound = await OutboundHistory.findOne({
+    where: { outboundId },
     attributes: { exclude: ["createdAt", "updatedAt", "totalOutboundQty"] },
     include: [
       {
@@ -35,6 +36,7 @@ export async function exportWarehouseSaleByOutboundId(res: Response, outboundId:
               "dvt",
               "discount",
               "vat",
+              "pricePaper",
             ],
             include: [
               {
@@ -56,10 +58,11 @@ export async function exportWarehouseSaleByOutboundId(res: Response, outboundId:
     outbound,
   });
 }
+
 function buildWarehouseSalePDF({ res, outbound }: { res: Response; outbound: any }) {
   const now = new Date();
   const dateStr = now.toISOString().split("T")[0];
-  const fileName = `phieu-xuat-kho_${dateStr}.pdf`;
+  const fileName = `phieu_xuat_kho_${dateStr}_${outbound.outboundId}.pdf`;
 
   // ✅ HEADER GIỐNG EXCEL
   res.setHeader("Content-Type", "application/pdf");
@@ -118,14 +121,23 @@ function buildWarehouseSalePDF({ res, outbound }: { res: Response; outbound: any
 
   /* ===== TABLE ===== */
   doc.moveDown(1);
-  drawItemTable(doc, outbound.detail);
+  drawItemTable(doc, outbound);
 
-  /* ===== TOTAL ===== */
-  // const total = data.items.reduce((sum, i) => sum + i.quantity * i.price, 0);
+  // ===== SỐ TIỀN BẰNG CHỮ =====
+  const amountInWords = numberToVietnamese(outbound.totalPricePayment ?? 0);
 
-  // doc.moveDown(1);
-  // doc.text(`Tổng tiền thanh toán: ${total.toLocaleString("vi-VN")} VND`);
-  // doc.font(FONT_ITALIC).text(`Số tiền viết bằng chữ: ${numberToVietnamese(total)} đồng chẵn.`);
+  const leftX = 40;
+  const rightX = doc.page.width - 40;
+
+  doc.font(FONT_REGULAR).fontSize(11);
+  doc.text("Số tiền viết bằng chữ:", leftX, doc.y).fontSize(11);
+
+  doc
+    .font(FONT_BOLD_ITALIC)
+    .fontSize(11)
+    .text(amountInWords, leftX + 120, doc.y - 21, {
+      width: rightX - leftX - 140,
+    });
 
   /* ===== SIGN ===== */
   drawSignArea(doc);
@@ -133,133 +145,406 @@ function buildWarehouseSalePDF({ res, outbound }: { res: Response; outbound: any
   doc.end();
 }
 
-function drawItemTable(doc: PDFKit.PDFDocument, outboundDetail: any) {
-  const items = Array.isArray(outboundDetail)
-    ? outboundDetail
-    : outboundDetail
-    ? [outboundDetail]
+function drawTableRow({
+  doc,
+  y,
+  row,
+  colX,
+  colW,
+  tableLeft,
+  tableRight,
+  isHeader = false,
+  bold = false,
+}: {
+  doc: PDFKit.PDFDocument;
+  y: number;
+  row: string[];
+  colX: number[];
+  colW: number[];
+  tableLeft: number;
+  tableRight: number;
+  isHeader?: boolean;
+  bold?: boolean;
+}): number {
+  doc.font(bold ? FONT_BOLD : FONT_REGULAR).fontSize(10);
+
+  let maxHeight = 0;
+  const heights: number[] = [];
+
+  // đo height từng cell
+  row.forEach((text, i) => {
+    const h = doc.heightOfString(String(text ?? ""), {
+      width: colW[i],
+    });
+    heights[i] = h;
+    maxHeight = Math.max(maxHeight, h);
+  });
+
+  const rowH = Math.max(26, maxHeight + 10);
+
+  // vẽ text
+  const CELL_PADDING_X = 4;
+
+  row.forEach((text, i) => {
+    let align: "left" | "right" | "center" = "left";
+    let textY = y;
+
+    if (isHeader) {
+      align = "center";
+      textY = y + (rowH - heights[i]) / 2;
+    } else {
+      align = i >= 4 ? "right" : "left";
+      const isNameCol = i === 2;
+      textY = isNameCol ? y + 4 : y + (rowH - heights[i]) / 2;
+    }
+
+    const textX = colX[i] + CELL_PADDING_X;
+    const textWidth = colW[i] - CELL_PADDING_X * 2;
+
+    doc.text(String(text ?? ""), textX, textY, {
+      width: textWidth,
+      align,
+    });
+  });
+
+  // line ngang
+  doc
+    .moveTo(tableLeft, y + rowH)
+    .lineTo(tableRight, y + rowH)
+    .stroke();
+
+  return rowH;
+}
+
+function drawSummaryRow({
+  doc,
+  y,
+  label,
+  value,
+  tableLeft,
+  amountColX,
+  tableRight,
+  alignLeft = false,
+}: {
+  doc: PDFKit.PDFDocument;
+  y: number;
+  label: string;
+  value: string;
+  tableLeft: number;
+  amountColX: number;
+  tableRight: number;
+  alignLeft?: boolean;
+}): number {
+  const rowH = 24;
+  const paddingX = 6;
+
+  doc.font(FONT_REGULAR).fontSize(10);
+
+  // label
+  doc.text(label, tableLeft + paddingX, y + 6, {
+    width: amountColX - tableLeft - paddingX * 2,
+    align: alignLeft ? "left" : "right",
+  });
+
+  // value
+  doc.text(value, amountColX + paddingX, y + 6, {
+    width: tableRight - amountColX - paddingX * 2,
+    align: "right",
+  });
+
+  // line ngang
+  doc
+    .moveTo(tableLeft, y + rowH)
+    .lineTo(tableRight, y + rowH)
+    .stroke();
+
+  return rowH;
+}
+
+function drawItemTable(doc: PDFKit.PDFDocument, outbound: any) {
+  const items = Array.isArray(outbound.detail)
+    ? outbound.detail
+    : outbound.detail
+    ? [outbound.detail]
     : [];
 
   const startY = doc.y;
-  const rowHeight = 28;
   const startX = 40;
-  const colW = [30, 80, 160, 40, 70, 70, 80];
+
+  const colW = [30, 80, 150, 75, 65, 60, 75];
 
   const colX = colW.reduce<number[]>((acc, w, i) => {
     acc.push(i === 0 ? startX : acc[i - 1] + colW[i - 1]);
     return acc;
   }, []);
 
-  function drawRow(y: number, row: string[], bold = false) {
-    doc.font(bold ? FONT_BOLD : FONT_REGULAR).fontSize(10);
+  const tableLeft = startX;
+  const tableRight = colX[colX.length - 1] + colW[colW.length - 1];
 
-    row.forEach((text, i) => {
-      doc.text(String(text ?? ""), colX[i], y, {
-        width: colW[i],
-        align: i >= 4 ? "right" : "left",
-      });
-    });
-
-    // line ngang
-    doc
-      .moveTo(40, y + rowHeight - 6)
-      .lineTo(590, y + rowHeight - 6)
-      .stroke();
-  }
+  doc.lineWidth(0.8);
 
   const fmt = (v: number) => Number(v || 0).toLocaleString("vi-VN");
 
-  // Header
-  drawRow(
-    startY,
-    ["STT", "Mã hàng", "Tên hàng", "ĐVT", "Số lượng xuất", "Đơn giá", "Thành tiền"],
-    true
-  );
+  let currentY = startY;
 
-  // Rows
-  items.forEach((item, index) => {
-    const order = item.Order;
-
-    //leng: 62.5, size: 75 -> 0625, 0750
-    const lengthCode = formatDimension(order.lengthPaperCustomer ?? 0);
-    const sizeCode = formatDimension(order.paperSizeCustomer ?? 0);
-    let qcBox = "";
-
-    if (item.QC_box != null) {
-      qcBox = `-${item.QC_box ?? ""}`;
-    }
-
-    drawRow(startY + rowHeight * (index + 1), [
-      String(index + 1),
-      order.orderId,
-      `${order.Product.productName ?? ""}:${lengthCode}x${sizeCode}${qcBox}`,
-      order?.dvt ?? "",
-      fmt(item.outboundQty),
-      fmt(item.Order?.pricePaper),
-      fmt(item.totalPriceOutbound),
-    ]);
+  // ===== HEADER =====
+  currentY += drawTableRow({
+    doc,
+    y: currentY,
+    row: ["STT", "Mã Đơn hàng", "Tên Hàng", "Đơn Vị Tính", "Số Lượng", "Đơn Giá", "Thành Tiền"],
+    colX,
+    colW,
+    tableLeft,
+    tableRight,
+    isHeader: true,
+    bold: true,
   });
 
-  // Bottom line
-  const bottomY = startY + rowHeight * (items.length + 1);
-  doc.moveTo(40, bottomY).lineTo(550, bottomY).stroke();
+  // ===== BODY =====
+  items.forEach((item: any, index: number) => {
+    const order = item.Order;
 
-  doc.y = bottomY + 10;
-}
+    const lengthCode = formatDimension(order.lengthPaperCustomer ?? 0);
+    const sizeCode = formatDimension(order.paperSizeCustomer ?? 0);
+    const qcBox = order.QC_box != null ? `(${order.QC_box})` : "";
 
-function drawSignArea(doc: PDFKit.PDFDocument) {
-  doc.moveDown(3);
+    const rowH = drawTableRow({
+      doc,
+      y: currentY,
+      row: [
+        String(index + 1),
+        order.orderId,
+        `${order.Product.productName ?? ""}:${lengthCode}x${sizeCode} ${qcBox}`,
+        order.dvt,
+        fmt(item.outboundQty),
+        fmt(order.pricePaper),
+        fmt(item.totalPriceOutbound),
+      ],
+      colX,
+      colW,
+      tableLeft,
+      tableRight,
+    });
 
-  doc.font(FONT_BOLD).fontSize(11);
-  doc.text("Người mua hàng", 80);
-  doc.text("Kế toán trưởng", 250);
-  doc.text("Giám đốc", 420);
+    currentY += rowH;
+  });
 
-  doc.font(FONT_ITALIC).fontSize(9);
-  doc.text("(Ký, họ tên)", 80);
-  doc.text("(Ký, họ tên)", 250);
-  doc.text("(Ký, họ tên, đóng dấu)", 420);
-}
+  //sumary
+  const summaryStartY = currentY;
 
-function formatDate(date: Date | string) {
-  const d = new Date(date);
-  return `${d.getDate()} tháng ${d.getMonth() + 1} năm ${d.getFullYear()}`;
+  const amountColX = colX[colW.length - 1];
+
+  currentY += drawSummaryRow({
+    doc,
+    y: currentY,
+    label: "Cộng tiền hàng:",
+    value: fmt(outbound.totalPriceOrder ?? 0),
+    tableLeft,
+    amountColX,
+    tableRight,
+    alignLeft: true,
+  });
+
+  const rowH = 24;
+  const paddingX = 6;
+
+  const leftBlockWidth = amountColX - tableLeft;
+  const col1 = leftBlockWidth * 0.4;
+  const col2 = leftBlockWidth * 0.1;
+  const col3 = leftBlockWidth * 0.3;
+
+  // 1️⃣ Label Thuế suất
+  doc.text("Thuế suất GTGT:", tableLeft + paddingX, currentY + 6, {
+    width: col1 - paddingX,
+    align: "left",
+  });
+
+  // 2️⃣ Giá trị %
+  doc.text(`${outbound.detail?.[0]?.Order?.vat ?? 0}%`, tableLeft + col1, currentY + 6, {
+    width: col2 - paddingX,
+    align: "right",
+  });
+
+  // 3️⃣ Label Tiền thuế
+  doc.text("Tiền thuế GTGT:", tableLeft + col1 + col2 + paddingX, currentY + 6, {
+    width: col3 - paddingX * 2,
+    align: "left",
+  });
+
+  // 4️⃣ Giá trị tiền thuế (cột Thành tiền)
+  doc.text(fmt(outbound.totalPriceVAT ?? 0), amountColX + paddingX, currentY + 6, {
+    width: tableRight - amountColX - paddingX * 2,
+    align: "right",
+  });
+
+  // Line ngang
+  doc
+    .moveTo(tableLeft, currentY + rowH)
+    .lineTo(tableRight, currentY + rowH)
+    .stroke();
+
+  currentY += rowH;
+
+  currentY += drawSummaryRow({
+    doc,
+    y: currentY,
+    label: "Tổng tiền thanh toán:",
+    value: fmt(outbound.totalPricePayment ?? 0),
+    tableLeft,
+    amountColX,
+    tableRight,
+    alignLeft: true,
+  });
+
+  const tableBottom = currentY;
+
+  // ===== BORDER DỌC CHO BODY TABLE =====
+  colX.forEach((x, i) => {
+    if (i === 0) return;
+    doc.moveTo(x, startY).lineTo(x, summaryStartY).stroke();
+  });
+
+  // ===== BORDER NGOÀI =====
+  doc.rect(tableLeft, startY, tableRight - tableLeft, tableBottom - startY).stroke();
+
+  doc.y = tableBottom + 10;
 }
 
 function numberToVietnamese(num: number): string {
-  const units = ["", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"];
-  const levels = ["", "nghìn", "triệu", "tỷ"];
+  if (num === 0) return "Không đồng";
 
-  function readTriple(n: number) {
-    let str = "";
-    const h = Math.floor(n / 100);
-    const t = Math.floor((n % 100) / 10);
-    const u = n % 10;
+  const units = ["không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"];
+  const scales = ["", "nghìn", "triệu", "tỷ"];
 
-    if (h > 0) str += `${units[h]} trăm `;
-    if (t > 1) str += `${units[t]} mươi `;
-    else if (t === 1) str += "mười ";
+  function readTriple(n: number, full: boolean): string {
+    let result = "";
+    const hundred = Math.floor(n / 100);
+    const ten = Math.floor((n % 100) / 10);
+    const unit = n % 10;
 
-    if (u > 0) {
-      if (t >= 1 && u === 5) str += "lăm ";
-      else str += `${units[u]} `;
+    if (hundred > 0) {
+      result += units[hundred] + " trăm";
+      if (ten === 0 && unit > 0) result += " lẻ";
+    } else if (full && (ten > 0 || unit > 0)) {
+      // CHỈ đọc "lẻ", KHÔNG đọc "không trăm"
+      if (ten === 0 && unit > 0) result += " lẻ";
     }
-    return str.trim();
+
+    if (ten > 1) {
+      result += " " + units[ten] + " mươi";
+      if (unit === 1) result += " mốt";
+      else if (unit === 5) result += " lăm";
+      else if (unit > 0) result += " " + units[unit];
+    } else if (ten === 1) {
+      result += " mười";
+      if (unit === 5) result += " lăm";
+      else if (unit > 0) result += " " + units[unit];
+    } else if (ten === 0 && unit > 0 && hundred > 0) {
+      result += " " + units[unit];
+    }
+
+    return result.trim();
   }
 
-  let result = "";
-  let level = 0;
+  let str = "";
+  let scaleIndex = 0;
+  let isFirst = true;
 
   while (num > 0) {
-    const chunk = num % 1000;
-    if (chunk > 0) {
-      result = `${readTriple(chunk)} ${levels[level]} ${result}`;
+    const part = num % 1000;
+    if (part > 0) {
+      const partStr = readTriple(part, !isFirst);
+      str = partStr + " " + scales[scaleIndex] + " " + str;
+      isFirst = false;
     }
     num = Math.floor(num / 1000);
-    level++;
+    scaleIndex++;
   }
 
-  return result.trim();
+  const finalStr = str.trim();
+  return finalStr.charAt(0).toUpperCase() + finalStr.slice(1) + " đồng chẵn";
+}
+
+function drawSignArea(doc: PDFKit.PDFDocument) {
+  const startY = doc.y + 20;
+  const pageWidth = doc.page.width;
+  const margin = 40;
+
+  const usableWidth = pageWidth - margin * 2;
+  const colWidth = usableWidth / 3;
+
+  const colX = [margin, margin + colWidth, margin + colWidth * 2];
+
+  doc.fontSize(10);
+
+  // ===== NGÀY THÁNG (CỘT GIÁM ĐỐC) =====
+  doc
+    .font(FONT_ITALIC)
+    .text("Ngày ..... tháng ..... năm ......", colX[2], startY, {
+      width: colWidth,
+      align: "center",
+    })
+    .fontSize(11);
+
+  const titleY = startY + 24;
+  const signNoteY = titleY + 18;
+
+  // ===== TIÊU ĐỀ =====
+  doc.font(FONT_BOLD);
+
+  doc
+    .text("Người mua hàng", colX[0], titleY, {
+      width: colWidth,
+      align: "center",
+    })
+    .fontSize(11);
+
+  doc
+    .text("Kế toán trưởng", colX[1], titleY, {
+      width: colWidth,
+      align: "center",
+    })
+    .fontSize(11);
+
+  doc
+    .text("Giám đốc", colX[2], titleY, {
+      width: colWidth,
+      align: "center",
+    })
+    .fontSize(11);
+
+  // ===== GHI CHÚ KÝ =====
+  doc.font(FONT_ITALIC);
+
+  doc
+    .text("(Ký, họ tên)", colX[0], signNoteY, {
+      width: colWidth,
+      align: "center",
+    })
+    .fontSize(10);
+
+  doc
+    .text("(Ký, họ tên)", colX[1], signNoteY, {
+      width: colWidth,
+      align: "center",
+    })
+    .fontSize(10);
+
+  doc
+    .text("(Ký, họ tên, đóng dấu)", colX[2], signNoteY, {
+      width: colWidth,
+      align: "center",
+    })
+    .fontSize(10);
+
+  // đẩy con trỏ xuống để tránh đè nếu còn nội dung
+  doc.y = signNoteY + 80;
+}
+
+//======================HELPER===========================
+function formatDate(date: Date | string) {
+  const d = new Date(date);
+  return `${d.getDate()} tháng ${d.getMonth() + 1} năm ${d.getFullYear()}`;
 }
 
 function formatDimension(value?: number): string {

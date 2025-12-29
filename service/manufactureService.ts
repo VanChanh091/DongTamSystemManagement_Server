@@ -128,7 +128,7 @@ export const manufactureService = {
         // 1. Tìm kế hoạch hiện tại
         const planning = await manufactureRepository.getPapersById(planningId, transaction);
         if (!planning) {
-          throw AppError.NotFound("Không tìm thấy kế hoạch", "PLANNING_NOT_FOUND");
+          throw AppError.NotFound("planning not found", "PLANNING_NOT_FOUND");
         }
 
         const machine = planning.chooseMachine;

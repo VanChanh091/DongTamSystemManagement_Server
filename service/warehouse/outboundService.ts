@@ -11,7 +11,7 @@ import { planningRepository } from "../../repository/planningRepository";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import redisCache from "../../assest/configs/redisCache";
 import { Inventory } from "../../models/warehouse/inventory";
-import { exportWarehouseSaleByOutboundId } from "../../utils/helper/exportPDF";
+import { exportWarehouseSale } from "../../utils/helper/exportPDF";
 import { Response } from "express";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
@@ -526,11 +526,9 @@ export const outboundService = {
 
   exportFileOutbound: async (res: Response, outboundId: number) => {
     try {
-      return await runInTransaction(async (transaction) => {
-        const result = await exportWarehouseSaleByOutboundId(res, outboundId);
+      const result = await exportWarehouseSale(res, outboundId);
 
-        return result;
-      });
+      return result;
     } catch (error) {
       console.error("Error export file outbound:", error);
       if (error instanceof AppError) throw error;

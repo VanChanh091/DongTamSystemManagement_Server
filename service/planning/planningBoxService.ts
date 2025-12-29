@@ -310,7 +310,6 @@ export const planningBoxService = {
   },
 
   updateIndex_TimeRunningBox: async ({
-    req,
     machine,
     updateIndex,
     dayStart,

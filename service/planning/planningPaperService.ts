@@ -214,7 +214,6 @@ export const planningPaperService = {
       });
 
       return { ...result, data: fullData };
-      // return result;
     } catch (error) {
       console.error(`Failed to get customers by ${field}`, error);
       if (error instanceof AppError) throw error;
@@ -227,7 +226,7 @@ export const planningPaperService = {
       const plannings = await planningRepository.getPapersById({ planningIds });
 
       if (plannings.length === 0) {
-        throw AppError.NotFound("planning npt found", "PLANNING_NOT_FOUND");
+        throw AppError.NotFound("planning not found", "PLANNING_NOT_FOUND");
       }
 
       for (const planning of plannings) {
@@ -336,7 +335,7 @@ export const planningPaperService = {
               if (newStatus === "reject") {
                 if ((planning.qtyProduced ?? 0) > 0) {
                   throw AppError.Conflict(
-                    `Cannot reject planning ${planning.planningId} with produced quantity.`,
+                    `Cannot reject planning ${planning.planningId} has produced quantity.`,
                     "CANNOT_REJECT_PRODUCED_PLANNING"
                   );
                 }
@@ -432,7 +431,10 @@ export const planningPaperService = {
         // complete -> accept lack of qty
         for (const planning of plannings) {
           if (planning.sortPlanning === null) {
-            throw AppError.BadRequest("Cannot pause planning without sortPlanning", "BAD_REQUEST");
+            throw AppError.BadRequest(
+              "Cannot pause planning without sortPlanning",
+              "CANNOT_PAUSE_WITHOUT_SORT"
+            );
           }
 
           planning.status = newStatus;
@@ -452,9 +454,8 @@ export const planningPaperService = {
               planningId: planning.planningId,
             },
           });
-          if (!planningBox) {
-            continue;
-          }
+
+          if (!planningBox) continue;
 
           await planningRepository.updateDataModel({
             model: PlanningBoxTime,
