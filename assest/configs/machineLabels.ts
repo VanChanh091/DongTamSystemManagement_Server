@@ -29,6 +29,7 @@ const validPermissions = [
   "MachineRollPaper",
   "step2Production",
   "QC",
+  "delivery",
   "read",
 ];
 

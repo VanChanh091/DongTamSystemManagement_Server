@@ -64,7 +64,7 @@ export const outboundService = {
 
       const outbound = await warehouseRepository.findByPK(outboundId);
       if (!outbound) {
-        throw AppError.NotFound("Phiếu xuất kho không tồn tại", "OUTBOUND_NOT_FOUND");
+        throw AppError.NotFound("outbound not found", "OUTBOUND_NOT_FOUND");
       }
 
       const details = await warehouseRepository.getOutboundDetail(outboundId);
@@ -118,7 +118,7 @@ export const outboundService = {
     try {
       return await runInTransaction(async (transaction) => {
         if (!outboundDetails || outboundDetails.length === 0) {
-          throw AppError.BadRequest("Phải chọn ít nhất 1 đơn hàng", "EMPTY_ORDER_LIST");
+          throw AppError.BadRequest("empty order list", "EMPTY_ORDER_LIST");
         }
 
         let customerId: string | null = null;
@@ -146,7 +146,7 @@ export const outboundService = {
           if (customerId === null) {
             customerId = order.customerId;
           } else if (customerId !== order.customerId) {
-            throw AppError.BadRequest("Các đơn hàng không cùng khách hàng", "CUSTOMER_MISMATCH");
+            throw AppError.BadRequest("customer missmatch", "CUSTOMER_MISMATCH");
           }
 
           // check inventory
@@ -154,7 +154,6 @@ export const outboundService = {
             orderId: item.orderId,
             transaction,
           });
-
           if (!inventory) {
             throw AppError.BadRequest(
               `Order: ${item.orderId} chưa có tồn kho`,

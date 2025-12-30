@@ -275,6 +275,7 @@ export const qcSampleService = {
         }
 
         //update statusRequest
+
         if (planning instanceof PlanningPaper) {
           await planning.update({ statusRequest: "finalize" }, { transaction });
         } else if (planning instanceof PlanningBox) {

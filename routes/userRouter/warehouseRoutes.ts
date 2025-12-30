@@ -22,6 +22,7 @@ import {
   createNewInventory,
   getAllInventory,
 } from "../../controller/user/warehouse/inventoryController";
+import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 
 const router = Router();
 
@@ -42,9 +43,24 @@ router.get("/outbound", authenticate, getAllOutboundHistory);
 router.get("/outbound/detail", authenticate, getOutboundDetail);
 router.get("/outbound/filter", authenticate, searchOutboundByField);
 router.post("/outbound/exportFile", authenticate, exportFileOutbound);
-router.post("/outbound/createOutbound", authenticate, createOutbound);
-router.put("/outbound/updateOutbound", authenticate, updateOutbound);
-router.delete("/outbound/deleteOutbound", authenticate, deleteOutbound);
+router.post(
+  "/outbound/createOutbound",
+  authorizeAnyPermission(["delivery"]),
+  authenticate,
+  createOutbound
+);
+router.put(
+  "/outbound/updateOutbound",
+  authorizeAnyPermission(["delivery"]),
+  authenticate,
+  updateOutbound
+);
+router.delete(
+  "/outbound/deleteOutbound",
+  authorizeAnyPermission(["delivery"]),
+  authenticate,
+  deleteOutbound
+);
 
 //auto complete dialog
 router.get("/outbound/searchOrderIds", authenticate, searchOrderIds);

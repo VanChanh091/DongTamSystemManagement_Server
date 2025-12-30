@@ -299,7 +299,7 @@ export const manufactureService = {
 
         // Check if the planning is already completed
         if (planning.status === "complete") {
-          throw AppError.Conflict("Planning already completed", "PLANNING_COMPLETED");
+          throw AppError.Conflict("Planning already completed", "PLANNING_HAS_COMPLETED");
         }
 
         // Check if there's another planning in 'producing' status for the same machine
@@ -618,7 +618,10 @@ export const manufactureService = {
         }
 
         if (planningBox.statusRequest == "requested") {
-          throw AppError.BadRequest("Đơn này đã yêu cầu kiểm tra rồi", "ALREADY_REQUESTED");
+          throw AppError.BadRequest(
+            "Đơn này đã yêu cầu kiểm tra rồi",
+            "PLANNING_ALREADY_REQUESTED"
+          );
         }
 
         const steps = await manufactureRepository.getAllBoxTimeById(planningBoxId, transaction);
@@ -631,10 +634,7 @@ export const manufactureService = {
         console.log(checkQtyProduced);
 
         if (checkQtyProduced) {
-          throw AppError.BadRequest(
-            "Có công đoạn chưa có số lượng. Không thể yêu cầu nhập kho.",
-            "STEP_QUANTITY_EQUAL_ZERO"
-          );
+          throw AppError.BadRequest("has step quantiy equal zero", "STEP_QUANTITY_EQUAL_ZERO");
         }
 
         await planningBox.update({ statusRequest: "requested" }, { transaction });
