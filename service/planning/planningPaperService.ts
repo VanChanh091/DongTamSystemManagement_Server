@@ -257,6 +257,7 @@ export const planningPaperService = {
             "status",
             "hasOverFlow",
             "orderId",
+            "statusRequest",
           ],
         },
       });
@@ -264,22 +265,20 @@ export const planningPaperService = {
         throw AppError.BadRequest("planning not found", "PLANNING_NOT_FOUND");
       }
 
-      // Kiểm tra từng đơn
+      // Kiểm tra sl từng đơn
       for (const paper of planningPaper) {
         const { qtyProduced, runningPlan } = paper;
 
         if ((qtyProduced ?? 0) < runningPlan) {
           throw AppError.BadRequest("Lack quantity", "LACK_QUANTITY");
         }
-      }
 
-      //check đã nhập kho chưa
-      for (const paper of planningPaper) {
-        const { orderId } = paper;
-
-        const inboundRecords = await warehouseRepository.findAllInbound(orderId);
-        if (inboundRecords.length === 0) {
-          throw AppError.BadRequest(`Mã ${orderId} chưa từng được nhập kho`, "NO_INBOUND_HISTORY");
+        //check đã nhập kho chưa
+        if (paper.statusRequest !== "finalize") {
+          throw AppError.BadRequest(
+            `Mã đơn ${paper.orderId} chưa được chốt nhập kho`,
+            "PLANNING_NOT_FINALIZED"
+          );
         }
       }
 

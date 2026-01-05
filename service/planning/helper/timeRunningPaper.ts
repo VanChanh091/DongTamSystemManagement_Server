@@ -217,6 +217,19 @@ const calculateTimeForOnePlanning = async ({
   const predictedEnd = new Date(currentTime);
   predictedEnd.setMinutes(predictedEnd.getMinutes() + productionMinutes + extraBreak);
 
+  if (totalTimeWorking >= 24) {
+    const prevMinutes =
+      currentTime.getHours() * 60 + currentTime.getMinutes() + currentTime.getSeconds() / 60;
+
+    const currMinutes =
+      predictedEnd.getHours() * 60 + predictedEnd.getMinutes() + predictedEnd.getSeconds() / 60;
+
+    if (currMinutes < prevMinutes) {
+      currentDay = new Date(currentDay);
+      currentDay.setDate(currentDay.getDate() + 1);
+    }
+  }
+
   const hasOverFlow = predictedEnd > endOfWork;
   const result = await handleOverflow({
     hasOverFlow,
@@ -238,24 +251,24 @@ const calculateTimeForOnePlanning = async ({
     options: { where: { planningId }, transaction },
   });
 
-  // console.log("🔍 [Tính toán đơn hàng]:", {
-  //   planningId,
-  //   status: planning.status,
-  //   lastGhepKho,
-  //   isSameSize,
-  //   changeTime: `${changeTime} phút`,
-  //   productionTime: `${productionMinutes} phút`,
-  //   breakTime: `${extraBreak} phút`,
-  //   predictedEndTime: formatTime(predictedEnd),
-  //   endOfWorkTime: formatTime(endOfWork),
-  //   hasOverFlow,
-  //   overflowDayStart: hasOverFlow ? result.overflowDayStart : null,
-  //   overflowTimeRunning: hasOverFlow ? result.overflowTimeRunning : null,
-  //   timeRunningForPlanning: result.timeRunning,
-  // });
-
   return { result, nextTime: result.nextTime, nextDay: result.nextDay, ghepKho };
 };
+
+// console.log("🔍 [Tính toán đơn hàng]:", {
+//   planningId,
+//   status: planning.status,
+//   lastGhepKho,
+//   isSameSize,
+//   changeTime: `${changeTime} phút`,
+//   productionTime: `${productionMinutes} phút`,
+//   breakTime: `${extraBreak} phút`,
+//   predictedEndTime: formatTime(predictedEnd),
+//   endOfWorkTime: formatTime(endOfWork),
+//   hasOverFlow,
+//   overflowDayStart: hasOverFlow ? result.overflowDayStart : null,
+//   overflowTimeRunning: hasOverFlow ? result.overflowTimeRunning : null,
+//   timeRunningForPlanning: result.timeRunning,
+// });
 
 //==================== HỖ TRỢ ====================//
 

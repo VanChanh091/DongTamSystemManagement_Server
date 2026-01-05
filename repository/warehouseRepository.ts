@@ -9,9 +9,10 @@ import { PlanningBox } from "../models/planning/planningBox";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { OutboundHistory } from "../models/warehouse/outboundHistory";
 import { OutboundDetail } from "../models/warehouse/outboundDetail";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 import { User } from "../models/user/user";
 import { Inventory } from "../models/warehouse/inventory";
+import { InboundSumByPlanning } from "../interface/types";
 
 export const warehouseRepository = {
   //====================================WAITING CHECK========================================
@@ -131,11 +132,20 @@ export const warehouseRepository = {
     return await InboundHistory.count();
   },
 
-  findAllInbound: async (orderId: string) => {
-    return await InboundHistory.findAll({
-      where: { orderId },
-      attributes: ["qtyInbound"],
+  getInboundSumByPlanning: async (
+    key: "planningId" | "planningBoxId",
+    ids: number[]
+  ): Promise<InboundSumByPlanning[]> => {
+    if (!ids.length) return [];
+
+    const rows = await InboundHistory.findAll({
+      attributes: [key, [Sequelize.fn("SUM", Sequelize.col("qtyInbound")), "totalInbound"]],
+      where: { [key]: ids },
+      group: [key],
+      raw: true,
     });
+
+    return rows as unknown as InboundSumByPlanning[];
   },
 
   findInboundByPage: async ({

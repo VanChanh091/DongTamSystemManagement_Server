@@ -207,7 +207,7 @@ export const manufactureService = {
         if (planning.hasBox) {
           const planningBox = await planningRepository.getModelById({
             model: PlanningBox,
-            where: { orderId: planning.orderId },
+            where: { orderId: planning.orderId, planningId: planning.planningId },
             options: { transaction, lock: transaction?.LOCK.UPDATE },
           });
           if (!planningBox) {

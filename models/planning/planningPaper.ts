@@ -53,6 +53,7 @@ interface PlanningPaperAttributes {
   statusRequest: statusRequestInbound;
   hasOverFlow?: boolean | null;
   hasBox?: boolean | null;
+  deliveryPlanned?: boolean | null;
   sortPlanning?: number | null;
 
   createdAt?: Date;
@@ -94,6 +95,7 @@ type PlanningPaperCreationAttributes = Optional<
   | "statusRequest"
   | "hasOverFlow"
   | "hasBox"
+  | "deliveryPlanned"
   | "sortPlanning"
   | "createdAt"
   | "updatedAt"
@@ -138,6 +140,7 @@ export class PlanningPaper
   declare statusRequest: statusRequestInbound;
   declare hasOverFlow?: boolean | null;
   declare hasBox?: boolean | null;
+  declare deliveryPlanned?: boolean | null;
   declare sortPlanning?: number | null;
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
@@ -213,6 +216,7 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
         defaultValue: false,
       },
       hasBox: { type: DataTypes.BOOLEAN, defaultValue: false },
+      deliveryPlanned: { type: DataTypes.BOOLEAN, defaultValue: false },
       sortPlanning: { type: DataTypes.INTEGER },
 
       //FK

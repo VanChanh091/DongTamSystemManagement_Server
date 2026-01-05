@@ -38,3 +38,9 @@ export interface RedisUserData {
   email: string;
   otp: number;
 }
+
+export type InboundSumByPlanning = {
+  planningId?: number;
+  planningBoxId?: number;
+  totalInbound: string;
+};

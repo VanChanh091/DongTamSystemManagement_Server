@@ -226,7 +226,10 @@ export const planningBoxService = {
         options: {
           attributes: ["runningPlan", "qtyProduced", "status", "machine"],
           include: [
-            { model: PlanningBox, attributes: ["planningBoxId", "hasOverFlow", "orderId"] },
+            {
+              model: PlanningBox,
+              attributes: ["planningBoxId", "hasOverFlow", "orderId", "statusRequest"],
+            },
           ],
         },
       });
@@ -234,17 +237,19 @@ export const planningBoxService = {
         throw AppError.BadRequest("planning not found", "PLANNING_NOT_FOUND");
       }
 
+      // Kiểm tra sl từng đơn
       for (const box of planningBox) {
         const { qtyProduced, runningPlan } = box;
-        const { orderId } = box.PlanningBox;
-
         if ((qtyProduced ?? 0) < (runningPlan ?? 0)) {
           throw AppError.BadRequest("Lack quantity", "LACK_QUANTITY");
         }
 
-        const inboundRecords = await warehouseRepository.findAllInbound(orderId);
-        if (inboundRecords.length === 0) {
-          throw AppError.BadRequest(`Mã ${orderId} chưa từng được nhập kho`, "NO_INBOUND_HISTORY");
+        //check đã nhập kho chưa
+        if (box.PlanningBox.statusRequest !== "finalize") {
+          throw AppError.BadRequest(
+            `Mã đơn ${box.PlanningBox.orderId} chưa được chốt nhập kho`,
+            "PLANNING_NOT_FINALIZED"
+          );
         }
       }
 
@@ -252,7 +257,7 @@ export const planningBoxService = {
       await planningRepository.updateDataModel({
         model: PlanningBoxTime,
         data: { status: "complete" },
-        options: { where: { planningBoxId: ids, machine } },
+        options: { where: { planningBoxId: ids } },
       });
 
       const overflowRows = await timeOverflowPlanning.findAll({

@@ -11,6 +11,7 @@ import dashboardRoutes from "./dashboard/dashboardRoutes";
 import employeeRoutes from "./userRouter/employeeRoutes";
 import warehouseRoutes from "./userRouter/warehouseRoutes";
 import qcRoutes from "./userRouter/qualityControlRoutes";
+import deliveryRoutes from "./userRouter/deliveryRoutes";
 
 export {
   customerRoutes,
@@ -26,4 +27,5 @@ export {
   employeeRoutes,
   warehouseRoutes,
   qcRoutes,
+  deliveryRoutes,
 };

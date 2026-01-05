@@ -6,6 +6,8 @@ dotenv.config();
 
 import { connectDB, sequelize } from "./assest/configs/connectDB";
 import authenticate from "./middlewares/authMiddleware";
+
+//routes
 import {
   authRoutes,
   adminRoutes,
@@ -20,6 +22,7 @@ import {
   employeeRoutes,
   warehouseRoutes,
   qcRoutes,
+  deliveryRoutes,
 } from "./routes/index";
 
 //create table
@@ -69,6 +72,7 @@ app.use("/api/report", reportRoutes);
 app.use("/api/employee", employeeRoutes);
 app.use("/api/warehouse", warehouseRoutes);
 app.use("/api/qc", qcRoutes);
+app.use("/api/delivery", deliveryRoutes);
 
 sequelize
   // .sync({ alter: true })

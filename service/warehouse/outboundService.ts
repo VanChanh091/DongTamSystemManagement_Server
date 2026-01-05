@@ -76,7 +76,7 @@ export const outboundService = {
     }
   },
 
-  //use to auto complet
+  //use to auto complete
   searchOrderIds: async (keyword: string) => {
     try {
       const orders = await warehouseRepository.searchOrderIds(keyword);
@@ -525,9 +525,7 @@ export const outboundService = {
 
   exportFileOutbound: async (res: Response, outboundId: number) => {
     try {
-      const result = await exportWarehouseSale(res, outboundId);
-
-      return result;
+      await exportWarehouseSale(res, outboundId);
     } catch (error) {
       console.error("Error export file outbound:", error);
       if (error instanceof AppError) throw error;

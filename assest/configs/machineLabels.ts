@@ -44,4 +44,21 @@ const machineMap = {
   hasDongGhim: "Máy Đóng Ghim",
 };
 
+const fluteRatio = {
+  // quy tac sap xep song E -> B -> C
+  "2E": 0.0018,
+  "2B": 0.0028,
+  "2C": 0.0032,
+  "3E": 0.0019,
+  "3B": 0.0026,
+  "3C": 0.0034,
+  "4EE": 0.0034,
+  "4CE": 0.0053,
+  "4BE": 0.0045,
+  "4BC": 0.006,
+  "5BE": 0.0045,
+  "5BC": 0.006,
+  "7BCE": 0.0085,
+};
+
 export { machineLabels, MACHINE_FIELD_MAP, validPermissions, machineMap };

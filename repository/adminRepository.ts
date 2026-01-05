@@ -4,6 +4,7 @@ import { Box } from "../models/order/box";
 import { Order } from "../models/order/order";
 import { Product } from "../models/product/product";
 import { User } from "../models/user/user";
+import { FluteRatio } from "../models/admin/fluteRatio";
 
 export const adminRepository = {
   //===============================ADMIN MACHINE=====================================
@@ -124,5 +125,23 @@ export const adminRepository = {
 
   updateWaste: async (wasteModel: any, wasteDataUpdated: any) => {
     return await wasteModel.update(wasteDataUpdated);
+  },
+
+  //===============================FLUTE RATIO=====================================
+
+  getAllFluteRatio: async () => {
+    return await FluteRatio.findAll({ attributes: { exclude: ["createdAt", "updatedAt"] } });
+  },
+
+  findByPk: async (id: number) => {
+    return await FluteRatio.findByPk(id);
+  },
+
+  createFluteRatio: async (data: any, transaction?: any) => {
+    return await FluteRatio.create(data, { transaction });
+  },
+
+  updateFluteRatio: async (model: any, dataUpdated: any, transaction?: any) => {
+    return await model.update(dataUpdated, { transaction });
   },
 };

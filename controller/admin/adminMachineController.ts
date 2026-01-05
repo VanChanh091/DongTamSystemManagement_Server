@@ -1,14 +1,14 @@
 import { NextFunction, Request, Response } from "express";
 import { MachinePaper, MachinePaperCreationAttributes } from "../../models/admin/machinePaper";
 import { MachineBox, MachineBoxCreationAttributes } from "../../models/admin/machineBox";
-import { adminService } from "../../service/admin/adminService";
+import { adminMachineService } from "../../service/admin/adminMachineService";
 
 //===============================PAPER=====================================
 
 //get all machine
 export const getAllMachinePaper = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await adminService.getAllMachine(MachinePaper);
+    const response = await adminMachineService.getAllMachine(MachinePaper);
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -21,7 +21,7 @@ export const getMachinePaperById = async (req: Request, res: Response, next: Nex
   const { machineId } = req.query as { machineId: string };
 
   try {
-    const response = await adminService.getMachineById(MachinePaper, Number(machineId));
+    const response = await adminMachineService.getMachineById(MachinePaper, Number(machineId));
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -31,7 +31,7 @@ export const getMachinePaperById = async (req: Request, res: Response, next: Nex
 //add machine
 export const createMachinePaper = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await adminService.createMachine(
+    const response = await adminMachineService.createMachine(
       MachinePaper,
       req.body as MachinePaperCreationAttributes
     );
@@ -47,7 +47,7 @@ export const updateMachinePaperById = async (req: Request, res: Response, next: 
   const { ...machineUpdated } = req.body;
 
   try {
-    const response = await adminService.updateMachineById(
+    const response = await adminMachineService.updateMachineById(
       MachinePaper,
       Number(machineId),
       machineUpdated
@@ -63,7 +63,7 @@ export const deleteMachinePaperById = async (req: Request, res: Response, next: 
   const { machineId } = req.query as { machineId: string };
 
   try {
-    const response = await adminService.deleteMachineById(MachinePaper, Number(machineId));
+    const response = await adminMachineService.deleteMachineById(MachinePaper, Number(machineId));
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -75,7 +75,7 @@ export const deleteMachinePaperById = async (req: Request, res: Response, next: 
 //get all machine
 export const getAllMachineBox = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await adminService.getAllMachine(MachineBox);
+    const response = await adminMachineService.getAllMachine(MachineBox);
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -88,7 +88,7 @@ export const getMachineBoxById = async (req: Request, res: Response, next: NextF
   const { machineId } = req.query as { machineId: string };
 
   try {
-    const response = await adminService.getMachineById(MachineBox, Number(machineId));
+    const response = await adminMachineService.getMachineById(MachineBox, Number(machineId));
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -98,7 +98,7 @@ export const getMachineBoxById = async (req: Request, res: Response, next: NextF
 //add machine
 export const createMachineBox = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await adminService.createMachine(
+    const response = await adminMachineService.createMachine(
       MachineBox,
       req.body as MachineBoxCreationAttributes
     );
@@ -114,7 +114,7 @@ export const updateMachineBoxById = async (req: Request, res: Response, next: Ne
   const { ...machineUpdated } = req.body;
 
   try {
-    const response = await adminService.updateMachineById(
+    const response = await adminMachineService.updateMachineById(
       MachineBox,
       Number(machineId),
       machineUpdated
@@ -130,7 +130,7 @@ export const deleteMachineBoxById = async (req: Request, res: Response, next: Ne
   const { machineId } = req.query as { machineId: string };
 
   try {
-    const response = await adminService.deleteMachineById(MachineBox, Number(machineId));
+    const response = await adminMachineService.deleteMachineById(MachineBox, Number(machineId));
     return res.status(200).json(response);
   } catch (error) {
     next(error);

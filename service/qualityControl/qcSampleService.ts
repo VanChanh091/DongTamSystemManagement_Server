@@ -4,6 +4,7 @@ import { qcChecklistData, QcSampleResult } from "../../models/qualityControl/qcS
 import { QcSession } from "../../models/qualityControl/qcSession";
 import { planningRepository } from "../../repository/planningRepository";
 import { qcRepository } from "../../repository/qcRepository";
+import { warehouseRepository } from "../../repository/warehouseRepository";
 import { AppError } from "../../utils/appError";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 
@@ -261,6 +262,14 @@ export const qcSampleService = {
           );
         }
 
+        //check inbound trước khi finalized
+        isPaper
+          ? await qcSampleService.assertHasInbound({ key: "planningId", id: session.planningId! })
+          : await qcSampleService.assertHasInbound({
+              key: "planningBoxId",
+              id: session.planningBoxId!,
+            });
+
         await session.update({ status: "finalized" });
 
         //update status request in planning
@@ -275,7 +284,6 @@ export const qcSampleService = {
         }
 
         //update statusRequest
-
         if (planning instanceof PlanningPaper) {
           await planning.update({ statusRequest: "finalize" }, { transaction });
         } else if (planning instanceof PlanningBox) {
@@ -297,6 +305,18 @@ export const qcSampleService = {
       console.error("create Qc Sample Result failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
+    }
+  },
+
+  assertHasInbound: async ({ key, id }: { key: "planningId" | "planningBoxId"; id: number }) => {
+    const inboundSums = await warehouseRepository.getInboundSumByPlanning(key, [id]);
+    const totalInbound = inboundSums.length > 0 ? Number(inboundSums[0].totalInbound) || 0 : 0;
+
+    if (totalInbound <= 0) {
+      throw AppError.BadRequest(
+        "Chưa có giá trị nhập kho, không thể hoàn thành phiên kiểm tra",
+        "NO_INBOUND_HISTORY"
+      );
     }
   },
 };

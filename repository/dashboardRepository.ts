@@ -28,7 +28,14 @@ export const dashboardRepository = {
     const query: any = {
       where: whereCondition,
       attributes: {
-        exclude: ["createdAt", "updatedAt", "hasBox", "sortPlanning"],
+        exclude: [
+          "createdAt",
+          "updatedAt",
+          "hasBox",
+          "sortPlanning",
+          "statusRequest",
+          "hasOverFlow",
+        ],
       },
       include: [
         {

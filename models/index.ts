@@ -1,10 +1,14 @@
 import { sequelize } from "../assest/configs/connectDB";
+import { initFluteRatioCoefficientModel } from "./admin/fluteRatio";
 import { initMachineBoxModel } from "./admin/machineBox";
 import { initMachinePaperModel } from "./admin/machinePaper";
+import { initVehicleModel } from "./admin/vehicle";
 import { initWasteNormBoxModel } from "./admin/wasteNormBox";
 import { initWasteNormPaperModel } from "./admin/wasteNormPaper";
 import { initWaveCrestCoefficientModel } from "./admin/waveCrestCoefficient";
 import { initCustomerModel } from "./customer/customer";
+import { initDeliveryItemModel } from "./delivery/deliveryItem";
+import { initDeliveryPlanModel } from "./delivery/deliveryPlan";
 import { initEmployeeBasicInfoModel } from "./employee/employeeBasicInfo";
 import { initEmployeeCompanyInfoModel } from "./employee/employeeCompanyInfo";
 import { initBoxModel } from "./order/box";
@@ -52,6 +56,8 @@ const MachineBox = initMachineBoxModel(sequelize);
 const WasteNormPaper = initWasteNormPaperModel(sequelize);
 const WasteNormBox = initWasteNormBoxModel(sequelize);
 const WaveCrestCoefficient = initWaveCrestCoefficientModel(sequelize);
+const Vehicle = initVehicleModel(sequelize);
+const FluteRatio = initFluteRatioCoefficientModel(sequelize);
 
 //QC
 const QcSession = initQcSessionModel(sequelize);
@@ -65,6 +71,10 @@ const OutboundDetail = initOutboundDetailModel(sequelize);
 
 //inventory
 const Inventory = initInventoryModel(sequelize);
+
+//delivery
+const DeliveryPlan = initDeliveryPlanModel(sequelize);
+const DeliveryItem = initDeliveryItemModel(sequelize);
 
 const models = {
   User,
@@ -98,12 +108,18 @@ const models = {
   OutboundDetail,
   Inventory,
 
+  //Delivery
+  DeliveryPlan,
+  DeliveryItem,
+
   //admin
   MachinePaper,
   MachineBox,
   WasteNormPaper,
   WasteNormBox,
   WaveCrestCoefficient,
+  Vehicle,
+  FluteRatio,
 };
 
 //customer
@@ -242,5 +258,12 @@ OutboundDetail.belongsTo(Order, { foreignKey: "orderId" });
 //inventory
 Order.hasOne(Inventory, { foreignKey: "orderId", onDelete: "CASCADE" });
 Inventory.belongsTo(Order, { foreignKey: "orderId" });
+
+//delivery
+DeliveryPlan.hasMany(DeliveryItem, { foreignKey: "deliveryId", onDelete: "CASCADE" });
+DeliveryItem.belongsTo(DeliveryPlan, { foreignKey: "deliveryId" });
+
+Vehicle.hasOne(DeliveryItem, { foreignKey: "vehicleId" });
+DeliveryItem.belongsTo(Vehicle, { foreignKey: "vehicleId" });
 
 export default models;

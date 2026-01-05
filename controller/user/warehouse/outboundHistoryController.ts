@@ -129,8 +129,7 @@ export const exportFileOutbound = async (req: Request, res: Response, next: Next
   const { outboundId } = req.query as { outboundId: string };
 
   try {
-    const response = await outboundService.exportFileOutbound(res, Number(outboundId));
-    return res.status(200).json(response);
+    await outboundService.exportFileOutbound(res, Number(outboundId));
   } catch (error) {
     next(error);
   }

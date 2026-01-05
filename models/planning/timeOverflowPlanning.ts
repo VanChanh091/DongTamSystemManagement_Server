@@ -5,12 +5,13 @@ import { PlanningBox } from "./planningBox";
 //định nghĩa trường trong bảng
 interface TimeOverflowPlanningAttributes {
   overflowId: number;
-  status: "planning" | "lackOfQty" | "complete";
-
   overflowDayStart?: Date | null;
   overflowDayCompleted?: Date | null;
   overflowTimeRunning?: string | null;
   machine?: string | null;
+
+  status: "planning" | "lackOfQty" | "complete";
+
   createdAt?: Date;
   updatedAt?: Date;
 

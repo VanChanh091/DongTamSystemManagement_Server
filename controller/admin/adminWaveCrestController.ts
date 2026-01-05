@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { WaveCrestCreationAttributes } from "../../models/admin/waveCrestCoefficient";
-import { adminService } from "../../service/admin/adminService";
+import { adminMachineService } from "../../service/admin/adminMachineService";
 
 //get all wave crest coefficient
 export const getAllWaveCrestCoefficient = async (
@@ -9,7 +9,7 @@ export const getAllWaveCrestCoefficient = async (
   next: NextFunction
 ) => {
   try {
-    const response = await adminService.getAllWaveCrestCoefficient();
+    const response = await adminMachineService.getAllWaveCrestCoefficient();
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -22,7 +22,7 @@ export const getWaveCrestById = async (req: Request, res: Response, next: NextFu
   const { waveCrestId } = req.query as { waveCrestId: string };
 
   try {
-    const response = await adminService.getWaveCrestById(Number(waveCrestId));
+    const response = await adminMachineService.getWaveCrestById(Number(waveCrestId));
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -38,7 +38,7 @@ export const createWaveCrestCoefficient = async (
   const waveCrest = req.body as WaveCrestCreationAttributes;
 
   try {
-    const response = await adminService.createWaveCrestCoefficient(waveCrest);
+    const response = await adminMachineService.createWaveCrestCoefficient(waveCrest);
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -51,7 +51,10 @@ export const updateWaveCrestById = async (req: Request, res: Response, next: Nex
   const { ...waveCrestUpdated } = req.body;
 
   try {
-    const response = await adminService.updateWaveCrestById(Number(waveCrestId), waveCrestUpdated);
+    const response = await adminMachineService.updateWaveCrestById(
+      Number(waveCrestId),
+      waveCrestUpdated
+    );
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -63,7 +66,7 @@ export const deleteWaveCrestById = async (req: Request, res: Response, next: Nex
   const { waveCrestId } = req.query as { waveCrestId: string };
 
   try {
-    const response = await adminService.deleteWaveCrestById(Number(waveCrestId));
+    const response = await adminMachineService.deleteWaveCrestById(Number(waveCrestId));
     return res.status(200).json(response);
   } catch (error) {
     next(error);
