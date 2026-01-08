@@ -21,7 +21,7 @@ interface InboundHistoryAttributes {
 }
 
 //cho phép bỏ qua id khi tạo
-type InboundHistoryCreationAttributes = Optional<
+export type InboundHistoryCreationAttributes = Optional<
   InboundHistoryAttributes,
   "inboundId" | "createdAt" | "updatedAt"
 >;

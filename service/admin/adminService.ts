@@ -6,10 +6,129 @@ import { userRole } from "../../models/user/user";
 import { adminRepository } from "../../repository/adminRepository";
 import { AppError } from "../../utils/appError";
 import { getCloudinaryPublicId } from "../../utils/image/converToWebp";
-import { FluteRatioAttributes } from "../../models/admin/fluteRatio";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 
 export const adminService = {
+  //===============================ADMIN CRUD=====================================
+
+  getAllItems: async ({ model, message }: { model: any; message: string }) => {
+    try {
+      const allItems = await adminRepository.getAllItems({ model });
+      return { message, data: allItems };
+    } catch (error) {
+      console.error("get all item failed:", error);
+      throw AppError.ServerError();
+    }
+  },
+
+  getItemById: async ({
+    model,
+    itemId,
+    errMessage,
+    errCode,
+  }: {
+    model: any;
+    itemId: number;
+    errMessage: string;
+    errCode: string;
+  }) => {
+    try {
+      const item = await adminRepository.getItemByPk({ model, itemId });
+      if (!item) {
+        throw AppError.NotFound(errMessage, errCode);
+      }
+
+      return { message: `get item by id: ${itemId}`, data: item };
+    } catch (error) {
+      console.error(`failed to get item by id: ${itemId}`, error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  createNewItem: async ({ model, data, message }: { model: any; data: any; message: string }) => {
+    try {
+      return await runInTransaction(async (transaction) => {
+        const newItem = await adminRepository.createNewItem({
+          model,
+          data,
+          transaction,
+        });
+        return { message, data: newItem };
+      });
+    } catch (error) {
+      console.error("create item failed:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  updateItem: async ({
+    model,
+    itemId,
+    dataUpdated,
+    message,
+    errMessage,
+    errCode,
+  }: {
+    model: any;
+    itemId: number;
+    dataUpdated: any;
+    message: string;
+    errMessage: string;
+    errCode: string;
+  }) => {
+    try {
+      return await runInTransaction(async (transaction) => {
+        const existedItem = await adminRepository.getItemByPk({ model, itemId });
+        if (!existedItem) {
+          throw AppError.NotFound(errMessage, errCode);
+        }
+
+        await adminRepository.updateItem({
+          model: existedItem,
+          dataUpdated,
+          transaction,
+        });
+
+        return { message };
+      });
+    } catch (error) {
+      console.error("update item failed:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  deleteItem: async ({
+    model,
+    itemId,
+    message,
+    errMessage,
+    errCode,
+  }: {
+    model: any;
+    itemId: number;
+    message: string;
+    errMessage: string;
+    errCode: string;
+  }) => {
+    try {
+      const existedItem = await adminRepository.getItemByPk({ model, itemId });
+      if (!existedItem) {
+        throw AppError.NotFound(errMessage, errCode);
+      }
+
+      await adminRepository.deleteItem({ model: existedItem });
+
+      return { message };
+    } catch (error) {
+      console.error("delete item failed:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
   //===============================ADMIN ORDER=====================================
 
   getOrderPending: async () => {
@@ -58,66 +177,6 @@ export const adminService = {
       return { message: "Order status updated successfully", order };
     } catch (error) {
       console.error("failed to update order", error);
-      if (error instanceof AppError) throw error;
-      throw AppError.ServerError();
-    }
-  },
-
-  //===============================FLUTE RATIO======================================
-
-  getAllFluteRatio: async () => {
-    try {
-      const allFluteRatio = await adminRepository.getAllFluteRatio();
-      return { message: `get all flute ratio successfully`, data: allFluteRatio };
-    } catch (error) {
-      console.error("get all flute ratio failed:", error);
-      throw AppError.ServerError();
-    }
-  },
-
-  createFluteRatio: async (data: FluteRatioAttributes) => {
-    try {
-      return await runInTransaction(async (transaction) => {
-        const newFluteRatio = await adminRepository.createFluteRatio(data, transaction);
-        return { message: "Create flute ratio successfully", data: newFluteRatio };
-      });
-    } catch (error) {
-      console.error("create flute ratio failed:", error);
-      if (error instanceof AppError) throw error;
-      throw AppError.ServerError();
-    }
-  },
-
-  updateFluteRatio: async (fluteRatioId: number, data: FluteRatioAttributes) => {
-    try {
-      return await runInTransaction(async (transaction) => {
-        const existingFluteRatio = await adminRepository.findByPk(fluteRatioId);
-        if (!existingFluteRatio) {
-          throw AppError.NotFound("flute ratio not found", "FLUTE_RATIO_NOT_FOUND");
-        }
-
-        await adminRepository.updateWaste(data, transaction);
-        return { message: "update flute ratio successfully" };
-      });
-    } catch (error) {
-      console.error("update Qc Criteria failed:", error);
-      if (error instanceof AppError) throw error;
-      throw AppError.ServerError();
-    }
-  },
-
-  deleteFluteRatio: async (fluteRatioId: number) => {
-    try {
-      const existingFluteRatio = await adminRepository.findByPk(fluteRatioId);
-      if (!existingFluteRatio) {
-        throw AppError.NotFound("flute ratio not found", "FLUTE_RATIO_NOT_FOUND");
-      }
-
-      await existingFluteRatio.destroy();
-
-      return { message: "delete Qc Criteria successfully" };
-    } catch (error) {
-      console.error("delete Qc Criteria failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }

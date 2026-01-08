@@ -15,7 +15,7 @@ interface OutboundHistoryAttributes {
 }
 
 //cho phép bỏ qua id khi tạo
-type OutboundHistoryCreationAttributes = Optional<
+export type OutboundHistoryCreationAttributes = Optional<
   OutboundHistoryAttributes,
   "outboundId" | "createdAt" | "updatedAt"
 >;

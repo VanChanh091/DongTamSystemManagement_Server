@@ -49,6 +49,18 @@ import {
   getAllQcCriteria,
   updateCriteria,
 } from "../../controller/admin/adminCriteriaController";
+import {
+  createFluteRatio,
+  deleteFluteRatio,
+  getAllFluteRatio,
+  updateFluteRatio,
+} from "../../controller/admin/adminFluteRatioController";
+import {
+  createNewVehicle,
+  deleteVehicle,
+  getAllVehicle,
+  updateVehicle,
+} from "../../controller/admin/adminVehicleController";
 
 const router = Router();
 
@@ -70,7 +82,6 @@ router.delete(
   deleteMachinePaperById
 );
 
-//admin routes for machine box
 //===============================MACHINE BOX=====================================
 router.get("/getAllMachineBox", authenticate, authorizeRole(["admin"]), getAllMachineBox);
 router.get("/getMachineBoxById", authenticate, authorizeRole(["admin"]), getMachineBoxById);
@@ -78,7 +89,6 @@ router.post("/createMachineBox", authenticate, authorizeRole(["admin"]), createM
 router.put("/updateMachineBox", authenticate, authorizeRole(["admin"]), updateMachineBoxById);
 router.delete("/deleteMachineBox", authenticate, authorizeRole(["admin"]), deleteMachineBoxById);
 
-// Admin routes for managing users
 //===============================USERS=====================================
 router.get("/getAllUsers", authenticate, authorizeRole(["admin"]), getAllUsers);
 router.get("/getUserByName", authenticate, authorizeRole(["admin"]), getUserByName);
@@ -89,7 +99,6 @@ router.put("/updatePermission", authenticate, authorizeRole(["admin"]), updatePe
 router.put("/resetPassword", authenticate, authorizeRole(["admin"]), resetPassword);
 router.delete("/deleteUser", authenticate, authorizeRole(["admin"]), deleteUserById);
 
-//admin routes for waste norm paper
 //===============================WASTE NORM PAPER=====================================
 router.get("/getAllWasteNorm", authenticate, authorizeRole(["admin"]), getAllWasteNorm);
 router.get("/getWasteNormById", authenticate, authorizeRole(["admin"]), getWasteNormById);
@@ -97,7 +106,6 @@ router.post("/createWasteNorm", authenticate, authorizeRole(["admin"]), createWa
 router.put("/updateWasteNormById", authenticate, authorizeRole(["admin"]), updateWasteNormById);
 router.delete("/deleteWasteNormById", authenticate, authorizeRole(["admin"]), deleteWasteNormById);
 
-//admin routes for waste norm box
 //===============================WASTE NORM BOX=====================================
 router.get("/getAllWasteBox", authenticate, authorizeRole(["admin"]), getAllWasteBox);
 router.get("/getWasteBoxById", authenticate, authorizeRole(["admin"]), getWasteBoxById);
@@ -105,7 +113,6 @@ router.post("/createWasteBox", authenticate, authorizeRole(["admin"]), createWas
 router.put("/updateWasteBoxById", authenticate, authorizeRole(["admin"]), updateWasteBoxById);
 router.delete("/deleteWasteBoxById", authenticate, authorizeRole(["admin"]), deleteWasteBoxById);
 
-//admin routes for wave crest coefficient
 //===============================WAVE CREST COEFFICIENT=====================================
 router.get("/getAllWaveCrest", authenticate, authorizeRole(["admin"]), getAllWaveCrestCoefficient);
 router.get("/getWaveCrestById", authenticate, authorizeRole(["admin"]), getWaveCrestById);
@@ -113,11 +120,22 @@ router.post("/createWaveCrest", authenticate, authorizeRole(["admin"]), createWa
 router.put("/updateWaveCrestById", authenticate, authorizeRole(["admin"]), updateWaveCrestById);
 router.delete("/deleteWaveCrestById", authenticate, authorizeRole(["admin"]), deleteWaveCrestById);
 
-//admin criteria
 //===============================CRITERIA=====================================
 router.get("/getCriteria", authenticate, authorizeRole(["admin"]), getAllQcCriteria);
 router.post("/newCriteria", authenticate, authorizeRole(["admin"]), createNewCriteria);
 router.put("/updateCriteria", authenticate, authorizeRole(["admin"]), updateCriteria);
 router.delete("/deleteCriteria", authenticate, authorizeRole(["admin"]), deleteCriteria);
+
+//===============================FLUTE RATIO=====================================
+router.get("/getFluteRatio", authenticate, authorizeRole(["admin"]), getAllFluteRatio);
+router.post("/createFluteRatio", authenticate, authorizeRole(["admin"]), createFluteRatio);
+router.put("/updateFluteRatio", authenticate, authorizeRole(["admin"]), updateFluteRatio);
+router.delete("/deleteFluteRatio", authenticate, authorizeRole(["admin"]), deleteFluteRatio);
+
+//===============================VEHICLE=====================================
+router.get("/getAllVehicle", authenticate, authorizeRole(["admin", "manager"]), getAllVehicle);
+router.post("/newVehicle", authenticate, authorizeRole(["admin", "manager"]), createNewVehicle);
+router.put("/updateVehicle", authenticate, authorizeRole(["admin", "manager"]), updateVehicle);
+router.delete("/deleteVehicle", authenticate, authorizeRole(["admin", "manager"]), deleteVehicle);
 
 export default router;

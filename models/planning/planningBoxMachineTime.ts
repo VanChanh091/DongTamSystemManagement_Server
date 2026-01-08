@@ -36,7 +36,7 @@ interface PlanningBoxTimeAttributes {
 }
 
 //cho phép bỏ qua id khi tạo
-type PlanningBoxTimeCreationAttributes = Optional<
+export type PlanningBoxTimeCreationAttributes = Optional<
   PlanningBoxTimeAttributes,
   | "boxTimeId"
   | "runningPlan"

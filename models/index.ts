@@ -260,7 +260,10 @@ Order.hasOne(Inventory, { foreignKey: "orderId", onDelete: "CASCADE" });
 Inventory.belongsTo(Order, { foreignKey: "orderId" });
 
 //delivery
-DeliveryPlan.hasMany(DeliveryItem, { foreignKey: "deliveryId", onDelete: "CASCADE" });
+DeliveryPlan.hasMany(DeliveryItem, {
+  foreignKey: "deliveryId",
+  onDelete: "CASCADE",
+});
 DeliveryItem.belongsTo(DeliveryPlan, { foreignKey: "deliveryId" });
 
 Vehicle.hasOne(DeliveryItem, { foreignKey: "vehicleId" });

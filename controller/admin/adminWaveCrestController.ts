@@ -1,6 +1,9 @@
 import { NextFunction, Request, Response } from "express";
-import { WaveCrestCreationAttributes } from "../../models/admin/waveCrestCoefficient";
-import { adminMachineService } from "../../service/admin/adminMachineService";
+import {
+  WaveCrestCoefficient,
+  WaveCrestCreationAttributes,
+} from "../../models/admin/waveCrestCoefficient";
+import { adminService } from "../../service/admin/adminService";
 
 //get all wave crest coefficient
 export const getAllWaveCrestCoefficient = async (
@@ -9,7 +12,11 @@ export const getAllWaveCrestCoefficient = async (
   next: NextFunction
 ) => {
   try {
-    const response = await adminMachineService.getAllWaveCrestCoefficient();
+    const response = await adminService.getAllItems({
+      model: WaveCrestCoefficient,
+      message: "get all wave crest coefficient successfully",
+    });
+
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -22,7 +29,13 @@ export const getWaveCrestById = async (req: Request, res: Response, next: NextFu
   const { waveCrestId } = req.query as { waveCrestId: string };
 
   try {
-    const response = await adminMachineService.getWaveCrestById(Number(waveCrestId));
+    const response = await adminService.getItemById({
+      model: WaveCrestCoefficient,
+      itemId: Number(waveCrestId),
+      errMessage: "wave crest not found",
+      errCode: "WAVE_CREST_NOT_FOUND",
+    });
+
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -35,10 +48,13 @@ export const createWaveCrestCoefficient = async (
   res: Response,
   next: NextFunction
 ) => {
-  const waveCrest = req.body as WaveCrestCreationAttributes;
-
   try {
-    const response = await adminMachineService.createWaveCrestCoefficient(waveCrest);
+    const response = await adminService.createNewItem({
+      model: WaveCrestCoefficient,
+      data: req.body as WaveCrestCreationAttributes,
+      message: "create wave crest coefficient successfully",
+    });
+
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -48,13 +64,17 @@ export const createWaveCrestCoefficient = async (
 //update wave crest coefficient
 export const updateWaveCrestById = async (req: Request, res: Response, next: NextFunction) => {
   const { waveCrestId } = req.query as { waveCrestId: string };
-  const { ...waveCrestUpdated } = req.body;
 
   try {
-    const response = await adminMachineService.updateWaveCrestById(
-      Number(waveCrestId),
-      waveCrestUpdated
-    );
+    const response = await adminService.updateItem({
+      model: WaveCrestCoefficient,
+      itemId: Number(waveCrestId),
+      dataUpdated: req.body as WaveCrestCreationAttributes,
+      message: "update wave crest coefficient successfully",
+      errMessage: "wave crest coefficient not found",
+      errCode: "WAVE_CREST_COEFF_NOT_FOUND",
+    });
+
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -66,7 +86,14 @@ export const deleteWaveCrestById = async (req: Request, res: Response, next: Nex
   const { waveCrestId } = req.query as { waveCrestId: string };
 
   try {
-    const response = await adminMachineService.deleteWaveCrestById(Number(waveCrestId));
+    const response = await adminService.deleteItem({
+      model: WaveCrestCoefficient,
+      itemId: Number(waveCrestId),
+      message: `delete waveCrestCoefficientId: ${waveCrestId} successfully`,
+      errMessage: "wave crest coefficient not found",
+      errCode: "WAVE_CREST_COEFF_NOT_FOUND",
+    });
+
     return res.status(200).json(response);
   } catch (error) {
     next(error);

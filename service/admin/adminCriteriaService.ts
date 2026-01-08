@@ -1,7 +1,7 @@
 import {
   processTypeQC,
   QcCriteria,
-  QcCriteriaAttributes,
+  QcCriteriaCreationAttributes,
 } from "../../models/qualityControl/qcCriteria";
 import { qcRepository } from "../../repository/qcRepository";
 import { AppError } from "../../utils/appError";
@@ -19,7 +19,7 @@ export const adminCriteriaService = {
     }
   },
 
-  createNewCriteria: async (data: QcCriteriaAttributes) => {
+  createNewCriteria: async (data: QcCriteriaCreationAttributes) => {
     try {
       return await runInTransaction(async (transcation) => {
         const newCriteria = await QcCriteria.create({ ...data }, { transaction: transcation });
@@ -33,7 +33,7 @@ export const adminCriteriaService = {
     }
   },
 
-  updateCriteria: async (qcCriteriaId: number, data: QcCriteriaAttributes) => {
+  updateCriteria: async (qcCriteriaId: number, data: QcCriteriaCreationAttributes) => {
     try {
       return await runInTransaction(async (transaction) => {
         const existingCriteria = await qcRepository.findByPk(QcCriteria, qcCriteriaId, transaction);

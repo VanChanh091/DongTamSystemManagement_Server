@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { employeeService } from "../../../service/employeeService";
+import { EmployeeBasicInfoCreationAttributes } from "../../../models/employee/employeeBasicInfo";
 
 //get all
 export const getAllEmployees = async (req: Request, res: Response, next: NextFunction) => {
@@ -59,7 +60,9 @@ export const getEmployeeByPosition = async (req: Request, res: Response, next: N
 //add employee
 export const createEmployee = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await employeeService.createEmployee(req.body);
+    const response = await employeeService.createEmployee(
+      req.body as EmployeeBasicInfoCreationAttributes
+    );
     return res.status(201).json(response);
   } catch (error) {
     next(error);
@@ -71,7 +74,10 @@ export const updateEmployee = async (req: Request, res: Response, next: NextFunc
   const { employeeId } = req.query as { employeeId: string };
 
   try {
-    const response = await employeeService.updateEmployee(Number(employeeId), req.body);
+    const response = await employeeService.updateEmployee(
+      Number(employeeId),
+      req.body as EmployeeBasicInfoCreationAttributes
+    );
     return res.status(201).json(response);
   } catch (error) {
     next(error);

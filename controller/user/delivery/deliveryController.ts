@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { deliveryService } from "../../../service/deliveryService";
+import { targetType } from "../../../models/delivery/deliveryItem";
 
 //=================================PLANNING ESTIMATE TIME=====================================
 
@@ -29,8 +30,12 @@ export const confirmReadyDeliveryPlanning = async (
   res: Response,
   next: NextFunction
 ) => {
+  const { planningIds } = req.body as { planningIds: string[] };
+
   try {
-    const response = await deliveryService.confirmReadyDeliveryPlanning();
+    const response = await deliveryService.confirmReadyDeliveryPlanning({
+      planningIds: planningIds.map((id) => Number(id)),
+    });
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -40,10 +45,29 @@ export const confirmReadyDeliveryPlanning = async (
 //=================================PLANNING DELIVERY=====================================
 
 export const getPlanningDelivery = async (req: Request, res: Response, next: NextFunction) => {
-  const { dayDelivery } = req.query as { dayDelivery: string };
+  const { deliveryDate } = req.query as { deliveryDate: string };
 
   try {
-    const response = await deliveryService.getPlanningDelivery();
+    const response = await deliveryService.getPlanningDelivery(new Date(deliveryDate));
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createDeliveryPlan = async (req: Request, res: Response, next: NextFunction) => {
+  const { deliveryDate, items } = req.body as {
+    deliveryDate: Date;
+    items: {
+      targetType: targetType;
+      targetId: number;
+      vehicleId: number;
+      sequence: number;
+    }[];
+  };
+
+  try {
+    const response = await deliveryService.createDeliveryPlan({ deliveryDate, items });
     return res.status(200).json(response);
   } catch (error) {
     next(error);

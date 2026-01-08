@@ -1,5 +1,8 @@
 import { NextFunction, Request, Response } from "express";
-import { processTypeQC, QcCriteriaAttributes } from "../../models/qualityControl/qcCriteria";
+import {
+  processTypeQC,
+  QcCriteriaCreationAttributes,
+} from "../../models/qualityControl/qcCriteria";
 import { adminCriteriaService } from "../../service/admin/adminCriteriaService";
 
 //get all qc criteria
@@ -17,7 +20,9 @@ export const getAllQcCriteria = async (req: Request, res: Response, next: NextFu
 //create new qc criteria
 export const createNewCriteria = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await adminCriteriaService.createNewCriteria(req.body as QcCriteriaAttributes);
+    const response = await adminCriteriaService.createNewCriteria(
+      req.body as QcCriteriaCreationAttributes
+    );
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -31,7 +36,7 @@ export const updateCriteria = async (req: Request, res: Response, next: NextFunc
   try {
     const response = await adminCriteriaService.updateCriteria(
       Number(qcCriteriaId),
-      req.body as QcCriteriaAttributes
+      req.body as QcCriteriaCreationAttributes
     );
     return res.status(200).json(response);
   } catch (error) {

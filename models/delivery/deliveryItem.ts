@@ -1,19 +1,22 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { DeliveryPlan } from "./deliveryPlan";
 import { Vehicle } from "../admin/vehicle";
+import { PlanningBox } from "../planning/planningBox";
+import { PlanningPaper } from "../planning/planningPaper";
 
 export type statusDeliveryItem = "none" | "planned" | "cancelled" | "completed";
+export type targetType = "paper" | "box";
 
 //định nghĩa trường trong bảng
 interface DeliveryItemAttributes {
   deliveryItemId: number;
-  targetType: string; //paper or box
+  targetType: targetType;
   targetId: number; //planningPaper or planningBox
   sequence: number;
   status: statusDeliveryItem;
 
   //FK
-  deliveryPlanId: number;
+  deliveryId: number;
   vehicleId: number;
 
   createdAt?: Date;
@@ -23,7 +26,7 @@ interface DeliveryItemAttributes {
 //cho phép bỏ qua id khi tạo
 export type DeliveryItemCreationAttributes = Optional<
   DeliveryItemAttributes,
-  "createdAt" | "updatedAt"
+  "deliveryItemId" | "status" | "createdAt" | "updatedAt"
 >;
 
 //định nghĩa kiểu OOP
@@ -32,13 +35,13 @@ export class DeliveryItem
   implements DeliveryItemAttributes
 {
   declare deliveryItemId: number;
-  declare targetType: string;
+  declare targetType: targetType;
   declare targetId: number;
   declare sequence: number;
   declare status: statusDeliveryItem;
 
   //FK
-  declare deliveryPlanId: number;
+  declare deliveryId: number;
   declare vehicleId: number;
 
   declare DeliveryPlan: DeliveryPlan;
@@ -62,7 +65,7 @@ export function initDeliveryItemModel(sequelize: Sequelize): typeof DeliveryItem
       },
 
       //FK
-      deliveryPlanId: { type: DataTypes.INTEGER, allowNull: false },
+      deliveryId: { type: DataTypes.INTEGER, allowNull: false },
       vehicleId: { type: DataTypes.INTEGER, allowNull: false },
     },
     { sequelize, tableName: "DeliveryItem", timestamps: true }

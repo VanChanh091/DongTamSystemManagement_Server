@@ -52,7 +52,7 @@ interface PlanningBoxAttributes {
 }
 
 //cho phép bỏ qua id khi tạo
-type PlanningBoxCreationAttributes = Optional<
+export type PlanningBoxCreationAttributes = Optional<
   PlanningBoxAttributes,
   | "planningBoxId"
   | "qtyPaper"

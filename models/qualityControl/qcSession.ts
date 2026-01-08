@@ -21,7 +21,7 @@ interface QcSessionAttributes {
 }
 
 //cho phép bỏ qua id khi tạo
-type QcSessionCreationAttributes = Optional<
+export type QcSessionCreationAttributes = Optional<
   QcSessionAttributes,
   "qcSessionId" | "status" | "totalSample" | "createdAt" | "updatedAt"
 >;

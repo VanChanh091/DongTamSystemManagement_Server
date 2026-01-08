@@ -27,7 +27,7 @@ interface BoxAttributes {
 }
 
 //cho phép bỏ qua id khi tạo
-type BoxCreationAttributes = Optional<
+export type BoxCreationAttributes = Optional<
   BoxAttributes,
   | "boxId"
   | "inMatTruoc"

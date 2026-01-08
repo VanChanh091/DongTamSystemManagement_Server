@@ -53,12 +53,15 @@ const fluteRatio = {
   "3B": 0.0026,
   "3C": 0.0034,
   "4EE": 0.0034,
-  "4CE": 0.0053,
-  "4BE": 0.0045,
+  "4EC": 0.0053,
+  "4EB": 0.0045,
   "4BC": 0.006,
-  "5BE": 0.0045,
+  "5EB": 0.0045,
   "5BC": 0.006,
-  "7BCE": 0.0085,
+  "7EBC": 0.0085,
+  // 5EE
+  // 5EC
+  // 6EBC
 };
 
 export { machineLabels, MACHINE_FIELD_MAP, validPermissions, machineMap };

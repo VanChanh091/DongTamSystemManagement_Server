@@ -17,7 +17,7 @@ interface UserAttributes {
 }
 
 // cho phép bỏ qua các fiel này khi tạo
-type UserCreationAttributes = Optional<
+export type UserCreationAttributes = Optional<
   UserAttributes,
   "userId" | "permissions" | "avatar" | "role" | "sex" | "phone" | "createdAt" | "updatedAt"
 >;

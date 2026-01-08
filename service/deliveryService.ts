@@ -2,20 +2,20 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { AppError } from "../utils/appError";
+import { deliveryRepository } from "../repository/deliveryRepository";
+import { runInTransaction } from "../utils/helper/transactionHelper";
 import { PlanningPaper } from "../models/planning/planningPaper";
-import { Op } from "sequelize";
+import { DeliveryItem, statusDeliveryItem, targetType } from "../models/delivery/deliveryItem";
+import { DeliveryPlan } from "../models/delivery/deliveryPlan";
 import { PlanningBox } from "../models/planning/planningBox";
-import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
-import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
+import { Order } from "../models/order/order";
 import { Customer } from "../models/customer/customer";
 import { Product } from "../models/product/product";
-import { User } from "../models/user/user";
-import { Inventory } from "../models/warehouse/inventory";
-import { Order } from "../models/order/order";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 
 export const deliveryService = {
+  //================================PLANNING ESTIMATE TIME==================================
   getPlanningEstimateTime: async ({
     page = 1,
     pageSize = 20,
@@ -45,145 +45,13 @@ export const deliveryService = {
       const [estH, estM] = estimateTime.split(":").map(Number);
       const estimateMinutes = estH * 60 + estM;
 
-      /* =========================
-       * 2. GIẤY TẤM
-       * ========================= */
-      // where: {
-      //           dayStart: { [Op.lte]: dayStart },
-      //           [Op.or]: [
-      //             { status: "complete" },
-      //             {
-      //               status: "planning",
-      //               hasOverFlow: false,
-      //               timeRunning: { [Op.lt]: estimateTime },
-      //             },
-      //           ],
-      //         },
-
-      const paperPlannings = await PlanningPaper.findAll({
-        attributes: {
-          exclude: [
-            "createdAt",
-            "updatedAt",
-            "hasBox",
-            "sortPlanning",
-            "statusRequest",
-            "hasOverFlow",
-            "bottom",
-            "fluteE",
-            "fluteB",
-            "fluteC",
-            "fluteE2",
-            "knife",
-            "totalLoss",
-            "qtyWasteNorm",
-            "chooseMachine",
-            "shiftProduction",
-            "shiftManagement",
-          ],
-        },
-        where: { dayStart: { [Op.lte]: dayStart }, deliveryPlanned: false },
-        include: [
-          {
-            model: timeOverflowPlanning,
-            as: "timeOverFlow",
-            attributes: ["overflowDayStart", "overflowTimeRunning", "status"],
-          },
-          {
-            model: Order,
-            attributes: {
-              exclude: [
-                "rejectReason",
-                "createdAt",
-                "updatedAt",
-                "day",
-                "matE",
-                "matE2",
-                "matB",
-                "matC",
-                "songE",
-                "songB",
-                "songC",
-                "songE2",
-                "status",
-                "lengthPaperCustomer",
-                "paperSizeCustomer",
-                "quantityCustomer",
-                "lengthPaperManufacture",
-                "paperSizeManufacture",
-                "numberChild",
-                "isBox",
-                "canLan",
-                "daoXa",
-                "acreage",
-                "pricePaper",
-                "profit",
-              ],
-            },
-            include: [
-              { model: Customer, attributes: ["customerName", "companyName"] },
-              { model: Product, attributes: ["typeProduct", "productName"] },
-              { model: User, attributes: ["fullName"] },
-              { model: Inventory, attributes: ["totalQtyOutbound"] },
-            ],
-          },
-          {
-            model: PlanningBox,
-            required: false,
-            attributes: ["planningBoxId"],
-            include: [
-              {
-                model: timeOverflowPlanning,
-                as: "timeOverFlow",
-                attributes: ["overflowDayStart", "overflowTimeRunning", "status"],
-              },
-              {
-                model: PlanningBoxTime,
-                as: "boxTimes",
-                attributes: [
-                  "runningPlan",
-                  "timeRunning",
-                  "dayStart",
-                  "qtyProduced",
-                  "machine",
-                  "status",
-                ],
-                required: false,
-                where: {
-                  dayStart: { [Op.lte]: dayStart },
-                  timeRunning: { [Op.ne]: null },
-                },
-              },
-            ],
-          },
-        ],
-        order: [
-          [
-            { model: Order, as: "Order" },
-            { model: Customer, as: "Customer" },
-            "customerName",
-            "ASC",
-          ],
-        ],
-        limit: 300,
-      });
-
-      // const filterValidPlanning = paperPlannings.filter((p) => {
-      //   if (p.hasOverFlow) return false;
-
-      //   return true;
-      // });
+      const paperPlannings = await deliveryRepository.getPlanningEstimateTime(dayStart);
 
       //filter
-
       const filtered = paperPlannings.filter((paper) => {
-        // overflow là loại thẳng
-        if (paper.hasOverFlow) return false; //DONE
+        if (paper.hasOverFlow) return false;
 
-        // complete luôn hiển thị
-        if (paper.status === "complete") return true; //DONE
-
-        // ===== planning =====
+        if (paper.status === "complete") return true;
 
         // KHÔNG CÓ BOX → so paper
         if (!paper.hasBox) {
@@ -199,10 +67,9 @@ export const deliveryService = {
         }
 
         // CÓ BOX → so theo BOX
-        const boxTimes = paper.PlanningBox?.boxTimes ?? []; //DONE
+        const boxTimes = paper.PlanningBox?.boxTimes ?? [];
 
-        // chưa chạy công đoạn nào → không cho hiển thị
-        if (boxTimes.length === 0) return false; //DONE
+        if (boxTimes.length === 0) return false;
 
         const latestBoxMinutes = Math.max(
           ...boxTimes.map((t: any) => {
@@ -249,8 +116,41 @@ export const deliveryService = {
     }
   },
 
-  confirmReadyDeliveryPlanning: async () => {
+  confirmReadyDeliveryPlanning: async ({ planningIds }: { planningIds: number[] }) => {
     try {
+      if (!planningIds || planningIds.length === 0) {
+        throw AppError.BadRequest("Danh sách planning rỗng", "EMPTY_PLANNING_LIST");
+      }
+
+      return await runInTransaction(async (transaction) => {
+        const plannings = await PlanningPaper.findAll({
+          where: {
+            planningId: planningIds,
+            deliveryPlanned: false,
+          },
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+        if (plannings.length !== planningIds.length) {
+          throw AppError.BadRequest(
+            "Một số planning không tồn tại hoặc đã được xác nhận",
+            "INVALID_PLANNING_IDS"
+          );
+        }
+
+        for (const planning of plannings) {
+          if (planning.hasOverFlow) {
+            throw AppError.BadRequest(
+              `Planning ${planning.planningId} bị overflow`,
+              "PLANNING_OVERFLOW"
+            );
+          }
+
+          await planning.update({ deliveryPlanned: true }, { transaction });
+        }
+
+        return { message: "confirm ready delivery planning successfully" };
+      });
     } catch (error) {
       console.error("❌ confirm ready delivery planning failed:", error);
       if (error instanceof AppError) throw error;
@@ -258,10 +158,169 @@ export const deliveryService = {
     }
   },
 
-  getPlanningDelivery: async () => {
+  //=================================PLANNING DELIVERY=====================================
+
+  getPlanningDelivery: async (deliveryDate: Date) => {
     try {
+      const deliveries = await deliveryRepository.getPlanningDelivery(deliveryDate);
+
+      const result = [];
+
+      for (const plan of deliveries) {
+        // giữ nguyên plan
+        const planJson = plan.toJSON() as any;
+
+        // hydrate từng item (chỉ gắn thêm order)
+        for (const item of planJson.DeliveryItems ?? []) {
+          if (item.targetType === "paper") {
+            const paper = await PlanningPaper.findByPk(item.targetId, {
+              include: [
+                {
+                  model: Order,
+                  attributes: [
+                    "orderId",
+                    "dayReceiveOrder",
+                    "flute",
+                    "QC_box",
+                    "day",
+                    "matE",
+                    "matB",
+                    "matC",
+                    "matE2",
+                    "songE",
+                    "songB",
+                    "songC",
+                    "songE2",
+                    "lengthPaperCustomer",
+                    "paperSizeCustomer",
+                    "quantityCustomer",
+                    "dvt",
+                  ],
+                  include: [
+                    {
+                      model: Customer,
+                      attributes: ["customerName", "companyName", "shippingAddress"],
+                    },
+                    { model: Product, attributes: ["typeProduct", "productName"] },
+                  ],
+                },
+              ],
+            });
+
+            item.Order = paper?.Order ?? null;
+          }
+
+          if (item.targetType === "box") {
+            const box = await PlanningBox.findByPk(item.targetId, {
+              include: [
+                {
+                  model: Order,
+                  include: [
+                    { model: Customer, attributes: ["customerName", "companyName"] },
+                    { model: Product, attributes: ["typeProduct", "productName"] },
+                  ],
+                },
+              ],
+            });
+
+            item.Order = box?.Order ?? null;
+          }
+        }
+
+        result.push(planJson);
+      }
+
+      return {
+        message: "get planning delivery successfully",
+        data: result,
+      };
     } catch (error) {
       console.error("❌ get planning delivery failed:", error);
+      throw AppError.ServerError();
+    }
+  },
+
+  createDeliveryPlan: async ({
+    deliveryDate,
+    items,
+  }: {
+    deliveryDate: Date;
+    items: {
+      targetType: targetType;
+      targetId: number;
+      vehicleId: number;
+      sequence: number;
+    }[];
+  }) => {
+    try {
+      if (!deliveryDate || !items || items.length === 0) {
+        throw AppError.BadRequest("Missing delivery data", "INVALID_PAYLOAD");
+      }
+
+      return await runInTransaction(async (transaction) => {
+        const existedPlan = await DeliveryPlan.findOne({
+          where: { deliveryDate },
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+
+        if (existedPlan) {
+          throw AppError.BadRequest(
+            "Delivery plan for this date already exists",
+            "DELIVERY_PLAN_EXISTED"
+          );
+        }
+
+        // Tạo deliveryPlan
+        const deliveryPlan = await DeliveryPlan.create(
+          { deliveryDate, status: "planned" },
+          { transaction }
+        );
+
+        // 3️⃣ Validate target tồn tại
+        for (const item of items) {
+          if (item.targetType === "paper") {
+            const exists = await PlanningPaper.findByPk(item.targetId, {
+              transaction,
+            });
+            if (!exists) {
+              throw AppError.BadRequest(
+                `PlanningPaper ${item.targetId} not found`,
+                "PLANNING_PAPER_NOT_FOUND"
+              );
+            }
+          }
+
+          if (item.targetType === "box") {
+            const exists = await PlanningBox.findByPk(item.targetId, {
+              transaction,
+            });
+            if (!exists) {
+              throw AppError.BadRequest(
+                `PlanningBox ${item.targetId} not found`,
+                "PLANNING_BOX_NOT_FOUND"
+              );
+            }
+          }
+        }
+
+        // 4️⃣ Tạo deliveryPlanItem
+        const deliveryItems = items.map((item) => ({
+          deliveryId: deliveryPlan.deliveryId,
+          targetType: item.targetType,
+          targetId: item.targetId,
+          vehicleId: item.vehicleId,
+          sequence: item.sequence,
+          status: "planned" as statusDeliveryItem,
+        }));
+
+        await DeliveryItem.bulkCreate(deliveryItems, { transaction });
+
+        return { message: "Create delivery plan success" };
+      });
+    } catch (error) {
+      console.error("❌ create delivery plan failed:", error);
+      if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
   },

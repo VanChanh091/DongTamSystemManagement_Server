@@ -4,29 +4,43 @@ import { Box } from "../models/order/box";
 import { Order } from "../models/order/order";
 import { Product } from "../models/product/product";
 import { User } from "../models/user/user";
-import { FluteRatio } from "../models/admin/fluteRatio";
 
 export const adminRepository = {
-  //===============================ADMIN MACHINE=====================================
-
-  getAllMachine: async (model: any) => {
+  //===============================ADMIN CRUD=====================================
+  getAllItems: async ({ model }: { model: any }) => {
     return await model.findAll({ attributes: { exclude: ["createdAt", "updatedAt"] } });
   },
 
-  getMachineByPk: async (model: any, machineId: number) => {
-    return await model.findByPk(machineId);
+  getItemByPk: async ({ model, itemId }: { model: any; itemId: number }) => {
+    return await model.findByPk(itemId);
   },
 
-  createMachine: async (model: any, data: any, transaction?: any) => {
+  createNewItem: async ({
+    model,
+    data,
+    transaction,
+  }: {
+    model: any;
+    data: any;
+    transaction?: any;
+  }) => {
     return await model.create(data, { transaction });
   },
 
-  updateMachine: async (machine: any, machineUpdated: any) => {
-    return await machine.update(machineUpdated);
+  updateItem: async ({
+    model,
+    dataUpdated,
+    transaction,
+  }: {
+    model: any;
+    dataUpdated: any;
+    transaction?: any;
+  }) => {
+    return await model.update(dataUpdated, { transaction });
   },
 
-  deleteMachine: async (machine: any) => {
-    return await machine.destroy();
+  deleteItem: async ({ model }: { model: any }) => {
+    return await model.destroy();
   },
 
   //===============================ADMIN ORDER=====================================
@@ -107,41 +121,5 @@ export const adminRepository = {
 
   getUserByPk: async (userId: number) => {
     return await User.findByPk(userId);
-  },
-
-  //===============================ADMIN WASTE=====================================
-
-  getAllWaste: async (model: any) => {
-    return await model.findAll({ attributes: { exclude: ["createdAt", "updatedAt"] } });
-  },
-
-  getWasteByPk: async (model: any, wasteId: number) => {
-    return await model.findByPk(wasteId);
-  },
-
-  createWaste: async (model: any, wasteData: any, transaction?: any) => {
-    return await model.create(wasteData, { transaction });
-  },
-
-  updateWaste: async (wasteModel: any, wasteDataUpdated: any) => {
-    return await wasteModel.update(wasteDataUpdated);
-  },
-
-  //===============================FLUTE RATIO=====================================
-
-  getAllFluteRatio: async () => {
-    return await FluteRatio.findAll({ attributes: { exclude: ["createdAt", "updatedAt"] } });
-  },
-
-  findByPk: async (id: number) => {
-    return await FluteRatio.findByPk(id);
-  },
-
-  createFluteRatio: async (data: any, transaction?: any) => {
-    return await FluteRatio.create(data, { transaction });
-  },
-
-  updateFluteRatio: async (model: any, dataUpdated: any, transaction?: any) => {
-    return await model.update(dataUpdated, { transaction });
   },
 };

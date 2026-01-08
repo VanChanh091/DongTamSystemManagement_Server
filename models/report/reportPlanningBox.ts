@@ -18,7 +18,7 @@ interface ReportPlanningBoxAttributes {
 }
 
 //cho phép bỏ qua id khi tạo
-type ReportPlanningBoxCreationAttributes = Optional<
+export type ReportPlanningBoxCreationAttributes = Optional<
   ReportPlanningBoxAttributes,
   "reportBoxId" | "createdAt" | "updatedAt"
 >;

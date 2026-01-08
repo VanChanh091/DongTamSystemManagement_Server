@@ -1,14 +1,18 @@
 import { NextFunction, Request, Response } from "express";
 import { MachinePaper, MachinePaperCreationAttributes } from "../../models/admin/machinePaper";
 import { MachineBox, MachineBoxCreationAttributes } from "../../models/admin/machineBox";
-import { adminMachineService } from "../../service/admin/adminMachineService";
+import { adminService } from "../../service/admin/adminService";
 
 //===============================PAPER=====================================
 
 //get all machine
 export const getAllMachinePaper = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await adminMachineService.getAllMachine(MachinePaper);
+    const response = await adminService.getAllItems({
+      model: MachinePaper,
+      message: "get all machine paper successfully",
+    });
+
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -21,7 +25,13 @@ export const getMachinePaperById = async (req: Request, res: Response, next: Nex
   const { machineId } = req.query as { machineId: string };
 
   try {
-    const response = await adminMachineService.getMachineById(MachinePaper, Number(machineId));
+    const response = await adminService.getItemById({
+      model: MachinePaper,
+      itemId: Number(machineId),
+      errMessage: "machine not found",
+      errCode: "MACHINE_NOT_FOUND",
+    });
+
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -31,10 +41,12 @@ export const getMachinePaperById = async (req: Request, res: Response, next: Nex
 //add machine
 export const createMachinePaper = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await adminMachineService.createMachine(
-      MachinePaper,
-      req.body as MachinePaperCreationAttributes
-    );
+    const response = await adminService.createNewItem({
+      model: MachinePaper,
+      data: req.body as MachinePaperCreationAttributes,
+      message: "Create machine successfully",
+    });
+
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -47,11 +59,15 @@ export const updateMachinePaperById = async (req: Request, res: Response, next: 
   const { ...machineUpdated } = req.body;
 
   try {
-    const response = await adminMachineService.updateMachineById(
-      MachinePaper,
-      Number(machineId),
-      machineUpdated
-    );
+    const response = await adminService.updateItem({
+      model: MachinePaper,
+      itemId: Number(machineId),
+      dataUpdated: machineUpdated,
+      message: "update machine successfully",
+      errMessage: "machine not found",
+      errCode: "MACHINE_NOT_FOUND",
+    });
+
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -63,7 +79,14 @@ export const deleteMachinePaperById = async (req: Request, res: Response, next: 
   const { machineId } = req.query as { machineId: string };
 
   try {
-    const response = await adminMachineService.deleteMachineById(MachinePaper, Number(machineId));
+    const response = await adminService.deleteItem({
+      model: MachinePaper,
+      itemId: Number(machineId),
+      message: `delete machineId: ${machineId} successfully`,
+      errMessage: "machine not found",
+      errCode: "MACHINE_NOT_FOUND",
+    });
+
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -75,7 +98,11 @@ export const deleteMachinePaperById = async (req: Request, res: Response, next: 
 //get all machine
 export const getAllMachineBox = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await adminMachineService.getAllMachine(MachineBox);
+    const response = await adminService.getAllItems({
+      model: MachineBox,
+      message: "get all machine box successfully",
+    });
+
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -88,7 +115,13 @@ export const getMachineBoxById = async (req: Request, res: Response, next: NextF
   const { machineId } = req.query as { machineId: string };
 
   try {
-    const response = await adminMachineService.getMachineById(MachineBox, Number(machineId));
+    const response = await adminService.getItemById({
+      model: MachineBox,
+      itemId: Number(machineId),
+      errMessage: "machine not found",
+      errCode: "MACHINE_NOT_FOUND",
+    });
+
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -98,10 +131,12 @@ export const getMachineBoxById = async (req: Request, res: Response, next: NextF
 //add machine
 export const createMachineBox = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await adminMachineService.createMachine(
-      MachineBox,
-      req.body as MachineBoxCreationAttributes
-    );
+    const response = await adminService.createNewItem({
+      model: MachineBox,
+      data: req.body as MachineBoxCreationAttributes,
+      message: "Create machine successfully",
+    });
+
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -114,11 +149,15 @@ export const updateMachineBoxById = async (req: Request, res: Response, next: Ne
   const { ...machineUpdated } = req.body;
 
   try {
-    const response = await adminMachineService.updateMachineById(
-      MachineBox,
-      Number(machineId),
-      machineUpdated
-    );
+    const response = await adminService.updateItem({
+      model: MachineBox,
+      itemId: Number(machineId),
+      dataUpdated: machineUpdated,
+      message: "update machine successfully",
+      errMessage: "machine not found",
+      errCode: "MACHINE_NOT_FOUND",
+    });
+
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -130,7 +169,14 @@ export const deleteMachineBoxById = async (req: Request, res: Response, next: Ne
   const { machineId } = req.query as { machineId: string };
 
   try {
-    const response = await adminMachineService.deleteMachineById(MachineBox, Number(machineId));
+    const response = await adminService.deleteItem({
+      model: MachineBox,
+      itemId: Number(machineId),
+      message: `delete machineId: ${machineId} successfully`,
+      errMessage: "machine not found",
+      errCode: "MACHINE_NOT_FOUND",
+    });
+
     return res.status(200).json(response);
   } catch (error) {
     next(error);

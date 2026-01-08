@@ -21,7 +21,7 @@ interface TimeOverflowPlanningAttributes {
 }
 
 //cho phép bỏ qua id khi tạo
-type TimeOverflowPlanningCreationAttributes = Optional<
+export type TimeOverflowPlanningCreationAttributes = Optional<
   TimeOverflowPlanningAttributes,
   | "overflowId"
   | "overflowDayStart"

@@ -12,7 +12,7 @@ interface ProductAttributes {
 }
 
 //cho phép bỏ qua id khi tạo
-type ProductCreationAttributes = Optional<
+export type ProductCreationAttributes = Optional<
   ProductAttributes,
   "productName" | "maKhuon" | "productImage" | "createdAt" | "updatedAt"
 >;

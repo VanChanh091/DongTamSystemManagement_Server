@@ -58,7 +58,7 @@ interface OrderAttributes {
 }
 
 //cho phép bỏ qua id khi tạo
-type OrderCreationAttributes = Optional<
+export type OrderCreationAttributes = Optional<
   OrderAttributes,
   | "dayReceiveOrder"
   | "dateRequestShipping"

@@ -1,6 +1,6 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 
-export interface FluteRatioAttributes {
+interface FluteRatioAttributes {
   fluteRatioId: number;
   fluteName: string;
   ratio: number;

@@ -16,7 +16,7 @@ interface InventoryAttributes {
 }
 
 //cho phép bỏ qua id khi tạo
-type InventoryCreationAttributes = Optional<
+export type InventoryCreationAttributes = Optional<
   InventoryAttributes,
   | "inventoryId"
   | "totalQtyInbound"

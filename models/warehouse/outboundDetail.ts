@@ -18,7 +18,7 @@ interface OutboundDetailAttributes {
 }
 
 //cho phép bỏ qua id khi tạo
-type OutboundDetailCreationAttributes = Optional<
+export type OutboundDetailCreationAttributes = Optional<
   OutboundDetailAttributes,
   "outboundDetailId" | "createdAt" | "updatedAt"
 >;

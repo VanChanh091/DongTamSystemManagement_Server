@@ -3,7 +3,7 @@ import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 export type processTypeQC = "paper" | "box";
 
 //định nghĩa trường trong bảng
-export interface QcCriteriaAttributes {
+ interface QcCriteriaAttributes {
   qcCriteriaId: number;
   processType: processTypeQC;
   criteriaCode: string;
@@ -15,7 +15,7 @@ export interface QcCriteriaAttributes {
 }
 
 //cho phép bỏ qua id khi tạo
-type QcCriteriaCreationAttributes = Optional<
+export type QcCriteriaCreationAttributes = Optional<
   QcCriteriaAttributes,
   "qcCriteriaId" | "createdAt" | "updatedAt"
 >;

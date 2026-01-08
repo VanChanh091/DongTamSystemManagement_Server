@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { productService } from "../../../service/productService";
+import { ProductCreationAttributes } from "../../../models/product/product";
 
 //get all product
 export const getAllProduct = async (req: Request, res: Response, next: NextFunction) => {
@@ -48,7 +49,7 @@ export const getProductByField = async (req: Request, res: Response, next: NextF
 //add product
 export const addProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await productService.createProduct(req, req.body);
+    const response = await productService.createProduct(req, req.body as ProductCreationAttributes);
     return res.status(201).json(response);
   } catch (error) {
     next(error);

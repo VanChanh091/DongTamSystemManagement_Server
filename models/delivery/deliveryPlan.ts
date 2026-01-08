@@ -17,7 +17,7 @@ interface DeliveryPlanAttributes {
 //cho phép bỏ qua id khi tạo
 export type DeliveryPlanCreationAttributes = Optional<
   DeliveryPlanAttributes,
-  "deliveryId" | "createdAt" | "updatedAt"
+  "deliveryId" | "status" | "note" | "createdAt" | "updatedAt"
 >;
 
 //định nghĩa kiểu OOP
@@ -31,7 +31,7 @@ export class DeliveryPlan
   declare status: statusDelivery;
 
   //ASSOCIATION
-  declare DeliveryItem: DeliveryItem[];
+  declare DeliveryItems?: DeliveryItem[];
 
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
@@ -49,7 +49,12 @@ export function initDeliveryPlanModel(sequelize: Sequelize): typeof DeliveryPlan
         defaultValue: "none",
       },
     },
-    { sequelize, tableName: "DeliveryPlan", timestamps: true }
+    {
+      sequelize,
+      tableName: "DeliveryPlan",
+      timestamps: true,
+      indexes: [{ fields: ["deliveryDate"] }],
+    }
   );
 
   return DeliveryPlan;

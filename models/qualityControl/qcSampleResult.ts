@@ -17,7 +17,7 @@ interface QcSampleResultAttributes {
 }
 
 //cho phép bỏ qua id khi tạo
-type QcSampleResultCreationAttributes = Optional<
+export type QcSampleResultCreationAttributes = Optional<
   QcSampleResultAttributes,
   "qcResultId" | "createdAt" | "updatedAt"
 >;

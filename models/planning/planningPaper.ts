@@ -64,7 +64,7 @@ interface PlanningPaperAttributes {
 }
 
 //cho phép bỏ qua id khi tạo
-type PlanningPaperCreationAttributes = Optional<
+export type PlanningPaperCreationAttributes = Optional<
   PlanningPaperAttributes,
   | "planningId"
   | "dayStart"

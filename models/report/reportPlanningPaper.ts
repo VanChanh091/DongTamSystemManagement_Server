@@ -18,7 +18,7 @@ interface ReportPlanningPaperAttributes {
 }
 
 //cho phép bỏ qua id khi tạo
-type ReportPlanningPaperCreationAttributes = Optional<
+export type ReportPlanningPaperCreationAttributes = Optional<
   ReportPlanningPaperAttributes,
   "reportPaperId" | "createdAt" | "updatedAt"
 >;
