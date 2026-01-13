@@ -19,7 +19,7 @@ router.get(
   authorizeAnyPermission(["delivery"]),
   getPlanningEstimateTime
 );
-router.post(
+router.put(
   "/confirmReadyDelivery",
   authenticate,
   authorizeAnyPermission(["delivery"]),

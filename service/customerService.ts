@@ -125,8 +125,11 @@ export const customerService = {
         const sanitizedPrefix = prefix.trim().replace(/\s+/g, "").toUpperCase();
         const newCustomerId = generateNextId(allCustomerIds, sanitizedPrefix, 4);
 
+        const maxSeq = (await Customer.max("customerSeq", { transaction })) ?? 0;
+        const nextSeq = Number(maxSeq) + 1;
+
         const newCustomer = await customerRepository.createCustomer(
-          { customerId: newCustomerId, ...customerData },
+          { customerId: newCustomerId, customerSeq: nextSeq, ...customerData },
           transaction
         );
 

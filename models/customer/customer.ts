@@ -1,3 +1,4 @@
+import { all } from "axios";
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 
 //định nghĩa trường trong bảng
@@ -7,6 +8,8 @@ interface CustomerAttributes {
   companyName: string;
   companyAddress: string;
   shippingAddress: string;
+  customerSource: string;
+  customerSeq: number;
   cskh: string;
 
   distance?: number | null;
@@ -58,7 +61,9 @@ export class Customer
   declare debtLimit?: number | null;
   declare timePayment?: Date | null;
   declare rateCustomer?: string | null;
+  declare customerSource: string;
   declare cskh: string;
+  declare customerSeq: number;
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
 }
@@ -84,9 +89,16 @@ export function initCustomerModel(sequelize: Sequelize): typeof Customer {
       debtLimit: { type: DataTypes.DOUBLE },
       timePayment: { type: DataTypes.DATE },
       rateCustomer: { type: DataTypes.STRING },
+      customerSource: { type: DataTypes.STRING, allowNull: false },
       cskh: { type: DataTypes.STRING, allowNull: false },
+      customerSeq: { type: DataTypes.INTEGER, allowNull: false },
     },
-    { sequelize, tableName: "Customers", timestamps: true }
+    {
+      sequelize,
+      tableName: "Customers",
+      timestamps: true,
+      indexes: [{ fields: ["customerSeq"] }, { fields: ["customerName"] }, { fields: ["phone"] }],
+    }
   );
 
   return Customer;

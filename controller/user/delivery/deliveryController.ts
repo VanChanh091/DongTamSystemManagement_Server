@@ -1,21 +1,22 @@
 import { NextFunction, Request, Response } from "express";
 import { deliveryService } from "../../../service/deliveryService";
 import { targetType } from "../../../models/delivery/deliveryItem";
+import { off } from "process";
 
 //=================================PLANNING ESTIMATE TIME=====================================
 
 export const getPlanningEstimateTime = async (req: Request, res: Response, next: NextFunction) => {
-  const { page, pageSize, dayStart, estimateTime } = req.body as {
-    page: number;
-    pageSize: number;
+  const { page, pageSize, dayStart, estimateTime } = req.query as {
+    page: string;
+    pageSize: string;
     dayStart: string;
     estimateTime: string;
   };
 
   try {
     const response = await deliveryService.getPlanningEstimateTime({
-      page,
-      pageSize,
+      page: Number(page),
+      pageSize: Number(pageSize),
       dayStart: new Date(dayStart),
       estimateTime,
     });
@@ -30,11 +31,13 @@ export const confirmReadyDeliveryPlanning = async (
   res: Response,
   next: NextFunction
 ) => {
-  const { planningIds } = req.body as { planningIds: string[] };
+  const { planningIds } = req.query as { planningIds: string[] };
 
   try {
+    const ids = Array.isArray(planningIds) ? planningIds : planningIds ? [planningIds] : [];
+
     const response = await deliveryService.confirmReadyDeliveryPlanning({
-      planningIds: planningIds.map((id) => Number(id)),
+      planningIds: ids.map((id) => Number(id)),
     });
     return res.status(200).json(response);
   } catch (error) {

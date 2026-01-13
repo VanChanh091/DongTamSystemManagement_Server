@@ -206,7 +206,12 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
       productId: { type: DataTypes.STRING },
       userId: { type: DataTypes.INTEGER },
     },
-    { sequelize, tableName: "Orders", timestamps: true }
+    {
+      sequelize,
+      tableName: "Orders",
+      timestamps: true,
+      // indexes: [{ fields: ["productSeq"] }, { fields: ["productName"] }],
+    }
   );
 
   return Order;

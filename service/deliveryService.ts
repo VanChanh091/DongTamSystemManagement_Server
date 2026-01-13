@@ -60,7 +60,7 @@ export const deliveryService = {
           const [h, m, s = "0"] = paper.timeRunning.split(":");
           const paperMinutes = Number(h) * 60 + Number(m) + Number(s) / 60;
 
-          // console.log(`time paper :${paperMinutes}`);
+          // console.log(`time paper: ${paperMinutes}`);
           // console.log(`compare paper: ${paperMinutes <= estimateMinutes}`);
 
           return paperMinutes <= estimateMinutes;

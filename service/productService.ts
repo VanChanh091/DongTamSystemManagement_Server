@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
+
 import redisCache from "../assest/configs/redisCache";
 import { Product } from "../models/product/product";
 import { productRepository } from "../repository/productRepository";

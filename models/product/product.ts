@@ -7,6 +7,7 @@ interface ProductAttributes {
   productName?: string | null;
   maKhuon?: string | null;
   productImage?: string | null;
+  productSeq: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -27,6 +28,7 @@ export class Product
   declare productName?: string | null;
   declare maKhuon?: string | null;
   declare productImage?: string | null;
+  declare productSeq: number;
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
 }
@@ -43,8 +45,14 @@ export function initProductModel(sequelize: Sequelize): typeof Product {
       productName: { type: DataTypes.STRING },
       maKhuon: { type: DataTypes.STRING },
       productImage: { type: DataTypes.STRING },
+      productSeq: { type: DataTypes.INTEGER, allowNull: false },
     },
-    { sequelize, tableName: "Products", timestamps: true }
+    {
+      sequelize,
+      tableName: "Products",
+      timestamps: true,
+      indexes: [{ fields: ["productSeq"] }, { fields: ["productName"] }],
+    }
   );
 
   return Product;
