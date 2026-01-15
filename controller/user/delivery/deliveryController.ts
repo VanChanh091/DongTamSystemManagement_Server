@@ -1,7 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { deliveryService } from "../../../service/deliveryService";
 import { targetType } from "../../../models/delivery/deliveryItem";
-import { off } from "process";
 
 //=================================PLANNING ESTIMATE TIME=====================================
 
@@ -46,6 +45,18 @@ export const confirmReadyDeliveryPlanning = async (
 };
 
 //=================================PLANNING DELIVERY=====================================
+export const getPlanningWaitingDelivery = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const response = await deliveryService.getPlanningWaitingDelivery();
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const getPlanningDelivery = async (req: Request, res: Response, next: NextFunction) => {
   const { deliveryDate } = req.query as { deliveryDate: string };

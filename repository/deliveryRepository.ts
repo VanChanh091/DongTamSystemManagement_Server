@@ -15,6 +15,11 @@ import { Vehicle } from "../models/admin/vehicle";
 export const deliveryRepository = {
   getPlanningEstimateTime: async (dayStart: Date) => {
     return await PlanningPaper.findAll({
+      where: {
+        dayStart: { [Op.lte]: dayStart },
+        deliveryPlanned: false,
+        status: { [Op.notIn]: ["stop", "cancel"] },
+      },
       attributes: {
         exclude: [
           "createdAt",
@@ -34,11 +39,6 @@ export const deliveryRepository = {
           "shiftProduction",
           "shiftManagement",
         ],
-      },
-      where: {
-        dayStart: { [Op.lte]: dayStart },
-        deliveryPlanned: false,
-        status: { [Op.notIn]: ["stop", "cancel"] },
       },
       include: [
         {

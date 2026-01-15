@@ -7,6 +7,7 @@ import {
   createDeliveryPlan,
   getPlanningDelivery,
   getPlanningEstimateTime,
+  getPlanningWaitingDelivery,
 } from "../../controller/user/delivery/deliveryController";
 
 const router = Router();
@@ -29,6 +30,7 @@ router.put(
 //=================================PLANNING DELIVERY=====================================
 
 router.get("/getPlanningDelivery", authenticate, getPlanningDelivery);
+router.get("/getPlanningWaitingDelivery", authenticate, getPlanningWaitingDelivery);
 router.post("/createDeliveryPlan", authenticate, createDeliveryPlan);
 router.post("/confirmDelivey", authenticate, confirmForDeliveryPlanning);
 

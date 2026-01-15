@@ -11,6 +11,11 @@ import { PlanningBox } from "../models/planning/planningBox";
 import { Order } from "../models/order/order";
 import { Customer } from "../models/customer/customer";
 import { Product } from "../models/product/product";
+import { FluteRatio } from "../models/admin/fluteRatio";
+import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
+import { User } from "../models/user/user";
+import { Inventory } from "../models/warehouse/inventory";
+import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 
@@ -160,6 +165,130 @@ export const deliveryService = {
 
   //=================================PLANNING DELIVERY=====================================
 
+  getPlanningWaitingDelivery: async () => {
+    try {
+      const planningWaiting = await PlanningPaper.findAll({
+        where: { deliveryPlanned: true },
+        attributes: {
+          exclude: [
+            "createdAt",
+            "updatedAt",
+            "sortPlanning",
+            "statusRequest",
+            "hasOverFlow",
+            "bottom",
+            "fluteE",
+            "fluteB",
+            "fluteC",
+            "fluteE2",
+            "knife",
+            "totalLoss",
+            "qtyWasteNorm",
+            "chooseMachine",
+            "shiftProduction",
+            "shiftManagement",
+          ],
+        },
+        include: [
+          {
+            model: timeOverflowPlanning,
+            as: "timeOverFlow",
+            attributes: ["overflowDayStart", "overflowTimeRunning", "status"],
+          },
+          {
+            model: Order,
+            attributes: {
+              exclude: [
+                "rejectReason",
+                "createdAt",
+                "updatedAt",
+                "day",
+                "matE",
+                "matE2",
+                "matB",
+                "matC",
+                "songE",
+                "songB",
+                "songC",
+                "songE2",
+                "status",
+                "quantityCustomer",
+                "lengthPaperManufacture",
+                "paperSizeManufacture",
+                "numberChild",
+                "isBox",
+                "canLan",
+                "daoXa",
+                "acreage",
+                "pricePaper",
+                "profit",
+              ],
+            },
+            include: [
+              { model: Customer, attributes: ["customerName", "companyName"] },
+              { model: Product, attributes: ["typeProduct", "productName"] },
+              { model: User, attributes: ["fullName"] },
+              { model: Inventory, attributes: ["totalQtyOutbound"] },
+            ],
+          },
+          {
+            model: PlanningBox,
+            required: false,
+            attributes: ["planningBoxId"],
+            include: [
+              {
+                model: timeOverflowPlanning,
+                as: "timeOverFlow",
+                attributes: ["overflowDayStart", "overflowTimeRunning", "status"],
+              },
+              {
+                model: PlanningBoxTime,
+                as: "boxTimes",
+                attributes: [
+                  "runningPlan",
+                  "timeRunning",
+                  "dayStart",
+                  "qtyProduced",
+                  "machine",
+                  "status",
+                ],
+                required: false,
+              },
+            ],
+          },
+        ],
+      });
+
+      //remove Planning box and calculate volume
+      const data = await Promise.all(
+        planningWaiting.map(async (p: any) => {
+          const plain = p.get({ plain: true });
+
+          //calculate volume
+          const ratioData = await FluteRatio.findOne({
+            where: { fluteName: plain.Order?.flute },
+            attributes: ["ratio"],
+          });
+
+          const lengthPaper = plain.Order?.lengthPaperCustomer ?? 0;
+          const paperSize = plain.Order?.paperSizeCustomer ?? 0;
+          const ratio = ratioData?.ratio ?? 1;
+
+          const rawVolume = lengthPaper * paperSize * ratio;
+          plain.volume = Math.round(rawVolume * 100) / 100;
+
+          delete plain.PlanningBox;
+          return plain;
+        })
+      );
+
+      return { message: "get planning waiting delivery successfully", data };
+    } catch (error) {
+      console.error("❌ get planning waiting delivery failed:", error);
+      throw AppError.ServerError();
+    }
+  },
+
   getPlanningDelivery: async (deliveryDate: Date) => {
     try {
       const deliveries = await deliveryRepository.getPlanningDelivery(deliveryDate);
@@ -225,6 +354,19 @@ export const deliveryService = {
 
             item.Order = box?.Order ?? null;
           }
+
+          //calculate volume
+          const ratioData = await FluteRatio.findOne({
+            where: { fluteName: item.Order?.flute },
+            attributes: ["ratio"],
+          });
+
+          const lengthPaper = item.Order.lengthPaperCustomer ?? 0;
+          const paperSize = item.Order.paperSizeCustomer ?? 0;
+          const ratio = ratioData?.ratio ?? 1;
+
+          const rawVolume = lengthPaper * paperSize * ratio;
+          item.volume = Math.round(rawVolume * 100) / 100;
         }
 
         result.push(planJson);
