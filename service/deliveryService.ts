@@ -12,10 +12,7 @@ import { Order } from "../models/order/order";
 import { Customer } from "../models/customer/customer";
 import { Product } from "../models/product/product";
 import { FluteRatio } from "../models/admin/fluteRatio";
-import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
-import { User } from "../models/user/user";
-import { Inventory } from "../models/warehouse/inventory";
-import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
+import { Vehicle } from "../models/admin/vehicle";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 
@@ -131,7 +128,7 @@ export const deliveryService = {
         const plannings = await PlanningPaper.findAll({
           where: {
             planningId: planningIds,
-            deliveryPlanned: false,
+            deliveryPlanned: "none",
           },
           transaction,
           lock: transaction.LOCK.UPDATE,
@@ -151,7 +148,7 @@ export const deliveryService = {
             );
           }
 
-          await planning.update({ deliveryPlanned: true }, { transaction });
+          await planning.update({ deliveryPlanned: "pending" }, { transaction });
         }
 
         return { message: "confirm ready delivery planning successfully" };
@@ -165,96 +162,31 @@ export const deliveryService = {
 
   //=================================PLANNING DELIVERY=====================================
 
-  getPlanningWaitingDelivery: async () => {
+  getPlanningPendingDelivery: async () => {
     try {
       const planningWaiting = await PlanningPaper.findAll({
-        where: { deliveryPlanned: true },
-        attributes: {
-          exclude: [
-            "createdAt",
-            "updatedAt",
-            "sortPlanning",
-            "statusRequest",
-            "hasOverFlow",
-            "bottom",
-            "fluteE",
-            "fluteB",
-            "fluteC",
-            "fluteE2",
-            "knife",
-            "totalLoss",
-            "qtyWasteNorm",
-            "chooseMachine",
-            "shiftProduction",
-            "shiftManagement",
-          ],
-        },
+        where: { deliveryPlanned: "pending" },
+        attributes: [
+          "planningId",
+          "lengthPaperPlanning",
+          "sizePaperPLaning",
+          "hasBox",
+          "deliveryPlanned",
+          "orderId",
+        ],
         include: [
           {
-            model: timeOverflowPlanning,
-            as: "timeOverFlow",
-            attributes: ["overflowDayStart", "overflowTimeRunning", "status"],
-          },
-          {
             model: Order,
-            attributes: {
-              exclude: [
-                "rejectReason",
-                "createdAt",
-                "updatedAt",
-                "day",
-                "matE",
-                "matE2",
-                "matB",
-                "matC",
-                "songE",
-                "songB",
-                "songC",
-                "songE2",
-                "status",
-                "quantityCustomer",
-                "lengthPaperManufacture",
-                "paperSizeManufacture",
-                "numberChild",
-                "isBox",
-                "canLan",
-                "daoXa",
-                "acreage",
-                "pricePaper",
-                "profit",
-              ],
-            },
+            attributes: ["orderId", "dayReceiveOrder", "flute", "QC_box"],
             include: [
               { model: Customer, attributes: ["customerName", "companyName"] },
               { model: Product, attributes: ["typeProduct", "productName"] },
-              { model: User, attributes: ["fullName"] },
-              { model: Inventory, attributes: ["totalQtyOutbound"] },
             ],
           },
           {
             model: PlanningBox,
             required: false,
             attributes: ["planningBoxId"],
-            include: [
-              {
-                model: timeOverflowPlanning,
-                as: "timeOverFlow",
-                attributes: ["overflowDayStart", "overflowTimeRunning", "status"],
-              },
-              {
-                model: PlanningBoxTime,
-                as: "boxTimes",
-                attributes: [
-                  "runningPlan",
-                  "timeRunning",
-                  "dayStart",
-                  "qtyProduced",
-                  "machine",
-                  "status",
-                ],
-                required: false,
-              },
-            ],
           },
         ],
       });
@@ -270,14 +202,14 @@ export const deliveryService = {
             attributes: ["ratio"],
           });
 
-          const lengthPaper = plain.Order?.lengthPaperCustomer ?? 0;
-          const paperSize = plain.Order?.paperSizeCustomer ?? 0;
+          const lengthPaper = plain.lengthPaperPlanning ?? 0;
+          const paperSize = plain.sizePaperPLaning ?? 0;
           const ratio = ratioData?.ratio ?? 1;
 
           const rawVolume = lengthPaper * paperSize * ratio;
           plain.volume = Math.round(rawVolume * 100) / 100;
 
-          delete plain.PlanningBox;
+          // delete plain.PlanningBox;
           return plain;
         })
       );
@@ -354,19 +286,6 @@ export const deliveryService = {
 
             item.Order = box?.Order ?? null;
           }
-
-          //calculate volume
-          const ratioData = await FluteRatio.findOne({
-            where: { fluteName: item.Order?.flute },
-            attributes: ["ratio"],
-          });
-
-          const lengthPaper = item.Order.lengthPaperCustomer ?? 0;
-          const paperSize = item.Order.paperSizeCustomer ?? 0;
-          const ratio = ratioData?.ratio ?? 1;
-
-          const rawVolume = lengthPaper * paperSize * ratio;
-          item.volume = Math.round(rawVolume * 100) / 100;
         }
 
         result.push(planJson);
@@ -378,6 +297,107 @@ export const deliveryService = {
       };
     } catch (error) {
       console.error("❌ get planning delivery failed:", error);
+      throw AppError.ServerError();
+    }
+  },
+
+  //using for re-order  when hasn't confirm delivery
+  getDeliveryPlanDetailForEdit: async (deliveryDate: Date) => {
+    try {
+      const plan = await DeliveryPlan.findOne({
+        where: { deliveryDate },
+        attributes: { exclude: ["createdAt", "updatedAt"] },
+        include: [
+          {
+            model: DeliveryItem,
+            attributes: { exclude: ["createdAt", "updatedAt"] },
+            include: [{ model: Vehicle, attributes: ["vehicleName", "licensePlate"] }],
+          },
+        ],
+        order: [["deliveryId", "ASC"]],
+      });
+
+      if (!plan) {
+        return {
+          message: "get delivery plan detail for edit successfully",
+          data: [],
+        };
+      }
+
+      const results: any[] = [];
+
+      for (const item of plan.DeliveryItems ?? []) {
+        let targetPlanningId: number | null = null;
+        let paperData: any = null;
+
+        if (item.targetType === "paper") {
+          targetPlanningId = item.targetId;
+        } else if (item.targetType === "box") {
+          const box = await PlanningBox.findByPk(item.targetId, {
+            attributes: ["planningId"],
+          });
+          targetPlanningId = box?.planningId ?? 0;
+        }
+
+        if (targetPlanningId) {
+          const paper = await PlanningPaper.findByPk(targetPlanningId, {
+            attributes: [
+              "planningId",
+              "lengthPaperPlanning",
+              "sizePaperPLaning",
+              "deliveryPlanned",
+              "orderId",
+            ],
+            include: [
+              {
+                model: Order,
+                attributes: ["orderId", "dayReceiveOrder", "flute", "QC_box"],
+                include: [
+                  { model: Customer, attributes: ["customerName", "companyName"] },
+                  { model: Product, attributes: ["typeProduct", "productName"] },
+                ],
+              },
+            ],
+          });
+
+          if (paper) {
+            paperData = paper.get({ plain: true }) as any;
+
+            const ratioData = await FluteRatio.findOne({
+              where: { fluteName: paperData.Order?.flute },
+              attributes: ["ratio"],
+            });
+
+            const lengthPaper = paperData.lengthPaperPlanning ?? 0;
+            const paperSize = paperData.sizePaperPLaning ?? 0;
+            const ratio = ratioData?.ratio ?? 1;
+
+            const rawVolume = lengthPaper * paperSize * ratio;
+            paperData.volume = Math.round(rawVolume * 100) / 100;
+          }
+
+          results.push({
+            ...item.get({ plain: true }),
+            Planning: paperData,
+          });
+        }
+      }
+
+      return {
+        message: "get delivery plan detail for edit successfully",
+        data: [
+          {
+            deliveryId: plan.deliveryId,
+            deliveryDate: plan.deliveryDate,
+            note: plan.note,
+            status: plan.status,
+            DeliveryItems: results,
+          },
+        ],
+      };
+    } catch (error) {
+      console.error("❌ get planning detail for edit:", error);
+      if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
   },
@@ -395,70 +415,93 @@ export const deliveryService = {
     }[];
   }) => {
     try {
-      if (!deliveryDate || !items || items.length === 0) {
+      if (!deliveryDate || !items) {
         throw AppError.BadRequest("Missing delivery data", "INVALID_PAYLOAD");
       }
 
       return await runInTransaction(async (transaction) => {
-        const existedPlan = await DeliveryPlan.findOne({
-          where: { deliveryDate },
+        let existedPlan = await DeliveryPlan.findOne({
+          where: { deliveryDate: new Date(deliveryDate) },
           transaction,
           lock: transaction.LOCK.UPDATE,
         });
 
         if (existedPlan) {
-          throw AppError.BadRequest(
-            "Delivery plan for this date already exists",
-            "DELIVERY_PLAN_EXISTED"
+          // --- UPDATE ---
+          const oldItems = await DeliveryItem.findAll({
+            where: { deliveryId: existedPlan.deliveryId },
+            transaction,
+          });
+
+          const oldPaperIds = oldItems
+            .filter((i) => i.targetType === "paper")
+            .map((i) => i.targetId);
+          const oldBoxIds = oldItems.filter((i) => i.targetType === "box").map((i) => i.targetId);
+
+          // Lấy planningId từ Box để reset deliveryPlanned
+          if (oldBoxIds.length > 0) {
+            const boxes = await PlanningBox.findAll({
+              where: { planningBoxId: oldBoxIds },
+              attributes: ["planningId"],
+              transaction,
+            });
+            oldPaperIds.push(...boxes.map((b) => b.planningId));
+          }
+
+          if (oldPaperIds.length > 0) {
+            await PlanningPaper.update(
+              { deliveryPlanned: "pending" },
+              { where: { planningId: [...new Set(oldPaperIds)] }, transaction }
+            );
+          }
+
+          await DeliveryItem.destroy({
+            where: { deliveryId: existedPlan.deliveryId },
+            transaction,
+          });
+        } else {
+          // --- CREATE ---
+          existedPlan = await DeliveryPlan.create(
+            { deliveryDate, status: "none" },
+            { transaction }
           );
         }
 
-        // Tạo deliveryPlan
-        const deliveryPlan = await DeliveryPlan.create(
-          { deliveryDate, status: "planned" },
-          { transaction }
-        );
-
-        // 3️⃣ Validate target tồn tại
-        for (const item of items) {
-          if (item.targetType === "paper") {
-            const exists = await PlanningPaper.findByPk(item.targetId, {
-              transaction,
-            });
-            if (!exists) {
-              throw AppError.BadRequest(
-                `PlanningPaper ${item.targetId} not found`,
-                "PLANNING_PAPER_NOT_FOUND"
-              );
-            }
-          }
-
-          if (item.targetType === "box") {
-            const exists = await PlanningBox.findByPk(item.targetId, {
-              transaction,
-            });
-            if (!exists) {
-              throw AppError.BadRequest(
-                `PlanningBox ${item.targetId} not found`,
-                "PLANNING_BOX_NOT_FOUND"
-              );
-            }
-          }
+        if (items.length === 0) {
+          return { message: "Clear delivery plan success" };
         }
 
-        // 4️⃣ Tạo deliveryPlanItem
+        // 3️⃣ Validate target tồn tại
         const deliveryItems = items.map((item) => ({
-          deliveryId: deliveryPlan.deliveryId,
+          deliveryId: existedPlan!.deliveryId,
           targetType: item.targetType,
           targetId: item.targetId,
           vehicleId: item.vehicleId,
           sequence: item.sequence,
-          status: "planned" as statusDeliveryItem,
+          status: "none" as statusDeliveryItem,
         }));
 
         await DeliveryItem.bulkCreate(deliveryItems, { transaction });
 
-        return { message: "Create delivery plan success" };
+        // Cập nhật trạng thái planned cho các paper mới gửi lên
+        const newPaperIds = items.filter((i) => i.targetType === "paper").map((i) => i.targetId);
+        const newBoxIds = items.filter((i) => i.targetType === "box").map((i) => i.targetId);
+
+        if (newBoxIds.length > 0) {
+          const boxes = await PlanningBox.findAll({
+            where: { planningBoxId: newBoxIds },
+            attributes: ["planningId"],
+            transaction,
+          });
+          newPaperIds.push(...boxes.map((b) => b.planningId));
+        }
+
+        await PlanningPaper.update(
+          { deliveryPlanned: "planned" },
+          { where: { planningId: [...new Set(newPaperIds)] }, transaction }
+        );
+
+        return { message: "Save delivery plan success" };
       });
     } catch (error) {
       console.error("❌ create delivery plan failed:", error);
@@ -467,12 +510,41 @@ export const deliveryService = {
     }
   },
 
-  confirmForDeliveryPlanning: async () => {
+  confirmForDeliveryPlanning: async (deliveryDate: Date) => {
     try {
+      return await runInTransaction(async (transaction) => {
+        let existedPlan = await DeliveryPlan.findOne({
+          where: { deliveryDate: new Date(deliveryDate) },
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+        if (!existedPlan) {
+          throw AppError.NotFound("Không tìm thấy kế hoạch để xác nhận", "DELIVERY_PLAN_NOT_FOUND");
+        }
+
+        //update status delivery plan
+        await existedPlan.update({ status: "planned" }, { transaction });
+
+        //update status delivery item
+        await DeliveryItem.update(
+          { status: "planned" },
+          {
+            where: { deliveryId: existedPlan.deliveryId },
+            transaction,
+          }
+        );
+
+        return { message: "Chốt kế hoạch giao hàng thành công" };
+      });
     } catch (error) {
       console.error("❌ confirm delivery planning failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
+  },
+
+  cancelDeliveryPlan: async () => {
+    try {
+    } catch (error) {}
   },
 };

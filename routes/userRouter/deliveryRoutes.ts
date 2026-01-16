@@ -5,9 +5,10 @@ import {
   confirmForDeliveryPlanning,
   confirmReadyDeliveryPlanning,
   createDeliveryPlan,
+  getDeliveryPlanDetailForEdit,
   getPlanningDelivery,
   getPlanningEstimateTime,
-  getPlanningWaitingDelivery,
+  getPlanningPendingDelivery,
 } from "../../controller/user/delivery/deliveryController";
 
 const router = Router();
@@ -30,8 +31,9 @@ router.put(
 //=================================PLANNING DELIVERY=====================================
 
 router.get("/getPlanningDelivery", authenticate, getPlanningDelivery);
-router.get("/getPlanningWaitingDelivery", authenticate, getPlanningWaitingDelivery);
+router.get("/getPlanningPending", authenticate, getPlanningPendingDelivery);
+router.get("/getDeliveryPlanDetail", authenticate, getDeliveryPlanDetailForEdit);
 router.post("/createDeliveryPlan", authenticate, createDeliveryPlan);
-router.post("/confirmDelivey", authenticate, confirmForDeliveryPlanning);
+router.put("/confirmDelivery", authenticate, confirmForDeliveryPlanning);
 
 export default router;

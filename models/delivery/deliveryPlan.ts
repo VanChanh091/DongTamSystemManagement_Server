@@ -41,7 +41,7 @@ export function initDeliveryPlanModel(sequelize: Sequelize): typeof DeliveryPlan
   DeliveryPlan.init(
     {
       deliveryId: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-      deliveryDate: { type: DataTypes.DATE },
+      deliveryDate: { type: DataTypes.DATE, unique: true },
       note: { type: DataTypes.STRING },
       status: {
         type: DataTypes.ENUM("none", "planned", "cancelled", "completed"),

@@ -13,6 +13,7 @@ export type planningPaperStatus =
   | "stop"
   | "cancel";
 export type statusRequestInbound = "none" | "requested" | "inbounded" | "finalize";
+export type statusDeliveryPlanned = "none" | "pending" | "planned" | "delivered";
 
 //định nghĩa trường trong bảng
 interface PlanningPaperAttributes {
@@ -53,7 +54,7 @@ interface PlanningPaperAttributes {
   statusRequest: statusRequestInbound;
   hasOverFlow?: boolean | null;
   hasBox?: boolean | null;
-  deliveryPlanned?: boolean | null;
+  deliveryPlanned: statusDeliveryPlanned;
   sortPlanning?: number | null;
 
   createdAt?: Date;
@@ -140,7 +141,7 @@ export class PlanningPaper
   declare statusRequest: statusRequestInbound;
   declare hasOverFlow?: boolean | null;
   declare hasBox?: boolean | null;
-  declare deliveryPlanned?: boolean | null;
+  declare deliveryPlanned: statusDeliveryPlanned;
   declare sortPlanning?: number | null;
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
@@ -216,7 +217,10 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
         defaultValue: false,
       },
       hasBox: { type: DataTypes.BOOLEAN, defaultValue: false },
-      deliveryPlanned: { type: DataTypes.BOOLEAN, defaultValue: false },
+      deliveryPlanned: {
+        type: DataTypes.ENUM("none", "pending", "planned", "delivered"),
+        defaultValue: "none",
+      },
       sortPlanning: { type: DataTypes.INTEGER },
 
       //FK

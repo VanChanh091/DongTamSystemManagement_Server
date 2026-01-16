@@ -45,13 +45,13 @@ export const confirmReadyDeliveryPlanning = async (
 };
 
 //=================================PLANNING DELIVERY=====================================
-export const getPlanningWaitingDelivery = async (
+export const getPlanningPendingDelivery = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const response = await deliveryService.getPlanningWaitingDelivery();
+    const response = await deliveryService.getPlanningPendingDelivery();
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -63,6 +63,21 @@ export const getPlanningDelivery = async (req: Request, res: Response, next: Nex
 
   try {
     const response = await deliveryService.getPlanningDelivery(new Date(deliveryDate));
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getDeliveryPlanDetailForEdit = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { deliveryDate } = req.query as { deliveryDate: string };
+
+  try {
+    const response = await deliveryService.getDeliveryPlanDetailForEdit(new Date(deliveryDate));
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -93,8 +108,10 @@ export const confirmForDeliveryPlanning = async (
   res: Response,
   next: NextFunction
 ) => {
+  const { deliveryDate } = req.query as { deliveryDate: string };
+
   try {
-    const response = await deliveryService.confirmForDeliveryPlanning();
+    const response = await deliveryService.confirmForDeliveryPlanning(new Date(deliveryDate));
     return res.status(200).json(response);
   } catch (error) {
     next(error);

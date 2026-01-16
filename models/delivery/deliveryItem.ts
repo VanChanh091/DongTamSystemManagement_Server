@@ -1,8 +1,6 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { DeliveryPlan } from "./deliveryPlan";
 import { Vehicle } from "../admin/vehicle";
-import { PlanningBox } from "../planning/planningBox";
-import { PlanningPaper } from "../planning/planningPaper";
 
 export type statusDeliveryItem = "none" | "planned" | "cancelled" | "completed";
 export type targetType = "paper" | "box";

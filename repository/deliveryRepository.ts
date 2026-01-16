@@ -17,7 +17,7 @@ export const deliveryRepository = {
     return await PlanningPaper.findAll({
       where: {
         dayStart: { [Op.lte]: dayStart },
-        deliveryPlanned: false,
+        deliveryPlanned: "none",
         status: { [Op.notIn]: ["stop", "cancel"] },
       },
       attributes: {
