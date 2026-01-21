@@ -133,7 +133,7 @@ router.put("/updateFluteRatio", authenticate, authorizeRole(["admin"]), updateFl
 router.delete("/deleteFluteRatio", authenticate, authorizeRole(["admin"]), deleteFluteRatio);
 
 //===============================VEHICLE=====================================
-router.get("/getAllVehicle", authenticate, authorizeRole(["admin", "manager"]), getAllVehicle);
+router.get("/getAllVehicle", authenticate, getAllVehicle);
 router.post("/newVehicle", authenticate, authorizeRole(["admin", "manager"]), createNewVehicle);
 router.put("/updateVehicle", authenticate, authorizeRole(["admin", "manager"]), updateVehicle);
 router.delete("/deleteVehicle", authenticate, authorizeRole(["admin", "manager"]), deleteVehicle);

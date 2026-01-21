@@ -168,6 +168,49 @@ export const dashboardService = {
     }
   },
 
+  //export planning stage
+  getAllDbPlanningStage: async () => {
+    try {
+      const rawPapers = await dashboardRepository.exportExcelDbPlanning({});
+
+      // Format dữ liệu thành 2 tầng cho FE
+      const formatted = await Promise.all(
+        rawPapers.map(async (paper) => {
+          const box = paper.PlanningBox;
+
+          // ===== Stages (7 công đoạn) =====
+          const normalStages = box?.boxTimes?.map((stage) => stage.toJSON()) ?? [];
+
+          const allOverflow = await dashboardRepository.getAllTimeOverflow(box?.planningBoxId ?? 0);
+
+          const overflowByMachine: Record<string, any> = {};
+          for (const ov of allOverflow) {
+            overflowByMachine[ov.machine as string] = ov;
+          }
+
+          // ===== Gắn overflow vào từng stage =====
+          const stages = normalStages.map((stage) => ({
+            ...stage,
+            timeOverFlow: overflowByMachine[String(stage.machine)] ?? null,
+          }));
+
+          // ===== Remove nested (giữ sạch dữ liệu) =====
+          const paperJson: any = paper.toJSON();
+          delete paperJson.PlanningBox;
+          delete paperJson.Order?.box;
+
+          return { ...paperJson, stages };
+        }),
+      );
+
+      return formatted;
+    } catch (error) {
+      console.error("❌ Export Excel error:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
   //export excel
   exportExcelDbPlanning: async (req: Request, res: Response) => {
     const { username, dayStart, machine, all = false } = req.body;
@@ -223,7 +266,7 @@ export const dashboardService = {
           delete paperJson.Order?.box;
 
           return { ...paperJson, stages };
-        })
+        }),
       );
 
       await exportExcelDbPlanning(res, {
@@ -233,49 +276,6 @@ export const dashboardService = {
         columns: dbPlanningColumns,
         rows: mappingDbPlanningRow,
       });
-    } catch (error) {
-      console.error("❌ Export Excel error:", error);
-      if (error instanceof AppError) throw error;
-      throw AppError.ServerError();
-    }
-  },
-
-  //export planning stage
-  getAllDbPlanningStage: async () => {
-    try {
-      const rawPapers = await dashboardRepository.exportExcelDbPlanning({});
-
-      // Format dữ liệu thành 2 tầng cho FE
-      const formatted = await Promise.all(
-        rawPapers.map(async (paper) => {
-          const box = paper.PlanningBox;
-
-          // ===== Stages (7 công đoạn) =====
-          const normalStages = box?.boxTimes?.map((stage) => stage.toJSON()) ?? [];
-
-          const allOverflow = await dashboardRepository.getAllTimeOverflow(box?.planningBoxId ?? 0);
-
-          const overflowByMachine: Record<string, any> = {};
-          for (const ov of allOverflow) {
-            overflowByMachine[ov.machine as string] = ov;
-          }
-
-          // ===== Gắn overflow vào từng stage =====
-          const stages = normalStages.map((stage) => ({
-            ...stage,
-            timeOverFlow: overflowByMachine[String(stage.machine)] ?? null,
-          }));
-
-          // ===== Remove nested (giữ sạch dữ liệu) =====
-          const paperJson: any = paper.toJSON();
-          delete paperJson.PlanningBox;
-          delete paperJson.Order?.box;
-
-          return { ...paperJson, stages };
-        })
-      );
-
-      return formatted;
     } catch (error) {
       console.error("❌ Export Excel error:", error);
       if (error instanceof AppError) throw error;

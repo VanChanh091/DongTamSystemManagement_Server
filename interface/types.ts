@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { Model, ModelStatic, Transaction, WhereOptions } from "sequelize";
 export interface FilterDataFromCacheProps<T> {
   model?: any;
   cacheKey: string;
@@ -28,10 +29,10 @@ export interface ExportExcelOptions<T> {
 
 export interface RepoPayload {
   model: any;
-  where?: any;
+  where?: WhereOptions<any>;
   data?: any;
   options?: any;
-  transaction?: any;
+  transaction?: Transaction;
 }
 
 export interface RedisUserData {

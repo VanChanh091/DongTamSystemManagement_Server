@@ -28,7 +28,7 @@ export const getPlanningEstimateTime = async (req: Request, res: Response, next:
 export const confirmReadyDeliveryPlanning = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const { planningIds } = req.query as { planningIds: string[] };
 
@@ -48,7 +48,7 @@ export const confirmReadyDeliveryPlanning = async (
 export const getPlanningPendingDelivery = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const response = await deliveryService.getPlanningPendingDelivery();
@@ -58,21 +58,10 @@ export const getPlanningPendingDelivery = async (
   }
 };
 
-export const getPlanningDelivery = async (req: Request, res: Response, next: NextFunction) => {
-  const { deliveryDate } = req.query as { deliveryDate: string };
-
-  try {
-    const response = await deliveryService.getPlanningDelivery(new Date(deliveryDate));
-    return res.status(200).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
 export const getDeliveryPlanDetailForEdit = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const { deliveryDate } = req.query as { deliveryDate: string };
 
@@ -92,6 +81,7 @@ export const createDeliveryPlan = async (req: Request, res: Response, next: Next
       targetId: number;
       vehicleId: number;
       sequence: number;
+      note?: string;
     }[];
   };
 
@@ -106,13 +96,59 @@ export const createDeliveryPlan = async (req: Request, res: Response, next: Next
 export const confirmForDeliveryPlanning = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const { deliveryDate } = req.query as { deliveryDate: string };
 
   try {
     const response = await deliveryService.confirmForDeliveryPlanning(new Date(deliveryDate));
     return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+//=================================SCHEDULE DELIVERY=====================================
+export const getAllScheduleDelivery = async (req: Request, res: Response, next: NextFunction) => {
+  const { deliveryDate } = req.query as { deliveryDate: string };
+
+  try {
+    const response = await deliveryService.getAllScheduleDelivery(new Date(deliveryDate));
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const cancelOrCompleteDeliveryPlan = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { deliveryId } = req.query as { deliveryId: string };
+  const { itemIds, action } = req.body as {
+    deliveryId: number;
+    itemIds: number[];
+    action: "complete" | "cancel";
+  };
+  try {
+    const response = await deliveryService.cancelOrCompleteDeliveryPlan({
+      deliveryId: Number(deliveryId),
+      itemIds,
+      action,
+    });
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+//export excel
+export const exportScheduleDelivery = async (req: Request, res: Response, next: NextFunction) => {
+  const { deliveryDate } = req.query as { deliveryDate: string };
+
+  try {
+    await deliveryService.exportScheduleDelivery(res, new Date(deliveryDate));
   } catch (error) {
     next(error);
   }

@@ -7,7 +7,6 @@ export type statusDelivery = "none" | "planned" | "cancelled" | "completed";
 interface DeliveryPlanAttributes {
   deliveryId: number;
   deliveryDate?: Date | null;
-  note?: string;
   status: statusDelivery;
 
   createdAt?: Date;
@@ -17,7 +16,7 @@ interface DeliveryPlanAttributes {
 //cho phép bỏ qua id khi tạo
 export type DeliveryPlanCreationAttributes = Optional<
   DeliveryPlanAttributes,
-  "deliveryId" | "status" | "note" | "createdAt" | "updatedAt"
+  "deliveryId" | "status" | "createdAt" | "updatedAt"
 >;
 
 //định nghĩa kiểu OOP
@@ -27,7 +26,6 @@ export class DeliveryPlan
 {
   declare deliveryId: number;
   declare deliveryDate?: Date | null;
-  declare note?: string;
   declare status: statusDelivery;
 
   //ASSOCIATION
@@ -42,7 +40,6 @@ export function initDeliveryPlanModel(sequelize: Sequelize): typeof DeliveryPlan
     {
       deliveryId: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
       deliveryDate: { type: DataTypes.DATE, unique: true },
-      note: { type: DataTypes.STRING },
       status: {
         type: DataTypes.ENUM("none", "planned", "cancelled", "completed"),
         allowNull: false,
