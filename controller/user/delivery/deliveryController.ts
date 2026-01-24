@@ -37,6 +37,7 @@ export const confirmReadyDeliveryPlanning = async (
 
     const response = await deliveryService.confirmReadyDeliveryPlanning({
       planningIds: ids.map((id) => Number(id)),
+      userId: req.user.userId,
     });
     return res.status(200).json(response);
   } catch (error) {

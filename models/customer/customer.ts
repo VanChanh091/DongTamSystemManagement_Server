@@ -1,4 +1,3 @@
-import { all } from "axios";
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 
 //định nghĩa trường trong bảng
@@ -97,8 +96,13 @@ export function initCustomerModel(sequelize: Sequelize): typeof Customer {
       sequelize,
       tableName: "Customers",
       timestamps: true,
-      indexes: [{ fields: ["customerSeq"] }, { fields: ["customerName"] }, { fields: ["phone"] }],
-    }
+      indexes: [
+        { fields: ["customerSeq"] },
+        { fields: ["customerName"] },
+        { fields: ["mst"] },
+        { fields: ["phone"] },
+      ],
+    },
   );
 
   return Customer;

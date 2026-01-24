@@ -28,7 +28,7 @@ export const orderService = {
       const cacheKey = order.acceptPlanning(keyRole, page); //orders:admin:accept_planning:page:1
       const { isChanged } = await CacheManager.check(
         [{ model: Order, where: { status: ["accept", "planning"] } }],
-        "orderAccept"
+        "orderAccept",
       );
 
       if (isChanged) {
@@ -75,7 +75,7 @@ export const orderService = {
       const cacheKey = order.pendingReject(keyRole);
       const { isChanged } = await CacheManager.check(
         [{ model: Order, where: { status: ["pending", "reject"] } }],
-        "orderPending"
+        "orderPending",
       );
 
       if (isChanged) {
@@ -112,7 +112,7 @@ export const orderService = {
     keyword: string,
     page: number,
     pageSize: number,
-    user: any
+    user: any,
   ) => {
     const { userId, role } = user;
 
@@ -175,7 +175,7 @@ export const orderService = {
             userId: userId,
             ...orderData,
           },
-          { transaction }
+          { transaction },
         );
 
         //create table data

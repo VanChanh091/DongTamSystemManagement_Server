@@ -25,9 +25,6 @@ export const deliveryColumns: Partial<ExcelJS.Column>[] = [
 
   //delivery item
   { key: "note", header: "Ghi Chú" },
-
-  //hidden field
-  { key: "deliveryDate", header: "Ngày Giao Hàng", style: { numFmt: "dd/mm/yyyy" } },
   { key: "sequence", header: "Tài" },
 ];
 
@@ -63,6 +60,5 @@ export const mappingDeliveryRow = (root: any, index: number) => {
 
     note: item.note || "",
     sequence: item.sequence || "",
-    deliveryDate: root.deliveryDate,
   };
 };

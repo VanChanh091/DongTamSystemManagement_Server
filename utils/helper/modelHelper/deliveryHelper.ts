@@ -4,7 +4,7 @@ export const getDeliveryByDate = async (deliveryDate: Date) => {
   const plans = await deliveryRepository.getAllDeliveryPlanByDate(deliveryDate);
 
   if (!plans || plans.length === 0) {
-    return { message: "get schedule delivery successfully", data: [] };
+    return [];
   }
 
   //Gom tất cả items từ tất cả plans để thực hiện truy vấn 1 lần

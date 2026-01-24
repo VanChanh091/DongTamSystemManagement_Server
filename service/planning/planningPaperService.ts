@@ -1,7 +1,8 @@
 import dotenv from "dotenv";
 dotenv.config();
-import { Op } from "sequelize";
+
 import redisCache from "../../assest/configs/redisCache";
+import { Op } from "sequelize";
 import { Order } from "../../models/order/order";
 import { machinePaperType, PlanningPaper } from "../../models/planning/planningPaper";
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
@@ -14,7 +15,6 @@ import { MachinePaper } from "../../models/admin/machinePaper";
 import { Request } from "express";
 import { calculateTimeRunning, updateSortPlanning } from "./helper/timeRunningPaper";
 import { getPlanningByField } from "../../utils/helper/modelHelper/planningHelper";
-import { warehouseRepository } from "../../repository/warehouseRepository";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
@@ -30,7 +30,7 @@ export const planningPaperService = {
           { model: PlanningPaper },
           { model: timeOverflowPlanning, where: { planningId: { [Op.ne]: null } } },
         ],
-        "planningPaper"
+        "planningPaper",
       );
 
       if (isChanged) {
@@ -163,7 +163,7 @@ export const planningPaperService = {
           overflowRemoveFields.forEach((f) => delete overflow[f]);
           if (overflow.Order) {
             ["quantityManufacture", "totalPrice", "totalPriceVAT"].forEach(
-              (item) => delete overflow.Order[item]
+              (item) => delete overflow.Order[item],
             );
           }
 
@@ -277,7 +277,7 @@ export const planningPaperService = {
         if (paper.statusRequest !== "finalize") {
           throw AppError.BadRequest(
             `Mã đơn ${paper.orderId} chưa được chốt nhập kho`,
-            "PLANNING_NOT_FINALIZED"
+            "PLANNING_NOT_FINALIZED",
           );
         }
       }
@@ -312,7 +312,7 @@ export const planningPaperService = {
   pauseOrAcceptLackQtyPLanning: async (
     planningIds: number[],
     newStatus: string,
-    rejectReason?: string
+    rejectReason?: string,
   ) => {
     try {
       const plannings = await planningRepository.getPapersById({ planningIds });
@@ -335,7 +335,7 @@ export const planningPaperService = {
                 if ((planning.qtyProduced ?? 0) > 0) {
                   throw AppError.Conflict(
                     `Cannot reject planning ${planning.planningId} has produced quantity.`,
-                    "CANNOT_REJECT_PRODUCED_PLANNING"
+                    "CANNOT_REJECT_PRODUCED_PLANNING",
                   );
                 }
 
@@ -432,7 +432,7 @@ export const planningPaperService = {
           if (planning.sortPlanning === null) {
             throw AppError.BadRequest(
               "Cannot pause planning without sortPlanning",
-              "CANNOT_PAUSE_WITHOUT_SORT"
+              "CANNOT_PAUSE_WITHOUT_SORT",
             );
           }
 

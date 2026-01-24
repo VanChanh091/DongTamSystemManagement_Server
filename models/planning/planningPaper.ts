@@ -226,7 +226,7 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
       //FK
       orderId: { type: DataTypes.STRING },
     },
-    { sequelize, tableName: "Plannings", timestamps: true }
+    { sequelize, tableName: "Plannings", timestamps: true },
   );
 
   return PlanningPaper;

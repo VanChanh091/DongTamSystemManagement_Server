@@ -165,6 +165,35 @@ export const deliveryRepository = {
     });
   },
 
+  // getDeliveryRequest: async () => {
+  //   return await DeliveryRequest.findAll({
+  //     where: { status: "requested" },
+  //     attributes: ["requestId"],
+  //     include: [
+  //       { model: User, attributes: ["fullName"] },
+  //       {
+  //         model: PlanningPaper,
+  //         attributes: ["planningId", "lengthPaperPlanning", "sizePaperPLaning"],
+  //         include: [
+  //           {
+  //             model: Order,
+  //             attributes: ["orderId", "dayReceiveOrder", "flute", "QC_box"],
+  //             include: [
+  //               { model: Customer, attributes: ["customerName", "companyName"] },
+  //               { model: Product, attributes: ["typeProduct", "productName"] },
+  //             ],
+  //           },
+  //           {
+  //             model: PlanningBox,
+  //             required: false,
+  //             attributes: ["planningBoxId"],
+  //           },
+  //         ],
+  //       },
+  //     ],
+  //   });
+  // },
+
   findOneFluteRatio: async (flute: string) => {
     return await FluteRatio.findOne({ where: { fluteName: flute }, attributes: ["ratio"] });
   },

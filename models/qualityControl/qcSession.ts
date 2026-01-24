@@ -60,7 +60,7 @@ export function initQcSessionModel(sequelize: Sequelize): typeof QcSession {
       planningId: { type: DataTypes.INTEGER },
       planningBoxId: { type: DataTypes.INTEGER },
     },
-    { sequelize, tableName: "QcSession", timestamps: true }
+    { sequelize, tableName: "QcSession", timestamps: true },
   );
 
   return QcSession;

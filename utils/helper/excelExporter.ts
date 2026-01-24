@@ -132,8 +132,40 @@ export const exportDeliveryExcelResponse = async <T>(
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet(sheetName);
 
-    // header
-    worksheet.columns = columns as ExcelJS.Column[];
+    // ĐƯA CỘT 'SEQUENCE' (TÀI) VỀ ĐẦU MẢNG COLUMNS
+    const sequenceColIndex = columns.findIndex((c) => c.key === "sequence");
+    if (sequenceColIndex > -1) {
+      const [sequenceCol] = columns.splice(sequenceColIndex, 1);
+      columns.unshift(sequenceCol); // Đẩy lên vị trí 0
+    }
+
+    const rawDate = (data[0] as any)?.deliveryDate;
+    const formattedDate = rawDate ? new Date(rawDate).toLocaleDateString("vi-VN") : "";
+    const titleText = `LỊCH GIAO HÀNG ${formattedDate}`;
+
+    // TITLE (Dòng 1)
+    const titleRow = worksheet.addRow([titleText]);
+    const titleCell = titleRow.getCell(1);
+
+    titleCell.font = { bold: true, size: 14, color: { argb: "FF000000" } };
+    titleCell.alignment = { vertical: "middle", horizontal: "center" };
+    titleCell.fill = { type: "pattern", pattern: "none" };
+    titleRow.height = 30;
+
+    worksheet.mergeCells(1, 1, 1, columns.length);
+
+    // HEADER TABLE (Dòng 2)
+    const headerRow = worksheet.addRow(columns.map((c) => c.header));
+
+    headerRow.eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      sytleFill(cell, "FF0070C0");
+      cell.alignment = { vertical: "middle", horizontal: "center" };
+      sytleBorder(cell);
+    });
+
+    //mapping key cho các cột
+    worksheet.columns = columns.map((col) => ({ key: col.key }));
 
     const allMappedRows: any[] = [];
     data.forEach((delivery: any) => {
@@ -143,48 +175,47 @@ export const exportDeliveryExcelResponse = async <T>(
       });
     });
 
-    // 2. Group dữ liệu theo sequence (Tài)
-    const groupedData = allMappedRows.reduce((acc: any, row: any) => {
-      const seq = row.sequence || "Chưa xác định";
-      if (!acc[seq]) acc[seq] = [];
-      acc[seq].push(row);
-      return acc;
-    }, {});
+    // sort theo sequence
+    allMappedRows.sort((a, b) => Number(a.sequence) - Number(b.sequence));
 
-    // 3. Duyệt qua từng group để in ra Excel (Sắp xếp theo Tài 1, 2, 3...)
-    Object.keys(groupedData)
-      .sort((a, b) => Number(a) - Number(b))
-      .forEach((seq) => {
-        const groupRows = groupedData[seq];
-
-        // Thêm dòng Header cho Tài
-        const groupRow = worksheet.addRow({
-          vehicleName: `TÀI: ${seq}`,
-        });
-
-        // Style Group Header
-        groupRow.eachCell((cell) => {
-          sytleFill(cell, "FFE9ECEF");
-          cell.font = { bold: true };
-        });
-
-        // Merge cell Header
-        worksheet.mergeCells(groupRow.number, 1, groupRow.number, columns.length);
-
-        // Thêm các dòng dữ liệu thuộc Tài này
-        groupRows.forEach((rowData: any) => {
-          const excelRow = worksheet.addRow(rowData);
-
-          // Style cell
-          excelRow.eachCell((cell) => {
-            sytleBorder(cell);
-            sytleFill(cell, "FFFFFFFF");
-          });
-        });
+    // ĐỔ DỮ LIỆU VÀO BẢNG
+    allMappedRows.forEach((rowData) => {
+      const excelRow = worksheet.addRow(rowData);
+      excelRow.eachCell((cell) => {
+        sytleBorder(cell);
+        sytleFill(cell, "FFFFFFFF");
       });
+    });
+
+    //MERGE DỌC CHO CỘT ĐẦU TIÊN (CỘT TÀI)
+    let startRow = 3;
+    const rowCount = worksheet.rowCount;
+
+    for (let i = startRow; i <= rowCount; i++) {
+      const currValue = worksheet.getRow(i).getCell(1).value;
+      const nextValue = i < rowCount ? worksheet.getRow(i + 1).getCell(1).value : null;
+
+      if (currValue !== nextValue || i === rowCount) {
+        if (i > startRow) {
+          worksheet.mergeCells(startRow, 1, i, 1);
+          const mergedCell = worksheet.getRow(startRow).getCell(1);
+          mergedCell.alignment = { vertical: "middle", horizontal: "center" };
+          mergedCell.font = { bold: true };
+          // Đổ màu xám nhẹ cho cột Tài để phân biệt nhóm
+          sytleFill(mergedCell, "FFF9F9F9");
+        }
+        startRow = i + 1;
+      }
+    }
 
     headerStyleAndAutofitColumns(worksheet);
 
+    const finalTitle = worksheet.getRow(1).getCell(1);
+    finalTitle.value = titleText;
+    finalTitle.fill = { type: "pattern", pattern: "none" };
+    finalTitle.font = { bold: true, size: 14, color: { argb: "FF000000" } };
+
+    // XUẤT FILE
     const dateStr = new Date().toISOString().split("T")[0];
     res.setHeader(
       "Content-Type",

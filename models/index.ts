@@ -9,6 +9,7 @@ import { initWaveCrestCoefficientModel } from "./admin/waveCrestCoefficient";
 import { initCustomerModel } from "./customer/customer";
 import { initDeliveryItemModel } from "./delivery/deliveryItem";
 import { initDeliveryPlanModel } from "./delivery/deliveryPlan";
+import { initDeliveryRequestModel } from "./delivery/deliveryRequest";
 import { initEmployeeBasicInfoModel } from "./employee/employeeBasicInfo";
 import { initEmployeeCompanyInfoModel } from "./employee/employeeCompanyInfo";
 import { initBoxModel } from "./order/box";
@@ -73,6 +74,7 @@ const OutboundDetail = initOutboundDetailModel(sequelize);
 const Inventory = initInventoryModel(sequelize);
 
 //delivery
+const DeliveryRequest = initDeliveryRequestModel(sequelize);
 const DeliveryPlan = initDeliveryPlanModel(sequelize);
 const DeliveryItem = initDeliveryItemModel(sequelize);
 
@@ -109,6 +111,7 @@ const models = {
   Inventory,
 
   //Delivery
+  DeliveryRequest,
   DeliveryPlan,
   DeliveryItem,
 
@@ -260,10 +263,13 @@ Order.hasOne(Inventory, { foreignKey: "orderId", onDelete: "CASCADE" });
 Inventory.belongsTo(Order, { foreignKey: "orderId" });
 
 //delivery
-DeliveryPlan.hasMany(DeliveryItem, {
-  foreignKey: "deliveryId",
-  onDelete: "CASCADE",
-});
+PlanningPaper.hasOne(DeliveryRequest, { foreignKey: "planningId", onDelete: "CASCADE" });
+DeliveryRequest.belongsTo(PlanningPaper, { foreignKey: "planningId" });
+
+User.hasOne(DeliveryRequest, { foreignKey: "userId" });
+DeliveryRequest.belongsTo(User, { foreignKey: "userId" });
+
+DeliveryPlan.hasMany(DeliveryItem, { foreignKey: "deliveryId", onDelete: "CASCADE" });
 DeliveryItem.belongsTo(DeliveryPlan, { foreignKey: "deliveryId" });
 
 Vehicle.hasOne(DeliveryItem, { foreignKey: "vehicleId" });

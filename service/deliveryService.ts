@@ -1,15 +1,15 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+import { Op } from "sequelize";
+import { Response } from "express";
 import { AppError } from "../utils/appError";
 import { deliveryRepository } from "../repository/deliveryRepository";
 import { runInTransaction } from "../utils/helper/transactionHelper";
 import { PlanningPaper } from "../models/planning/planningPaper";
 import { DeliveryItem } from "../models/delivery/deliveryItem";
 import { DeliveryPlan } from "../models/delivery/deliveryPlan";
-import { Op } from "sequelize";
 import { exportDeliveryExcelResponse } from "../utils/helper/excelExporter";
-import { Response } from "express";
 import { deliveryColumns, mappingDeliveryRow } from "../utils/mapping/deliveryRowAndComlumn";
 import { getDeliveryByDate } from "../utils/helper/modelHelper/deliveryHelper";
 
@@ -117,7 +117,13 @@ export const deliveryService = {
     }
   },
 
-  confirmReadyDeliveryPlanning: async ({ planningIds }: { planningIds: number[] }) => {
+  confirmReadyDeliveryPlanning: async ({
+    planningIds,
+    userId,
+  }: {
+    planningIds: number[];
+    userId: number;
+  }) => {
     try {
       if (!planningIds || planningIds.length === 0) {
         throw AppError.BadRequest("Danh sách planning rỗng", "EMPTY_PLANNING_LIST");
@@ -136,16 +142,25 @@ export const deliveryService = {
           );
         }
 
-        for (const planning of plannings) {
-          if (planning.hasOverFlow) {
-            throw AppError.BadRequest(
-              `Planning ${planning.planningId} bị overflow`,
-              "PLANNING_OVERFLOW",
-            );
-          }
-
-          await planning.update({ deliveryPlanned: "pending" }, { transaction });
+        const overflowPlanning = plannings.find((p) => p.hasOverFlow);
+        if (overflowPlanning) {
+          throw AppError.BadRequest(
+            `Planning ${overflowPlanning.planningId} bị overflow`,
+            "PLANNING_OVERFLOW",
+          );
         }
+
+        const planningIdMap = plannings.map((p) => p.planningId);
+
+        await PlanningPaper.update(
+          { deliveryPlanned: "pending" },
+          { where: { planningId: planningIdMap }, transaction },
+        );
+
+        // await DeliveryRequest.bulkCreate(
+        //   planningIdMap.map((planningId) => ({ planningId, userId, status: "requested" })),
+        //   { transaction },
+        // );
 
         return { message: "confirm ready delivery planning successfully" };
       });
@@ -189,7 +204,47 @@ export const deliveryService = {
     }
   },
 
+  // getDeliveryRequest: async () => {
+  //   try {
+  //     const request = await deliveryRepository.getDeliveryRequest();
+
+  //     //remove Planning box and calculate volume
+  //     const data = await Promise.all(
+  //       request.map(async (p: any) => {
+  //         const plain = p.get({ plain: true });
+
+  //         console.log(plain);
+
+  //         //calculate volume
+
+  //         const planning = plain.PlanningPaper;
+  //         const fluteName = planning?.Order?.flute ?? "";
+
+  //         console.log(planning?.Order?.flute ?? "");
+
+  //         const ratioData = await deliveryRepository.findOneFluteRatio(fluteName);
+
+  //         const lengthPaper = planning?.lengthPaperPlanning ?? 0;
+  //         const paperSize = planning?.sizePaperPLaning ?? 0;
+  //         const ratio = ratioData?.ratio ?? 1;
+
+  //         const rawVolume = lengthPaper * paperSize * ratio;
+  //         plain.volume = Math.round(rawVolume * 100) / 100;
+
+  //         // delete plain.PlanningBox;
+  //         return plain;
+  //       }),
+  //     );
+
+  //     return { message: "get planning waiting delivery successfully", data };
+  //   } catch (error) {
+  //     console.error("❌ get planning waiting delivery failed:", error);
+  //     throw AppError.ServerError();
+  //   }
+  // },
+
   //using for re-order  when hasn't confirm delivery
+
   getDeliveryPlanDetailForEdit: async (deliveryDate: Date) => {
     try {
       const plan = await deliveryRepository.getDeliveryPlanByDate(deliveryDate);
@@ -511,10 +566,8 @@ export const deliveryService = {
     try {
       const data = await getDeliveryByDate(deliveryDate);
 
-      const dataArray = Array.isArray(data) ? data : data.data;
-
       await exportDeliveryExcelResponse(res, {
-        data: dataArray,
+        data: data,
         sheetName: "Lịch Giao Hàng",
         fileName: "delivery_schedule",
         columns: deliveryColumns,
