@@ -4,11 +4,12 @@ import { EmployeeBasicInfo } from "./employeeBasicInfo";
 //định nghĩa trường trong bảng
 interface EmployeeCompanyInfoAttributes {
   companyInfoId: number;
-  employeeCode?: string | null;
+  employeeCode: string;
   joinDate: Date;
   department: string;
   position: string;
-  emergencyPhone: string;
+  emergencyPhone?: string | null;
+  emergencyContact?: string | null;
   status: string;
   createdAt?: Date;
   updatedAt?: Date;
@@ -20,7 +21,12 @@ interface EmployeeCompanyInfoAttributes {
 //cho phép bỏ qua id khi tạo
 export type EmployeeCompanyInfoCreationAttributes = Optional<
   EmployeeCompanyInfoAttributes,
-  "companyInfoId" | "employeeCode" | "createdAt" | "updatedAt"
+  | "companyInfoId"
+  | "employeeCode"
+  | "emergencyPhone"
+  | "emergencyContact"
+  | "createdAt"
+  | "updatedAt"
 >;
 
 //định nghĩa kiểu OOP
@@ -29,11 +35,12 @@ export class EmployeeCompanyInfo
   implements EmployeeCompanyInfoAttributes
 {
   declare companyInfoId: number;
-  declare employeeCode?: string | null;
+  declare employeeCode: string;
   declare joinDate: Date;
   declare department: string;
   declare position: string;
-  declare emergencyPhone: string;
+  declare emergencyPhone?: string | null;
+  declare emergencyContact?: string | null;
   declare status: string;
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
@@ -47,17 +54,18 @@ export function initEmployeeCompanyInfoModel(sequelize: Sequelize): typeof Emplo
   EmployeeCompanyInfo.init(
     {
       companyInfoId: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-      employeeCode: { type: DataTypes.STRING },
+      employeeCode: { type: DataTypes.STRING, allowNull: false },
       joinDate: { type: DataTypes.DATE, allowNull: false },
       department: { type: DataTypes.STRING, allowNull: false },
       position: { type: DataTypes.STRING, allowNull: false },
-      emergencyPhone: { type: DataTypes.STRING, allowNull: false },
+      emergencyPhone: { type: DataTypes.STRING },
+      emergencyContact: { type: DataTypes.STRING },
       status: { type: DataTypes.STRING, allowNull: false },
 
       //FK
       employeeId: { type: DataTypes.INTEGER, allowNull: false },
     },
-    { sequelize, tableName: "EmployeeCompanyInfos", timestamps: true }
+    { sequelize, tableName: "EmployeeCompanyInfos", timestamps: true },
   );
 
   return EmployeeCompanyInfo;

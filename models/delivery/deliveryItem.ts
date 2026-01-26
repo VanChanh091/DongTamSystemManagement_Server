@@ -10,7 +10,7 @@ interface DeliveryItemAttributes {
   deliveryItemId: number;
   targetType: targetType;
   targetId: number; //planningPaper or planningBox
-  sequence: number;
+  sequence: string;
   note?: string;
   status: statusDeliveryItem;
 
@@ -36,7 +36,7 @@ export class DeliveryItem
   declare deliveryItemId: number;
   declare targetType: targetType;
   declare targetId: number;
-  declare sequence: number;
+  declare sequence: string;
   declare note?: string;
   declare status: statusDeliveryItem;
 
@@ -57,7 +57,7 @@ export function initDeliveryItemModel(sequelize: Sequelize): typeof DeliveryItem
       deliveryItemId: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
       targetType: { type: DataTypes.STRING, allowNull: false },
       targetId: { type: DataTypes.INTEGER, allowNull: false },
-      sequence: { type: DataTypes.INTEGER, allowNull: false },
+      sequence: { type: DataTypes.STRING, allowNull: false },
       note: { type: DataTypes.STRING },
       status: {
         type: DataTypes.ENUM("none", "planned", "cancelled", "completed"),
@@ -69,7 +69,7 @@ export function initDeliveryItemModel(sequelize: Sequelize): typeof DeliveryItem
       deliveryId: { type: DataTypes.INTEGER, allowNull: false },
       vehicleId: { type: DataTypes.INTEGER, allowNull: false },
     },
-    { sequelize, tableName: "DeliveryItem", timestamps: true }
+    { sequelize, tableName: "DeliveryItem", timestamps: true },
   );
 
   return DeliveryItem;

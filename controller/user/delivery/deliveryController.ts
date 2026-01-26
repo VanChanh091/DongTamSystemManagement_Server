@@ -81,7 +81,7 @@ export const createDeliveryPlan = async (req: Request, res: Response, next: Next
       targetType: targetType;
       targetId: number;
       vehicleId: number;
-      sequence: number;
+      sequence: string;
       note?: string;
     }[];
   };

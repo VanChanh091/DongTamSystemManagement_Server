@@ -1,7 +1,7 @@
 import { deliveryRepository } from "../../../repository/deliveryRepository";
 
-export const getDeliveryByDate = async (deliveryDate: Date) => {
-  const plans = await deliveryRepository.getAllDeliveryPlanByDate(deliveryDate);
+export const getDeliveryByDate = async (deliveryDate: Date, status?: string) => {
+  const plans = await deliveryRepository.getAllDeliveryPlanByDate(deliveryDate, status);
 
   if (!plans || plans.length === 0) {
     return [];

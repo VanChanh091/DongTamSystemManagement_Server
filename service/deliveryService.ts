@@ -336,7 +336,7 @@ export const deliveryService = {
       targetType: "paper" | "box";
       targetId: number;
       vehicleId: number;
-      sequence: number;
+      sequence: string;
       note?: string;
     }[];
   }) => {
@@ -480,7 +480,7 @@ export const deliveryService = {
   //=================================SCHEDULE DELIVERY=====================================
   getAllScheduleDelivery: async (deliveryDate: Date) => {
     try {
-      const finalData = await getDeliveryByDate(deliveryDate);
+      const finalData = await getDeliveryByDate(deliveryDate, "planned");
 
       return { message: "get schedule delivery successfully", data: finalData };
     } catch (error) {

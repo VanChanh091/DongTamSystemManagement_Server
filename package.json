@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "cross-env NODE_ENV=development nodemon --watch . --ext ts,js,json --exec ts-node index.ts",
-    "prod": "cross-env NODE_ENV=production node index.ts",
+    "prod": "cross-env NODE_ENV=production nodemon --watch . --ext ts,js,json --exec ts-node index.ts",
     "test": "jest --silent"
   },
   "keywords": [],

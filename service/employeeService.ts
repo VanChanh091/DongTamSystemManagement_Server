@@ -33,7 +33,7 @@ export const employeeService = {
     try {
       const { isChanged } = await CacheManager.check(
         [{ model: EmployeeBasicInfo }, { model: EmployeeCompanyInfo }],
-        "employee"
+        "employee",
       );
 
       if (isChanged) {
@@ -143,18 +143,16 @@ export const employeeService = {
         const newBasicInfo = await employeeRepository.createEmployee(
           EmployeeBasicInfo,
           basicInfo,
-          transaction
+          transaction,
         );
 
         await employeeRepository.createEmployee(
           EmployeeCompanyInfo,
           { employeeId: newBasicInfo.employeeId, ...companyInfo },
-          transaction
+          transaction,
         );
 
-        const createdEmployee = await employeeRepository.findEmployeeById(newBasicInfo.employeeId);
-
-        return { message: "create new employee successfully", data: createdEmployee };
+        return { message: "create new employee successfully" };
       });
     } catch (error) {
       console.error("create employee failed:", error);
@@ -182,7 +180,7 @@ export const employeeService = {
           await employeeRepository.createEmployee(
             EmployeeCompanyInfo,
             { employeeId: employee.employeeId, ...companyInfo },
-            transaction
+            transaction,
           );
         }
 

@@ -350,10 +350,10 @@ export const deliveryRepository = {
 
   //=================================SCHEDULE DELIVERY=====================================
 
-  getAllDeliveryPlanByDate: async (deliveryDate: Date) => {
+  getAllDeliveryPlanByDate: async (deliveryDate: Date, status?: string) => {
     return await DeliveryPlan.findAll({
       attributes: { exclude: ["createdAt", "updatedAt"] },
-      where: { deliveryDate: new Date(deliveryDate) },
+      where: { deliveryDate: new Date(deliveryDate), status },
       include: [
         {
           model: DeliveryItem,

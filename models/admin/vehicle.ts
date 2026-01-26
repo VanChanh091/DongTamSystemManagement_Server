@@ -7,6 +7,7 @@ interface VehicleAttributes {
   licensePlate: string;
   maxPayload: number;
   volumeCapacity: number;
+  vehicleHouse: string;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -28,6 +29,7 @@ export class Vehicle
   declare licensePlate: string;
   declare maxPayload: number;
   declare volumeCapacity: number;
+  declare vehicleHouse: string;
 
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
@@ -41,8 +43,9 @@ export function initVehicleModel(sequelize: Sequelize): typeof Vehicle {
       licensePlate: { type: DataTypes.STRING, allowNull: false },
       maxPayload: { type: DataTypes.DOUBLE, allowNull: false }, //tai trong
       volumeCapacity: { type: DataTypes.DOUBLE, allowNull: false }, //dung tich
+      vehicleHouse: { type: DataTypes.STRING, allowNull: false },
     },
-    { sequelize, tableName: "Vehicle", timestamps: true }
+    { sequelize, tableName: "Vehicle", timestamps: true },
   );
 
   return Vehicle;
