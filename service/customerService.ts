@@ -123,6 +123,33 @@ export const customerService = {
 
         const allCustomerIds = customers.map((c) => c.customerId);
         const sanitizedPrefix = prefix.trim().replace(/\s+/g, "").toUpperCase();
+
+        const existedCustomers = await Customer.findAll({
+          where: {
+            [Op.or]: [
+              { customerId: { [Op.like]: `${sanitizedPrefix}%` } },
+              { mst: customerData.mst },
+            ],
+          },
+          attributes: ["customerId", "mst"],
+          transaction,
+        });
+
+        const prefixExists = existedCustomers.some((c) => c.customerId.startsWith(sanitizedPrefix));
+
+        const mstExists = existedCustomers.some((c) => c.mst === customerData.mst);
+
+        if (prefixExists) {
+          throw AppError.Conflict(
+            `Prefix '${sanitizedPrefix}' đã tồn tại, vui lòng chọn prefix khác`,
+            "PREFIX_ALREADY_EXISTS",
+          );
+        }
+
+        if (mstExists) {
+          throw AppError.Conflict(`MST '${customerData.mst}' đã tồn tại`, "MST_ALREADY_EXISTS");
+        }
+
         const newCustomerId = generateNextId(allCustomerIds, sanitizedPrefix, 4);
 
         const maxSeq = (await Customer.max("customerSeq", { transaction })) ?? 0;
@@ -130,13 +157,14 @@ export const customerService = {
 
         const newCustomer = await customerRepository.createCustomer(
           { customerId: newCustomerId, customerSeq: nextSeq, ...customerData },
-          transaction
+          transaction,
         );
 
         return { message: "Customer created successfully", data: newCustomer };
       });
     } catch (error) {
       console.error("❌ Failed to create customer:", error);
+      if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
   },

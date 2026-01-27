@@ -140,6 +140,18 @@ export const employeeService = {
 
     try {
       return await runInTransaction(async (transaction) => {
+        const existedEmployeeCode = await EmployeeCompanyInfo.count({
+          where: { employeeCode: companyInfo.employeeCode },
+          transaction,
+        });
+
+        if (existedEmployeeCode > 0) {
+          throw AppError.Conflict(
+            `Employee code ${companyInfo.employeeCode} already exists`,
+            "EMPLOYEE_CODE_EXISTS",
+          );
+        }
+
         const newBasicInfo = await employeeRepository.createEmployee(
           EmployeeBasicInfo,
           basicInfo,

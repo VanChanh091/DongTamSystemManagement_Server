@@ -27,17 +27,6 @@ export const productRepository = {
   },
 
   //create
-  checkPrefixProduct: async (sanitizedPrefix: string, transaction?: any) => {
-    return await Product.findOne({
-      where: {
-        productId: {
-          [Op.like]: `${sanitizedPrefix}%`,
-        },
-      },
-      transaction,
-    });
-  },
-
   findAllById: async (transaction?: any) => {
     return await Product.findAll({
       attributes: ["productId"],

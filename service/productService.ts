@@ -18,6 +18,7 @@ import cloudinary from "../assest/configs/connectCloudinary";
 import { exportExcelResponse } from "../utils/helper/excelExporter";
 import { mappingProductRow, productColumns } from "../utils/mapping/productRowAndColumn";
 import { runInTransaction } from "../utils/helper/transactionHelper";
+import { Op } from "sequelize";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { product } = CacheManager.keys;
@@ -126,15 +127,16 @@ export const productService = {
         const sanitizedPrefix = prefix.trim().replace(/\s+/g, "").toUpperCase();
 
         // Check prefix đã tồn tại chưa
-        const prefixExists = await productRepository.checkPrefixProduct(
-          sanitizedPrefix,
-          transaction
-        );
+        const existedPrefix = await Product.count({
+          where: { productId: { [Op.like]: `${sanitizedPrefix}%` } },
+        });
 
-        if (prefixExists) {
+        console.log(existedPrefix);
+
+        if (existedPrefix > 0) {
           throw AppError.Conflict(
             `Prefix '${sanitizedPrefix}' đã tồn tại, vui lòng chọn prefix khác`,
-            "PREFIX_ALREADY_EXISTS"
+            "PREFIX_ALREADY_EXISTS",
           );
         }
 
@@ -144,19 +146,22 @@ export const productService = {
         const allProductIds = products.map((p) => p.productId);
         const newProductId = generateNextId(allProductIds, sanitizedPrefix, 4);
 
+        const maxSeq = (await Product.max("productSeq", { transaction })) ?? 0;
+        const nextSeq = Number(maxSeq) + 1;
+
         if (req.file) {
           const webpBuffer = await convertToWebp(req.file.buffer);
           const result = await uploadImageToCloudinary(
             webpBuffer,
             "products",
-            newProductId.replace(/\s+/g, "_")
+            newProductId.replace(/\s+/g, "_"),
           );
           parsedProduct.productImage = result.secure_url;
         }
 
         const newProduct = await productRepository.createProduct(
-          { productId: newProductId, ...parsedProduct },
-          transaction
+          { productId: newProductId, productSeq: nextSeq, ...parsedProduct },
+          transaction,
         );
 
         return { message: "Product created successfully", data: newProduct };
@@ -188,7 +193,7 @@ export const productService = {
         const result = await productRepository.updateProduct(
           existingProduct,
           productData,
-          transaction
+          transaction,
         );
 
         return { message: "Product updated successfully", data: result };
@@ -230,7 +235,7 @@ export const productService = {
 
   exportExcelProducts: async (
     res: Response,
-    { typeProduct, all }: { typeProduct: string; all: string | boolean }
+    { typeProduct, all }: { typeProduct: string; all: string | boolean },
   ) => {
     try {
       let whereCondition: any = {};
