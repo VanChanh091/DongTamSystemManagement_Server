@@ -41,6 +41,75 @@ export const generateOrderId = async (prefix: string) => {
   return `${sanitizedPrefix}${formattedNumber}`;
 };
 
+const calculateFlutePaper = (fields: any) => {
+  const { day, matE, matB, matC, matE2, songE, songB, songC, songE2 } = fields;
+
+  // 1. Đếm tổng số lớp có dữ liệu
+  const allFields = [day, matE, matB, matC, matE2, songE, songB, songC, songE2];
+  const layersCount = allFields.filter((f) => f && f.trim().length > 0).length;
+
+  // 2. Thu thập các loại sóng hiện có
+  const flutesRaw = [];
+  if (songE?.trim()) flutesRaw.push("E");
+  if (songB?.trim()) flutesRaw.push("B");
+  if (songC?.trim()) flutesRaw.push("C");
+  if (songE2?.trim()) flutesRaw.push("E");
+
+  // 3. Sắp xếp sóng theo thứ tự ưu tiên: E -> B -> C
+  const fluteOrder = ["E", "B", "C"];
+
+  const sortedFlutes: any[] = [];
+  for (const f of fluteOrder) {
+    flutesRaw.forEach((raw) => {
+      if (raw === f) sortedFlutes.push(f);
+    });
+  }
+
+  // Kết quả dạng: "5EB" hoặc "3E"
+  return `${layersCount}${sortedFlutes.join("")}`;
+};
+
+export const calculateOrderMetrics = (data: any) => {
+  const qty = parseInt(data.quantityCustomer) || 0;
+  const length = parseFloat(data.lengthPaperCustomer) || 0;
+  const size = parseFloat(data.paperSizeCustomer) || 0;
+  const price = parseFloat(data.price) || 0;
+  const pricePaper = parseFloat(data.pricePaper) || 0;
+  const vat = parseInt(data.vat) || 0;
+
+  // 1. Tính Flute (Dùng hàm calculateFlutePaper mày đã có)
+  const flute = calculateFlutePaper(data);
+
+  // 2. Diện tích (m2)
+  const acreage = Math.round((length * size * qty) / 10000);
+
+  // 3. Tính giá đơn vị (tùy theo ĐVT)
+  let totalPricePaper = 0;
+  if (data.dvt === "M2" || data.dvt === "Tấm") {
+    totalPricePaper = Math.round((length * size * price) / 10000);
+  } else if (data.dvt === "Tấm Bao Khổ") {
+    totalPricePaper = pricePaper;
+  } else {
+    totalPricePaper = Math.round(price);
+  }
+
+  // 4. Tổng tiền và Thuế
+  const totalPrice = Math.round(qty * totalPricePaper);
+  const totalPriceVAT = Math.round(totalPrice * (1 + vat / 100));
+
+  const responseData = {
+    flute,
+    acreage,
+    pricePaper: totalPricePaper,
+    totalPrice,
+    totalPriceVAT,
+  };
+
+  console.log("data:", responseData);
+
+  return responseData;
+};
+
 export const createDataTable = async (id: string, model: any, data: Record<string, any>) => {
   try {
     if (data) {
@@ -72,7 +141,7 @@ export const cachedStatus = async (
   prop1: string,
   prop2: string,
   userId: number | string,
-  role: string
+  role: string,
 ) => {
   // Nếu redis lưu thẳng mảng thì parsed là array
   // Nếu redis lưu object {data: [...]}, thì lấy parsed.data
@@ -87,7 +156,7 @@ export const cachedStatus = async (
     data = ordersArray.filter((order) => [prop1, prop2].includes(order.status));
   } else {
     data = ordersArray.filter(
-      (order) => [prop1, prop2].includes(order.status) && order.userId === userId
+      (order) => [prop1, prop2].includes(order.status) && order.userId === userId,
     );
   }
 

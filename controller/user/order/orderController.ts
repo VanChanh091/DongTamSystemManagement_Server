@@ -1,13 +1,37 @@
 import { NextFunction, Request, Response } from "express";
 import { orderService } from "../../../service/orderService";
 
+//===============================ORDER AUTOCOMPLETE=====================================
+
+export const getOrderIdRaw = async (req: Request, res: Response, next: NextFunction) => {
+  const { orderId } = req.query as { orderId: string };
+
+  try {
+    const response = await orderService.getOrderIdRaw(orderId);
+    return res.status(201).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getOrderDetail = async (req: Request, res: Response, next: NextFunction) => {
+  const { orderId } = req.query as { orderId: string };
+
+  try {
+    const response = await orderService.getOrderDetail(orderId);
+    return res.status(201).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
 //===============================ACCEPT AND PLANNING=====================================
 
 //get order status accept and planning
 export const getOrderAcceptAndPlanning = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const {
     page = 1,
@@ -20,7 +44,7 @@ export const getOrderAcceptAndPlanning = async (
       Number(page),
       Number(pageSize),
       ownOnly,
-      req.user
+      req.user,
     );
     return res.status(201).json(response);
   } catch (error) {
@@ -42,7 +66,7 @@ export const getOrderByField = async (req: Request, res: Response, next: NextFun
       keyword,
       Number(page),
       Number(pageSize),
-      req.user
+      req.user,
     );
     return res.status(201).json(response);
   } catch (error) {

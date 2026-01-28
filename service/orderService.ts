@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import {
   cachedStatus,
+  calculateOrderMetrics,
   createDataTable,
   filterOrdersFromCache,
   generateOrderId,
@@ -15,6 +16,9 @@ import { CacheManager } from "../utils/helper/cacheManager";
 import { Box } from "../models/order/box";
 import { Order } from "../models/order/order";
 import { runInTransaction } from "../utils/helper/transactionHelper";
+import { Op } from "sequelize";
+import { Customer } from "../models/customer/customer";
+import { Product } from "../models/product/product";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { order } = CacheManager.keys;
@@ -149,6 +153,71 @@ export const orderService = {
     }
   },
 
+  //start get Order for auto complete
+  getOrderIdRaw: async (orderId: string) => {
+    try {
+      const data = await Order.findAll({
+        where: { orderId: { [Op.like]: `%${orderId}%` } },
+        attributes: ["orderId", "dayReceiveOrder"],
+        include: [{ model: Customer, attributes: ["customerName"] }],
+        limit: 10,
+      });
+
+      if (data.length === 0) {
+        return { message: "No orderId found", data: [] };
+      }
+
+      return { message: "Get orderId raw successfully", data };
+    } catch (error) {
+      console.error("Error in getOrderIdRaw:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  getOrderDetail: async (orderId: string) => {
+    try {
+      const data = await Order.findOne({
+        where: { orderId },
+        attributes: {
+          exclude: [
+            "flute",
+            "acreage",
+            "totalPrice",
+            "totalPriceVAT",
+            "status",
+            "rejectReason",
+            "createdAt",
+            "updatedAt",
+          ],
+        },
+        include: [
+          {
+            model: Product,
+            attributes: ["maKhuon"],
+          },
+          {
+            model: Box,
+            as: "box",
+            attributes: {
+              exclude: ["boxId", "createdAt", "updatedAt", "orderId"],
+            },
+          },
+        ],
+      });
+      if (!data) {
+        throw AppError.NotFound("OrderId not found", "ORDER_ID_NOT_FOUND");
+      }
+
+      return { message: "Get orderId autocomplete successfully", data };
+    } catch (error) {
+      console.error("Error in getOrderAutocomplete:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+  //end get Order for auto complete
+
   //create order service
   createOrder: async (user: any, data: any) => {
     const { userId } = user;
@@ -164,6 +233,7 @@ export const orderService = {
         if (!validation.success) throw AppError.NotFound(validation.message);
 
         //create id + number auto increase
+        const metrics = calculateOrderMetrics(orderData);
         const newOrderId = await generateOrderId(prefix);
 
         //create order
@@ -174,6 +244,7 @@ export const orderService = {
             productId: productId,
             userId: userId,
             ...orderData,
+            ...metrics,
           },
           { transaction },
         );
@@ -209,7 +280,10 @@ export const orderService = {
           throw AppError.NotFound("Order not found");
         }
 
-        await order.update({ ...orderData }, transaction);
+        const mergedData = { ...order.toJSON(), ...orderData };
+        const metrics = calculateOrderMetrics(mergedData);
+
+        await order.update({ ...orderData, ...metrics }, { transaction });
 
         if (order.isBox) {
           await updateChildOrder(orderId, Box, box);
