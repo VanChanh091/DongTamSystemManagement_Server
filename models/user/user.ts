@@ -85,7 +85,16 @@ export function initUserModel(sequelize: Sequelize): typeof User {
           "https://static.vecteezy.com/system/resources/previews/024/983/914/original/simple-user-default-icon-free-png.png",
       },
     },
-    { sequelize, tableName: "Users", timestamps: true }
+    {
+      sequelize,
+      tableName: "Users",
+      timestamps: true,
+      indexes: [
+        { fields: ["fullName"] },
+        { fields: ["role"] },
+        // { fields: ["permissions"] }
+      ],
+    },
   );
 
   return User;

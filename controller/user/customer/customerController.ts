@@ -89,7 +89,7 @@ export const deleteCustomer = async (req: Request, res: Response, next: NextFunc
   const { customerId } = req.query as { customerId: string };
 
   try {
-    const response = await customerService.deleteCustomer(customerId);
+    const response = await customerService.deleteCustomer(customerId, req.user.role);
     return res.status(200).json(response);
   } catch (error) {
     next(error);

@@ -150,7 +150,7 @@ export const deliveryRepository = {
       include: [
         {
           model: Order,
-          attributes: ["orderId", "dayReceiveOrder", "flute", "QC_box"],
+          attributes: ["orderId", "dayReceiveOrder", "flute", "QC_box", "volume"],
           include: [
             { model: Customer, attributes: ["customerName", "companyName"] },
             { model: Product, attributes: ["typeProduct", "productName"] },
@@ -193,10 +193,6 @@ export const deliveryRepository = {
   //     ],
   //   });
   // },
-
-  findOneFluteRatio: async (flute: string) => {
-    return await FluteRatio.findOne({ where: { fluteName: flute }, attributes: ["ratio"] });
-  },
 
   findAllFluteRatio: async () => {
     return await FluteRatio.findAll({ attributes: ["fluteName", "ratio"], raw: true });
@@ -351,9 +347,17 @@ export const deliveryRepository = {
   //=================================SCHEDULE DELIVERY=====================================
 
   getAllDeliveryPlanByDate: async (deliveryDate: Date, status?: string) => {
+    const whereCondition: any = {
+      deliveryDate: new Date(deliveryDate),
+    };
+
+    if (status) {
+      whereCondition.status = status;
+    }
+
     return await DeliveryPlan.findAll({
       attributes: { exclude: ["createdAt", "updatedAt"] },
-      where: { deliveryDate: new Date(deliveryDate), status },
+      where: whereCondition,
       include: [
         {
           model: DeliveryItem,

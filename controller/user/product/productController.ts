@@ -74,7 +74,7 @@ export const deleteProduct = async (req: Request, res: Response, next: NextFunct
   const { id } = req.params;
 
   try {
-    const response = await productService.deletedProduct(id);
+    const response = await productService.deletedProduct(id, req.user.role);
     return res.status(200).json(response);
   } catch (error) {
     next(error);

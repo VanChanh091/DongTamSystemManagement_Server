@@ -175,27 +175,7 @@ export const deliveryService = {
 
   getPlanningPendingDelivery: async () => {
     try {
-      const planningWaiting = await deliveryRepository.getPlanningPendingDelivery();
-
-      //remove Planning box and calculate volume
-      const data = await Promise.all(
-        planningWaiting.map(async (p: any) => {
-          const plain = p.get({ plain: true });
-
-          //calculate volume
-          const ratioData = await deliveryRepository.findOneFluteRatio(plain.Order?.flute);
-
-          const lengthPaper = plain.lengthPaperPlanning ?? 0;
-          const paperSize = plain.sizePaperPLaning ?? 0;
-          const ratio = ratioData?.ratio ?? 1;
-
-          const rawVolume = lengthPaper * paperSize * ratio;
-          plain.volume = Math.round(rawVolume * 100) / 100;
-
-          // delete plain.PlanningBox;
-          return plain;
-        }),
-      );
+      const data = await deliveryRepository.getPlanningPendingDelivery();
 
       return { message: "get planning waiting delivery successfully", data };
     } catch (error) {
@@ -208,35 +188,7 @@ export const deliveryService = {
   //   try {
   //     const request = await deliveryRepository.getDeliveryRequest();
 
-  //     //remove Planning box and calculate volume
-  //     const data = await Promise.all(
-  //       request.map(async (p: any) => {
-  //         const plain = p.get({ plain: true });
-
-  //         console.log(plain);
-
-  //         //calculate volume
-
-  //         const planning = plain.PlanningPaper;
-  //         const fluteName = planning?.Order?.flute ?? "";
-
-  //         console.log(planning?.Order?.flute ?? "");
-
-  //         const ratioData = await deliveryRepository.findOneFluteRatio(fluteName);
-
-  //         const lengthPaper = planning?.lengthPaperPlanning ?? 0;
-  //         const paperSize = planning?.sizePaperPLaning ?? 0;
-  //         const ratio = ratioData?.ratio ?? 1;
-
-  //         const rawVolume = lengthPaper * paperSize * ratio;
-  //         plain.volume = Math.round(rawVolume * 100) / 100;
-
-  //         // delete plain.PlanningBox;
-  //         return plain;
-  //       }),
-  //     );
-
-  //     return { message: "get planning waiting delivery successfully", data };
+  //     return { message: "get planning waiting delivery successfully", data: request };
   //   } catch (error) {
   //     console.error("❌ get planning waiting delivery failed:", error);
   //     throw AppError.ServerError();
@@ -248,7 +200,6 @@ export const deliveryService = {
   getDeliveryPlanDetailForEdit: async (deliveryDate: Date) => {
     try {
       const plan = await deliveryRepository.getDeliveryPlanByDate(deliveryDate);
-
       if (!plan) {
         return {
           message: "delivery for date has no plan",
@@ -273,19 +224,13 @@ export const deliveryService = {
       const allPlanningIds = [...paperIds, ...boxes.map((b) => b.planningId).filter((id) => id)];
 
       //step 2: get all planning paper detail
-      const [paperData, fluteRatio] = await Promise.all([
-        allPlanningIds.length > 0
-          ? deliveryRepository.getAllPaperByIds(allPlanningIds)
-          : Promise.resolve([]),
-
-        deliveryRepository.findAllFluteRatio(),
-      ]);
+      const paperData =
+        allPlanningIds.length > 0 ? await deliveryRepository.getAllPaperByIds(allPlanningIds) : [];
 
       //create map for quick access
       const paperMap = Object.fromEntries(paperData.map((p) => [p.planningId, p]));
-      const ratioMap = Object.fromEntries(fluteRatio.map((r) => [r.fluteName, r.ratio])); //2E -> 0.0017
 
-      //step 3: merge data and calculate volume
+      //step 3: merge data
       const results = items.map((item) => {
         const itemPlain = item.get({ plain: true });
 
@@ -294,19 +239,7 @@ export const deliveryService = {
 
         let paperInfo = paperMap[targetId] ? { ...paperMap[targetId] } : null;
 
-        //calculate volume
-        let volume = 0;
-        if (paperInfo) {
-          const fluteName = paperInfo.Order?.flute;
-          const ratio = fluteName && ratioMap[fluteName] ? ratioMap[fluteName] : 1;
-          const lengthPaper = paperInfo.lengthPaperPlanning ?? 0;
-          const paperSize = paperInfo.sizePaperPLaning ?? 0;
-
-          const rawVolume = lengthPaper * paperSize * ratio;
-          volume = Math.round(rawVolume * 100) / 100;
-        }
-
-        return { ...itemPlain, Planning: { ...paperInfo, volume } };
+        return { ...itemPlain, Planning: paperInfo };
       });
 
       return {

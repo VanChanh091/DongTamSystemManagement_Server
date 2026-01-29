@@ -11,6 +11,7 @@ import { customerColumns, mappingCustomerRow } from "../utils/mapping/customerRo
 import { Response } from "express";
 import dotenv from "dotenv";
 import { runInTransaction } from "../utils/helper/transactionHelper";
+import { Order } from "../models/order/order";
 dotenv.config();
 
 const devEnvironment = process.env.NODE_ENV !== "production";
@@ -188,14 +189,30 @@ export const customerService = {
     }
   },
 
-  deleteCustomer: async (customerId: string) => {
+  deleteCustomer: async (customerId: string, role: string) => {
     try {
       return await runInTransaction(async (transaction) => {
-        const deletedCustomer = await customerRepository.deleteCustomer(customerId, transaction);
-
-        if (!deletedCustomer) {
+        const customer = await Customer.findByPk(customerId, {
+          attributes: ["customerId"],
+          transaction,
+        });
+        if (!customer) {
           throw AppError.NotFound("Customer not found", "CUSTOMER_NOT_FOUND");
         }
+
+        const orderCount = await Order.count({ where: { customerId }, transaction });
+
+        if (orderCount > 0) {
+          if (role != "admin") {
+            throw AppError.Conflict(
+              `Customer with ID '${customerId}' has associated orders and cannot be deleted.`,
+              "CUSTOMER_HAS_ORDERS",
+            );
+          }
+        }
+
+        await customerRepository.deleteCustomer(customerId, transaction);
+
         return { message: "Customer deleted successfully" };
       });
     } catch (error) {

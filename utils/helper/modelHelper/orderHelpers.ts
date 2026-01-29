@@ -69,7 +69,7 @@ const calculateFlutePaper = (fields: any) => {
   return `${layersCount}${sortedFlutes.join("")}`;
 };
 
-export const calculateOrderMetrics = (data: any) => {
+export const calculateOrderMetrics = async (data: any) => {
   const qty = parseInt(data.quantityCustomer) || 0;
   const length = parseFloat(data.lengthPaperCustomer) || 0;
   const size = parseFloat(data.paperSizeCustomer) || 0;
@@ -77,13 +77,13 @@ export const calculateOrderMetrics = (data: any) => {
   const pricePaper = parseFloat(data.pricePaper) || 0;
   const vat = parseInt(data.vat) || 0;
 
-  // 1. Tính Flute (Dùng hàm calculateFlutePaper mày đã có)
+  // flute
   const flute = calculateFlutePaper(data);
 
-  // 2. Diện tích (m2)
+  // acreage
   const acreage = Math.round((length * size * qty) / 10000);
 
-  // 3. Tính giá đơn vị (tùy theo ĐVT)
+  // price paper
   let totalPricePaper = 0;
   if (data.dvt === "M2" || data.dvt === "Tấm") {
     totalPricePaper = Math.round((length * size * price) / 10000);
@@ -93,9 +93,15 @@ export const calculateOrderMetrics = (data: any) => {
     totalPricePaper = Math.round(price);
   }
 
-  // 4. Tổng tiền và Thuế
+  // total price & vat
   const totalPrice = Math.round(qty * totalPricePaper);
   const totalPriceVAT = Math.round(totalPrice * (1 + vat / 100));
+
+  //volume
+  const ratioData = await orderRepository.findOneFluteRatio(flute);
+  const ratio = ratioData?.ratio ?? 1;
+
+  const volumeRaw = length * size * ratio;
 
   const responseData = {
     flute,
@@ -103,9 +109,8 @@ export const calculateOrderMetrics = (data: any) => {
     pricePaper: totalPricePaper,
     totalPrice,
     totalPriceVAT,
+    volume: volumeRaw,
   };
-
-  console.log("data:", responseData);
 
   return responseData;
 };

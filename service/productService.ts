@@ -19,6 +19,7 @@ import { exportExcelResponse } from "../utils/helper/excelExporter";
 import { mappingProductRow, productColumns } from "../utils/mapping/productRowAndColumn";
 import { runInTransaction } from "../utils/helper/transactionHelper";
 import { Op } from "sequelize";
+import { Order } from "../models/order/order";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { product } = CacheManager.keys;
@@ -205,12 +206,22 @@ export const productService = {
     }
   },
 
-  deletedProduct: async (producId: string) => {
+  deletedProduct: async (productId: string, role: string) => {
     try {
       return await runInTransaction(async (transaction) => {
-        const product = await productRepository.findProductByPk(producId);
+        const product = await productRepository.findProductByPk(productId);
         if (!product) {
           throw AppError.NotFound("Product not found", "PRODUCT_NOT_FOUND");
+        }
+
+        const orderCount = await Order.count({ where: { productId }, transaction });
+        if (orderCount > 0) {
+          if (role != "admin") {
+            throw AppError.Conflict(
+              `Product with ID '${productId}' has associated orders and cannot be deleted.`,
+              "PRODUCT_HAS_ORDERS",
+            );
+          }
         }
 
         const imageName = product.productImage;

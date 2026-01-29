@@ -26,6 +26,7 @@ interface OrderAttributes {
   pricePaper: number;
   totalPrice: number;
   totalPriceVAT: number;
+  volume: number;
   isBox: boolean;
   status: OrderStatus;
 
@@ -93,6 +94,7 @@ export type OrderCreationAttributes = Optional<
   | "totalPriceVAT"
   | "instructSpecial"
   | "rejectReason"
+  | "volume"
   | "isBox"
   | "status"
   | "createdAt"
@@ -137,6 +139,7 @@ export class Order
   declare vat?: number | null;
   declare totalPriceVAT: number;
   declare instructSpecial?: string | null;
+  declare volume: number;
   declare isBox: boolean;
   declare status: OrderStatus;
   declare rejectReason?: string | null;
@@ -192,10 +195,11 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
       totalPrice: { type: DataTypes.DOUBLE, allowNull: false },
       vat: { type: DataTypes.INTEGER },
       totalPriceVAT: { type: DataTypes.DOUBLE, allowNull: false },
+      volume: { type: DataTypes.DOUBLE, allowNull: false },
       instructSpecial: { type: DataTypes.STRING },
       isBox: { type: DataTypes.BOOLEAN, defaultValue: false, allowNull: false },
       status: {
-        type: DataTypes.ENUM("pending", "accept", "reject", "planning", "stop"),
+        type: DataTypes.ENUM("pending", "accept", "reject", "planning", "stop"), //1-2-3-4-5
         allowNull: false,
         defaultValue: "pending",
       },
@@ -210,8 +214,20 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
       sequelize,
       tableName: "Orders",
       timestamps: true,
-      // indexes: [{ fields: ["productSeq"] }, { fields: ["productName"] }],
-    }
+      indexes: [
+        //get
+        { fields: ["customerId"] },
+        { fields: ["productId"] },
+        { fields: ["userId"] },
+
+        //search
+        { fields: ["QC_box"] },
+        { fields: ["price"] },
+
+        //other field
+        { fields: ["status"] },
+      ],
+    },
   );
 
   return Order;

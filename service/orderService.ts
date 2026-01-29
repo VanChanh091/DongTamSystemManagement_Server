@@ -16,9 +16,7 @@ import { CacheManager } from "../utils/helper/cacheManager";
 import { Box } from "../models/order/box";
 import { Order } from "../models/order/order";
 import { runInTransaction } from "../utils/helper/transactionHelper";
-import { Op } from "sequelize";
-import { Customer } from "../models/customer/customer";
-import { Product } from "../models/product/product";
+import { orderRepository } from "../repository/orderRepository";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { order } = CacheManager.keys;
@@ -156,12 +154,7 @@ export const orderService = {
   //start get Order for auto complete
   getOrderIdRaw: async (orderId: string) => {
     try {
-      const data = await Order.findAll({
-        where: { orderId: { [Op.like]: `%${orderId}%` } },
-        attributes: ["orderId", "dayReceiveOrder"],
-        include: [{ model: Customer, attributes: ["customerName"] }],
-        limit: 10,
-      });
+      const data = await orderRepository.getOrderIdRaw(orderId);
 
       if (data.length === 0) {
         return { message: "No orderId found", data: [] };
@@ -177,34 +170,8 @@ export const orderService = {
 
   getOrderDetail: async (orderId: string) => {
     try {
-      const data = await Order.findOne({
-        where: { orderId },
-        attributes: {
-          exclude: [
-            "flute",
-            "acreage",
-            "totalPrice",
-            "totalPriceVAT",
-            "status",
-            "rejectReason",
-            "createdAt",
-            "updatedAt",
-          ],
-        },
-        include: [
-          {
-            model: Product,
-            attributes: ["maKhuon"],
-          },
-          {
-            model: Box,
-            as: "box",
-            attributes: {
-              exclude: ["boxId", "createdAt", "updatedAt", "orderId"],
-            },
-          },
-        ],
-      });
+      const data = await orderRepository.getOrderDetail(orderId);
+
       if (!data) {
         throw AppError.NotFound("OrderId not found", "ORDER_ID_NOT_FOUND");
       }
@@ -233,7 +200,7 @@ export const orderService = {
         if (!validation.success) throw AppError.NotFound(validation.message);
 
         //create id + number auto increase
-        const metrics = calculateOrderMetrics(orderData);
+        const metrics = await calculateOrderMetrics(orderData);
         const newOrderId = await generateOrderId(prefix);
 
         //create order
@@ -281,7 +248,7 @@ export const orderService = {
         }
 
         const mergedData = { ...order.toJSON(), ...orderData };
-        const metrics = calculateOrderMetrics(mergedData);
+        const metrics = await calculateOrderMetrics(mergedData);
 
         await order.update({ ...orderData, ...metrics }, { transaction });
 

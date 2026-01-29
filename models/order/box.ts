@@ -1,5 +1,4 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
-import { Order } from "./order";
 
 //định nghĩa trường trong bảng
 interface BoxAttributes {
@@ -99,7 +98,7 @@ export function initBoxModel(sequelize: Sequelize): typeof Box {
       //FK
       orderId: { type: DataTypes.STRING },
     },
-    { sequelize, tableName: "Boxes", timestamps: true }
+    { sequelize, tableName: "Boxes", timestamps: true },
   );
 
   return Box;
