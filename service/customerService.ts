@@ -1,3 +1,6 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import { Op } from "sequelize";
 import redisCache from "../assest/configs/redisCache";
 import { Customer } from "../models/customer/customer";
@@ -5,14 +8,11 @@ import { customerRepository } from "../repository/customerRepository";
 import { AppError } from "../utils/appError";
 import { CacheManager } from "../utils/helper/cacheManager";
 import { exportExcelResponse } from "../utils/helper/excelExporter";
-import { generateNextId } from "../utils/helper/generateNextId";
 import { filterDataFromCache } from "../utils/helper/modelHelper/orderHelpers";
 import { customerColumns, mappingCustomerRow } from "../utils/mapping/customerRowAndColumn";
 import { Response } from "express";
-import dotenv from "dotenv";
 import { runInTransaction } from "../utils/helper/transactionHelper";
 import { Order } from "../models/order/order";
-dotenv.config();
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { customer } = CacheManager.keys;
@@ -120,24 +120,15 @@ export const customerService = {
 
     try {
       return await runInTransaction(async (transaction) => {
-        const customers = await customerRepository.findAllIds(transaction);
-
-        const allCustomerIds = customers.map((c) => c.customerId);
         const sanitizedPrefix = prefix.trim().replace(/\s+/g, "").toUpperCase();
 
-        const existedCustomers = await Customer.findAll({
-          where: {
-            [Op.or]: [
-              { customerId: { [Op.like]: `${sanitizedPrefix}%` } },
-              { mst: customerData.mst },
-            ],
-          },
-          attributes: ["customerId", "mst"],
+        const existedCustomers = await customerRepository.findByIdOrMst(
+          sanitizedPrefix,
+          customerData.mst,
           transaction,
-        });
+        );
 
         const prefixExists = existedCustomers.some((c) => c.customerId.startsWith(sanitizedPrefix));
-
         const mstExists = existedCustomers.some((c) => c.mst === customerData.mst);
 
         if (prefixExists) {
@@ -151,13 +142,14 @@ export const customerService = {
           throw AppError.Conflict(`MST '${customerData.mst}' đã tồn tại`, "MST_ALREADY_EXISTS");
         }
 
-        const newCustomerId = generateNextId(allCustomerIds, sanitizedPrefix, 4);
-
         const maxSeq = (await Customer.max("customerSeq", { transaction })) ?? 0;
-        const nextSeq = Number(maxSeq) + 1;
+
+        //create next id
+        const nextId = Number(maxSeq) + 1;
+        const newCustomerId = `${prefix}${String(nextId).padStart(4, "0")}`;
 
         const newCustomer = await customerRepository.createCustomer(
-          { customerId: newCustomerId, customerSeq: nextSeq, ...customerData },
+          { customerId: newCustomerId, customerSeq: nextId, ...customerData },
           transaction,
         );
 

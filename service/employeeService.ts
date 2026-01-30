@@ -1,18 +1,18 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+import { Op } from "sequelize";
+import { Response } from "express";
 import { CacheManager } from "../utils/helper/cacheManager";
 import { AppError } from "../utils/appError";
 import { EmployeeBasicInfo } from "../models/employee/employeeBasicInfo";
-import redisCache from "../assest/configs/redisCache";
 import { employeeRepository } from "../repository/employeeRepository";
 import { filterDataFromCache } from "../utils/helper/modelHelper/orderHelpers";
 import { EmployeeCompanyInfo } from "../models/employee/employeeCompanyInfo";
-import { Op } from "sequelize";
 import { exportExcelResponse } from "../utils/helper/excelExporter";
 import { employeeColumns, mappingEmployeeRow } from "../utils/mapping/employeeRowAndColumn";
-import { Response } from "express";
 import { runInTransaction } from "../utils/helper/transactionHelper";
+import redisCache from "../assest/configs/redisCache";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { employee } = CacheManager.keys;
@@ -92,7 +92,6 @@ export const employeeService = {
         fullName: (employee: EmployeeBasicInfo) => employee.fullName,
         phoneNumber: (employee: EmployeeBasicInfo) => employee.phoneNumber,
         employeeCode: (employee: EmployeeBasicInfo) => employee.companyInfo?.employeeCode,
-        department: (employee: EmployeeBasicInfo) => employee.companyInfo.department,
         status: (employee: EmployeeBasicInfo) => employee.companyInfo.status,
       } as const;
 
@@ -140,17 +139,27 @@ export const employeeService = {
 
     try {
       return await runInTransaction(async (transaction) => {
-        const existedEmployeeCode = await EmployeeCompanyInfo.count({
-          where: { employeeCode: companyInfo.employeeCode },
+        const lastEmployee = await EmployeeCompanyInfo.findOne({
+          attributes: ["employeeCode"],
+          order: [["companyInfoId", "DESC"]],
+          lock: transaction.LOCK.UPDATE,
           transaction,
         });
 
-        if (existedEmployeeCode > 0) {
-          throw AppError.Conflict(
-            `Employee code ${companyInfo.employeeCode} already exists`,
-            "EMPLOYEE_CODE_EXISTS",
-          );
+        console.log(lastEmployee?.toJSON());
+
+        let nextNumber = 1;
+        if (lastEmployee && lastEmployee.employeeCode) {
+          const part = lastEmployee.employeeCode.split("-");
+          const lastNumber = parseInt(part[1], 10) || 0;
+          nextNumber = lastNumber + 1;
         }
+
+        // Generate next employee code - format: PREFIX-XXX
+        const prefix = companyInfo.employeeCode.toUpperCase();
+        const nextCode = `${prefix}-${nextNumber.toString().padStart(3, "0")}`;
+
+        console.log(nextCode);
 
         const newBasicInfo = await employeeRepository.createEmployee(
           EmployeeBasicInfo,
@@ -160,7 +169,7 @@ export const employeeService = {
 
         await employeeRepository.createEmployee(
           EmployeeCompanyInfo,
-          { employeeId: newBasicInfo.employeeId, ...companyInfo },
+          { ...companyInfo, employeeId: newBasicInfo.employeeId, employeeCode: nextCode },
           transaction,
         );
 

@@ -1,4 +1,4 @@
-import { Sequelize } from "sequelize";
+import { Op, Sequelize, Transaction } from "sequelize";
 import { Customer } from "../models/customer/customer";
 
 export const customerRepository = {
@@ -23,29 +23,32 @@ export const customerRepository = {
     });
   },
 
-  //create
-  findAllIds: async (transaction?: any) => {
+  findByIdOrMst: async (sanitizedPrefix: string, mst: string, transaction?: Transaction) => {
     return await Customer.findAll({
-      attributes: ["customerId"],
+      where: {
+        [Op.or]: [{ customerId: { [Op.like]: `${sanitizedPrefix}%` } }, { mst }],
+      },
+      attributes: ["customerId", "mst"],
       transaction,
     });
   },
 
-  createCustomer: async (data: any, transaction?: any) => {
+  //create
+  createCustomer: async (data: any, transaction?: Transaction) => {
     return await Customer.create(data, { transaction });
   },
 
   //update
-  findByCustomerId: async (customerId: string, transaction?: any) => {
+  findByCustomerId: async (customerId: string, transaction?: Transaction) => {
     return await Customer.findOne({ where: { customerId }, transaction });
   },
 
-  updateCustomer: async (customer: any, customerData: any, transaction?: any) => {
+  updateCustomer: async (customer: any, customerData: any, transaction?: Transaction) => {
     return await customer.update(customerData, { transaction });
   },
 
   //delete
-  deleteCustomer: async (customerId: string, transaction?: any) => {
+  deleteCustomer: async (customerId: string, transaction?: Transaction) => {
     return await Customer.destroy({
       where: { customerId },
       transaction,

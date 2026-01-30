@@ -65,7 +65,19 @@ export function initEmployeeCompanyInfoModel(sequelize: Sequelize): typeof Emplo
       //FK
       employeeId: { type: DataTypes.INTEGER, allowNull: false },
     },
-    { sequelize, tableName: "EmployeeCompanyInfos", timestamps: true },
+    {
+      sequelize,
+      tableName: "EmployeeCompanyInfos",
+      timestamps: true,
+      indexes: [
+        //FK
+        { fields: ["employeeId"], unique: true },
+
+        //search
+        { fields: ["employeeCode"] },
+        { fields: ["status"] },
+      ],
+    },
   );
 
   return EmployeeCompanyInfo;

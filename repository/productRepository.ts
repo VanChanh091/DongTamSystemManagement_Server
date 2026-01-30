@@ -1,4 +1,4 @@
-import { Op, Sequelize } from "sequelize";
+import { Sequelize, Transaction } from "sequelize";
 import { Product } from "../models/product/product";
 
 export const productRepository = {
@@ -27,19 +27,12 @@ export const productRepository = {
   },
 
   //create
-  findAllById: async (transaction?: any) => {
-    return await Product.findAll({
-      attributes: ["productId"],
-      transaction,
-    });
-  },
-
-  createProduct: async (data: any, transaction?: any) => {
+  createProduct: async (data: any, transaction?: Transaction) => {
     return await Product.create(data, { transaction });
   },
 
   //update
-  updateProduct: async (product: any, productData: any, transaction?: any) => {
+  updateProduct: async (product: any, productData: any, transaction?: Transaction) => {
     return await product.update(productData, { transaction });
   },
 

@@ -1,4 +1,3 @@
-import { Sequelize } from "sequelize";
 import { Customer } from "../models/customer/customer";
 import { Order } from "../models/order/order";
 import { PlanningBox } from "../models/planning/planningBox";
@@ -88,10 +87,8 @@ export const dashboardRepository = {
         },
       ],
       order: [
-        //2. sort theo 3 số đầu của orderId
-        [Sequelize.literal("CAST(SUBSTRING_INDEX(`Order`.`orderId`, '/', 1) AS UNSIGNED)"), "ASC"],
-        //3. nếu trùng orderId thì sort theo dateRequestShipping
-        [{ model: Order }, "dateRequestShipping", "ASC"],
+        //sort theo orderId
+        ["orderSortValue", "ASC"],
       ],
     };
 

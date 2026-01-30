@@ -29,6 +29,7 @@ interface OrderAttributes {
   volume: number;
   isBox: boolean;
   status: OrderStatus;
+  statusPriority: number;
 
   flute?: string | null;
   QC_box?: string | null;
@@ -97,6 +98,7 @@ export type OrderCreationAttributes = Optional<
   | "volume"
   | "isBox"
   | "status"
+  | "statusPriority"
   | "createdAt"
   | "updatedAt"
 >;
@@ -108,6 +110,26 @@ export class Order
 {
   declare orderId: string;
   declare dayReceiveOrder: Date;
+  declare lengthPaperCustomer: number;
+  declare lengthPaperManufacture: number;
+  declare paperSizeCustomer: number;
+  declare paperSizeManufacture: number;
+  declare quantityCustomer: number;
+  declare quantityManufacture: number;
+  declare numberChild: number;
+  declare acreage: number;
+  declare dvt: string;
+  declare price: number;
+  declare pricePaper: number;
+  declare profit: number;
+  declare dateRequestShipping: Date;
+  declare totalPrice: number;
+  declare totalPriceVAT: number;
+  declare volume: number;
+  declare isBox: boolean;
+  declare status: OrderStatus;
+  declare statusPriority: number;
+
   declare flute?: string | null;
   declare QC_box?: string | null;
   declare canLan?: string | null;
@@ -121,27 +143,9 @@ export class Order
   declare songB?: string | null;
   declare songC?: string | null;
   declare songE2?: string | null;
-  declare lengthPaperCustomer: number;
-  declare lengthPaperManufacture: number;
-  declare paperSizeCustomer: number;
-  declare paperSizeManufacture: number;
-  declare quantityCustomer: number;
-  declare quantityManufacture: number;
-  declare numberChild: number;
-  declare acreage: number;
-  declare dvt: string;
-  declare price: number;
-  declare pricePaper: number;
   declare discount?: number | null;
-  declare profit: number;
-  declare dateRequestShipping: Date;
-  declare totalPrice: number;
   declare vat?: number | null;
-  declare totalPriceVAT: number;
   declare instructSpecial?: string | null;
-  declare volume: number;
-  declare isBox: boolean;
-  declare status: OrderStatus;
   declare rejectReason?: string | null;
 
   declare readonly createdAt?: Date;
@@ -161,6 +165,14 @@ export class Order
 }
 
 export function initOrderModel(sequelize: Sequelize): typeof Order {
+  const priorityMap: Record<string, number> = {
+    pending: 1,
+    accept: 2,
+    reject: 3,
+    planning: 4,
+    stop: 5,
+  };
+
   Order.init(
     {
       orderId: { type: DataTypes.STRING(14), allowNull: false, primaryKey: true },
@@ -205,6 +217,10 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
       },
       rejectReason: { type: DataTypes.STRING },
 
+      //sort
+      orderSortValue: { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 },
+      statusPriority: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
+
       //FK
       customerId: { type: DataTypes.STRING },
       productId: { type: DataTypes.STRING },
@@ -214,6 +230,29 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
       sequelize,
       tableName: "Orders",
       timestamps: true,
+      hooks: {
+        beforeSave: (order: any) => {
+          if (order.changed("status")) {
+            order.statusPriority = priorityMap[order.status] || 1;
+          }
+
+          if (order.changed("orderId") && order.orderId) {
+            const parts = order.orderId.split("/"); // Ví dụ: [123, 11, 25, D002]
+
+            if (parts.length >= 4) {
+              const po = parseInt(parts[0], 10) || 0;
+              const month = parseInt(parts[1], 10) || 0;
+              const year = parseInt(parts[2], 10) || 0;
+
+              // Tách số từ hậu tố "D002" -> 002
+              const suffix = parseInt(parts[3].replace(/\D/g, ""), 10) || 0;
+
+              // Công thức: Value = (Year * 10^9) + (Month * 10^7) + (PO * 10^3) + Suffix
+              order.orderSortValue = year * 1000000000 + month * 10000000 + po * 1000 + suffix;
+            }
+          }
+        },
+      },
       indexes: [
         //get
         { fields: ["customerId"] },
@@ -226,6 +265,9 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
 
         //other field
         { fields: ["status"] },
+
+        //sort
+        { fields: ["statusPriority", "orderSortValue"] },
       ],
     },
   );

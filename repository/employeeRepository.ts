@@ -46,10 +46,7 @@ export const employeeRepository = {
       ],
       offset: (page - 1) * pageSize,
       limit: pageSize,
-      order: [
-        //lấy 3 số cuối -> ép chuỗi thành số để so sánh -> sort
-        [Sequelize.literal("CAST(RIGHT(`companyInfo`.`employeeCode`, 3) AS UNSIGNED)"), "ASC"],
-      ],
+      order: [["employeeId", "ASC"]],
     });
   },
 
@@ -61,9 +58,14 @@ export const employeeRepository = {
           model: EmployeeCompanyInfo,
           as: "companyInfo",
           attributes: ["position", "department"],
-          where: where(fn("LOWER", col("companyInfo.position")), {
-            [Op.like]: "%trưởng máy%",
-          }),
+          where: {
+            [Op.and]: [
+              where(fn("LOWER", col("companyInfo.position")), {
+                [Op.like]: "%trưởng máy%",
+              }),
+              { status: "Đang làm việc" },
+            ],
+          },
         },
       ],
     });

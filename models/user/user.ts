@@ -89,11 +89,7 @@ export function initUserModel(sequelize: Sequelize): typeof User {
       sequelize,
       tableName: "Users",
       timestamps: true,
-      indexes: [
-        { fields: ["fullName"] },
-        { fields: ["role"] },
-        // { fields: ["permissions"] }
-      ],
+      indexes: [{ fields: ["fullName"] }],
     },
   );
 

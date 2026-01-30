@@ -12,7 +12,6 @@ import {
   getCloudinaryPublicId,
   uploadImageToCloudinary,
 } from "../utils/image/converToWebp";
-import { generateNextId } from "../utils/helper/generateNextId";
 import { Request, Response } from "express";
 import cloudinary from "../assest/configs/connectCloudinary";
 import { exportExcelResponse } from "../utils/helper/excelExporter";
@@ -132,8 +131,6 @@ export const productService = {
           where: { productId: { [Op.like]: `${sanitizedPrefix}%` } },
         });
 
-        console.log(existedPrefix);
-
         if (existedPrefix > 0) {
           throw AppError.Conflict(
             `Prefix '${sanitizedPrefix}' đã tồn tại, vui lòng chọn prefix khác`,
@@ -141,14 +138,11 @@ export const productService = {
           );
         }
 
-        const products = await productRepository.findAllById(transaction);
-
-        //custom productId
-        const allProductIds = products.map((p) => p.productId);
-        const newProductId = generateNextId(allProductIds, sanitizedPrefix, 4);
-
         const maxSeq = (await Product.max("productSeq", { transaction })) ?? 0;
-        const nextSeq = Number(maxSeq) + 1;
+
+        //create next id
+        const nextId = Number(maxSeq) + 1;
+        const newProductId = `${prefix}${String(nextId).padStart(4, "0")}`;
 
         if (req.file) {
           const webpBuffer = await convertToWebp(req.file.buffer);
@@ -161,7 +155,7 @@ export const productService = {
         }
 
         const newProduct = await productRepository.createProduct(
-          { productId: newProductId, productSeq: nextSeq, ...parsedProduct },
+          { productId: newProductId, productSeq: nextId, ...parsedProduct },
           transaction,
         );
 
