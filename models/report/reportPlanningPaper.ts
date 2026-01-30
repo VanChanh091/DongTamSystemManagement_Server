@@ -65,7 +65,19 @@ export function initReportPlanningPaperModel(sequelize: Sequelize): typeof Repor
       //FK
       planningId: { type: DataTypes.INTEGER, allowNull: false },
     },
-    { sequelize, tableName: "ReportPlanningPapers", timestamps: true }
+    {
+      sequelize,
+      tableName: "ReportPlanningPapers",
+      timestamps: true,
+      indexes: [
+        //FK
+        { fields: ["planningId"] },
+
+        //indexes
+        { fields: ["dayReport"] },
+        { fields: ["shiftManagement"] },
+      ],
+    },
   );
 
   return ReportPlanningPaper;

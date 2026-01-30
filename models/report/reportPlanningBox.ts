@@ -65,7 +65,20 @@ export function initReportPlanningBoxModel(sequelize: Sequelize): typeof ReportP
       //FK
       planningBoxId: { type: DataTypes.INTEGER, allowNull: false },
     },
-    { sequelize, tableName: "ReportPlanningBoxes", timestamps: true }
+    {
+      sequelize,
+      tableName: "ReportPlanningBoxes",
+      timestamps: true,
+      indexes: [
+        //FK
+        { fields: ["planningBoxId"] },
+
+        //indexes
+        { fields: ["dayReport"] },
+        { fields: ["shiftManagement"] },
+        { fields: ["machine"] },
+      ],
+    },
   );
 
   return ReportPlanningBox;

@@ -170,7 +170,19 @@ export function initPlanningBoxModel(sequelize: Sequelize): typeof PlanningBox {
       orderId: { type: DataTypes.STRING, allowNull: false },
       planningId: { type: DataTypes.INTEGER, allowNull: false },
     },
-    { sequelize, tableName: "PlanningBoxes", timestamps: true }
+    {
+      sequelize,
+      tableName: "PlanningBoxes",
+      timestamps: true,
+      indexes: [
+        //FK
+        { fields: ["orderId"] },
+        { fields: ["planningId"], unique: true },
+
+        //indexes
+        { fields: ["orderId", "planningId"] },
+      ],
+    },
   );
 
   return PlanningBox;

@@ -58,7 +58,19 @@ export function initOutboundDetailModel(sequelize: Sequelize): typeof OutboundDe
       orderId: { type: DataTypes.STRING, allowNull: false },
       outboundId: { type: DataTypes.INTEGER, allowNull: false },
     },
-    { sequelize, tableName: "OutboundDetail", timestamps: true }
+    {
+      sequelize,
+      tableName: "OutboundDetail",
+      timestamps: true,
+      indexes: [
+        //FK
+        { fields: ["orderId"] },
+        { fields: ["outboundId"] },
+
+        //indexes
+        { fields: ["orderId", "outboundId"] },
+      ],
+    },
   );
 
   return OutboundDetail;

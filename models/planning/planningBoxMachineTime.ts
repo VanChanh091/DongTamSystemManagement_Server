@@ -112,7 +112,7 @@ export function initPlanningBoxTimeModel(sequelize: Sequelize): typeof PlanningB
           "Máy Dán",
           "Máy Cắt Khe",
           "Máy Cán Màng",
-          "Máy Đóng Ghim"
+          "Máy Đóng Ghim",
         ),
         allowNull: false,
       },
@@ -128,7 +128,27 @@ export function initPlanningBoxTimeModel(sequelize: Sequelize): typeof PlanningB
       //FK
       planningBoxId: { type: DataTypes.INTEGER, allowNull: false },
     },
-    { sequelize, tableName: "PlanningBoxTimes", timestamps: true }
+    {
+      sequelize,
+      tableName: "PlanningBoxTimes",
+      timestamps: true,
+      indexes: [
+        //FK
+        { fields: ["planningBoxId"] },
+
+        //indexes
+        { fields: ["machine"] },
+        { fields: ["status"] },
+
+        { fields: ["machine", "planningBoxId", "status"] },
+        { fields: ["machine", "dayStart"] },
+
+        //   isRequest
+        //   sortPlanning
+        // runningPlan
+        // timeRunning
+      ],
+    },
   );
 
   return PlanningBoxTime;

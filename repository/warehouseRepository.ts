@@ -20,7 +20,7 @@ export const warehouseRepository = {
   //paper
   getPaperWaitingChecked: async () => {
     return await PlanningPaper.findAll({
-      where: { statusRequest: { [Op.in]: ["requested", "inbounded"] }, hasBox: false },
+      where: { hasBox: false, statusRequest: { [Op.in]: ["requested", "inbounded"] } },
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {
@@ -134,7 +134,7 @@ export const warehouseRepository = {
 
   getInboundSumByPlanning: async (
     key: "planningId" | "planningBoxId",
-    ids: number[]
+    ids: number[],
   ): Promise<InboundSumByPlanning[]> => {
     if (!ids.length) return [];
 
@@ -288,11 +288,7 @@ export const warehouseRepository = {
 
   searchOrderIds: async (keyword: string) => {
     return await Order.findAll({
-      where: {
-        orderId: {
-          [Op.startsWith]: keyword,
-        },
-      },
+      where: { orderId: { [Op.startsWith]: keyword } },
       attributes: ["orderId", "dayReceiveOrder"],
       include: [
         { model: Customer, attributes: ["customerName"] },

@@ -58,7 +58,7 @@ export const planningRepository = {
         { model: PlanningPaper, attributes: ["planningId", "runningPlan", "qtyProduced"] },
       ],
       order: [
-        [Sequelize.literal("CAST(SUBSTRING_INDEX(`Order`.`orderId`, '/', 1) AS UNSIGNED)"), "ASC"],
+        ["orderSortValue", "ASC"],
         ["dateRequestShipping", "ASC"],
       ],
     });
@@ -101,14 +101,14 @@ export const planningRepository = {
   },
 
   //====================================QUEUE PAPER========================================
-  getPlanningPaperCount: async (whereCondition: any = {}) => {
-    return await PlanningPaper.count({ where: whereCondition });
+  getPlanningPaperCount: async () => {
+    return await PlanningPaper.count({ where: { status: "stop" } });
   },
 
   getPlanningPaper: async ({
     page = 1,
     pageSize = 20,
-    whereCondition = {},
+    whereCondition,
     paginate = false,
   }: {
     page?: number;
@@ -454,6 +454,7 @@ export const planningRepository = {
 
   getStopByIds: async (planningIds: number[]) => {
     return PlanningPaper.findAll({
+      where: { planningId: { [Op.in]: planningIds } },
       attributes: [
         "planningId",
         "dayCompleted",
@@ -462,7 +463,6 @@ export const planningRepository = {
         "status",
         "sortPlanning",
       ],
-      where: { planningId: { [Op.in]: planningIds } },
     });
   },
 

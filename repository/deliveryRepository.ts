@@ -18,8 +18,8 @@ export const deliveryRepository = {
   getPlanningEstimateTime: async (dayStart: Date) => {
     return await PlanningPaper.findAll({
       where: {
-        dayStart: { [Op.lte]: dayStart },
         deliveryPlanned: "none",
+        dayStart: { [Op.lte]: dayStart },
         status: { [Op.notIn]: ["stop", "cancel"] },
       },
       attributes: {

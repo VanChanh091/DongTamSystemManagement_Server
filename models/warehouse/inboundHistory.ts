@@ -69,8 +69,18 @@ export function initInboundHistoryModel(sequelize: Sequelize): typeof InboundHis
       sequelize,
       tableName: "InboundHistory",
       timestamps: true,
-      indexes: [{ fields: ["orderId"] }],
-    }
+      indexes: [
+        //FK
+        { fields: ["orderId"] },
+        { fields: ["planningId"] },
+        { fields: ["planningBoxId"] },
+        { fields: ["qcSessionId"] },
+
+        //indexes
+        { fields: ["dateInbound"] },
+        { fields: ["qtyInbound"] },
+      ],
+    },
   );
 
   return InboundHistory;

@@ -184,7 +184,6 @@ export const planningPaperService = {
         orderId: (paper: PlanningPaper) => paper.orderId,
         ghepKho: (paper: PlanningPaper) => paper.ghepKho,
         customerName: (paper: PlanningPaper) => paper.Order.Customer.customerName,
-        flute: (paper: PlanningPaper) => paper.Order.flute,
       } as const;
 
       const key = field as keyof typeof fieldMap;
@@ -494,8 +493,6 @@ export const planningPaperService = {
 
         // Lấy lại danh sách đã update
         const plannings = await planningRepository.getPapersByUpdateIndex(updateIndex, transaction);
-
-        // console.log(plannings.map((p) => ({ id: p.planningId, sort: p?.sortPlanning })));
 
         // Lấy thông tin máy
         const machineInfo = await planningRepository.getModelById({

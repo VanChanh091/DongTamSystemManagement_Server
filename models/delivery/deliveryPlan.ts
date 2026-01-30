@@ -50,8 +50,8 @@ export function initDeliveryPlanModel(sequelize: Sequelize): typeof DeliveryPlan
       sequelize,
       tableName: "DeliveryPlan",
       timestamps: true,
-      indexes: [{ fields: ["deliveryDate"] }],
-    }
+      indexes: [{ fields: ["deliveryDate"] }, { fields: ["status"] }],
+    },
   );
 
   return DeliveryPlan;

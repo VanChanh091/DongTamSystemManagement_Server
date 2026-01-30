@@ -50,7 +50,15 @@ export function initOutboundHistoryModel(sequelize: Sequelize): typeof OutboundH
       totalPricePayment: { type: DataTypes.DOUBLE, allowNull: false },
       totalOutboundQty: { type: DataTypes.INTEGER, allowNull: false },
     },
-    { sequelize, tableName: "OutboundHistory", timestamps: true }
+    {
+      sequelize,
+      tableName: "OutboundHistory",
+      timestamps: true,
+      indexes: [
+        //indexes
+        { fields: ["dateOutbound"] },
+      ],
+    },
   );
 
   return OutboundHistory;

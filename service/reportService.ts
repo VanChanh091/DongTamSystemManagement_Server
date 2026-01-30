@@ -1,17 +1,18 @@
 import dotenv from "dotenv";
-import { CacheManager } from "../utils/helper/cacheManager";
+dotenv.config();
+
+import { Op } from "sequelize";
+import { Response } from "express";
 import { AppError } from "../utils/appError";
+import { CacheManager } from "../utils/helper/cacheManager";
 import { ReportPlanningPaper } from "../models/report/reportPlanningPaper";
-import redisCache from "../assest/configs/redisCache";
 import { reportRepository } from "../repository/reportRepository";
 import { filterReportByField } from "../utils/helper/modelHelper/reportHelper";
 import { ReportPlanningBox } from "../models/report/reportPlanningBox";
-import { Op } from "sequelize";
 import { exportExcelResponse } from "../utils/helper/excelExporter";
 import { mapReportPaperRow, reportPaperColumns } from "../utils/mapping/reportPaperRowAndColumn";
-import { Response } from "express";
 import { mapReportBoxRow, reportBoxColumns } from "../utils/mapping/reportBoxRowAndColumn";
-dotenv.config();
+import redisCache from "../assest/configs/redisCache";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper } = CacheManager.keys.report;
@@ -64,15 +65,13 @@ export const reportService = {
     keyword: string,
     machine: string,
     page: number,
-    pageSize: number
+    pageSize: number,
   ) => {
     try {
       const fieldMap = {
         customerName: (report: ReportPlanningPaper) =>
           report?.Planning?.Order?.Customer?.customerName,
         dayReported: (report: ReportPlanningPaper) => report?.dayReport,
-        qtyProduced: (report: ReportPlanningPaper) => report?.qtyProduced,
-        ghepKho: (report: ReportPlanningPaper) => report?.Planning?.ghepKho,
         shiftManagement: (report: ReportPlanningPaper) => report?.shiftManagement,
         orderId: (report: ReportPlanningPaper) => report?.Planning?.Order?.orderId,
       } as const;
@@ -144,14 +143,13 @@ export const reportService = {
     keyword: string,
     machine: string,
     page: number,
-    pageSize: number
+    pageSize: number,
   ) => {
     try {
       const fieldMap = {
         customerName: (report: ReportPlanningBox) =>
           report?.PlanningBox?.Order?.Customer?.customerName,
         dayReported: (report: ReportPlanningBox) => report?.dayReport,
-        qtyProduced: (report: ReportPlanningBox) => report?.qtyProduced,
         QcBox: (report: ReportPlanningBox) => report?.PlanningBox?.Order?.QC_box,
         shiftManagement: (report: ReportPlanningBox) => report?.shiftManagement,
         orderId: (report: ReportPlanningBox) => report?.PlanningBox?.Order?.orderId,
@@ -187,7 +185,7 @@ export const reportService = {
     fromDate: string | Date,
     toDate: string | Date,
     reportPaperId: number[],
-    machine: string
+    machine: string,
   ) => {
     try {
       let whereCondition: any = {};
@@ -224,7 +222,7 @@ export const reportService = {
     fromDate: string | Date,
     toDate: string | Date,
     reportBoxId: number[],
-    machine: string
+    machine: string,
   ) => {
     try {
       let whereCondition: any = {};

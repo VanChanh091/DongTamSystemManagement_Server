@@ -13,7 +13,6 @@ import { MachineBox } from "../../models/admin/machineBox";
 import { Request } from "express";
 import { calTimeRunningPlanningBox } from "./helper/timeRunningBox";
 import { getPlanningByField } from "../../utils/helper/modelHelper/planningHelper";
-import { warehouseRepository } from "../../repository/warehouseRepository";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
@@ -30,7 +29,7 @@ export const planningBoxService = {
           { model: PlanningBoxTime },
           { model: timeOverflowPlanning, where: { planningBoxId: { [Op.ne]: null } } },
         ],
-        "planningBox"
+        "planningBox",
       );
 
       if (isChanged) {
@@ -73,7 +72,7 @@ export const planningBoxService = {
         const boxTimes = (planning as any).boxTimes || [];
 
         const hasValidStatus = boxTimes.some((bt: any) =>
-          ["planning", "lackOfQty", "producing"].includes(bt.status)
+          ["planning", "lackOfQty", "producing"].includes(bt.status),
         );
 
         const hasRecentComplete = boxTimes.some((bt: any) => {
@@ -93,10 +92,10 @@ export const planningBoxService = {
 
       // 3. Phân loại withSort và noSort
       const withSort = validData.filter((item) =>
-        item.boxTimes?.some((bt: any) => bt.sortPlanning !== null)
+        item.boxTimes?.some((bt: any) => bt.sortPlanning !== null),
       );
       const noSort = validData.filter(
-        (item) => !item.boxTimes?.some((bt: any) => bt.sortPlanning !== null)
+        (item) => !item.boxTimes?.some((bt: any) => bt.sortPlanning !== null),
       );
 
       // Sắp xếp withSort theo sortPlanning (dùng sortPlanning đầu tiên trong boxTimes)
@@ -248,7 +247,7 @@ export const planningBoxService = {
         if (box.PlanningBox.statusRequest !== "finalize") {
           throw AppError.BadRequest(
             `Mã đơn ${box.PlanningBox.orderId} chưa được chốt nhập kho`,
-            "PLANNING_NOT_FINALIZED"
+            "PLANNING_NOT_FINALIZED",
           );
         }
       }
@@ -291,7 +290,7 @@ export const planningBoxService = {
         if (planning.sortPlanning === null) {
           throw AppError.Conflict(
             "Cannot pause planning without sortPlanning",
-            "CANNOT_PAUSE_NO_SORT"
+            "CANNOT_PAUSE_NO_SORT",
           );
         }
 
@@ -341,7 +340,7 @@ export const planningBoxService = {
             where: {
               planningBoxId: item.planningBoxId,
               machine,
-              status: { [Op.ne]: "complete" }, //lọc đơn đã complete
+              status: { [Op.ne]: "complete" }, //lọc bỏ đơn đã complete
             },
             options: { transaction },
           });
@@ -359,7 +358,7 @@ export const planningBoxService = {
         const sortedPlannings = await planningRepository.getBoxesByUpdateIndex(
           updateIndex,
           machine,
-          transaction
+          transaction,
         );
 
         // console.log(
@@ -369,9 +368,7 @@ export const planningBoxService = {
         // 3. Tính toán thời gian chạy cho từng planning
         const machineInfo = await planningRepository.getModelById({
           model: MachineBox,
-          where: {
-            machineName: machine,
-          },
+          where: { machineName: machine },
         });
 
         if (!machineInfo) throw AppError.NotFound(`machine not found`, "MACHINE_NOT_FOUND");

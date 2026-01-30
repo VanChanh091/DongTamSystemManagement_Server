@@ -173,6 +173,7 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
         },
       },
       timeRunning: { type: DataTypes.TIME },
+
       dayReplace: { type: DataTypes.STRING },
       matEReplace: { type: DataTypes.STRING },
       matBReplace: { type: DataTypes.STRING },
@@ -182,12 +183,14 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
       songBReplace: { type: DataTypes.STRING },
       songCReplace: { type: DataTypes.STRING },
       songE2Replace: { type: DataTypes.STRING },
+
       lengthPaperPlanning: { type: DataTypes.DOUBLE, allowNull: false },
       sizePaperPLaning: { type: DataTypes.DOUBLE, allowNull: false },
       runningPlan: { type: DataTypes.INTEGER, allowNull: false },
       qtyProduced: { type: DataTypes.INTEGER },
       numberChild: { type: DataTypes.INTEGER, allowNull: false },
       ghepKho: { type: DataTypes.INTEGER },
+
       bottom: { type: DataTypes.DOUBLE },
       fluteE: { type: DataTypes.DOUBLE },
       fluteB: { type: DataTypes.DOUBLE },
@@ -196,12 +199,14 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
       knife: { type: DataTypes.DOUBLE },
       totalLoss: { type: DataTypes.DOUBLE },
       qtyWasteNorm: { type: DataTypes.DOUBLE },
+
+      shiftProduction: { type: DataTypes.STRING },
+      shiftManagement: { type: DataTypes.STRING },
+
       chooseMachine: {
         type: DataTypes.ENUM("Máy 1350", "Máy 1900", "Máy 2 Lớp", "Máy Quấn Cuồn"),
         allowNull: false,
       },
-      shiftProduction: { type: DataTypes.STRING },
-      shiftManagement: { type: DataTypes.STRING },
       status: {
         type: DataTypes.ENUM("planning", "complete", "lackQty", "producing", "stop", "cancel"),
         allowNull: false,
@@ -226,7 +231,31 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
       //FK
       orderId: { type: DataTypes.STRING },
     },
-    { sequelize, tableName: "Plannings", timestamps: true },
+    {
+      sequelize,
+      tableName: "Plannings",
+      timestamps: true,
+      indexes: [
+        //FK
+        { fields: ["orderId"] },
+
+        //search
+        { fields: ["ghepKho"] },
+
+        //indexes
+        { fields: ["sortPlanning"] },
+        { fields: ["status"] },
+
+        //Composite indexes
+        { fields: ["chooseMachine", "status"] },
+        { fields: ["chooseMachine", "dayStart"] },
+        { fields: ["deliveryPlanned", "dayStart", "status"] },
+        { fields: ["dayStart", "timeRunning"] },
+
+        //get paper waiting check
+        { fields: ["hasBox", "statusRequest"] },
+      ],
+    },
   );
 
   return PlanningPaper;

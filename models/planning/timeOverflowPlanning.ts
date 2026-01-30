@@ -84,7 +84,22 @@ export function initTimeOverflowPlanningModel(sequelize: Sequelize): typeof time
       planningId: { type: DataTypes.INTEGER },
       planningBoxId: { type: DataTypes.INTEGER },
     },
-    { sequelize, tableName: "timeOverflowPlannings", timestamps: true }
+    {
+      sequelize,
+      tableName: "timeOverflowPlannings",
+      timestamps: true,
+      indexes: [
+        //FK
+        { fields: ["planningId"], unique: true },
+        { fields: ["planningBoxId"], unique: true },
+
+        //indexes
+        { fields: ["overflowDayStart"] },
+        { fields: ["overflowTimeRunning"] },
+        { fields: ["machine"] },
+        { fields: ["planningBoxId", "machine"] },
+      ],
+    },
   );
 
   return timeOverflowPlanning;

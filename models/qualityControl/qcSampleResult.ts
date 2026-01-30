@@ -50,7 +50,19 @@ export function initQcSamepleResultModel(sequelize: Sequelize): typeof QcSampleR
       //FK
       qcSessionId: { type: DataTypes.INTEGER, allowNull: false },
     },
-    { sequelize, tableName: "QcSampleResult", timestamps: true }
+    {
+      sequelize,
+      tableName: "QcSampleResult",
+      timestamps: true,
+      indexes: [
+        //FK
+        { fields: ["qcSessionId"] },
+
+        //indexes
+        { fields: ["sampleIndex"] },
+        { fields: ["qcSessionId", "sampleIndex"] },
+      ],
+    },
   );
 
   return QcSampleResult;

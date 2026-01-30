@@ -69,7 +69,19 @@ export function initDeliveryItemModel(sequelize: Sequelize): typeof DeliveryItem
       deliveryId: { type: DataTypes.INTEGER, allowNull: false },
       vehicleId: { type: DataTypes.INTEGER, allowNull: false },
     },
-    { sequelize, tableName: "DeliveryItem", timestamps: true },
+    {
+      sequelize,
+      tableName: "DeliveryItem",
+      timestamps: true,
+      indexes: [
+        //FK
+        { fields: ["deliveryId"] },
+        { fields: ["vehicleId"] },
+
+        //indexes
+        { fields: ["deliveryId", "status"] },
+      ],
+    },
   );
 
   return DeliveryItem;

@@ -69,14 +69,7 @@ export function initEmployeeCompanyInfoModel(sequelize: Sequelize): typeof Emplo
       sequelize,
       tableName: "EmployeeCompanyInfos",
       timestamps: true,
-      indexes: [
-        //FK
-        { fields: ["employeeId"], unique: true },
-
-        //search
-        { fields: ["employeeCode"] },
-        { fields: ["status"] },
-      ],
+      indexes: [{ fields: ["employeeId"] }],
     },
   );
 

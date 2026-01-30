@@ -51,13 +51,7 @@ export function initProductModel(sequelize: Sequelize): typeof Product {
       sequelize,
       tableName: "Products",
       timestamps: true,
-      indexes: [
-        //get
-        { fields: ["productSeq"] },
-
-        //search
-        { fields: ["productName"] },
-      ],
+      indexes: [{ fields: ["productSeq"] }],
     },
   );
 

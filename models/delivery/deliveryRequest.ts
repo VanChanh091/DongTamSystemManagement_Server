@@ -60,6 +60,14 @@ export function initDeliveryRequestModel(sequelize: Sequelize): typeof DeliveryR
       sequelize,
       tableName: "DeliveryRequest",
       timestamps: true,
+      indexes: [
+        //FK
+        { fields: ["planningId"] },
+        { fields: ["userId"] },
+
+        //indexes
+        { fields: ["status"] },
+      ],
     },
   );
 

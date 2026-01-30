@@ -26,7 +26,7 @@ export const planningStatusService = {
     try {
       const { isChanged: order } = await CacheManager.check(
         [{ model: Order, where: { status: "accept" } }],
-        "planningOrder"
+        "planningOrder",
       );
 
       const { isChanged: planningPaper } = await CacheManager.check(
@@ -35,7 +35,7 @@ export const planningStatusService = {
           { model: timeOverflowPlanning, where: { planningId: { [Op.ne]: null } } },
         ],
         "planningOrderPaper",
-        { setCache: false }
+        { setCache: false },
       );
 
       const isChangedData = order || planningPaper;
@@ -50,7 +50,7 @@ export const planningStatusService = {
       }
 
       const result = await planningRepository.getOrderAccept();
-      const responseData = { message: "", data: result };
+      const responseData = { message: "get order accept successfully", data: result };
 
       await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
 
@@ -83,7 +83,7 @@ export const planningStatusService = {
 
       if (!wasteNorm || !waveCoeff) {
         throw new Error(
-          `WasteNorm or WaveCrestCoefficient not found for machine: ${chooseMachine}`
+          `WasteNorm or WaveCrestCoefficient not found for machine: ${chooseMachine}`,
         );
       }
 
@@ -125,7 +125,7 @@ export const planningStatusService = {
         waveCoeff: any,
         runningPlan: number,
         numberChild: number,
-        waveTypes: string[]
+        waveTypes: string[],
       ) => {
         const gkTh = ghepKho / 100;
         let flute = { E: 0, B: 0, C: 0, E2: 0 };
@@ -227,7 +227,7 @@ export const planningStatusService = {
         waveCoeff,
         planningData.runningPlan,
         order.numberChild,
-        waveTypes
+        waveTypes,
       );
       Object.assign(paperPlan, waste);
       await paperPlan.save();
@@ -303,7 +303,7 @@ export const planningStatusService = {
           { model: PlanningPaper },
           { model: timeOverflowPlanning, where: { planningId: { [Op.ne]: null } } },
         ],
-        "planningStop"
+        "planningStop",
       );
 
       if (isChanged) {
@@ -316,11 +316,10 @@ export const planningStatusService = {
         }
       }
 
-      const whereCondition = { status: "stop" };
-
-      const totalPlannings = await planningRepository.getPlanningPaperCount(whereCondition);
+      const totalPlannings = await planningRepository.getPlanningPaperCount();
       const totalPages = Math.ceil(totalPlannings / pageSize);
 
+      const whereCondition = { status: "stop" };
       const data = await planningRepository.getPlanningPaper({
         page,
         pageSize,

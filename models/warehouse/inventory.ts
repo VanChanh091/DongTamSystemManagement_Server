@@ -61,8 +61,14 @@ export function initInventoryModel(sequelize: Sequelize): typeof Inventory {
       sequelize,
       tableName: "Inventory",
       timestamps: true,
-      indexes: [{ unique: true, fields: ["orderId"] }],
-    }
+      indexes: [
+        //FK
+        { unique: true, fields: ["orderId"] },
+
+        //indexes
+        { fields: ["qtyInventory"] },
+      ],
+    },
   );
 
   return Inventory;

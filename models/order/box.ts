@@ -98,7 +98,12 @@ export function initBoxModel(sequelize: Sequelize): typeof Box {
       //FK
       orderId: { type: DataTypes.STRING },
     },
-    { sequelize, tableName: "Boxes", timestamps: true },
+    {
+      sequelize,
+      tableName: "Boxes",
+      timestamps: true,
+      indexes: [{ unique: true, fields: ["orderId"] }],
+    },
   );
 
   return Box;
