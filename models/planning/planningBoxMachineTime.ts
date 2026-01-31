@@ -141,12 +141,7 @@ export function initPlanningBoxTimeModel(sequelize: Sequelize): typeof PlanningB
         { fields: ["status"] },
 
         { fields: ["machine", "planningBoxId", "status"] },
-        { fields: ["machine", "dayStart"] },
-
-        //   isRequest
-        //   sortPlanning
-        // runningPlan
-        // timeRunning
+        { fields: ["machine", "dayStart", "sortPlanning"] },
       ],
     },
   );

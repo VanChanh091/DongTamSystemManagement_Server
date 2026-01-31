@@ -54,7 +54,6 @@ export const planningRepository = {
           attributes: ["customerName", "companyName"],
         },
         { model: Product, attributes: ["typeProduct", "productName"] },
-        // { model: Box, as: "box", attributes: ["boxId"] },
         { model: PlanningPaper, attributes: ["planningId", "runningPlan", "qtyProduced"] },
       ],
       order: [

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+    <channel>
+        <title>DongTam Updates</title>
+        <item>
+            <title>Version 2.0.0</title>
+            <sparkle:version>2.0.0</sparkle:version> 
+            <description>Fix lỗi thêm nhân viên
+            Chặn xóa các khách hàng, sản phẩm đã có đơn hàng trong hệ thống
+            Fix lại UI sắp xếp lịch giao hàng
+            Cho phép gợi ý mã đơn hàng để lấy các thông tin giống nhau
+            </description>
+            <pubDate>Sat, 24 Jan 2026</pubDate>
+            <enclosure url="dongtam.exe" 
+                    sparkle:os="windows" 
+                    length="12345678" 
+                    type="application/octet-stream" 
+            />
+        </item>
+    </channel>
+</rss>

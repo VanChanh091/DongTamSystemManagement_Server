@@ -60,10 +60,7 @@ export const customerRepository = {
     return await Customer.findAll({
       where: whereCondition,
       attributes: { exclude: ["createdAt", "updatedAt"] },
-      order: [
-        //lấy 4 số cuối -> ép chuỗi thành số để so sánh -> sort
-        [Sequelize.literal("CAST(RIGHT(`Customer`.`customerId`, 4) AS UNSIGNED)"), "ASC"],
-      ],
+      order: [["customerSeq", "ASC"]],
     });
   },
 };

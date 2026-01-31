@@ -68,6 +68,9 @@ export function initQcSessionModel(sequelize: Sequelize): typeof QcSession {
         //FK
         { fields: ["planningId"] },
         { fields: ["planningBoxId"] },
+
+        //indexes
+        { fields: ["createdAt"] },
       ],
     },
   );

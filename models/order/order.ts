@@ -254,7 +254,7 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
         },
       },
       indexes: [
-        //get
+        //FK
         { fields: ["customerId"] },
         { fields: ["productId"] },
         { fields: ["userId"] },
@@ -265,6 +265,8 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
 
         //other field
         { fields: ["status"] },
+        { fields: ["createdAt"] },
+        { fields: ["orderSortValue"] },
 
         //sort
         { fields: ["statusPriority", "orderSortValue"] },

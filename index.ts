@@ -52,7 +52,8 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use("/uploads", express.static("uploads")); //set up to upload product image
+app.use("/updates", express.static("updates")); //set up to upload product image
+// app.use('/updates', express.static(path.join(__dirname, 'updates')));
 
 // ========================
 //        ROUTES

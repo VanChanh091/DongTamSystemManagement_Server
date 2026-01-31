@@ -86,10 +86,7 @@ export const dashboardRepository = {
           ],
         },
       ],
-      order: [
-        //sort theo orderId
-        ["orderSortValue", "ASC"],
-      ],
+      order: [["orderSortValue", "ASC"]],
     };
 
     if (paginate) {

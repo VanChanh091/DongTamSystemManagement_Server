@@ -41,10 +41,7 @@ export const productRepository = {
     return await Product.findAll({
       where: whereCondition,
       attributes: { exclude: ["createdAt", "updatedAt"] },
-      order: [
-        //lấy 4 số cuối -> ép chuỗi thành số để so sánh -> sort
-        [Sequelize.literal("CAST(RIGHT(`Product`.`productId`, 4) AS UNSIGNED)"), "ASC"],
-      ],
+      order: [["productSeq", "ASC"]],
     });
   },
 };
