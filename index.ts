@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import http from "http";
+import path from "path";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -52,8 +53,8 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use("/updates", express.static("updates")); //set up to upload product image
-// app.use('/updates', express.static(path.join(__dirname, 'updates')));
+//test: curl -I http://localhost:5000/updates/dongtam.exe
+app.use("/updates", express.static(path.join(process.cwd(), "updates")));
 
 // ========================
 //        ROUTES
