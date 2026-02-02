@@ -41,9 +41,23 @@ function initPlanningBoxTimeModel(sequelize) {
             defaultValue: "planning",
         },
         sortPlanning: { type: sequelize_1.DataTypes.INTEGER },
+        isRequest: { type: sequelize_1.DataTypes.BOOLEAN, defaultValue: false },
         //FK
         planningBoxId: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
-    }, { sequelize, tableName: "PlanningBoxTimes", timestamps: true });
+    }, {
+        sequelize,
+        tableName: "PlanningBoxTimes",
+        timestamps: true,
+        indexes: [
+            //FK
+            { fields: ["planningBoxId"] },
+            //indexes
+            { fields: ["machine"] },
+            { fields: ["status"] },
+            { fields: ["machine", "planningBoxId", "status"] },
+            { fields: ["machine", "dayStart", "sortPlanning"] },
+        ],
+    });
     return PlanningBoxTime;
 }
 //# sourceMappingURL=planningBoxMachineTime.js.map

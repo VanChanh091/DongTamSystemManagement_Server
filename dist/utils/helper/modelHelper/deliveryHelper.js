@@ -1,0 +1,38 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getDeliveryByDate = void 0;
+const deliveryRepository_1 = require("../../../repository/deliveryRepository");
+const getDeliveryByDate = async (deliveryDate, status) => {
+    const plans = await deliveryRepository_1.deliveryRepository.getAllDeliveryPlanByDate(deliveryDate, status);
+    if (!plans || plans.length === 0) {
+        return [];
+    }
+    //Gom tất cả items từ tất cả plans để thực hiện truy vấn 1 lần
+    const plansData = plans.map((p) => p.get({ plain: true }));
+    const allItems = plansData.flatMap((p) => p.DeliveryItems || []);
+    const paperIds = allItems
+        .filter((i) => i.targetType === "paper")
+        .map((i) => i.targetId);
+    const boxIds = allItems.filter((i) => i.targetType === "box").map((i) => i.targetId);
+    // Lấy thông tin Box mapping
+    const boxes = boxIds.length > 0 ? await deliveryRepository_1.deliveryRepository.getAllBoxByIds(boxIds, true) : [];
+    const boxIdToPlanningIdMap = Object.fromEntries(boxes.map((b) => [b.planningBoxId, b.planningId]));
+    // Lấy thông tin chi tiết Paper/Order
+    const allPlanningIds = [...paperIds, ...boxes.map((b) => b.planningId).filter((id) => id)];
+    const papersData = allPlanningIds.length > 0 ? await deliveryRepository_1.deliveryRepository.getAllPaperScheduled(allPlanningIds) : [];
+    const paperMap = Object.fromEntries(papersData.map((p) => [p.planningId, p]));
+    const finalData = plansData.map((plan) => {
+        const items = plan.DeliveryItems || [];
+        const mappedItems = items.map((item) => {
+            const targetId = item.targetType === "paper" ? item.targetId : boxIdToPlanningIdMap[item.targetId];
+            const paperInfo = paperMap[targetId] ? { ...paperMap[targetId] } : null;
+            // Loại bỏ các trường không cần thiết để output sạch hơn
+            const { targetType, targetId: _tid, ...rest } = item;
+            return { ...rest, Planning: paperInfo };
+        });
+        return { ...plan, DeliveryItems: mappedItems };
+    });
+    return finalData;
+};
+exports.getDeliveryByDate = getDeliveryByDate;
+//# sourceMappingURL=deliveryHelper.js.map

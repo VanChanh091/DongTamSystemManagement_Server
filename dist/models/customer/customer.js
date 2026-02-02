@@ -27,8 +27,22 @@ function initCustomerModel(sequelize) {
         debtLimit: { type: sequelize_1.DataTypes.DOUBLE },
         timePayment: { type: sequelize_1.DataTypes.DATE },
         rateCustomer: { type: sequelize_1.DataTypes.STRING },
+        customerSource: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         cskh: { type: sequelize_1.DataTypes.STRING, allowNull: false },
-    }, { sequelize, tableName: "Customers", timestamps: true });
+        customerSeq: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
+    }, {
+        sequelize,
+        tableName: "Customers",
+        timestamps: true,
+        indexes: [
+            //get
+            { fields: ["customerSeq"] },
+            //search
+            { fields: ["customerName"] },
+            { fields: ["phone"] },
+            { fields: ["cskh"] },
+        ],
+    });
     return Customer;
 }
 //# sourceMappingURL=customer.js.map

@@ -8,6 +8,13 @@ class Order extends sequelize_1.Model {
 }
 exports.Order = Order;
 function initOrderModel(sequelize) {
+    const priorityMap = {
+        pending: 1,
+        accept: 2,
+        reject: 3,
+        planning: 4,
+        stop: 5,
+    };
     Order.init({
         orderId: { type: sequelize_1.DataTypes.STRING(14), allowNull: false, primaryKey: true },
         dayReceiveOrder: { type: sequelize_1.DataTypes.DATE, allowNull: false },
@@ -41,19 +48,61 @@ function initOrderModel(sequelize) {
         totalPrice: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false },
         vat: { type: sequelize_1.DataTypes.INTEGER },
         totalPriceVAT: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false },
+        volume: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false },
         instructSpecial: { type: sequelize_1.DataTypes.STRING },
         isBox: { type: sequelize_1.DataTypes.BOOLEAN, defaultValue: false, allowNull: false },
         status: {
-            type: sequelize_1.DataTypes.ENUM("pending", "accept", "reject", "planning", "stop"),
+            type: sequelize_1.DataTypes.ENUM("pending", "accept", "reject", "planning", "stop"), //1-2-3-4-5
             allowNull: false,
             defaultValue: "pending",
         },
         rejectReason: { type: sequelize_1.DataTypes.STRING },
+        //sort
+        orderSortValue: { type: sequelize_1.DataTypes.BIGINT, allowNull: false, defaultValue: 0 },
+        statusPriority: { type: sequelize_1.DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
         //FK
         customerId: { type: sequelize_1.DataTypes.STRING },
         productId: { type: sequelize_1.DataTypes.STRING },
         userId: { type: sequelize_1.DataTypes.INTEGER },
-    }, { sequelize, tableName: "Orders", timestamps: true });
+    }, {
+        sequelize,
+        tableName: "Orders",
+        timestamps: true,
+        hooks: {
+            beforeSave: (order) => {
+                if (order.changed("status")) {
+                    order.statusPriority = priorityMap[order.status] || 1;
+                }
+                if (order.changed("orderId") && order.orderId) {
+                    const parts = order.orderId.split("/"); // Ví dụ: [123, 11, 25, D002]
+                    if (parts.length >= 4) {
+                        const po = parseInt(parts[0], 10) || 0;
+                        const month = parseInt(parts[1], 10) || 0;
+                        const year = parseInt(parts[2], 10) || 0;
+                        // Tách số từ hậu tố "D002" -> 002
+                        const suffix = parseInt(parts[3].replace(/\D/g, ""), 10) || 0;
+                        // Công thức: Value = (Year * 10^9) + (Month * 10^7) + (PO * 10^3) + Suffix
+                        order.orderSortValue = year * 1000000000 + month * 10000000 + po * 1000 + suffix;
+                    }
+                }
+            },
+        },
+        indexes: [
+            //FK
+            { fields: ["customerId"] },
+            { fields: ["productId"] },
+            { fields: ["userId"] },
+            //search
+            { fields: ["QC_box"] },
+            { fields: ["price"] },
+            //other field
+            { fields: ["status"] },
+            { fields: ["createdAt"] },
+            { fields: ["orderSortValue"] },
+            //sort
+            { fields: ["statusPriority", "orderSortValue"] },
+        ],
+    });
     return Order;
 }
 //# sourceMappingURL=order.js.map

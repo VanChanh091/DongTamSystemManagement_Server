@@ -3,8 +3,8 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 2.0.0</title>
-            <sparkle:version>2.0.0</sparkle:version> 
+            <title>Version 3.3.0</title>
+            <sparkle:version>3.3.0</sparkle:version> 
             <description>Fix lỗi thêm nhân viên
             Chặn xóa các khách hàng, sản phẩm đã có đơn hàng trong hệ thống
             Fix lại UI sắp xếp lịch giao hàng

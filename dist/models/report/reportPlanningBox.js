@@ -27,7 +27,19 @@ function initReportPlanningBoxModel(sequelize) {
         machine: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         //FK
         planningBoxId: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
-    }, { sequelize, tableName: "ReportPlanningBoxes", timestamps: true });
+    }, {
+        sequelize,
+        tableName: "ReportPlanningBoxes",
+        timestamps: true,
+        indexes: [
+            //FK
+            { fields: ["planningBoxId"] },
+            //indexes
+            { fields: ["dayReport"] },
+            { fields: ["shiftManagement"] },
+            { fields: ["machine"] },
+        ],
+    });
     return ReportPlanningBox;
 }
 //# sourceMappingURL=reportPlanningBox.js.map

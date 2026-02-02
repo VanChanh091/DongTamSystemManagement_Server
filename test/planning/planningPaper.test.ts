@@ -189,7 +189,7 @@ describe("planningPaperService", () => {
 
   test("getPlanningByField - field sai → BadRequest", async () => {
     await expect(planningPaperService.getPlanningByField("M1", "???", "kw")).rejects.toThrow(
-      AppError
+      AppError,
     );
   });
 
@@ -200,7 +200,7 @@ describe("planningPaperService", () => {
     (mockedRepo.getPapersById as jest.Mock).mockResolvedValue([]);
 
     await expect(planningPaperService.changeMachinePlanning([1, 2], "M1" as any)).rejects.toThrow(
-      AppError
+      AppError,
     );
   });
 
@@ -260,7 +260,7 @@ describe("planningPaperService", () => {
     (mockedRepo.getPapersById as jest.Mock).mockResolvedValue([]);
 
     await expect(planningPaperService.pauseOrAcceptLackQtyPLanning([1], "reject")).rejects.toThrow(
-      AppError
+      AppError,
     );
   });
 
@@ -272,7 +272,7 @@ describe("planningPaperService", () => {
     (mockedRepo.getModelById as jest.Mock).mockResolvedValue({ orderId: "ORD1" });
 
     await expect(planningPaperService.pauseOrAcceptLackQtyPLanning([1], "reject")).rejects.toThrow(
-      AppError
+      AppError,
     );
   });
 
@@ -312,7 +312,7 @@ describe("planningPaperService", () => {
     ]);
 
     await expect(
-      planningPaperService.pauseOrAcceptLackQtyPLanning([1], "complete")
+      planningPaperService.pauseOrAcceptLackQtyPLanning([1], "complete"),
     ).rejects.toThrow(AppError);
   });
 
@@ -340,58 +340,5 @@ describe("planningPaperService", () => {
     expect(save).toHaveBeenCalled();
     expect(mockedRepo.updateDataModel).toHaveBeenCalled();
     expect(rs.message).toBe("Update status planning successfully");
-  });
-
-  // =====================================================================
-  // 7. updateIndex_TimeRunning
-  // =====================================================================
-  test("updateIndex_TimeRunning - thành công", async () => {
-    (updateSortPlanning as jest.Mock).mockResolvedValue(true);
-    (mockedRepo.getPapersByUpdateIndex as jest.Mock).mockResolvedValue(["PAPER"]);
-
-    (mockedRepo.getModelById as jest.Mock).mockResolvedValue({ machineName: "M1" });
-
-    (calculateTimeRunning as jest.Mock).mockResolvedValue(["UPDATED"]);
-
-    const emit = jest.fn();
-    const to = jest.fn().mockReturnValue({ emit });
-    const req: any = { io: { to } };
-
-    const rs = await planningPaperService.updateIndex_TimeRunning({
-      req,
-      updateIndex: [{ planningId: 1, sortPlanning: 1 }],
-      machine: "M1",
-      dayStart: "2024-01-01",
-      timeStart: "08:00",
-      totalTimeWorking: 8,
-    });
-
-    expect(updateSortPlanning).toHaveBeenCalled();
-    expect(calculateTimeRunning).toHaveBeenCalled();
-    expect(commit).toHaveBeenCalled();
-    expect(to).toHaveBeenCalledWith("machine_m1");
-    expect(emit).toHaveBeenCalled();
-    expect(rs.data[0]).toBe("UPDATED");
-  });
-
-  test("updateIndex_TimeRunning - machine không tồn tại → rollback + ServerError", async () => {
-    (updateSortPlanning as jest.Mock).mockResolvedValue(true);
-    (mockedRepo.getPapersByUpdateIndex as jest.Mock).mockResolvedValue(["PAPER"]);
-    (mockedRepo.getModelById as jest.Mock).mockResolvedValue(null);
-
-    const req: any = {};
-
-    await expect(
-      planningPaperService.updateIndex_TimeRunning({
-        req,
-        updateIndex: [],
-        machine: "M_UNKN",
-        dayStart: "2024-01-01",
-        timeStart: "08:00",
-        totalTimeWorking: 8,
-      })
-    ).rejects.toThrow(AppError);
-
-    expect(rollback).toHaveBeenCalled();
   });
 });

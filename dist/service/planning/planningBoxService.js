@@ -8,7 +8,7 @@ const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const cacheManager_1 = require("../../utils/helper/cacheManager");
 const planningRepository_1 = require("../../repository/planningRepository");
-const redisCache_1 = __importDefault(require("../../configs/redisCache"));
+const redisCache_1 = __importDefault(require("../../assest/configs/redisCache"));
 const appError_1 = require("../../utils/appError");
 const planningBox_1 = require("../../models/planning/planningBox");
 const planningBoxMachineTime_1 = require("../../models/planning/planningBoxMachineTime");
@@ -17,15 +17,13 @@ const sequelize_1 = require("sequelize");
 const machineBox_1 = require("../../models/admin/machineBox");
 const timeRunningBox_1 = require("./helper/timeRunningBox");
 const planningHelper_1 = require("../../utils/helper/modelHelper/planningHelper");
+const transactionHelper_1 = require("../../utils/helper/transactionHelper");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { box } = cacheManager_1.CacheManager.keys.planning;
 exports.planningBoxService = {
     //Planning Box
     getPlanningBox: async (machine) => {
         try {
-            if (!machine) {
-                throw appError_1.AppError.BadRequest("Missing machine parameter", "MISSING_PARAMETERS");
-            }
             const cacheKey = box.machine(machine);
             const { isChanged } = await cacheManager_1.CacheManager.check([
                 { model: planningBox_1.PlanningBox },
@@ -90,19 +88,21 @@ exports.planningBoxService = {
             });
             // Sắp xếp noSort theo flute (ưu tiên sóng)
             noSort.sort((a, b) => {
-                const wavePriorityMap = { C: 3, B: 2, E: 1 };
-                const getWavePriorityList = (flute) => {
-                    if (!flute)
-                        return [];
-                    return flute
-                        .toUpperCase()
-                        .replace(/[^A-Z]/g, "")
-                        .split("")
-                        .map((w) => wavePriorityMap[w] ?? 0);
+                const wavePriorityMap = {
+                    C: 3,
+                    B: 2,
+                    E: 1,
                 };
-                const waveA = getWavePriorityList(a.Order?.flute);
-                const waveB = getWavePriorityList(b.Order?.flute);
-                for (let i = 0; i < Math.max(waveA.length, waveB.length); i++) {
+                const getWavePriorityList = (flute) => {
+                    if (!flute || flute.length < 2)
+                        return [];
+                    const waves = flute.trim().slice(1).toUpperCase().split("");
+                    return waves.map((w) => wavePriorityMap[w] || 0);
+                };
+                const waveA = getWavePriorityList(a.Order?.flute ?? "");
+                const waveB = getWavePriorityList(b.Order?.flute ?? "");
+                const maxLength = Math.max(waveA.length, waveB.length);
+                for (let i = 0; i < maxLength; i++) {
                     const priA = waveA[i] ?? 0;
                     const priB = waveB[i] ?? 0;
                     if (priB !== priA)
@@ -116,7 +116,7 @@ exports.planningBoxService = {
             sortedPlannings.forEach((planning) => {
                 const original = {
                     ...planning.toJSON(),
-                    dayStart: planning.boxTimes?.[0].dayStart ?? null,
+                    // dayStart: planning.boxTimes?.[0].dayStart ?? null,
                 };
                 allPlannings.push(original);
                 if (planning.timeOverFlow && planning.timeOverFlow.length > 0) {
@@ -183,31 +183,56 @@ exports.planningBoxService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    getPlanningBoxByOrderId: async (machine, orderId) => {
+    confirmCompletePlanningBox: async (planningBoxId, machine) => {
         try {
-            if (!machine || !orderId) {
-                throw appError_1.AppError.BadRequest("Missing machine or orderId parameter", "MISSING_PARAMETERS");
+            const ids = Array.isArray(planningBoxId) ? planningBoxId : [planningBoxId];
+            const planningBox = await planningRepository_1.planningRepository.getBoxsById({
+                planningBoxIds: ids,
+                machine,
+                options: {
+                    attributes: ["runningPlan", "qtyProduced", "status", "machine"],
+                    include: [
+                        {
+                            model: planningBox_1.PlanningBox,
+                            attributes: ["planningBoxId", "hasOverFlow", "orderId", "statusRequest"],
+                        },
+                    ],
+                },
+            });
+            if (planningBox.length !== ids.length) {
+                throw appError_1.AppError.BadRequest("planning not found", "PLANNING_NOT_FOUND");
             }
-            const cacheKey = box.machine(machine);
-            const cachedData = await redisCache_1.default.get(cacheKey);
-            if (cachedData) {
-                if (devEnvironment)
-                    console.log("✅ Data planning from Redis");
-                const parsedData = JSON.parse(cachedData);
-                // Tìm kiếm tương đối trong cache
-                const filteredData = parsedData.filter((item) => {
-                    return item.orderId?.toLowerCase().includes(orderId.toLowerCase());
+            // Kiểm tra sl từng đơn
+            for (const box of planningBox) {
+                const { qtyProduced, runningPlan } = box;
+                if ((qtyProduced ?? 0) < (runningPlan ?? 0)) {
+                    throw appError_1.AppError.BadRequest("Lack quantity", "LACK_QUANTITY");
+                }
+                //check đã nhập kho chưa
+                if (box.PlanningBox.statusRequest !== "finalize") {
+                    throw appError_1.AppError.BadRequest(`Mã đơn ${box.PlanningBox.orderId} chưa được chốt nhập kho`, "PLANNING_NOT_FINALIZED");
+                }
+            }
+            //cập nhật status planning
+            await planningRepository_1.planningRepository.updateDataModel({
+                model: planningBoxMachineTime_1.PlanningBoxTime,
+                data: { status: "complete" },
+                options: { where: { planningBoxId: ids } },
+            });
+            const overflowRows = await timeOverflowPlanning_1.timeOverflowPlanning.findAll({
+                where: { planningBoxId: ids },
+            });
+            if (overflowRows.length) {
+                await planningRepository_1.planningRepository.updateDataModel({
+                    model: timeOverflowPlanning_1.timeOverflowPlanning,
+                    data: { status: "complete" },
+                    options: { where: { planningBoxId: ids } },
                 });
-                return { message: "Get planning by orderId from cache", data: filteredData };
             }
-            const planning = await planningRepository_1.planningRepository.getBoxsByOrderId(orderId);
-            if (!planning || planning.length === 0) {
-                throw appError_1.AppError.NotFound(`Không tìm thấy kế hoạch chứa: ${orderId}`, "PLANNING_NOT_FOUND");
-            }
-            return { message: "Get planning by orderId from db", data: planning };
+            return { message: "planning box updated successfully" };
         }
         catch (error) {
-            console.error("❌ get planning box by id failed:", error);
+            console.log(`error confirm complete planning`, error);
             if (error instanceof appError_1.AppError)
                 throw error;
             throw appError_1.AppError.ServerError();
@@ -215,10 +240,7 @@ exports.planningBoxService = {
     },
     acceptLackQtyBox: async (planningBoxIds, newStatus, machine) => {
         try {
-            if (!Array.isArray(planningBoxIds) || planningBoxIds.length === 0) {
-                throw appError_1.AppError.BadRequest("Missing planningBoxIds parameter", "MISSING_PARAMETERS");
-            }
-            const plannings = await planningRepository_1.planningRepository.getBoxsById(planningBoxIds, machine);
+            const plannings = await planningRepository_1.planningRepository.getBoxsById({ planningBoxIds, machine });
             if (plannings.length === 0) {
                 throw appError_1.AppError.NotFound("planning not found", "PLANNING_NOT_FOUND");
             }
@@ -228,7 +250,11 @@ exports.planningBoxService = {
                 }
                 planning.status = newStatus;
                 await planning.save();
-                await planningRepository_1.planningRepository.updateDataModel(timeOverflowPlanning_1.timeOverflowPlanning, { status: newStatus }, { where: { planningBoxId: planning.planningBoxId } });
+                await planningRepository_1.planningRepository.updateDataModel({
+                    model: timeOverflowPlanning_1.timeOverflowPlanning,
+                    data: { status: newStatus },
+                    options: { where: { planningBoxId: planning.planningBoxId } },
+                });
             }
             return { message: `Update status:${newStatus} successfully.` };
         }
@@ -239,57 +265,61 @@ exports.planningBoxService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    updateIndex_TimeRunningBox: async ({ req, machine, updateIndex, dayStart, timeStart, totalTimeWorking, }) => {
-        const transaction = await planningBox_1.PlanningBox.sequelize?.transaction();
+    updateIndex_TimeRunningBox: async ({ machine, updateIndex, dayStart, timeStart, totalTimeWorking, isNewDay, }) => {
         try {
-            if (!Array.isArray(updateIndex) || updateIndex.length === 0) {
-                throw appError_1.AppError.BadRequest("Missing updateIndex parameter", "MISSING_PARAMETERS");
-            }
-            // 1. Cập nhật sortPlanning
-            for (const item of updateIndex) {
-                if (!item.sortPlanning)
-                    continue;
-                const boxTime = await planningRepository_1.planningRepository.getModelById(planningBoxMachineTime_1.PlanningBoxTime, {
-                    planningBoxId: item.planningBoxId,
-                    machine,
-                    status: { [sequelize_1.Op.ne]: "complete" }, //không cập nhật đơn đã complete
-                }, { transaction });
-                if (boxTime) {
-                    planningRepository_1.planningRepository.updateDataModel(boxTime, { sortPlanning: item.sortPlanning }, { transaction });
+            return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
+                // 1. Cập nhật sortPlanning
+                for (const item of updateIndex) {
+                    if (!item.sortPlanning)
+                        continue;
+                    const boxTime = await planningRepository_1.planningRepository.getModelById({
+                        model: planningBoxMachineTime_1.PlanningBoxTime,
+                        where: {
+                            planningBoxId: item.planningBoxId,
+                            machine,
+                            status: { [sequelize_1.Op.ne]: "complete" }, //lọc bỏ đơn đã complete
+                        },
+                        options: { transaction },
+                    });
+                    if (boxTime) {
+                        await planningRepository_1.planningRepository.updateDataModel({
+                            model: boxTime,
+                            data: { sortPlanning: item.sortPlanning },
+                            options: { transaction },
+                        });
+                    }
                 }
-            }
-            // 2. Lấy lại danh sách planning đã được update
-            const sortedPlannings = await planningRepository_1.planningRepository.getBoxesByUpdateIndex(updateIndex, machine, transaction);
-            // 3. Tính toán thời gian chạy cho từng planning
-            const machineInfo = await planningRepository_1.planningRepository.getModelById(machineBox_1.MachineBox, {
-                machineName: machine,
+                // 2. Lấy lại danh sách planning đã được update
+                const sortedPlannings = await planningRepository_1.planningRepository.getBoxesByUpdateIndex(updateIndex, machine, transaction);
+                // console.log(
+                //   sortedPlannings.map((p) => ({ id: p.planningBoxId, sort: p.boxTimes?.[0]?.sortPlanning }))
+                // );
+                // 3. Tính toán thời gian chạy cho từng planning
+                const machineInfo = await planningRepository_1.planningRepository.getModelById({
+                    model: machineBox_1.MachineBox,
+                    where: { machineName: machine },
+                });
+                if (!machineInfo)
+                    throw appError_1.AppError.NotFound(`machine not found`, "MACHINE_NOT_FOUND");
+                // 4. Tính toán thời gian chạy
+                const updatedPlannings = await (0, timeRunningBox_1.calTimeRunningPlanningBox)({
+                    plannings: sortedPlannings,
+                    machineInfo: machineInfo,
+                    machine,
+                    dayStart,
+                    timeStart,
+                    totalTimeWorking,
+                    isNewDay,
+                    transaction,
+                });
+                return {
+                    message: "✅ Cập nhật sortPlanning + tính thời gian thành công",
+                    data: updatedPlannings,
+                };
             });
-            if (!machineInfo)
-                throw appError_1.AppError.NotFound(`machine not found`, "MACHINE_NOT_FOUND");
-            const updatedPlannings = await (0, timeRunningBox_1.calTimeRunningPlanningBox)({
-                plannings: sortedPlannings,
-                machineInfo: machineInfo,
-                machine,
-                dayStart,
-                timeStart,
-                totalTimeWorking,
-                transaction,
-            });
-            await transaction?.commit();
-            //socket
-            const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
-            req.io?.to(roomName).emit("planningBoxUpdated", {
-                machine,
-                message: `Kế hoạch của ${machine} đã được cập nhật.`,
-            });
-            return {
-                message: "✅ Cập nhật sortPlanning + tính thời gian thành công",
-                data: updatedPlannings,
-            };
         }
         catch (error) {
             console.error("❌ update index & time running failed:", error);
-            await transaction?.rollback();
             if (error instanceof appError_1.AppError)
                 throw error;
             throw appError_1.AppError.ServerError();

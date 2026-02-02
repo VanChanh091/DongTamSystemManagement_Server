@@ -5,18 +5,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.reportService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
-const cacheManager_1 = require("../utils/helper/cacheManager");
+dotenv_1.default.config();
+const sequelize_1 = require("sequelize");
 const appError_1 = require("../utils/appError");
+const cacheManager_1 = require("../utils/helper/cacheManager");
 const reportPlanningPaper_1 = require("../models/report/reportPlanningPaper");
-const redisCache_1 = __importDefault(require("../configs/redisCache"));
 const reportRepository_1 = require("../repository/reportRepository");
 const reportHelper_1 = require("../utils/helper/modelHelper/reportHelper");
 const reportPlanningBox_1 = require("../models/report/reportPlanningBox");
-const sequelize_1 = require("sequelize");
 const excelExporter_1 = require("../utils/helper/excelExporter");
 const reportPaperRowAndColumn_1 = require("../utils/mapping/reportPaperRowAndColumn");
 const reportBoxRowAndColumn_1 = require("../utils/mapping/reportBoxRowAndColumn");
-dotenv_1.default.config();
+const redisCache_1 = __importDefault(require("../assest/configs/redisCache"));
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper } = cacheManager_1.CacheManager.keys.report;
 const { box } = cacheManager_1.CacheManager.keys.report;
@@ -24,10 +24,7 @@ exports.reportService = {
     //====================================PAPER========================================
     getReportPaper: async (machine, page, pageSize) => {
         try {
-            if (!machine) {
-                throw appError_1.AppError.BadRequest("Missing machine parameter", "MISSING_PARAMETERS");
-            }
-            const cacheKey = paper.all(page);
+            const cacheKey = paper.all(machine, page);
             const { isChanged } = await cacheManager_1.CacheManager.check(reportPlanningPaper_1.ReportPlanningPaper, "reportPaper");
             if (isChanged) {
                 await cacheManager_1.CacheManager.clearReportPaper();
@@ -44,7 +41,7 @@ exports.reportService = {
             const totalOrders = await reportRepository_1.reportRepository.reportCount(reportPlanningPaper_1.ReportPlanningPaper);
             const totalPages = Math.ceil(totalOrders / pageSize);
             const offset = (page - 1) * pageSize;
-            const data = await reportRepository_1.reportRepository.findAlReportPaper(machine, pageSize, offset);
+            const data = await reportRepository_1.reportRepository.findReportPaperByMachine(machine, pageSize, offset);
             const responseData = {
                 message: "get all report planning paper successfully",
                 data,
@@ -67,8 +64,6 @@ exports.reportService = {
             const fieldMap = {
                 customerName: (report) => report?.Planning?.Order?.Customer?.customerName,
                 dayReported: (report) => report?.dayReport,
-                qtyProduced: (report) => report?.qtyProduced,
-                ghepKho: (report) => report?.Planning?.ghepKho,
                 shiftManagement: (report) => report?.shiftManagement,
                 orderId: (report) => report?.Planning?.Order?.orderId,
             };
@@ -96,10 +91,7 @@ exports.reportService = {
     //====================================BOX========================================
     getReportBox: async (machine, page, pageSize) => {
         try {
-            if (!machine) {
-                throw appError_1.AppError.BadRequest("Missing machine parameter", "MISSING_PARAMETERS");
-            }
-            const cacheKey = box.all(page);
+            const cacheKey = box.all(machine, page);
             const { isChanged } = await cacheManager_1.CacheManager.check(reportPlanningBox_1.ReportPlanningBox, "reportBox");
             if (isChanged) {
                 await cacheManager_1.CacheManager.clearReportBox();
@@ -139,7 +131,6 @@ exports.reportService = {
             const fieldMap = {
                 customerName: (report) => report?.PlanningBox?.Order?.Customer?.customerName,
                 dayReported: (report) => report?.dayReport,
-                qtyProduced: (report) => report?.qtyProduced,
                 QcBox: (report) => report?.PlanningBox?.Order?.QC_box,
                 shiftManagement: (report) => report?.shiftManagement,
                 orderId: (report) => report?.PlanningBox?.Order?.orderId,

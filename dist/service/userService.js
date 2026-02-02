@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.userService = void 0;
-const redisCache_1 = __importDefault(require("../configs/redisCache"));
+const redisCache_1 = __importDefault(require("../assest/configs/redisCache"));
 const appError_1 = require("../utils/appError");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const converToWebp_1 = require("../utils/image/converToWebp");

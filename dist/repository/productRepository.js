@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.productRepository = void 0;
-const sequelize_1 = require("sequelize");
 const product_1 = require("../models/product/product");
 exports.productRepository = {
     //get all
@@ -21,29 +20,10 @@ exports.productRepository = {
             attributes: { exclude: ["createdAt", "updatedAt"] },
             offset: (page - 1) * pageSize,
             limit: pageSize,
-            order: [
-                //lấy 4 số cuối -> ép chuỗi thành số để so sánh -> sort
-                [sequelize_1.Sequelize.literal("CAST(RIGHT(`Product`.`productId`, 4) AS UNSIGNED)"), "ASC"],
-            ],
+            order: [["productSeq", "ASC"]],
         });
     },
     //create
-    checkPrefixProduct: async (sanitizedPrefix, transaction) => {
-        return await product_1.Product.findOne({
-            where: {
-                productId: {
-                    [sequelize_1.Op.like]: `${sanitizedPrefix}%`,
-                },
-            },
-            transaction,
-        });
-    },
-    findAllById: async (transaction) => {
-        return await product_1.Product.findAll({
-            attributes: ["productId"],
-            transaction,
-        });
-    },
     createProduct: async (data, transaction) => {
         return await product_1.Product.create(data, { transaction });
     },
@@ -56,10 +36,7 @@ exports.productRepository = {
         return await product_1.Product.findAll({
             where: whereCondition,
             attributes: { exclude: ["createdAt", "updatedAt"] },
-            order: [
-                //lấy 4 số cuối -> ép chuỗi thành số để so sánh -> sort
-                [sequelize_1.Sequelize.literal("CAST(RIGHT(`Product`.`productId`, 4) AS UNSIGNED)"), "ASC"],
-            ],
+            order: [["productSeq", "ASC"]],
         });
     },
 };

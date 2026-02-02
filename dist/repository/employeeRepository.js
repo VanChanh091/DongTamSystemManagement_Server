@@ -44,9 +44,26 @@ exports.employeeRepository = {
             ],
             offset: (page - 1) * pageSize,
             limit: pageSize,
-            order: [
-                //lấy 3 số cuối -> ép chuỗi thành số để so sánh -> sort
-                [sequelize_1.Sequelize.literal("CAST(RIGHT(`companyInfo`.`employeeCode`, 3) AS UNSIGNED)"), "ASC"],
+            order: [["employeeId", "ASC"]],
+        });
+    },
+    findEmployeeByPosition: async () => {
+        return await employeeBasicInfo_1.EmployeeBasicInfo.findAll({
+            attributes: ["employeeId", "fullName"],
+            include: [
+                {
+                    model: employeeCompanyInfo_1.EmployeeCompanyInfo,
+                    as: "companyInfo",
+                    attributes: ["position", "department"],
+                    where: {
+                        [sequelize_1.Op.and]: [
+                            (0, sequelize_1.where)((0, sequelize_1.fn)("LOWER", (0, sequelize_1.col)("companyInfo.position")), {
+                                [sequelize_1.Op.like]: "%trưởng máy%",
+                            }),
+                            { status: "Đang làm việc" },
+                        ],
+                    },
+                },
             ],
         });
     },

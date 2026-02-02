@@ -19,19 +19,19 @@ exports.customerRepository = {
             attributes: { exclude: ["createdAt", "updatedAt"] },
             offset: (page - 1) * pageSize,
             limit: pageSize,
-            order: [
-                //lấy 4 số cuối -> ép chuỗi thành số để so sánh -> sort
-                [sequelize_1.Sequelize.literal("CAST(RIGHT(`Customer`.`customerId`, 4) AS UNSIGNED)"), "ASC"],
-            ],
+            order: [["customerSeq", "ASC"]],
         });
     },
-    //create
-    findAllIds: async (transaction) => {
+    findByIdOrMst: async (sanitizedPrefix, mst, transaction) => {
         return await customer_1.Customer.findAll({
-            attributes: ["customerId"],
+            where: {
+                [sequelize_1.Op.or]: [{ customerId: { [sequelize_1.Op.like]: `${sanitizedPrefix}%` } }, { mst }],
+            },
+            attributes: ["customerId", "mst"],
             transaction,
         });
     },
+    //create
     createCustomer: async (data, transaction) => {
         return await customer_1.Customer.create(data, { transaction });
     },
@@ -54,10 +54,7 @@ exports.customerRepository = {
         return await customer_1.Customer.findAll({
             where: whereCondition,
             attributes: { exclude: ["createdAt", "updatedAt"] },
-            order: [
-                //lấy 4 số cuối -> ép chuỗi thành số để so sánh -> sort
-                [sequelize_1.Sequelize.literal("CAST(RIGHT(`Customer`.`customerId`, 4) AS UNSIGNED)"), "ASC"],
-            ],
+            order: [["customerSeq", "ASC"]],
         });
     },
 };

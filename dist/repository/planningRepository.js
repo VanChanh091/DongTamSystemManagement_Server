@@ -12,19 +12,16 @@ const planningBoxMachineTime_1 = require("../models/planning/planningBoxMachineT
 const timeOverflowPlanning_1 = require("../models/planning/timeOverflowPlanning");
 exports.planningRepository = {
     //====================================FUNC GLOBAL========================================
-    getModelById: async (model, where, options = {}) => {
-        return await model.findOne({
-            where,
-            ...options,
-        });
+    getModelById: async ({ model, where, options = {} }) => {
+        return await model.findOne({ where, ...options });
     },
-    updateDataModel: async (model, data, options = {}) => {
+    updateDataModel: async ({ model, data, options = {} }) => {
         return await model.update(data, options);
     },
-    deleteModelData: async (model, where, transaction) => {
+    deleteModelData: async ({ model, where, transaction }) => {
         return await model.destroy({ where, transaction });
     },
-    createPlanning: async (model, data, transaction) => {
+    createData: async ({ model, data, transaction }) => {
         return await model.create(data, { transaction });
     },
     //====================================PLANNING ORDER========================================
@@ -54,11 +51,10 @@ exports.planningRepository = {
                     attributes: ["customerName", "companyName"],
                 },
                 { model: product_1.Product, attributes: ["typeProduct", "productName"] },
-                // { model: Box, as: "box", attributes: ["boxId"] },
                 { model: planningPaper_1.PlanningPaper, attributes: ["planningId", "runningPlan", "qtyProduced"] },
             ],
             order: [
-                [sequelize_1.Sequelize.literal("CAST(SUBSTRING_INDEX(`Order`.`orderId`, '/', 1) AS UNSIGNED)"), "ASC"],
+                ["orderSortValue", "ASC"],
                 ["dateRequestShipping", "ASC"],
             ],
         });
@@ -98,10 +94,10 @@ exports.planningRepository = {
         return await planningBoxMachineTime_1.PlanningBoxTime.bulkCreate(machineTimes, { validate: true });
     },
     //====================================QUEUE PAPER========================================
-    getPlanningPaperCount: async (whereCondition = {}) => {
-        return await planningPaper_1.PlanningPaper.count({ where: whereCondition });
+    getPlanningPaperCount: async () => {
+        return await planningPaper_1.PlanningPaper.count({ where: { status: "stop" } });
     },
-    getPlanningPaper: async ({ page = 1, pageSize = 20, whereCondition = {}, paginate = false, }) => {
+    getPlanningPaper: async ({ page = 1, pageSize = 20, whereCondition, paginate = false, }) => {
         const query = {
             where: whereCondition,
             attributes: { exclude: ["createdAt", "updatedAt"] },
@@ -197,8 +193,11 @@ exports.planningRepository = {
             ],
         });
     },
-    getPapersByPlanningId: async (planningIds) => {
+    getPapersById: async ({ planningIds, options = {}, }) => {
+        const { attributes, include } = options;
         return await planningPaper_1.PlanningPaper.findAll({
+            attributes,
+            include,
             where: {
                 planningId: { [sequelize_1.Op.in]: planningIds },
             },
@@ -328,14 +327,13 @@ exports.planningRepository = {
             },
         });
     },
-    getBoxsById: async (planningBoxIds, machine) => {
+    getBoxsById: async ({ planningBoxIds, machine, options = {}, }) => {
+        const { attributes, include } = options;
+        const ids = Array.isArray(planningBoxIds) ? planningBoxIds : [planningBoxIds];
         return await planningBoxMachineTime_1.PlanningBoxTime.findAll({
-            where: {
-                planningBoxId: {
-                    [sequelize_1.Op.in]: planningBoxIds,
-                },
-                machine,
-            },
+            attributes,
+            include,
+            where: { planningBoxId: { [sequelize_1.Op.in]: ids }, machine },
         });
     },
     getBoxesByUpdateIndex: async (updateIndex, machine, transaction) => {
@@ -343,7 +341,11 @@ exports.planningRepository = {
             where: { planningBoxId: updateIndex.map((i) => i.planningBoxId) },
             include: [
                 { model: timeOverflowPlanning_1.timeOverflowPlanning, as: "timeOverFlow" },
-                { model: planningBoxMachineTime_1.PlanningBoxTime, as: "boxTimes", where: { machine } },
+                {
+                    model: planningBoxMachineTime_1.PlanningBoxTime,
+                    as: "boxTimes",
+                    where: { machine, sortPlanning: updateIndex.map((i) => i.sortPlanning) },
+                },
                 {
                     model: order_1.Order,
                     include: [{ model: box_1.Box, as: "box", attributes: ["inMatTruoc", "inMatSau"] }],
@@ -394,5 +396,34 @@ exports.planningRepository = {
         });
     },
     //====================================PLANNING STOP========================================
+    getStopByIds: async (planningIds) => {
+        return planningPaper_1.PlanningPaper.findAll({
+            where: { planningId: { [sequelize_1.Op.in]: planningIds } },
+            attributes: [
+                "planningId",
+                "dayCompleted",
+                "dayStart",
+                "timeRunning",
+                "status",
+                "sortPlanning",
+            ],
+        });
+    },
+    updateStatusPlanning: async ({ planningIds, action, }) => {
+        const data = action === "planning"
+            ? {
+                status: action,
+                dayCompleted: null,
+                dayStart: null,
+                timeRunning: null,
+                sortPlanning: null,
+            }
+            : { status: action };
+        return exports.planningRepository.updateDataModel({
+            model: planningPaper_1.PlanningPaper,
+            data,
+            options: { where: { planningId: { [sequelize_1.Op.in]: planningIds } } },
+        });
+    },
 };
 //# sourceMappingURL=planningRepository.js.map

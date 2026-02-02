@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.exportExcelDbPlanning = exports.exportExcelResponse = void 0;
+exports.exportDeliveryExcelResponse = exports.exportExcelDbPlanning = exports.exportExcelResponse = void 0;
 const exceljs_1 = __importDefault(require("exceljs"));
 const appError_1 = require("../appError");
 const exportExcelResponse = async (res, { data, sheetName, fileName, columns, rows }) => {
@@ -18,47 +18,12 @@ const exportExcelResponse = async (res, { data, sheetName, fileName, columns, ro
             const rowData = rows(item, index);
             const excelRow = worksheet.addRow(rowData);
             for (let i = 1; i <= worksheet.columnCount; i++) {
-                const cell = excelRow.getCell(i);
-                cell.border = {
-                    top: { style: "thin" },
-                    left: { style: "thin" },
-                    bottom: { style: "thin" },
-                    right: { style: "thin" },
-                };
-                cell.fill = {
-                    type: "pattern",
-                    pattern: "solid",
-                    fgColor: { argb: "FFF2F2F2" }, // màu xám nhẹ
-                };
+                sytleBorder(excelRow.getCell(i));
+                sytleFill(excelRow.getCell(i), "FFF2F2F2");
             }
         });
         // Header style
-        worksheet.getRow(1).eachCell((cell) => {
-            cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
-            cell.fill = {
-                type: "pattern",
-                pattern: "solid",
-                fgColor: { argb: "FF0070C0" },
-            };
-            cell.alignment = { vertical: "middle", horizontal: "center" };
-            cell.border = {
-                top: { style: "thin" },
-                left: { style: "thin" },
-                bottom: { style: "thin" },
-                right: { style: "thin" },
-            };
-        });
-        // Auto-fit columns
-        worksheet.columns.forEach((col) => {
-            let maxLength = 15;
-            col.eachCell?.({ includeEmpty: true }, (cell) => {
-                const value = cell.value;
-                const cellLength = value ? value.toString().length : 0;
-                if (cellLength > maxLength)
-                    maxLength = cellLength;
-            });
-            col.width = maxLength + 2;
-        });
+        headerStyleAndAutofitColumns(worksheet);
         const now = new Date();
         const dateStr = now.toISOString().split("T")[0];
         const fullName = `${fileName}_${dateStr}`;
@@ -95,24 +60,14 @@ const exportExcelDbPlanning = async (res, { data, sheetName, fileName, columns, 
                 // ===== STYLE CHA =====
                 if (isParent) {
                     for (let c = 1; c <= worksheet.columnCount; c++) {
-                        const cell = excelRow.getCell(c);
-                        cell.fill = {
-                            type: "pattern",
-                            pattern: "solid",
-                            fgColor: { argb: "FFE2EFDA" }, // xanh nhạt
-                        };
+                        sytleFill(excelRow.getCell(c), "FFE2EFDA");
                     }
                     excelRow.height = 25;
                 }
                 // ===== STYLE CON =====
                 if (isStage) {
                     for (let c = 1; c <= worksheet.columnCount; c++) {
-                        const cell = excelRow.getCell(c);
-                        cell.fill = {
-                            type: "pattern",
-                            pattern: "solid",
-                            fgColor: { argb: "FFF2F2F2" }, // xám nhẹ
-                        };
+                        sytleFill(excelRow.getCell(c), "FFF2F2F2");
                     }
                     // indent ô đầu tiên
                     const firstCell = excelRow.getCell(1);
@@ -121,42 +76,12 @@ const exportExcelDbPlanning = async (res, { data, sheetName, fileName, columns, 
                     }
                 }
                 for (let i = 1; i <= worksheet.columnCount; i++) {
-                    const cell = excelRow.getCell(i);
-                    cell.border = {
-                        top: { style: "thin" },
-                        left: { style: "thin" },
-                        bottom: { style: "thin" },
-                        right: { style: "thin" },
-                    };
+                    sytleBorder(excelRow.getCell(i));
                 }
             });
         });
         // ===== HEADER STYLE =====
-        worksheet.getRow(1).eachCell((cell) => {
-            cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
-            cell.fill = {
-                type: "pattern",
-                pattern: "solid",
-                fgColor: { argb: "FF0070C0" },
-            };
-            cell.alignment = { vertical: "middle", horizontal: "center" };
-            cell.border = {
-                top: { style: "thin" },
-                bottom: { style: "thin" },
-                left: { style: "thin" },
-                right: { style: "thin" },
-            };
-        });
-        // ===== AUTO FIT =====
-        worksheet.columns.forEach((col) => {
-            let max = 15;
-            col.eachCell?.({ includeEmpty: true }, (cell) => {
-                const v = cell.value ? cell.value.toString() : "";
-                if (v.length > max)
-                    max = v.length;
-            });
-            col.width = max + 2;
-        });
+        headerStyleAndAutofitColumns(worksheet);
         // ===== RETURN FILE =====
         const dateStr = new Date().toISOString().split("T")[0];
         const fullName = `${fileName}_${dateStr}`;
@@ -171,4 +96,123 @@ const exportExcelDbPlanning = async (res, { data, sheetName, fileName, columns, 
     }
 };
 exports.exportExcelDbPlanning = exportExcelDbPlanning;
+const exportDeliveryExcelResponse = async (res, { data, sheetName, fileName, columns, rows }) => {
+    try {
+        const workbook = new exceljs_1.default.Workbook();
+        const worksheet = workbook.addWorksheet(sheetName);
+        // ĐƯA CỘT 'SEQUENCE' (TÀI) VỀ ĐẦU MẢNG COLUMNS
+        const sequenceColIndex = columns.findIndex((c) => c.key === "sequence");
+        if (sequenceColIndex > -1) {
+            const [sequenceCol] = columns.splice(sequenceColIndex, 1);
+            columns.unshift(sequenceCol); // Đẩy lên vị trí 0
+        }
+        const rawDate = data[0]?.deliveryDate;
+        const formattedDate = rawDate ? new Date(rawDate).toLocaleDateString("vi-VN") : "";
+        const titleText = `LỊCH GIAO HÀNG ${formattedDate}`;
+        // TITLE (Dòng 1)
+        const titleRow = worksheet.addRow([titleText]);
+        const titleCell = titleRow.getCell(1);
+        titleCell.font = { bold: true, size: 14, color: { argb: "FF000000" } };
+        titleCell.alignment = { vertical: "middle", horizontal: "center" };
+        titleCell.fill = { type: "pattern", pattern: "none" };
+        titleRow.height = 30;
+        worksheet.mergeCells(1, 1, 1, columns.length);
+        // HEADER TABLE (Dòng 2)
+        const headerRow = worksheet.addRow(columns.map((c) => c.header));
+        headerRow.eachCell((cell) => {
+            cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+            sytleFill(cell, "FF0070C0");
+            cell.alignment = { vertical: "middle", horizontal: "center" };
+            sytleBorder(cell);
+        });
+        //mapping key cho các cột
+        worksheet.columns = columns.map((col) => ({ key: col.key }));
+        const allMappedRows = [];
+        data.forEach((delivery) => {
+            const items = delivery.DeliveryItems || [];
+            items.forEach((_, index) => {
+                allMappedRows.push(rows(delivery, index));
+            });
+        });
+        // sort theo sequence
+        allMappedRows.sort((a, b) => Number(a.sequence) - Number(b.sequence));
+        // ĐỔ DỮ LIỆU VÀO BẢNG
+        allMappedRows.forEach((rowData) => {
+            const excelRow = worksheet.addRow(rowData);
+            excelRow.eachCell((cell) => {
+                sytleBorder(cell);
+                sytleFill(cell, "FFFFFFFF");
+            });
+        });
+        //MERGE DỌC CHO CỘT ĐẦU TIÊN (CỘT TÀI)
+        let startRow = 3;
+        const rowCount = worksheet.rowCount;
+        for (let i = startRow; i <= rowCount; i++) {
+            const currValue = worksheet.getRow(i).getCell(1).value;
+            const nextValue = i < rowCount ? worksheet.getRow(i + 1).getCell(1).value : null;
+            if (currValue !== nextValue || i === rowCount) {
+                if (i > startRow) {
+                    worksheet.mergeCells(startRow, 1, i, 1);
+                    const mergedCell = worksheet.getRow(startRow).getCell(1);
+                    mergedCell.alignment = { vertical: "middle", horizontal: "center" };
+                    mergedCell.font = { bold: true };
+                    // Đổ màu xám nhẹ cho cột Tài để phân biệt nhóm
+                    sytleFill(mergedCell, "FFF9F9F9");
+                }
+                startRow = i + 1;
+            }
+        }
+        headerStyleAndAutofitColumns(worksheet);
+        const finalTitle = worksheet.getRow(1).getCell(1);
+        finalTitle.value = titleText;
+        finalTitle.fill = { type: "pattern", pattern: "none" };
+        finalTitle.font = { bold: true, size: 14, color: { argb: "FF000000" } };
+        // XUẤT FILE
+        const dateStr = new Date().toISOString().split("T")[0];
+        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        res.setHeader("Content-Disposition", `attachment; filename=${fileName}_${dateStr}.xlsx`);
+        await workbook.xlsx.write(res);
+        res.end();
+    }
+    catch (error) {
+        console.error("Export Delivery Excel error:", error);
+        res.status(500).send("Lỗi xuất Excel");
+    }
+};
+exports.exportDeliveryExcelResponse = exportDeliveryExcelResponse;
+const headerStyleAndAutofitColumns = (worksheet) => {
+    // style main header
+    worksheet.getRow(1).eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+        sytleFill(cell, "FF0070C0");
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+        sytleBorder(cell);
+    });
+    //auto fit
+    worksheet.columns.forEach((col) => {
+        let maxLength = 15;
+        col.eachCell?.({ includeEmpty: true }, (cell) => {
+            const value = cell.value;
+            const cellLength = value ? value.toString().length : 0;
+            if (cellLength > maxLength)
+                maxLength = cellLength;
+        });
+        col.width = maxLength + 2;
+    });
+};
+const sytleBorder = (cell) => {
+    cell.border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
+    };
+};
+const sytleFill = (cell, color) => {
+    cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: color }, //"FFFFFFFF"
+    };
+};
 //# sourceMappingURL=excelExporter.js.map

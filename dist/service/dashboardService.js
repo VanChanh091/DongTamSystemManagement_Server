@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.dashboardService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const redisCache_1 = __importDefault(require("../configs/redisCache"));
+const redisCache_1 = __importDefault(require("../assest/configs/redisCache"));
 const dashboardRepository_1 = require("../repository/dashboardRepository");
 const appError_1 = require("../utils/appError");
 const cacheManager_1 = require("../utils/helper/cacheManager");
@@ -19,8 +19,8 @@ const planningHelper_1 = require("../utils/helper/modelHelper/planningHelper");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { planning, details, search } = cacheManager_1.CacheManager.keys.dashboard;
 exports.dashboardService = {
-    getAllDashboardPlanning: async (page, pageSize) => {
-        const cacheKey = planning.all(page);
+    getAllDashboardPlanning: async (page, pageSize, status) => {
+        const cacheKey = planning.all(status, page);
         try {
             const { isChanged } = await cacheManager_1.CacheManager.check(planningPaper_1.PlanningPaper, "dbPlanning");
             if (isChanged) {
@@ -37,8 +37,11 @@ exports.dashboardService = {
             }
             const totalPlannings = await dashboardRepository_1.dashboardRepository.getDbPlanningCount();
             const totalPages = Math.ceil(totalPlannings / pageSize);
-            const whereCondition = { status: { [sequelize_1.Op.ne]: "stop" } };
-            const data = await dashboardRepository_1.dashboardRepository.getAllDbPlanning({ page, pageSize, whereCondition });
+            const data = await dashboardRepository_1.dashboardRepository.getAllDbPlanning({
+                page,
+                pageSize,
+                whereCondition: { status },
+            });
             const responseData = {
                 message: "get all data paper from db",
                 data,
@@ -76,18 +79,14 @@ exports.dashboardService = {
                 throw appError_1.AppError.NotFound("detail not found", "DETAIL_NOT_FOUND");
             }
             const box = detail.PlanningBox;
-            //get stage
-            const normalStages = box?.boxTimes?.map((stage) => stage.toJSON()) ?? [];
-            //get all time overflow
-            const allOverflow = await dashboardRepository_1.dashboardRepository.getAllTimeOverflow(box?.planningBoxId ?? 0);
-            const overflowByMachine = {};
-            for (const ov of allOverflow) {
-                overflowByMachine[ov.machine] = ov;
-            }
-            const stages = normalStages.map((stage) => ({
-                ...stage,
-                timeOverFlow: overflowByMachine[String(stage.machine)] ?? null,
-            }));
+            if (!box)
+                return { message: "Planning is not box type", data: [] };
+            const stages = await (0, planningHelper_1.buildStagesDetails)({
+                detail: box,
+                getBoxTimes: (d) => d.boxTimes,
+                getPlanningBoxId: (d) => d.planningBoxId,
+                getAllOverflow: (id) => dashboardRepository_1.dashboardRepository.getAllTimeOverflow(id),
+            });
             await redisCache_1.default.set(cacheKey, JSON.stringify(stages), "EX", 1800);
             return { message: "get db planning detail succesfully", data: stages };
         }
@@ -138,6 +137,40 @@ exports.dashboardService = {
         }
         catch (error) {
             console.error(`Failed to get customers by ${field}`, error);
+            if (error instanceof appError_1.AppError)
+                throw error;
+            throw appError_1.AppError.ServerError();
+        }
+    },
+    //export planning stage
+    getAllDbPlanningStage: async () => {
+        try {
+            const rawPapers = await dashboardRepository_1.dashboardRepository.exportExcelDbPlanning({});
+            // Format dữ liệu thành 2 tầng cho FE
+            const formatted = await Promise.all(rawPapers.map(async (paper) => {
+                const box = paper.PlanningBox;
+                // ===== Stages (7 công đoạn) =====
+                const normalStages = box?.boxTimes?.map((stage) => stage.toJSON()) ?? [];
+                const allOverflow = await dashboardRepository_1.dashboardRepository.getAllTimeOverflow(box?.planningBoxId ?? 0);
+                const overflowByMachine = {};
+                for (const ov of allOverflow) {
+                    overflowByMachine[ov.machine] = ov;
+                }
+                // ===== Gắn overflow vào từng stage =====
+                const stages = normalStages.map((stage) => ({
+                    ...stage,
+                    timeOverFlow: overflowByMachine[String(stage.machine)] ?? null,
+                }));
+                // ===== Remove nested (giữ sạch dữ liệu) =====
+                const paperJson = paper.toJSON();
+                delete paperJson.PlanningBox;
+                delete paperJson.Order?.box;
+                return { ...paperJson, stages };
+            }));
+            return formatted;
+        }
+        catch (error) {
+            console.error("❌ Export Excel error:", error);
             if (error instanceof appError_1.AppError)
                 throw error;
             throw appError_1.AppError.ServerError();
@@ -197,39 +230,6 @@ exports.dashboardService = {
                 columns: dbPlanningRowAndColumn_1.dbPlanningColumns,
                 rows: dbPlanningRowAndColumn_1.mappingDbPlanningRow,
             });
-        }
-        catch (error) {
-            console.error("❌ Export Excel error:", error);
-            if (error instanceof appError_1.AppError)
-                throw error;
-            throw appError_1.AppError.ServerError();
-        }
-    },
-    getAllDbPlanningStage: async () => {
-        try {
-            const rawPapers = await dashboardRepository_1.dashboardRepository.exportExcelDbPlanning({});
-            // Format dữ liệu thành 2 tầng cho FE
-            const formatted = await Promise.all(rawPapers.map(async (paper) => {
-                const box = paper.PlanningBox;
-                // ===== Stages (7 công đoạn) =====
-                const normalStages = box?.boxTimes?.map((stage) => stage.toJSON()) ?? [];
-                const allOverflow = await dashboardRepository_1.dashboardRepository.getAllTimeOverflow(box?.planningBoxId ?? 0);
-                const overflowByMachine = {};
-                for (const ov of allOverflow) {
-                    overflowByMachine[ov.machine] = ov;
-                }
-                // ===== Gắn overflow vào từng stage =====
-                const stages = normalStages.map((stage) => ({
-                    ...stage,
-                    timeOverFlow: overflowByMachine[String(stage.machine)] ?? null,
-                }));
-                // ===== Remove nested (giữ sạch dữ liệu) =====
-                const paperJson = paper.toJSON();
-                delete paperJson.PlanningBox;
-                delete paperJson.Order?.box;
-                return { ...paperJson, stages };
-            }));
-            return formatted;
         }
         catch (error) {
             console.error("❌ Export Excel error:", error);

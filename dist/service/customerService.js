@@ -4,18 +4,19 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.customerService = void 0;
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
 const sequelize_1 = require("sequelize");
-const redisCache_1 = __importDefault(require("../configs/redisCache"));
+const redisCache_1 = __importDefault(require("../assest/configs/redisCache"));
 const customer_1 = require("../models/customer/customer");
 const customerRepository_1 = require("../repository/customerRepository");
 const appError_1 = require("../utils/appError");
 const cacheManager_1 = require("../utils/helper/cacheManager");
 const excelExporter_1 = require("../utils/helper/excelExporter");
-const generateNextId_1 = require("../utils/helper/generateNextId");
 const orderHelpers_1 = require("../utils/helper/modelHelper/orderHelpers");
 const customerRowAndColumn_1 = require("../utils/mapping/customerRowAndColumn");
-const dotenv_1 = __importDefault(require("dotenv"));
-dotenv_1.default.config();
+const transactionHelper_1 = require("../utils/helper/transactionHelper");
+const order_1 = require("../models/order/order");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { customer } = cacheManager_1.CacheManager.keys;
 exports.customerService = {
@@ -93,54 +94,72 @@ exports.customerService = {
     },
     createCustomer: async (data) => {
         const { prefix = "CUSTOM", ...customerData } = data;
-        const transaction = await customer_1.Customer.sequelize?.transaction();
         try {
-            const customers = await customerRepository_1.customerRepository.findAllIds(transaction);
-            const allCustomerIds = customers.map((c) => c.customerId);
-            const sanitizedPrefix = prefix.trim().replace(/\s+/g, "").toUpperCase();
-            const newCustomerId = (0, generateNextId_1.generateNextId)(allCustomerIds, sanitizedPrefix, 4);
-            const newCustomer = await customerRepository_1.customerRepository.createCustomer({ customerId: newCustomerId, ...customerData }, transaction);
-            await transaction?.commit();
-            return { message: "Customer created successfully", data: newCustomer };
+            return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
+                const sanitizedPrefix = prefix.trim().replace(/\s+/g, "").toUpperCase();
+                const existedCustomers = await customerRepository_1.customerRepository.findByIdOrMst(sanitizedPrefix, customerData.mst, transaction);
+                const prefixExists = existedCustomers.some((c) => c.customerId.startsWith(sanitizedPrefix));
+                const mstExists = existedCustomers.some((c) => c.mst === customerData.mst);
+                if (prefixExists) {
+                    throw appError_1.AppError.Conflict(`Prefix '${sanitizedPrefix}' đã tồn tại, vui lòng chọn prefix khác`, "PREFIX_ALREADY_EXISTS");
+                }
+                if (mstExists) {
+                    throw appError_1.AppError.Conflict(`MST '${customerData.mst}' đã tồn tại`, "MST_ALREADY_EXISTS");
+                }
+                const maxSeq = (await customer_1.Customer.max("customerSeq", { transaction })) ?? 0;
+                //create next id
+                const nextId = Number(maxSeq) + 1;
+                const newCustomerId = `${prefix}${String(nextId).padStart(4, "0")}`;
+                const newCustomer = await customerRepository_1.customerRepository.createCustomer({ customerId: newCustomerId, customerSeq: nextId, ...customerData }, transaction);
+                return { message: "Customer created successfully", data: newCustomer };
+            });
         }
         catch (error) {
-            await transaction?.rollback();
             console.error("❌ Failed to create customer:", error);
+            if (error instanceof appError_1.AppError)
+                throw error;
             throw appError_1.AppError.ServerError();
         }
     },
     updateCustomer: async (customerId, customerData) => {
-        const transaction = await customer_1.Customer.sequelize?.transaction();
         try {
-            const customer = await customerRepository_1.customerRepository.findByCustomerId(customerId, transaction);
-            if (!customer) {
-                throw appError_1.AppError.NotFound("Customer not found", "CUSTOMER_NOT_FOUND");
-            }
-            const result = await customerRepository_1.customerRepository.updateCustomer(customer, customerData, transaction);
-            await transaction?.commit();
-            return { message: "Customer updated successfully", data: result };
+            return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
+                const customer = await customerRepository_1.customerRepository.findByCustomerId(customerId, transaction);
+                if (!customer) {
+                    throw appError_1.AppError.NotFound("Customer not found", "CUSTOMER_NOT_FOUND");
+                }
+                const result = await customerRepository_1.customerRepository.updateCustomer(customer, customerData, transaction);
+                return { message: "Customer updated successfully", data: result };
+            });
         }
         catch (error) {
-            await transaction?.rollback();
             console.error("❌ Update customer failed:", error);
             if (error instanceof appError_1.AppError)
                 throw error;
             throw appError_1.AppError.ServerError();
         }
     },
-    deleteCustomer: async (customerId) => {
-        const transaction = await customer_1.Customer.sequelize?.transaction();
+    deleteCustomer: async (customerId, role) => {
         try {
-            const deletedCustomer = await customerRepository_1.customerRepository.deleteCustomer(customerId, transaction);
-            if (!deletedCustomer) {
-                await transaction?.rollback();
-                throw appError_1.AppError.NotFound("Customer not found", "CUSTOMER_NOT_FOUND");
-            }
-            await transaction?.commit();
-            return { message: "Customer deleted successfully" };
+            return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
+                const customer = await customer_1.Customer.findByPk(customerId, {
+                    attributes: ["customerId"],
+                    transaction,
+                });
+                if (!customer) {
+                    throw appError_1.AppError.NotFound("Customer not found", "CUSTOMER_NOT_FOUND");
+                }
+                const orderCount = await order_1.Order.count({ where: { customerId }, transaction });
+                if (orderCount > 0) {
+                    if (role != "admin") {
+                        throw appError_1.AppError.Conflict(`Customer with ID '${customerId}' has associated orders and cannot be deleted.`, "CUSTOMER_HAS_ORDERS");
+                    }
+                }
+                await customerRepository_1.customerRepository.deleteCustomer(customerId, transaction);
+                return { message: "Customer deleted successfully" };
+            });
         }
         catch (error) {
-            await transaction?.rollback();
             console.error("❌ Delete customer failed:", error);
             if (error instanceof appError_1.AppError)
                 throw error;

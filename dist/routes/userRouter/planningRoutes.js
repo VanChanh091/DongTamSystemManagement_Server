@@ -8,23 +8,27 @@ const authMiddleware_1 = __importDefault(require("../../middlewares/authMiddlewa
 const permissionMiddleware_1 = require("../../middlewares/permissionMiddleware");
 const planningPaperController_1 = require("../../controller/user/planning/planningPaperController");
 const planningBoxController_1 = require("../../controller/user/planning/planningBoxController");
-const planningStopController_1 = require("../../controller/user/planning/planningStopController");
+const planningStatusController_1 = require("../../controller/user/planning/planningStatusController");
 const router = (0, express_1.Router)();
 //=========================WAITING FOR PLANNING=========================
-router.get("/", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningPaperController_1.getOrderAccept);
-router.post("/planningOrder", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningPaperController_1.planningOrder);
+router.get("/", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningStatusController_1.getOrderAccept);
+router.post("/planningOrder", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningStatusController_1.planningOrder);
 //=========================PLANNING PAPER=========================
 router.get("/byMachinePaper", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningPaperController_1.getPlanningByMachine);
 router.get("/filterPaper", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningPaperController_1.getPlanningPaperByfield);
 router.post("/updateIndex_TimeRunningPaper", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningPaperController_1.updateIndex_TimeRunning);
+router.post("/notifyPlanning", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningPaperController_1.notifyUpdatePlanning);
 router.put("/changeMachinePaper", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningPaperController_1.changeMachinePlanning);
+router.put("/confirmPaper", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningPaperController_1.confirmCompletePaper);
 router.put("/pauseOrAcceptLackQtyPaper", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningPaperController_1.pauseOrAcceptLackQtyPLanning);
 //=========================PLANNING BOX=========================
 router.get("/byMachineBox", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningBoxController_1.getPlanningBox);
 router.get("/filterBox", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningBoxController_1.getPlanningBoxByfield);
 router.post("/updateIndex_TimeRunningBox", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningBoxController_1.updateIndex_TimeRunningBox);
+router.put("/confirmBox", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningBoxController_1.confirmCompleteBox);
 router.put("/acceptLackQtyBox", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningBoxController_1.acceptLackQtyBox);
 //=========================PLANNING BOX=========================
-router.get("/getPlanningStop", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningStopController_1.getPlanningStop);
+router.get("/getPlanningStop", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningStatusController_1.getPlanningStop);
+router.put("/updateStopById", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningStatusController_1.cancelOrContinuePlannning);
 exports.default = router;
 //# sourceMappingURL=planningRoutes.js.map

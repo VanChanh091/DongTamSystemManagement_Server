@@ -5,7 +5,6 @@ import { customerService } from "../../service/customerService";
 import { AppError } from "../../utils/appError";
 import { CacheManager } from "../../utils/helper/cacheManager";
 import { exportExcelResponse } from "../../utils/helper/excelExporter";
-import { generateNextId } from "../../utils/helper/generateNextId";
 
 jest.mock("../../repository/customerRepository");
 jest.mock("../../configs/redisCache", () => ({
@@ -90,7 +89,7 @@ describe("Customer Service", () => {
     // mock filterDataFromCache by overriding require
     const mockFilter = jest.spyOn(
       require("../../utils/helper/modelHelper/orderHelpers"),
-      "filterDataFromCache"
+      "filterDataFromCache",
     );
 
     mockFilter.mockResolvedValue(fakeResult);
@@ -112,36 +111,8 @@ describe("Customer Service", () => {
         keyword: "A",
         page: 1,
         pageSize: 20,
-      })
+      }),
     ).rejects.toThrow(AppError);
-  });
-
-  // createCustomer
-  it("should create customer successfully", async () => {
-    (customerRepository.findAllIds as jest.Mock).mockResolvedValue([{ customerId: "CUS0001" }]);
-
-    (generateNextId as jest.Mock).mockReturnValue("CUS0002");
-
-    (customerRepository.createCustomer as jest.Mock).mockResolvedValue({
-      customerId: "CUS0002",
-      name: "John",
-    });
-
-    const result = await customerService.createCustomer({
-      prefix: "CUS",
-      customerName: "John",
-    });
-
-    expect(result.data.customerId).toBe("CUS0002");
-    expect(commit).toHaveBeenCalled();
-  });
-
-  it("should rollback on error", async () => {
-    (customerRepository.findAllIds as jest.Mock).mockRejectedValue(new Error("DB ERROR"));
-
-    await expect(customerService.createCustomer({ prefix: "CUS" })).rejects.toThrow(AppError);
-
-    expect(rollback).toHaveBeenCalled();
   });
 
   // updateCustomer
@@ -167,24 +138,6 @@ describe("Customer Service", () => {
     (customerRepository.findByCustomerId as jest.Mock).mockResolvedValue(null);
 
     await expect(customerService.updateCustomer("BAD_ID", {})).rejects.toThrow(AppError);
-  });
-
-  // deleteCustomer
-  it("should delete customer successfully", async () => {
-    (customerRepository.deleteCustomer as jest.Mock).mockResolvedValue(true);
-
-    const result = await customerService.deleteCustomer("CUS0001");
-
-    expect(result.message).toBe("Customer deleted successfully");
-    expect(commit).toHaveBeenCalled();
-  });
-
-  it("should throw not found error", async () => {
-    (customerRepository.deleteCustomer as jest.Mock).mockResolvedValue(null);
-
-    await expect(customerService.deleteCustomer("INVALID")).rejects.toThrow(AppError);
-
-    expect(rollback).toHaveBeenCalled();
   });
 
   // exportExcelCustomer

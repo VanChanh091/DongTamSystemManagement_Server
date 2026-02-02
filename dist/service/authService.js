@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.authService = void 0;
-const redisCache_1 = __importDefault(require("../configs/redisCache"));
+const redisCache_1 = __importDefault(require("../assest/configs/redisCache"));
 const jwtHelper_1 = __importDefault(require("../middlewares/jwtHelper"));
 const authRepository_1 = require("../repository/authRepository");
 const appError_1 = require("../utils/appError");
@@ -126,7 +126,7 @@ exports.authService = {
         try {
             const redisData = await redisCache_1.default.get(`user:${email}`);
             if (!redisData) {
-                throw appError_1.AppError.Unauthorized("Email đã hết hạn hoặc không hợp lệ", "INVALID_EMAIL");
+                throw appError_1.AppError.Unauthorized("Email không hợp lệ", "INVALID_EMAIL");
             }
             if (newPassword !== confirmNewPW) {
                 throw appError_1.AppError.BadRequest("Mật khẩu không khớp", "PASSWORD_MISMATCH");

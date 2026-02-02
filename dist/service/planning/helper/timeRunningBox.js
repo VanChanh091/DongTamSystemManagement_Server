@@ -21,63 +21,71 @@ const planningHelper_1 = require("../../../utils/helper/modelHelper/planningHelp
 //ngược lại -> p + runningPlan * (totalLossOnTotalQty / 100)
 //ký hiệu: c = colorNumberOnProduct, p = paperNumberOnProduct
 // Tính thời gian cho danh sách planning
-const calTimeRunningPlanningBox = async ({ machine, machineInfo, dayStart, timeStart, totalTimeWorking, plannings, transaction, }) => {
+const calTimeRunningPlanningBox = async ({ plannings, machine, machineInfo, dayStart, timeStart, totalTimeWorking, isNewDay, transaction, }) => {
     const updated = [];
-    let currentTime, currentDay;
-    // ✅ Ưu tiên lấy đơn complete từ FE gửi xuống
-    const feComplete = plannings
-        .filter((p) => p.boxTimes && p.boxTimes[0] && p.boxTimes[0].status === "complete")
-        .sort((a, b) => new Date(b.boxTimes[0].dayStart).getTime() - new Date(a.boxTimes[0].dayStart).getTime())[0];
-    if (feComplete) {
-        const feBox = feComplete.boxTimes[0];
-        if (feComplete.hasOverFlow) {
-            // Lấy overflow mới nhất cho planning này & machine
-            const overflowRecord = await planningRepository_1.planningRepository.getModelById(timeOverflowPlanning_1.timeOverflowPlanning, { planningBoxId: feComplete.planningBoxId, machine }, { transaction });
-            if (overflowRecord && overflowRecord.overflowDayStart && overflowRecord.overflowTimeRunning) {
-                currentDay = new Date(overflowRecord.overflowDayStart);
-                currentTime = combineDateAndHHMMSS(currentDay, overflowRecord.overflowTimeRunning);
-            }
-            else if (feBox && feBox.dayStart && feBox.timeRunning) {
-                currentDay = new Date(feBox.dayStart);
-                currentTime = combineDateAndHHMMSS(currentDay, feBox.timeRunning);
-            }
-            else if (feComplete.dayStart && feComplete.timeRunning) {
-                currentDay = new Date(feComplete.dayStart);
-                currentTime = combineDateAndHHMMSS(currentDay, feComplete.timeRunning);
+    let currentDay, currentTime;
+    if (isNewDay) {
+        currentDay = new Date(dayStart);
+        const [hh, mm] = timeStart.split(":").map(Number);
+        currentTime = new Date(currentDay);
+        currentTime.setHours(hh, mm, 0, 0);
+    }
+    else {
+        // ✅ Ưu tiên lấy đơn complete từ FE gửi xuống
+        const feComplete = plannings
+            .filter((p) => p.boxTimes && p.boxTimes[0] && p.boxTimes[0].status === "complete")
+            .sort((a, b) => new Date(b.boxTimes[0].dayStart).getTime() - new Date(a.boxTimes[0].dayStart).getTime())[0];
+        if (feComplete) {
+            const feBox = feComplete.boxTimes[0];
+            if (feComplete.hasOverFlow) {
+                // Lấy overflow mới nhất cho planning này & machine
+                const overflowRecord = await planningRepository_1.planningRepository.getModelById({
+                    model: timeOverflowPlanning_1.timeOverflowPlanning,
+                    where: { planningBoxId: feComplete.planningBoxId, machine },
+                    options: { transaction },
+                });
+                if (overflowRecord &&
+                    overflowRecord.overflowDayStart &&
+                    overflowRecord.overflowTimeRunning) {
+                    currentDay = new Date(overflowRecord.overflowDayStart);
+                    currentTime = combineDateAndHHMMSS(currentDay, overflowRecord.overflowTimeRunning);
+                }
+                else if (feBox && feBox.dayStart && feBox.timeRunning) {
+                    currentDay = new Date(feBox.dayStart);
+                    currentTime = combineDateAndHHMMSS(currentDay, feBox.timeRunning);
+                }
+                else if (feComplete.dayStart && feComplete.timeRunning) {
+                    currentDay = new Date(feComplete.dayStart);
+                    currentTime = combineDateAndHHMMSS(currentDay, feComplete.timeRunning);
+                }
+                else {
+                    const initCursor = await getInitialCursor({
+                        machine,
+                        dayStart,
+                        timeStart,
+                        transaction,
+                    });
+                    currentTime = initCursor.currentTime;
+                    currentDay = initCursor.currentDay;
+                }
             }
             else {
-                const initCursor = await getInitialCursor({
-                    machine,
-                    dayStart,
-                    timeStart,
-                    transaction,
-                });
-                currentTime = initCursor.currentTime;
-                currentDay = initCursor.currentDay;
+                // không overflow -> ưu tiên boxTime, fallback planning
+                if (feBox && feBox.dayStart && feBox.timeRunning) {
+                    currentDay = new Date(feBox.dayStart);
+                    currentTime = combineDateAndHHMMSS(currentDay, feBox.timeRunning);
+                }
+                else {
+                    currentDay = new Date(feComplete.dayStart);
+                    currentTime = combineDateAndHHMMSS(currentDay, feComplete.timeRunning);
+                }
             }
         }
         else {
-            // không overflow -> ưu tiên boxTime, fallback planning
-            if (feBox && feBox.dayStart && feBox.timeRunning) {
-                currentDay = new Date(feBox.dayStart);
-                currentTime = combineDateAndHHMMSS(currentDay, feBox.timeRunning);
-            }
-            else {
-                currentDay = new Date(feComplete.dayStart);
-                currentTime = combineDateAndHHMMSS(currentDay, feComplete.timeRunning);
-            }
+            // fallback: lấy con trỏ từ DB
+            const initCursor = await getInitialCursor({ machine, dayStart, timeStart, transaction });
+            ({ currentTime, currentDay } = initCursor);
         }
-    }
-    else {
-        // fallback: lấy con trỏ từ DB
-        const initCursor = await getInitialCursor({
-            machine,
-            dayStart,
-            timeStart,
-            transaction,
-        });
-        currentTime = initCursor.currentTime;
-        currentDay = initCursor.currentDay;
     }
     for (const planning of plannings) {
         const boxTime = planning.boxTimes && planning.boxTimes[0] ? planning.boxTimes[0] : null;
@@ -112,7 +120,7 @@ const calculateTimeForOnePlanning = async ({ planning, machine, machineInfo, cur
             nextDay: currentDay,
         };
     }
-    // ✅ chỉ dùng quantityCustomer làm runningPlan
+    // chỉ dùng quantityCustomer làm runningPlan
     const boxTime = planning.boxTimes && planning.boxTimes[0] ? planning.boxTimes[0] : null;
     const runningPlan = boxTime.runningPlan;
     const productionMinutes = calculateProductionMinutes({
@@ -148,10 +156,9 @@ const calculateTimeForOnePlanning = async ({ planning, machine, machineInfo, cur
         dayStart: currentDay.toISOString().split("T")[0],
     };
     let hasOverFlow = false;
-    //lưu giá trị để xem log
-    const startForLog = currentTime;
     // predictedEndTime: đã bao gồm productionMinutes + toàn bộ break
     const predictedEndTime = (0, planningHelper_1.addMinutes)(currentTime, productionMinutes);
+    console.log(predictedEndTime > endOfWorkTime);
     if (predictedEndTime > endOfWorkTime) {
         hasOverFlow = true;
         result.timeRunning = (0, planningHelper_1.formatTimeToHHMMSS)(endOfWorkTime);
@@ -173,10 +180,19 @@ const calculateTimeForOnePlanning = async ({ planning, machine, machineInfo, cur
     else {
         result.timeRunning = (0, planningHelper_1.formatTimeToHHMMSS)(predictedEndTime);
         currentTime = predictedEndTime;
-        await planningRepository_1.planningRepository.deleteModelData(timeOverflowPlanning_1.timeOverflowPlanning, { planningBoxId, machine }, transaction);
+        await planningRepository_1.planningRepository.deleteModelData({
+            model: timeOverflowPlanning_1.timeOverflowPlanning,
+            where: { planningBoxId, machine },
+            transaction,
+        });
     }
-    // ✅ update hasOverFlow theo quantityCustomer
-    await planningRepository_1.planningRepository.updateDataModel(planningBox_1.PlanningBox, { hasOverFlow: hasOverFlow && runningPlan > 0 }, { where: { planningBoxId }, transaction });
+    console.log(`hasOverFlow: ${hasOverFlow}`);
+    console.log(`hasOverFlow && runningPlan > 0: ${hasOverFlow && runningPlan > 0}`);
+    await planningRepository_1.planningRepository.updateDataModel({
+        model: planningBox_1.PlanningBox,
+        data: { hasOverFlow: hasOverFlow && runningPlan > 0 },
+        options: { where: { planningBoxId }, transaction },
+    });
     // tính waste
     const wasteBoxValue = await calculateWasteBoxValue({
         machine,
@@ -188,7 +204,11 @@ const calculateTimeForOnePlanning = async ({ planning, machine, machineInfo, cur
     if (wasteBoxValue !== null) {
         result.wasteBox = Math.round(wasteBoxValue);
     }
-    await planningRepository_1.planningRepository.updateDataModel(planningBoxMachineTime_1.PlanningBoxTime, { ...result, sortPlanning }, { where: { planningBoxId, machine }, transaction });
+    await planningRepository_1.planningRepository.updateDataModel({
+        model: planningBoxMachineTime_1.PlanningBoxTime,
+        data: { ...result, sortPlanning },
+        options: { where: { planningBoxId, machine }, transaction },
+    });
     // ================== LOG CHI TIẾT ==================
     // console.log("PlanningBox", {
     //   machine,
@@ -224,13 +244,21 @@ const handleOverflow = async ({ planningBoxId, predictedEndTime, endOfWorkTime, 
     const overflowMinutes = (predictedEndTime.getTime() - endOfWorkTime.getTime()) / 60000;
     const overflowDayStart = (0, planningHelper_1.formatDate)((0, planningHelper_1.addDays)(currentDay, 1));
     const overflowTimeRunning = (0, planningHelper_1.formatTimeToHHMMSS)((0, planningHelper_1.addMinutes)((0, planningHelper_1.parseTimeOnly)(timeStart), overflowMinutes));
-    await planningRepository_1.planningRepository.deleteModelData(timeOverflowPlanning_1.timeOverflowPlanning, { planningBoxId, machine }, transaction);
-    await planningRepository_1.planningRepository.createPlanning(timeOverflowPlanning_1.timeOverflowPlanning, {
-        planningBoxId,
-        machine,
-        overflowDayStart: new Date(overflowDayStart),
-        overflowTimeRunning,
-    }, transaction);
+    await planningRepository_1.planningRepository.deleteModelData({
+        model: timeOverflowPlanning_1.timeOverflowPlanning,
+        where: { planningBoxId, machine },
+        transaction,
+    });
+    await planningRepository_1.planningRepository.createData({
+        model: timeOverflowPlanning_1.timeOverflowPlanning,
+        data: {
+            planningBoxId,
+            machine,
+            overflowDayStart: new Date(overflowDayStart),
+            overflowTimeRunning,
+        },
+        transaction,
+    });
     return {
         overflowDayStart,
         overflowTimeRunning,
@@ -241,7 +269,11 @@ const handleOverflow = async ({ planningBoxId, predictedEndTime, endOfWorkTime, 
 const calculateWasteBoxValue = async ({ machine, runningPlan, Order, isMayIn, transaction, }) => {
     if (runningPlan <= 0)
         return null;
-    const wasteNorm = await planningRepository_1.planningRepository.getModelById(wasteNormBox_1.WasteNormBox, { machineName: machine }, { transaction });
+    const wasteNorm = await planningRepository_1.planningRepository.getModelById({
+        model: wasteNormBox_1.WasteNormBox,
+        where: { machineName: machine },
+        options: { transaction },
+    });
     if (!wasteNorm)
         return null;
     const { colorNumberOnProduct = 0, paperNumberOnProduct = 0, totalLossOnTotalQty = 0, } = wasteNorm.get();
@@ -264,12 +296,16 @@ const getInitialCursor = async ({ machine, dayStart, timeStart, transaction, }) 
     const day = new Date(dayStart);
     const dayStr = day.toISOString().split("T")[0];
     // 1) base = dayStart + timeStart
-    let base = (0, planningHelper_1.parseTimeOnly)(timeStart);
+    const base = (0, planningHelper_1.parseTimeOnly)(timeStart);
     base.setFullYear(day.getFullYear(), day.getMonth(), day.getDate());
     let currentTime = base;
     let currentDay = new Date(day);
     // A) Lấy đơn complete trong cùng ngày
-    const lastComplete = await planningRepository_1.planningRepository.getModelById(planningBoxMachineTime_1.PlanningBoxTime, { machine: machine, status: "complete", dayStart: dayStr }, { order: [["timeRunning", "DESC"]], attributes: ["timeRunning"], transaction });
+    const lastComplete = await planningRepository_1.planningRepository.getModelById({
+        model: planningBoxMachineTime_1.PlanningBoxTime,
+        where: { machine: machine, status: "complete", dayStart: dayStr },
+        options: { order: [["timeRunning", "DESC"]], attributes: ["timeRunning"], transaction },
+    });
     if (lastComplete?.timeRunning) {
         const time = combineDateAndHHMMSS(currentDay, lastComplete.timeRunning);
         if (time > currentTime) {
@@ -280,9 +316,11 @@ const getInitialCursor = async ({ machine, dayStart, timeStart, transaction, }) 
     const lastOverflow = await planningRepository_1.planningRepository.getTimeOverflowBox(machine, transaction);
     if (lastOverflow?.overflowTimeRunning) {
         const overflowDay = new Date(lastOverflow.overflowDayStart ?? "");
-        const time = combineDateAndHHMMSS(overflowDay, lastOverflow.overflowTimeRunning);
-        if (time > currentTime) {
-            currentTime = time;
+        const overflowTime = combineDateAndHHMMSS(overflowDay, lastOverflow.overflowTimeRunning);
+        // Nếu overflow mới hơn currentTime → cập nhật cursor
+        if (overflowTime > currentTime) {
+            currentTime = overflowTime;
+            currentDay = overflowDay;
         }
     }
     return { currentTime, currentDay };

@@ -31,7 +31,6 @@ const initSocket = (server) => {
                 : process.env.SECRET_KEY_PROD;
             const decoded = jsonwebtoken_1.default.verify(token, key);
             socket.user = decoded;
-            // console.log("✅ Token ok:", decoded);
             next();
         }
         catch (err) {
@@ -46,12 +45,12 @@ const initSocket = (server) => {
         socket.on("join-machine", (roomName) => {
             socket.join(roomName);
             if (devEnvironment)
-                console.log(`📌 socket joined ${roomName}`);
+                console.log(`📌 socket joined: ${roomName}`);
         });
         socket.on("leave-room", (room) => {
             socket.leave(room);
             if (devEnvironment)
-                console.log(`📌 socket left ${room}`);
+                console.log(`📌 socket left: ${room}`);
         });
     });
     return io;

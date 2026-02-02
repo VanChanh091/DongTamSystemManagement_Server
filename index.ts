@@ -54,7 +54,12 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 //test: curl -I http://localhost:5000/updates/dongtam.exe
-app.use("/updates", express.static(path.join(process.cwd(), "updates")));
+// app.use("/updates", express.static(path.join(process.cwd(), "updates")));
+
+const pathApp = path.join(process.cwd(), "updates");
+console.log("Static files served from:", pathApp);
+
+app.use("/updates", express.static(pathApp));
 
 // ========================
 //        ROUTES

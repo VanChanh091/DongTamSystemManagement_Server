@@ -6,235 +6,26 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.planningPaperService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
+const redisCache_1 = __importDefault(require("../../assest/configs/redisCache"));
 const sequelize_1 = require("sequelize");
-const redisCache_1 = __importDefault(require("../../configs/redisCache"));
 const order_1 = require("../../models/order/order");
 const planningPaper_1 = require("../../models/planning/planningPaper");
 const timeOverflowPlanning_1 = require("../../models/planning/timeOverflowPlanning");
 const appError_1 = require("../../utils/appError");
 const cacheManager_1 = require("../../utils/helper/cacheManager");
 const planningRepository_1 = require("../../repository/planningRepository");
-const wasteNormPaper_1 = require("../../models/admin/wasteNormPaper");
-const waveCrestCoefficient_1 = require("../../models/admin/waveCrestCoefficient");
 const planningBox_1 = require("../../models/planning/planningBox");
 const planningBoxMachineTime_1 = require("../../models/planning/planningBoxMachineTime");
 const machinePaper_1 = require("../../models/admin/machinePaper");
 const timeRunningPaper_1 = require("./helper/timeRunningPaper");
-const machineLabels_1 = require("../../configs/machineLabels");
 const planningHelper_1 = require("../../utils/helper/modelHelper/planningHelper");
+const transactionHelper_1 = require("../../utils/helper/transactionHelper");
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { paper, order } = cacheManager_1.CacheManager.keys.planning;
+const { paper } = cacheManager_1.CacheManager.keys.planning;
 exports.planningPaperService = {
-    //====================================PLANNING ORDER========================================
-    getOrderAccept: async () => {
-        const cacheKey = order.all;
-        try {
-            const { isChanged: order } = await cacheManager_1.CacheManager.check([{ model: order_1.Order, where: { status: "accept" } }], "planningOrder");
-            const { isChanged: planningPaper } = await cacheManager_1.CacheManager.check([
-                { model: planningPaper_1.PlanningPaper },
-                { model: timeOverflowPlanning_1.timeOverflowPlanning, where: { planningId: { [sequelize_1.Op.ne]: null } } },
-            ], "planningOrderPaper", { setCache: false });
-            const isChangedData = order || planningPaper;
-            if (isChangedData) {
-                await cacheManager_1.CacheManager.clearOrderAccept();
-            }
-            else {
-                const cachedData = await redisCache_1.default.get(cacheKey);
-                if (cachedData) {
-                    return { ...JSON.parse(cachedData), fromCache: true };
-                }
-            }
-            const result = await planningRepository_1.planningRepository.getOrderAccept();
-            const responseData = { message: "", data: result };
-            await redisCache_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
-            return responseData;
-        }
-        catch (error) {
-            console.error("❌ get all order accept failed:", error);
-            throw appError_1.AppError.ServerError();
-        }
-    },
-    planningOrder: async (orderId, planningData) => {
-        try {
-            if (!orderId) {
-                throw appError_1.AppError.BadRequest("Missing orderId or newStatus", "MISSING_PARAMETERS");
-            }
-            // 1) Lấy thông tin Order kèm các quan hệ
-            const order = await planningRepository_1.planningRepository.findOrderById(orderId);
-            if (!order)
-                throw appError_1.AppError.NotFound("Order not found", "ORDER_NOT_FOUND");
-            const { chooseMachine } = planningData;
-            // 2) Lấy thông số định mức và hệ số sóng cho máy đã chọn
-            const wasteNorm = await planningRepository_1.planningRepository.getModelById(wasteNormPaper_1.WasteNormPaper, {
-                machineName: chooseMachine,
-            });
-            const waveCoeff = await planningRepository_1.planningRepository.getModelById(waveCrestCoefficient_1.WaveCrestCoefficient, {
-                machineName: chooseMachine,
-            });
-            if (!wasteNorm || !waveCoeff) {
-                throw new Error(`WasteNorm or WaveCrestCoefficient not found for machine: ${chooseMachine}`);
-            }
-            // 3) Parse cấu trúc giấy thành mảng lớp
-            const structStr = [
-                planningData.dayReplace,
-                planningData.songEReplace,
-                planningData.matEReplace,
-                planningData.songBReplace,
-                planningData.matBReplace,
-                planningData.songCReplace,
-                planningData.matCReplace,
-                planningData.songE2Replace,
-                planningData.matE2Replace,
-            ]
-                .filter(Boolean)
-                .join("/");
-            const parseStructure = (str) => str.split("/").map((seg) => {
-                if (/^[EBC]/.test(seg))
-                    return { kind: "flute", code: seg };
-                return {
-                    kind: "liner",
-                    thickness: parseFloat(seg.replace(/\D+/g, "")),
-                };
-            });
-            const layers = parseStructure(structStr);
-            // 4) Xác định loại sóng từ đơn hàng (flute: "5EB" => ["E", "B"])
-            const waveTypes = (order.flute?.match(/[EBC]/gi) || []).map((s) => s.toUpperCase());
-            const roundSmart = (num) => Math.round(num * 100) / 100;
-            // 5) Hàm tính phế liệu paper
-            const calculateWaste = (layers, ghepKho, wasteNorm, waveCoeff, runningPlan, numberChild, waveTypes) => {
-                const gkTh = ghepKho / 100;
-                let flute = { E: 0, B: 0, C: 0, E2: 0 };
-                let softLiner = 0;
-                let countE = 0;
-                for (let i = 0; i < layers.length; i++) {
-                    const L = layers[i];
-                    if (L.kind === "flute") {
-                        const letter = L.code[0].toUpperCase();
-                        if (!waveTypes.includes(letter))
-                            continue;
-                        const fluteTh = parseFloat(L.code.replace(/\D+/g, "")) / 1000;
-                        const prev = layers[i - 1];
-                        const linerBefore = prev && prev.kind === "liner" ? prev.thickness / 1000 : 0;
-                        let coef = 0;
-                        if (letter === "E") {
-                            const isFirstE = countE === 0;
-                            coef = isFirstE ? waveCoeff.fluteE_1 : waveCoeff.fluteE_2;
-                            const loss = gkTh * wasteNorm.waveCrest * linerBefore +
-                                gkTh * wasteNorm.waveCrest * fluteTh * coef;
-                            if (isFirstE) {
-                                flute.E += loss;
-                            }
-                            else {
-                                flute.E2 += loss;
-                            }
-                            countE++;
-                        }
-                        else {
-                            coef = waveCoeff[`flute${letter}`] || 0;
-                            const loss = gkTh * wasteNorm.waveCrest * linerBefore +
-                                gkTh * wasteNorm.waveCrest * fluteTh * coef;
-                            if (letter in flute) {
-                                flute[letter] += loss;
-                            }
-                        }
-                    }
-                }
-                // 5.1) Lớp liner cuối cùng
-                const lastLiner = [...layers].reverse().find((l) => l.kind === "liner");
-                if (lastLiner) {
-                    softLiner = gkTh * wasteNorm.waveCrestSoft * (lastLiner.thickness / 1000);
-                }
-                // 5.2) Tính hao phí, dao, tổng hao hụt
-                const bottom = flute.E + flute.B + flute.C + softLiner;
-                const totalLength = runningPlan / numberChild;
-                const oneM2WaveCrestSoft = bottom / wasteNorm.waveCrestSoft;
-                const haoPhi = wasteNorm.waveCrestSoft > 0
-                    ? totalLength * oneM2WaveCrestSoft * (wasteNorm.lossInProcess / 100)
-                    : 0;
-                const knife = wasteNorm.waveCrestSoft > 0
-                    ? oneM2WaveCrestSoft * wasteNorm.lossInSheetingAndSlitting
-                    : 0;
-                const totalLoss = flute.E + flute.B + flute.C + flute.E2 + haoPhi + knife + bottom;
-                return {
-                    fluteE: roundSmart(flute.E),
-                    fluteB: roundSmart(flute.B),
-                    fluteC: roundSmart(flute.C),
-                    fluteE2: roundSmart(flute.E2),
-                    bottom: roundSmart(bottom),
-                    haoPhi: roundSmart(haoPhi),
-                    knife: roundSmart(knife),
-                    totalLoss: roundSmart(totalLoss),
-                };
-            };
-            // 6) Tạo kế hoạch làm giấy tấm
-            const paperPlan = await planningRepository_1.planningRepository.createPlanning(planningPaper_1.PlanningPaper, {
-                orderId,
-                status: "planning",
-                ...planningData,
-            });
-            // 7) Tính phế liệu và cập nhật lại plan giấy tấm
-            const waste = calculateWaste(layers, planningData.ghepKho, wasteNorm, waveCoeff, planningData.runningPlan, order.numberChild, waveTypes);
-            Object.assign(paperPlan, waste);
-            await paperPlan.save();
-            let boxPlan = null;
-            // 8) Nếu đơn hàng có làm thùng, tạo thêm kế hoạch lam-thung (waiting)
-            const box = order.box;
-            if (order.isBox) {
-                boxPlan = await planningRepository_1.planningRepository.createPlanning(planningBox_1.PlanningBox, {
-                    planningId: paperPlan.planningId,
-                    orderId,
-                    day: paperPlan.dayReplace,
-                    matE: paperPlan.matEReplace,
-                    matB: paperPlan.matBReplace,
-                    matC: paperPlan.matCReplace,
-                    matE2: paperPlan.matE2Replace,
-                    songE: paperPlan.songEReplace,
-                    songB: paperPlan.songBReplace,
-                    songC: paperPlan.songCReplace,
-                    songE2: paperPlan.songE2Replace,
-                    length: paperPlan.lengthPaperPlanning,
-                    size: paperPlan.sizePaperPLaning,
-                    hasIn: !!(box.inMatTruoc || box.inMatSau),
-                    hasCanLan: !!box.canLan,
-                    hasBe: !!box.be,
-                    hasXa: !!box.Xa,
-                    hasDan: !!(box.dan_1_Manh || box.dan_2_Manh),
-                    hasCatKhe: !!box.catKhe,
-                    hasCanMang: !!box.canMang,
-                    hasDongGhim: !!(box.dongGhim1Manh || box.dongGhim2Manh),
-                });
-            }
-            //9) dựa vào các hasIn, hasBe, hasXa... để tạo ra planning box time
-            if (boxPlan) {
-                const machineTimes = Object.entries(machineLabels_1.machineMap)
-                    .filter(([flag]) => boxPlan[flag] === true)
-                    .map(([_, machineName]) => ({
-                    planningBoxId: boxPlan.planningBoxId,
-                    machine: machineName,
-                    runningPlan: paperPlan.runningPlan,
-                }));
-                if (machineTimes.length > 0) {
-                    await planningRepository_1.planningRepository.createPlanningBoxTime(machineTimes);
-                }
-            }
-            return {
-                message: "Đã tạo kế hoạch thành công.",
-                planning: [paperPlan, boxPlan].filter(Boolean),
-            };
-        }
-        catch (error) {
-            console.error("planningOrder error:", error);
-            if (error instanceof appError_1.AppError)
-                throw error;
-            throw appError_1.AppError.ServerError();
-        }
-    },
     //====================================PLANNING PAPER========================================
     getPlanningByMachine: async (machine) => {
         try {
-            if (!machine) {
-                throw appError_1.AppError.BadRequest("Missing machine parameter", "MISSING_PARAMETERS");
-            }
             const cacheKey = paper.machine(machine);
             const { isChanged } = await cacheManager_1.CacheManager.check([
                 { model: planningPaper_1.PlanningPaper },
@@ -252,7 +43,6 @@ exports.planningPaperService = {
                         message: `get all cache planning:machine:${machine}`,
                         data: JSON.parse(cachedData),
                     };
-                    //   return { ...JSON.parse(cachedData), fromCache: true };
                 }
             }
             const data = await exports.planningPaperService.getPlanningPaperSorted(machine);
@@ -367,13 +157,11 @@ exports.planningPaperService = {
         }
     },
     getPlanningByField: async (machine, field, keyword) => {
-        // console.log(`machine ${machine} - field: ${field} - keyword: ${keyword}`);
         try {
             const fieldMap = {
                 orderId: (paper) => paper.orderId,
                 ghepKho: (paper) => paper.ghepKho,
                 customerName: (paper) => paper.Order.Customer.customerName,
-                flute: (paper) => paper.Order.flute,
             };
             const key = field;
             if (!key || !fieldMap[key]) {
@@ -397,7 +185,6 @@ exports.planningPaperService = {
                 whereCondition: { planningId: planningIdsArr },
             });
             return { ...result, data: fullData };
-            // return result;
         }
         catch (error) {
             console.error(`Failed to get customers by ${field}`, error);
@@ -406,43 +193,11 @@ exports.planningPaperService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    getPlanningByOrderId: async (machine, orderId) => {
-        try {
-            if (!machine || !orderId) {
-                throw appError_1.AppError.BadRequest("Missing orderId or machine parameter", "MISSING_PARAMETERS");
-            }
-            const cacheKey = paper.machine(machine);
-            const cachedData = await redisCache_1.default.get(cacheKey);
-            if (cachedData) {
-                if (devEnvironment)
-                    console.log("✅ Data planning from Redis");
-                return {
-                    message: "Get planning by orderId from cache",
-                    data: JSON.parse(cachedData),
-                };
-                // return { ...JSON.parse(cachedData), fromCache: true };
-            }
-            const planning = await planningRepository_1.planningRepository.getPapersByOrderId(orderId);
-            if (!planning || planning.length === 0) {
-                throw appError_1.AppError.NotFound(`Không tìm thấy kế hoạch với orderId chứa: ${orderId}`, "PLANNING_NOT_FOUND");
-            }
-            return { message: "Get planning by orderId from db", data: planning };
-        }
-        catch (error) {
-            console.error("❌ Lỗi khi tìm orderId:", error);
-            if (error instanceof appError_1.AppError)
-                throw error;
-            throw appError_1.AppError.ServerError();
-        }
-    },
     changeMachinePlanning: async (planningIds, newMachine) => {
         try {
-            if (!Array.isArray(planningIds) || planningIds.length === 0) {
-                throw appError_1.AppError.BadRequest("Missing planningIds parameter", "MISSING_PARAMETERS");
-            }
-            const plannings = await planningRepository_1.planningRepository.getPapersByPlanningId(planningIds);
+            const plannings = await planningRepository_1.planningRepository.getPapersById({ planningIds });
             if (plannings.length === 0) {
-                throw appError_1.AppError.NotFound("planning npt found", "PLANNING_NOT_FOUND");
+                throw appError_1.AppError.NotFound("planning not found", "PLANNING_NOT_FOUND");
             }
             for (const planning of plannings) {
                 planning.chooseMachine = newMachine;
@@ -458,32 +213,89 @@ exports.planningPaperService = {
             throw appError_1.AppError.ServerError();
         }
     },
+    confirmCompletePlanningPaper: async (planningId) => {
+        try {
+            const ids = Array.isArray(planningId) ? planningId : [planningId];
+            const planningPaper = await planningRepository_1.planningRepository.getPapersById({
+                planningIds: ids,
+                options: {
+                    attributes: [
+                        "planningId",
+                        "runningPlan",
+                        "qtyProduced",
+                        "status",
+                        "hasOverFlow",
+                        "orderId",
+                        "statusRequest",
+                    ],
+                },
+            });
+            if (planningPaper.length !== ids.length) {
+                throw appError_1.AppError.BadRequest("planning not found", "PLANNING_NOT_FOUND");
+            }
+            // Kiểm tra sl từng đơn
+            for (const paper of planningPaper) {
+                const { qtyProduced, runningPlan } = paper;
+                if ((qtyProduced ?? 0) < runningPlan) {
+                    throw appError_1.AppError.BadRequest("Lack quantity", "LACK_QUANTITY");
+                }
+                //check đã nhập kho chưa
+                if (paper.statusRequest !== "finalize") {
+                    throw appError_1.AppError.BadRequest(`Mã đơn ${paper.orderId} chưa được chốt nhập kho`, "PLANNING_NOT_FINALIZED");
+                }
+            }
+            //cập nhật status planning
+            await planningRepository_1.planningRepository.updateDataModel({
+                model: planningPaper_1.PlanningPaper,
+                data: { status: "complete" },
+                options: { where: { planningId: ids } },
+            });
+            const overflowRows = await timeOverflowPlanning_1.timeOverflowPlanning.findAll({
+                where: { planningId: ids },
+            });
+            if (overflowRows.length) {
+                await planningRepository_1.planningRepository.updateDataModel({
+                    model: timeOverflowPlanning_1.timeOverflowPlanning,
+                    data: { status: "complete" },
+                    options: { where: { planningId: ids } },
+                });
+            }
+            return { message: "planning paper updated successfully" };
+        }
+        catch (error) {
+            console.log(`error confirm complete planning`, error);
+            if (error instanceof appError_1.AppError)
+                throw error;
+            throw appError_1.AppError.ServerError();
+        }
+    },
     pauseOrAcceptLackQtyPLanning: async (planningIds, newStatus, rejectReason) => {
         try {
-            if (!Array.isArray(planningIds) || planningIds.length === 0) {
-                throw appError_1.AppError.BadRequest("Missing planningIds parameter", "MISSING_PARAMETERS");
-            }
-            const plannings = await planningRepository_1.planningRepository.getPapersByPlanningId(planningIds);
+            const plannings = await planningRepository_1.planningRepository.getPapersById({ planningIds });
             if (plannings.length === 0) {
                 throw appError_1.AppError.NotFound("planning npt found", "PLANNING_NOT_FOUND");
             }
             if (newStatus !== "complete") {
                 for (const planning of plannings) {
                     if (planning.orderId) {
-                        const order = await planningRepository_1.planningRepository.getModelById(order_1.Order, {
-                            orderId: planning.orderId,
+                        const order = await planningRepository_1.planningRepository.getModelById({
+                            model: order_1.Order,
+                            where: { orderId: planning.orderId },
                         });
                         if (order) {
                             //case: cancel planning -> status:reject order
                             //if qtyProduced = 0 -> status:reject order -> delete planning paper&box -> minus debt of customer
                             if (newStatus === "reject") {
                                 if ((planning.qtyProduced ?? 0) > 0) {
-                                    throw appError_1.AppError.Conflict(`Cannot reject planning ${planning.planningId} with produced quantity.`, "CANNOT_REJECT_PRODUCED_PLANNING");
+                                    throw appError_1.AppError.Conflict(`Cannot reject planning ${planning.planningId} has produced quantity.`, "CANNOT_REJECT_PRODUCED_PLANNING");
                                 }
                                 // Trả order về reject
-                                await planningRepository_1.planningRepository.updateDataModel(order, {
-                                    status: newStatus,
-                                    rejectReason,
+                                await planningRepository_1.planningRepository.updateDataModel({
+                                    model: order,
+                                    data: {
+                                        status: newStatus,
+                                        rejectReason,
+                                    },
                                 });
                                 // Trừ công nợ khách hàng
                                 // const customer = await planningRepository.getModelById(
@@ -499,8 +311,9 @@ exports.planningPaperService = {
                                 // Xoá dữ liệu phụ thuộc
                                 const dependents = await planningRepository_1.planningRepository.getBoxByPlanningId(planning.planningId);
                                 for (const box of dependents) {
-                                    await planningRepository_1.planningRepository.deleteModelData(planningBoxMachineTime_1.PlanningBoxTime, {
-                                        planningBoxId: box.planningBoxId,
+                                    await planningRepository_1.planningRepository.deleteModelData({
+                                        model: planningBoxMachineTime_1.PlanningBoxTime,
+                                        where: { planningBoxId: box.planningBoxId },
                                     });
                                     await box.destroy();
                                 }
@@ -513,26 +326,38 @@ exports.planningPaperService = {
                             else if (newStatus === "stop") {
                                 const dependents = await planningRepository_1.planningRepository.getBoxByPlanningId(planning.planningId);
                                 if ((planning.qtyProduced ?? 0) > 0) {
-                                    await planningRepository_1.planningRepository.updateDataModel(order, {
-                                        status: newStatus,
-                                        rejectReason: rejectReason,
+                                    await planningRepository_1.planningRepository.updateDataModel({
+                                        model: order,
+                                        data: {
+                                            status: newStatus,
+                                            rejectReason: rejectReason,
+                                        },
                                     });
-                                    await planningRepository_1.planningRepository.updateDataModel(planning, { status: newStatus });
+                                    await planningRepository_1.planningRepository.updateDataModel({
+                                        model: planning,
+                                        data: { status: newStatus },
+                                    });
                                     for (const box of dependents) {
-                                        await planningRepository_1.planningRepository.updateDataModel(planningBoxMachineTime_1.PlanningBoxTime, { status: newStatus }, { where: { planningBoxId: box.planningBoxId } });
+                                        await planningRepository_1.planningRepository.updateDataModel({
+                                            model: planningBoxMachineTime_1.PlanningBoxTime,
+                                            data: { status: newStatus },
+                                            options: { where: { planningBoxId: box.planningBoxId } },
+                                        });
                                     }
                                 }
                                 else {
-                                    await planningRepository_1.planningRepository.updateDataModel(order, { status: "accept" });
+                                    await planningRepository_1.planningRepository.updateDataModel({
+                                        model: order,
+                                        data: { status: "accept" },
+                                    });
                                     for (const box of dependents) {
-                                        await planningRepository_1.planningRepository.deleteModelData(planningBoxMachineTime_1.PlanningBoxTime, {
-                                            planningBoxId: box.planningBoxId,
+                                        await planningRepository_1.planningRepository.deleteModelData({
+                                            model: planningBoxMachineTime_1.PlanningBoxTime,
+                                            where: { planningBoxId: box.planningBoxId },
                                         });
                                         await box.destroy();
                                     }
-                                    //xóa planning paper
                                     await planning.destroy();
-                                    //clear cache
                                     await cacheManager_1.CacheManager.clearOrderAccept();
                                 }
                             }
@@ -544,20 +369,30 @@ exports.planningPaperService = {
                 // complete -> accept lack of qty
                 for (const planning of plannings) {
                     if (planning.sortPlanning === null) {
-                        throw appError_1.AppError.BadRequest("Cannot pause planning without sortPlanning", "BAD_REQUEST");
+                        throw appError_1.AppError.BadRequest("Cannot pause planning without sortPlanning", "CANNOT_PAUSE_WITHOUT_SORT");
                     }
                     planning.status = newStatus;
                     await planning.save();
                     if (planning.hasOverFlow) {
-                        await planningRepository_1.planningRepository.updateDataModel(timeOverflowPlanning_1.timeOverflowPlanning, { status: newStatus }, { where: { planningId: planning.planningId } });
+                        await planningRepository_1.planningRepository.updateDataModel({
+                            model: timeOverflowPlanning_1.timeOverflowPlanning,
+                            data: { status: newStatus },
+                            options: { where: { planningId: planning.planningId } },
+                        });
                     }
-                    const planningBox = await planningRepository_1.planningRepository.getModelById(planningBox_1.PlanningBox, {
-                        planningId: planning.planningId,
+                    const planningBox = await planningRepository_1.planningRepository.getModelById({
+                        model: planningBox_1.PlanningBox,
+                        where: {
+                            planningId: planning.planningId,
+                        },
                     });
-                    if (!planningBox) {
+                    if (!planningBox)
                         continue;
-                    }
-                    await planningRepository_1.planningRepository.updateDataModel(planningBoxMachineTime_1.PlanningBoxTime, { runningPlan: planning.qtyProduced ?? 0 }, { where: { planningBoxId: planningBox.planningBoxId } });
+                    await planningRepository_1.planningRepository.updateDataModel({
+                        model: planningBoxMachineTime_1.PlanningBoxTime,
+                        data: { runningPlan: planning.qtyProduced ?? 0 },
+                        options: { where: { planningBoxId: planningBox.planningBoxId } },
+                    });
                 }
             }
             return { message: "Update status planning successfully" };
@@ -569,47 +404,55 @@ exports.planningPaperService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    updateIndex_TimeRunning: async ({ req, updateIndex, machine, dayStart, timeStart, totalTimeWorking, }) => {
-        const transaction = await planningPaper_1.PlanningPaper.sequelize?.transaction();
+    updateIndex_TimeRunning: async ({ updateIndex, machine, dayStart, timeStart, totalTimeWorking, isNewDay, }) => {
         try {
-            if (!Array.isArray(updateIndex) || updateIndex.length === 0) {
-                throw appError_1.AppError.BadRequest("Missing updateIndex parameter", "MISSING_PARAMETERS");
-            }
-            // 1️⃣ Cập nhật sortPlanning
-            await (0, timeRunningPaper_1.updateSortPlanning)(updateIndex, transaction);
-            // 2️⃣ Lấy lại danh sách đã update
-            const plannings = await planningRepository_1.planningRepository.getPapersByUpdateIndex(updateIndex, transaction);
-            // 3️⃣ Lấy thông tin máy
-            const machineInfo = await planningRepository_1.planningRepository.getModelById(machinePaper_1.MachinePaper, {
-                machineName: machine,
+            return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
+                // Cập nhật sortPlanning
+                await (0, timeRunningPaper_1.updateSortPlanning)(updateIndex, transaction);
+                // Lấy lại danh sách đã update
+                const plannings = await planningRepository_1.planningRepository.getPapersByUpdateIndex(updateIndex, transaction);
+                // Lấy thông tin máy
+                const machineInfo = await planningRepository_1.planningRepository.getModelById({
+                    model: machinePaper_1.MachinePaper,
+                    where: { machineName: machine },
+                });
+                if (!machineInfo)
+                    throw appError_1.AppError.NotFound("Machine not found", "MACHINE_NOT_FOUND");
+                // Tính toán thời gian chạy
+                const updatedPlannings = await (0, timeRunningPaper_1.calculateTimeRunning)({
+                    plannings,
+                    machineInfo,
+                    machine,
+                    dayStart,
+                    timeStart,
+                    totalTimeWorking,
+                    isNewDay,
+                    transaction,
+                });
+                return {
+                    message: "Cập nhật sortPlanning + tính thời gian thành công",
+                    data: updatedPlannings,
+                };
             });
-            if (!machineInfo)
-                throw new Error("Machine not found");
-            // 4️⃣ Tính toán thời gian chạy
-            const updatedPlannings = await (0, timeRunningPaper_1.calculateTimeRunning)({
-                plannings,
-                machineInfo,
-                machine,
-                dayStart,
-                timeStart,
-                totalTimeWorking,
-                transaction,
-            });
-            await transaction?.commit();
-            // 5️⃣ Phát socket
+        }
+        catch (error) {
+            if (error instanceof appError_1.AppError)
+                throw error;
+            throw appError_1.AppError.ServerError();
+        }
+    },
+    //planningPaperUpdated or planningBoxUpdated
+    notifyUpdatePlanning: async (req, machine, keyName) => {
+        try {
             const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
-            req.io?.to(roomName).emit("planningPaperUpdated", {
+            req.io?.to(roomName).emit(keyName, {
                 machine,
                 message: `Kế hoạch của ${machine} đã được cập nhật.`,
             });
-            return {
-                message: "✅ Cập nhật sortPlanning + tính thời gian thành công",
-                data: updatedPlannings,
-            };
+            return { message: "Đã gửi thông báo cập nhật kế hoạch" };
         }
         catch (error) {
-            await transaction?.rollback();
-            console.error("❌Lỗi khi cập nhật và tính toán thời gian:", error);
+            console.error("❌Lỗi khi gửi socket:", error);
             if (error instanceof appError_1.AppError)
                 throw error;
             throw appError_1.AppError.ServerError();

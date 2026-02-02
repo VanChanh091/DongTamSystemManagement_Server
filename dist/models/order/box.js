@@ -30,7 +30,12 @@ function initBoxModel(sequelize) {
         dongGoi: { type: sequelize_1.DataTypes.STRING },
         //FK
         orderId: { type: sequelize_1.DataTypes.STRING },
-    }, { sequelize, tableName: "Boxes", timestamps: true });
+    }, {
+        sequelize,
+        tableName: "Boxes",
+        timestamps: true,
+        indexes: [{ unique: true, fields: ["orderId"] }],
+    });
     return Box;
 }
 //# sourceMappingURL=box.js.map

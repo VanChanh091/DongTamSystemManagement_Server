@@ -34,7 +34,21 @@ function initTimeOverflowPlanningModel(sequelize) {
         //FK
         planningId: { type: sequelize_1.DataTypes.INTEGER },
         planningBoxId: { type: sequelize_1.DataTypes.INTEGER },
-    }, { sequelize, tableName: "timeOverflowPlannings", timestamps: true });
+    }, {
+        sequelize,
+        tableName: "timeOverflowPlannings",
+        timestamps: true,
+        indexes: [
+            //FK
+            { fields: ["planningId"], unique: true },
+            { fields: ["planningBoxId"], unique: true },
+            //indexes
+            { fields: ["overflowDayStart"] },
+            { fields: ["overflowTimeRunning"] },
+            { fields: ["machine"] },
+            { fields: ["planningBoxId", "machine"] },
+        ],
+    });
     return timeOverflowPlanning;
 }
 //# sourceMappingURL=timeOverflowPlanning.js.map

@@ -3,13 +3,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getOrderByStatus = exports.filterDataFromCache = exports.filterOrdersFromCache = exports.cachedStatus = exports.updateChildOrder = exports.createDataTable = exports.generateOrderId = exports.validateCustomerAndProduct = void 0;
+exports.getOrderByStatus = exports.filterDataFromCache = exports.filterOrdersFromCache = exports.cachedStatus = exports.updateChildOrder = exports.createDataTable = exports.calculateOrderMetrics = exports.generateOrderId = exports.validateCustomerAndProduct = void 0;
 exports.formatterStructureOrder = formatterStructureOrder;
 const sequelize_1 = require("sequelize");
 const customer_1 = require("../../../models/customer/customer");
 const product_1 = require("../../../models/product/product");
 const order_1 = require("../../../models/order/order");
-const redisCache_1 = __importDefault(require("../../../configs/redisCache"));
+const redisCache_1 = __importDefault(require("../../../assest/configs/redisCache"));
 const orderRepository_1 = require("../../../repository/orderRepository");
 const normalizeVN_1 = require("../normalizeVN");
 const validateCustomerAndProduct = async (customerId, productId) => {
@@ -41,6 +41,73 @@ const generateOrderId = async (prefix) => {
     return `${sanitizedPrefix}${formattedNumber}`;
 };
 exports.generateOrderId = generateOrderId;
+const calculateFlutePaper = (fields) => {
+    const { day, matE, matB, matC, matE2, songE, songB, songC, songE2 } = fields;
+    // 1. Đếm tổng số lớp có dữ liệu
+    const allFields = [day, matE, matB, matC, matE2, songE, songB, songC, songE2];
+    const layersCount = allFields.filter((f) => f && f.trim().length > 0).length;
+    // 2. Thu thập các loại sóng hiện có
+    const flutesRaw = [];
+    if (songE?.trim())
+        flutesRaw.push("E");
+    if (songB?.trim())
+        flutesRaw.push("B");
+    if (songC?.trim())
+        flutesRaw.push("C");
+    if (songE2?.trim())
+        flutesRaw.push("E");
+    // 3. Sắp xếp sóng theo thứ tự ưu tiên: E -> B -> C
+    const fluteOrder = ["E", "B", "C"];
+    const sortedFlutes = [];
+    for (const f of fluteOrder) {
+        flutesRaw.forEach((raw) => {
+            if (raw === f)
+                sortedFlutes.push(f);
+        });
+    }
+    // Kết quả dạng: "5EB" hoặc "3E"
+    return `${layersCount}${sortedFlutes.join("")}`;
+};
+const calculateOrderMetrics = async (data) => {
+    const qty = parseInt(data.quantityCustomer) || 0;
+    const length = parseFloat(data.lengthPaperCustomer) || 0;
+    const size = parseFloat(data.paperSizeCustomer) || 0;
+    const price = parseFloat(data.price) || 0;
+    const pricePaper = parseFloat(data.pricePaper) || 0;
+    const vat = parseInt(data.vat) || 0;
+    // flute
+    const flute = calculateFlutePaper(data);
+    // acreage
+    const acreage = Math.round((length * size * qty) / 10000);
+    // price paper
+    let totalPricePaper = 0;
+    if (data.dvt === "M2" || data.dvt === "Tấm") {
+        totalPricePaper = Math.round((length * size * price) / 10000);
+    }
+    else if (data.dvt === "Tấm Bao Khổ") {
+        totalPricePaper = pricePaper;
+    }
+    else {
+        totalPricePaper = Math.round(price);
+    }
+    // total price & vat
+    const totalPrice = Math.round(qty * totalPricePaper);
+    const totalPriceVAT = Math.round(totalPrice * (1 + vat / 100));
+    //volume
+    const ratioData = await orderRepository_1.orderRepository.findOneFluteRatio(flute);
+    const ratio = ratioData?.ratio ?? 1;
+    const volumeRaw = length * size * ratio;
+    const responseData = {
+        flute,
+        acreage,
+        pricePaper: totalPricePaper,
+        totalPrice,
+        totalPriceVAT,
+        volume: volumeRaw,
+    };
+    return responseData;
+};
+exports.calculateOrderMetrics = calculateOrderMetrics;
 const createDataTable = async (id, model, data) => {
     try {
         if (data) {
@@ -110,7 +177,7 @@ const filterOrdersFromCache = async ({ userId, role, keyword, getFieldValue, pag
         allOrders = JSON.parse(allOrders);
         sourceMessage = message ?? "Get all orders from cache";
     }
-    // Lọc
+    // Lọc data
     const filteredOrders = allOrders.filter((order) => {
         const fieldValue = getFieldValue(order);
         return fieldValue != null

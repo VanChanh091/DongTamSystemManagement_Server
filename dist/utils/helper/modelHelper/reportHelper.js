@@ -14,14 +14,15 @@ const planningBox_1 = require("../../../models/planning/planningBox");
 const planningBoxMachineTime_1 = require("../../../models/planning/planningBoxMachineTime");
 const sequelize_1 = require("sequelize");
 const cacheManager_1 = require("../cacheManager");
-const redisCache_1 = __importDefault(require("../../../configs/redisCache"));
+const redisCache_1 = __importDefault(require("../../../assest/configs/redisCache"));
 const normalizeVN_1 = require("../normalizeVN");
+const appError_1 = require("../../appError");
 const filterReportByField = async ({ keyword, machine, getFieldValue, page, pageSize, message, isBox = false, }) => {
     const currentPage = Number(page) || 1;
     const currentPageSize = Number(pageSize) || 20;
     const lowerKeyword = keyword?.toLowerCase?.() || "";
     const { paper, box } = cacheManager_1.CacheManager.keys.report;
-    const cacheKey = isBox ? box.search : paper.search;
+    const cacheKey = isBox ? box.search(machine) : paper.search(machine);
     try {
         let allReports = await redisCache_1.default.get(cacheKey);
         let sourceMessage = "";
@@ -56,7 +57,7 @@ const filterReportByField = async ({ keyword, machine, getFieldValue, page, page
     }
     catch (error) {
         console.error(error);
-        throw new Error("Lỗi server");
+        throw appError_1.AppError.ServerError();
     }
 };
 exports.filterReportByField = filterReportByField;
@@ -221,7 +222,7 @@ const findAllReportBox = async ({ isBox, machine }) => {
     }
     catch (error) {
         console.error(error);
-        throw new Error("Không lấy được data");
+        throw appError_1.AppError.ServerError();
     }
 };
 const createReportPlanning = async ({ planning, model, qtyProduced, qtyWasteNorm, dayReportValue, shiftManagementBox = "", machine = "", otherData, transaction, isBox = false, }) => {
@@ -242,9 +243,7 @@ const createReportPlanning = async ({ planning, model, qtyProduced, qtyWasteNorm
     // Cộng thêm sản lượng lần này
     const totalProduced = producedSoFar + Number(qtyProduced || 0);
     // Tính số lượng còn thiếu
-    let lackOfQtyValue = isBox
-        ? planning.PlanningBox.Order.quantityCustomer - totalProduced
-        : planning.Order.quantityCustomer - totalProduced;
+    let lackOfQtyValue = planning.runningPlan - totalProduced;
     let report;
     if (isBox) {
         //box

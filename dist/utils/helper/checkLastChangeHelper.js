@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.checkLastChange = void 0;
-const redisCache_1 = __importDefault(require("../../configs/redisCache"));
+const redisCache_1 = __importDefault(require("../../assest/configs/redisCache"));
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const checkLastChange = async (models, cacheKey, { setCache = true } = {}) => {
@@ -37,17 +37,10 @@ const checkLastChange = async (models, cacheKey, { setCache = true } = {}) => {
     if (setCache && isChanged) {
         await redisCache_1.default.set(cacheKey, combinedSignature);
     }
-    // console.log(
-    //   "🔍 last changes by model:",
-    //   modelArray.map((item, i) => ({
-    //     model: item.model ? item.model.name : item.name,
-    //     last: new Date(lastChanges[i]).toISOString(),
-    //   }))
-    // );
     // 5️⃣ Log debug cho dev mode
     if (process.env.NODE_ENV !== "production") {
         console.table(details);
-        console.log(`Cache Key: ${cacheKey}`);
+        // console.log(`Cache Key: ${cacheKey}`);
         console.log(`isChanged: ${isChanged}`);
     }
     return { isChanged, lastChange: combinedSignature };

@@ -3,13 +3,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.mergeShiftField = exports.setTimeOnDay = exports.isDuringBreak = exports.parseTimeOnly = exports.getWorkShift = exports.formatDate = exports.addDays = exports.addMinutes = exports.formatTimeToHHMMSS = exports.getDbPlanningByField = exports.getPlanningBoxByField = exports.getPlanningByField = void 0;
+exports.buildStagesDetails = exports.mergeShiftField = exports.setTimeOnDay = exports.parseTimeOnly = exports.getWorkShift = exports.formatDate = exports.addDays = exports.addMinutes = exports.formatTimeToHHMMSS = exports.getDbPlanningByField = exports.getPlanningBoxByField = exports.getPlanningByField = void 0;
 const sequelize_1 = require("sequelize");
 const order_1 = require("../../../models/order/order");
 const customer_1 = require("../../../models/customer/customer");
 const planningBox_1 = require("../../../models/planning/planningBox");
 const cacheManager_1 = require("../cacheManager");
-const redisCache_1 = __importDefault(require("../../../configs/redisCache"));
+const redisCache_1 = __importDefault(require("../../../assest/configs/redisCache"));
 const appError_1 = require("../../appError");
 const dashboardRepository_1 = require("../../../repository/dashboardRepository");
 const normalizeVN_1 = require("../normalizeVN");
@@ -171,6 +171,7 @@ const getDbPlanningByField = async ({ cacheKey, keyword, getFieldValue, page, pa
     }
 };
 exports.getDbPlanningByField = getDbPlanningByField;
+//HELPER FOR TIME RUNNING
 const formatTimeToHHMMSS = (date) => {
     return date.toTimeString().split(" ")[0];
 };
@@ -181,7 +182,7 @@ const addMinutes = (date, mins) => {
     while (true) {
         const end = new Date(d);
         end.setMinutes(end.getMinutes() + totalMinutes);
-        const breakMinutes = (0, exports.isDuringBreak)(d, end);
+        const breakMinutes = isDuringBreak(d, end);
         const newTotal = mins + breakMinutes;
         // console.log(
         //   "totalMinutes:",
@@ -244,10 +245,9 @@ const isDuringBreak = (start, end) => {
     }
     return totalBreak;
 };
-exports.isDuringBreak = isDuringBreak;
-const setTimeOnDay = (dayDate, timeStrOrDate) => {
+const setTimeOnDay = (date, timeStrOrDate) => {
     const t = typeof timeStrOrDate === "string" ? (0, exports.parseTimeOnly)(timeStrOrDate) : new Date(timeStrOrDate);
-    t.setFullYear(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate());
+    t.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
     return t;
 };
 exports.setTimeOnDay = setTimeOnDay;
@@ -265,4 +265,23 @@ const mergeShiftField = (currentValue, incoming) => {
     return currentValue;
 };
 exports.mergeShiftField = mergeShiftField;
+const buildStagesDetails = async ({ detail, getBoxTimes, getPlanningBoxId, getAllOverflow, }) => {
+    // lấy toàn bộ stages bình thường
+    const normalStages = getBoxTimes(detail)?.map((s) => s.toJSON()) ?? [];
+    // lấy overflow theo planningBoxId
+    const planningBoxId = getPlanningBoxId(detail);
+    const allOverflow = await getAllOverflow(planningBoxId);
+    // gom overflow theo machine
+    const overflowByMachine = {};
+    for (const ov of allOverflow) {
+        overflowByMachine[ov.machine] = ov;
+    }
+    // merge stage + overflow tương ứng
+    const stages = normalStages.map((stage) => ({
+        ...stage,
+        timeOverFlow: overflowByMachine[String(stage.machine)] ?? null,
+    }));
+    return stages;
+};
+exports.buildStagesDetails = buildStagesDetails;
 //# sourceMappingURL=planningHelper.js.map

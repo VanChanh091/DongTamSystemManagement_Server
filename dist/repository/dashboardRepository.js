@@ -9,6 +9,7 @@ const planningPaper_1 = require("../models/planning/planningPaper");
 const timeOverflowPlanning_1 = require("../models/planning/timeOverflowPlanning");
 const product_1 = require("../models/product/product");
 const user_1 = require("../models/user/user");
+const inventory_1 = require("../models/warehouse/inventory");
 exports.dashboardRepository = {
     getDbPlanningCount: async () => {
         return await planningPaper_1.PlanningPaper.count();
@@ -17,7 +18,14 @@ exports.dashboardRepository = {
         const query = {
             where: whereCondition,
             attributes: {
-                exclude: ["createdAt", "updatedAt", "status", "hasBox", "sortPlanning"],
+                exclude: [
+                    "createdAt",
+                    "updatedAt",
+                    "hasBox",
+                    "sortPlanning",
+                    "statusRequest",
+                    "hasOverFlow",
+                ],
             },
             include: [
                 {
@@ -65,9 +73,11 @@ exports.dashboardRepository = {
                         { model: customer_1.Customer, attributes: ["customerName", "companyName"] },
                         { model: product_1.Product, attributes: ["typeProduct", "productName", "maKhuon"] },
                         { model: user_1.User, attributes: ["fullName"] },
+                        { model: inventory_1.Inventory, attributes: ["totalQtyOutbound"] },
                     ],
                 },
             ],
+            order: [["orderSortValue", "ASC"]],
         };
         if (paginate) {
             query.offset = (page - 1) * pageSize;
@@ -94,7 +104,22 @@ exports.dashboardRepository = {
                     ],
                 },
             ],
-            // order: [["sortPlanning", "ASC"]],
+        });
+    },
+    getAllTimeOverflow: async (planningBoxId) => {
+        return await timeOverflowPlanning_1.timeOverflowPlanning.findAll({
+            where: { planningBoxId: planningBoxId },
+            attributes: {
+                exclude: [
+                    "createdAt",
+                    "updatedAt",
+                    "status",
+                    "planningId",
+                    "overflowId",
+                    "overflowDayStart",
+                ],
+            },
+            raw: true,
         });
     },
     getDbPlanningSearch: async (whereCondition = {}) => {
@@ -111,15 +136,6 @@ exports.dashboardRepository = {
                     ],
                 },
             ],
-        });
-    },
-    getAllTimeOverflow: async (planningBoxId) => {
-        return await timeOverflowPlanning_1.timeOverflowPlanning.findAll({
-            where: { planningBoxId: planningBoxId },
-            attributes: {
-                exclude: ["createdAt", "updatedAt", "status", "planningId", "overflowId"],
-            },
-            raw: true,
         });
     },
     exportExcelDbPlanning: async ({ whereCondition = {} }) => {

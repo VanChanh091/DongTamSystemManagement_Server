@@ -18,7 +18,13 @@ function initProductModel(sequelize) {
         productName: { type: sequelize_1.DataTypes.STRING },
         maKhuon: { type: sequelize_1.DataTypes.STRING },
         productImage: { type: sequelize_1.DataTypes.STRING },
-    }, { sequelize, tableName: "Products", timestamps: true });
+        productSeq: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
+    }, {
+        sequelize,
+        tableName: "Products",
+        timestamps: true,
+        indexes: [{ fields: ["productSeq"] }],
+    });
     return Product;
 }
 //# sourceMappingURL=product.js.map

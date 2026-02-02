@@ -10,15 +10,21 @@ exports.EmployeeCompanyInfo = EmployeeCompanyInfo;
 function initEmployeeCompanyInfoModel(sequelize) {
     EmployeeCompanyInfo.init({
         companyInfoId: { type: sequelize_1.DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-        employeeCode: { type: sequelize_1.DataTypes.STRING },
+        employeeCode: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         joinDate: { type: sequelize_1.DataTypes.DATE, allowNull: false },
         department: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         position: { type: sequelize_1.DataTypes.STRING, allowNull: false },
-        emergencyPhone: { type: sequelize_1.DataTypes.STRING, allowNull: false },
+        emergencyPhone: { type: sequelize_1.DataTypes.STRING },
+        emergencyContact: { type: sequelize_1.DataTypes.STRING },
         status: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         //FK
         employeeId: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
-    }, { sequelize, tableName: "EmployeeCompanyInfos", timestamps: true });
+    }, {
+        sequelize,
+        tableName: "EmployeeCompanyInfos",
+        timestamps: true,
+        indexes: [{ fields: ["employeeId"] }],
+    });
     return EmployeeCompanyInfo;
 }
 //# sourceMappingURL=employeeCompanyInfo.js.map

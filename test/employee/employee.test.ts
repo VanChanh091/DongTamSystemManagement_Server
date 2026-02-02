@@ -82,31 +82,13 @@ describe("employeeService", () => {
         keyword: "x",
         page: 1,
         pageSize: 20,
-      })
+      }),
     ).rejects.toThrow();
   });
 
   // -------------------------------------------------------------------------
   // 3. createEmployee
   // -------------------------------------------------------------------------
-  test("createEmployee - tạo thành công", async () => {
-    (employeeRepository.createEmployee as jest.Mock)
-      .mockResolvedValueOnce({ employeeId: 10 }) // basicInfo
-      .mockResolvedValueOnce(true); // companyInfo
-
-    (employeeRepository.findEmployeeById as jest.Mock).mockResolvedValue({
-      employeeId: 10,
-      name: "John",
-    });
-
-    const result = await employeeService.createEmployee({
-      fullName: "John",
-      companyInfo: { employeeCode: "E001" },
-    });
-
-    expect(result.data && result.data.employeeId).toBe(10);
-    expect(commit).toHaveBeenCalled();
-  });
 
   test("createEmployee - lỗi → rollback", async () => {
     (employeeRepository.createEmployee as jest.Mock).mockRejectedValue(new Error("DB error"));

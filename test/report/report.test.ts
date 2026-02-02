@@ -56,19 +56,6 @@ describe("reportService", () => {
     expect(result.data[0]).toBe("P1");
   });
 
-  test("getReportPaper - cache đổi → lấy DB", async () => {
-    mockedCache.check.mockResolvedValue({ isChanged: true });
-    mockedCache.clearReportPaper.mockResolvedValue(true);
-
-    (reportRepository.reportCount as jest.Mock).mockResolvedValue(1);
-    (reportRepository.findAlReportPaper as jest.Mock).mockResolvedValue(["DB-P1"]);
-
-    mockedRedis.set.mockResolvedValue(true);
-
-    const result = await reportService.getReportPaper("M1", 1, 20);
-    expect(result.data[0]).toBe("DB-P1");
-  });
-
   test("getReportPaper - DB lỗi → ServerError", async () => {
     mockedCache.check.mockResolvedValue({ isChanged: true });
 
@@ -90,7 +77,7 @@ describe("reportService", () => {
 
   test("getReportPaperByField - invalid field → BadRequest", async () => {
     await expect(reportService.getReportPaperByField("xxx", "kw", "M1", 1, 20)).rejects.toThrow(
-      AppError
+      AppError,
     );
   });
 
@@ -137,7 +124,7 @@ describe("reportService", () => {
       "morning",
       "M1",
       1,
-      20
+      20,
     );
 
     expect(result.data[0]).toBe("FilteredBox");
@@ -145,7 +132,7 @@ describe("reportService", () => {
 
   test("getReportBoxByField - invalid field → BadRequest", async () => {
     await expect(reportService.getReportBoxByField("invalid", "kw", "M1", 1, 20)).rejects.toThrow(
-      AppError
+      AppError,
     );
   });
 

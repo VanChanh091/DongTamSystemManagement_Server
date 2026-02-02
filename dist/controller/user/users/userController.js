@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateProfileUser = void 0;
 const userService_1 = require("../../../service/userService");
-const updateProfileUser = async (req, res) => {
+const updateProfileUser = async (req, res, next) => {
     const { userId } = req.query;
     const { newPassword, userUpdated } = req.body;
     try {
@@ -15,7 +15,7 @@ const updateProfileUser = async (req, res) => {
         return res.status(200).json(response);
     }
     catch (error) {
-        res.status(error.statusCode).json({ message: error.message });
+        next(error);
     }
 };
 exports.updateProfileUser = updateProfileUser;

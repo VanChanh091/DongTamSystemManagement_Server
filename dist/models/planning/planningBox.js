@@ -34,14 +34,25 @@ function initPlanningBoxModel(sequelize) {
         hasCatKhe: { type: sequelize_1.DataTypes.BOOLEAN, defaultValue: false },
         hasCanMang: { type: sequelize_1.DataTypes.BOOLEAN, defaultValue: false },
         hasDongGhim: { type: sequelize_1.DataTypes.BOOLEAN, defaultValue: false },
-        hasOverFlow: {
-            type: sequelize_1.DataTypes.BOOLEAN,
-            allowNull: false,
-            defaultValue: false,
+        hasOverFlow: { type: sequelize_1.DataTypes.BOOLEAN, defaultValue: false },
+        statusRequest: {
+            type: sequelize_1.DataTypes.ENUM("none", "requested", "inbounded", "finalize"),
+            defaultValue: "none",
         },
         orderId: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         planningId: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
-    }, { sequelize, tableName: "PlanningBoxes", timestamps: true });
+    }, {
+        sequelize,
+        tableName: "PlanningBoxes",
+        timestamps: true,
+        indexes: [
+            //FK
+            { fields: ["orderId"] },
+            { fields: ["planningId"], unique: true },
+            //indexes
+            { fields: ["orderId", "planningId"] },
+        ],
+    });
     return PlanningBox;
 }
 //# sourceMappingURL=planningBox.js.map

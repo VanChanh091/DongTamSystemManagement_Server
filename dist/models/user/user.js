@@ -51,7 +51,12 @@ function initUserModel(sequelize) {
             type: sequelize_1.DataTypes.STRING,
             defaultValue: "https://static.vecteezy.com/system/resources/previews/024/983/914/original/simple-user-default-icon-free-png.png",
         },
-    }, { sequelize, tableName: "Users", timestamps: true });
+    }, {
+        sequelize,
+        tableName: "Users",
+        timestamps: true,
+        indexes: [{ fields: ["fullName"] }],
+    });
     return User;
 }
 //# sourceMappingURL=user.js.map

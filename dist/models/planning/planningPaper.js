@@ -48,16 +48,20 @@ function initPlanningPaperModel(sequelize) {
         knife: { type: sequelize_1.DataTypes.DOUBLE },
         totalLoss: { type: sequelize_1.DataTypes.DOUBLE },
         qtyWasteNorm: { type: sequelize_1.DataTypes.DOUBLE },
+        shiftProduction: { type: sequelize_1.DataTypes.STRING },
+        shiftManagement: { type: sequelize_1.DataTypes.STRING },
         chooseMachine: {
             type: sequelize_1.DataTypes.ENUM("Máy 1350", "Máy 1900", "Máy 2 Lớp", "Máy Quấn Cuồn"),
             allowNull: false,
         },
-        shiftProduction: { type: sequelize_1.DataTypes.STRING },
-        shiftManagement: { type: sequelize_1.DataTypes.STRING },
         status: {
-            type: sequelize_1.DataTypes.ENUM("planning", "complete", "lackQty", "producing", "stop"),
+            type: sequelize_1.DataTypes.ENUM("planning", "complete", "lackQty", "producing", "stop", "cancel"),
             allowNull: false,
             defaultValue: "planning",
+        },
+        statusRequest: {
+            type: sequelize_1.DataTypes.ENUM("none", "requested", "inbounded", "finalize"),
+            defaultValue: "none",
         },
         hasOverFlow: {
             type: sequelize_1.DataTypes.BOOLEAN,
@@ -65,10 +69,34 @@ function initPlanningPaperModel(sequelize) {
             defaultValue: false,
         },
         hasBox: { type: sequelize_1.DataTypes.BOOLEAN, defaultValue: false },
+        deliveryPlanned: {
+            type: sequelize_1.DataTypes.ENUM("none", "pending", "planned", "delivered"),
+            defaultValue: "none",
+        },
         sortPlanning: { type: sequelize_1.DataTypes.INTEGER },
         //FK
         orderId: { type: sequelize_1.DataTypes.STRING },
-    }, { sequelize, tableName: "Plannings", timestamps: true });
+    }, {
+        sequelize,
+        tableName: "Plannings",
+        timestamps: true,
+        indexes: [
+            //FK
+            { fields: ["orderId"] },
+            //search
+            { fields: ["ghepKho"] },
+            //indexes
+            { fields: ["sortPlanning"] },
+            { fields: ["status"] },
+            //Composite indexes
+            { fields: ["chooseMachine", "status"] },
+            { fields: ["chooseMachine", "dayStart"] },
+            { fields: ["deliveryPlanned", "dayStart", "status"] },
+            { fields: ["dayStart", "timeRunning"] },
+            //get paper waiting check
+            { fields: ["hasBox", "statusRequest"] },
+        ],
+    });
     return PlanningPaper;
 }
 //# sourceMappingURL=planningPaper.js.map

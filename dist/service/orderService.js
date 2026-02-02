@@ -8,10 +8,12 @@ const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const orderHelpers_1 = require("../utils/helper/modelHelper/orderHelpers");
 const appError_1 = require("../utils/appError");
-const redisCache_1 = __importDefault(require("../configs/redisCache"));
+const redisCache_1 = __importDefault(require("../assest/configs/redisCache"));
 const cacheManager_1 = require("../utils/helper/cacheManager");
 const box_1 = require("../models/order/box");
 const order_1 = require("../models/order/order");
+const transactionHelper_1 = require("../utils/helper/transactionHelper");
+const orderRepository_1 = require("../repository/orderRepository");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { order } = cacheManager_1.CacheManager.keys;
 exports.orderService = {
@@ -94,6 +96,7 @@ exports.orderService = {
         const { userId, role } = user;
         try {
             const fieldMap = {
+                orderId: (order) => order.orderId,
                 customerName: (order) => order?.Customer?.customerName,
                 productName: (order) => order?.Product?.productName,
                 qcBox: (order) => order?.QC_box,
@@ -122,40 +125,76 @@ exports.orderService = {
             throw appError_1.AppError.ServerError();
         }
     },
+    //start get Order for auto complete
+    getOrderIdRaw: async (orderId) => {
+        try {
+            const data = await orderRepository_1.orderRepository.getOrderIdRaw(orderId);
+            if (data.length === 0) {
+                return { message: "No orderId found", data: [] };
+            }
+            return { message: "Get orderId raw successfully", data };
+        }
+        catch (error) {
+            console.error("Error in getOrderIdRaw:", error);
+            if (error instanceof appError_1.AppError)
+                throw error;
+            throw appError_1.AppError.ServerError();
+        }
+    },
+    getOrderDetail: async (orderId) => {
+        try {
+            const data = await orderRepository_1.orderRepository.getOrderDetail(orderId);
+            if (!data) {
+                throw appError_1.AppError.NotFound("OrderId not found", "ORDER_ID_NOT_FOUND");
+            }
+            return { message: "Get orderId autocomplete successfully", data };
+        }
+        catch (error) {
+            console.error("Error in getOrderAutocomplete:", error);
+            if (error instanceof appError_1.AppError)
+                throw error;
+            throw appError_1.AppError.ServerError();
+        }
+    },
+    //end get Order for auto complete
     //create order service
     createOrder: async (user, data) => {
         const { userId } = user;
         const { prefix, customerId, productId, box, ...orderData } = data;
         try {
-            if (!userId) {
-                throw appError_1.AppError.BadRequest("Invalid userId parameter", "INVALID_FIELD");
-            }
-            const validation = await (0, orderHelpers_1.validateCustomerAndProduct)(customerId, productId);
-            if (!validation.success)
-                throw appError_1.AppError.NotFound(validation.message);
-            //create id + number auto increase
-            const newOrderId = await (0, orderHelpers_1.generateOrderId)(prefix);
-            //create order
-            const newOrder = await order_1.Order.create({
-                orderId: newOrderId,
-                customerId: customerId,
-                productId: productId,
-                userId: userId,
-                ...orderData,
+            return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
+                if (!userId) {
+                    throw appError_1.AppError.BadRequest("Invalid userId parameter", "INVALID_FIELD");
+                }
+                const validation = await (0, orderHelpers_1.validateCustomerAndProduct)(customerId, productId);
+                if (!validation.success)
+                    throw appError_1.AppError.NotFound(validation.message);
+                //create id + number auto increase
+                const metrics = await (0, orderHelpers_1.calculateOrderMetrics)(orderData);
+                const newOrderId = await (0, orderHelpers_1.generateOrderId)(prefix);
+                //create order
+                const newOrder = await order_1.Order.create({
+                    orderId: newOrderId,
+                    customerId: customerId,
+                    productId: productId,
+                    userId: userId,
+                    ...orderData,
+                    ...metrics,
+                }, { transaction });
+                //create table data
+                if (newOrder.isBox) {
+                    try {
+                        await (0, orderHelpers_1.createDataTable)(newOrderId, box_1.Box, box);
+                    }
+                    catch (error) {
+                        console.error("Error creating related data:", error);
+                        if (error instanceof appError_1.AppError)
+                            throw error;
+                        throw appError_1.AppError.ServerError();
+                    }
+                }
+                return { order: newOrder, orderId: newOrderId };
             });
-            //create table data
-            if (newOrder.isBox) {
-                try {
-                    await (0, orderHelpers_1.createDataTable)(newOrderId, box_1.Box, box);
-                }
-                catch (error) {
-                    console.error("Error creating related data:", error);
-                    if (error instanceof appError_1.AppError)
-                        throw error;
-                    throw appError_1.AppError.ServerError();
-                }
-            }
-            return { order: newOrder, orderId: newOrderId };
         }
         catch (error) {
             console.error("Error in getOrderPendingAndReject:", error);
@@ -168,20 +207,22 @@ exports.orderService = {
     updateOrder: async (data, orderId) => {
         const { box, ...orderData } = data;
         try {
-            const order = await order_1.Order.findOne({ where: { orderId } });
-            if (!order) {
-                throw appError_1.AppError.NotFound("Order not found");
-            }
-            await order.update({
-                ...orderData,
+            return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
+                const order = await order_1.Order.findOne({ where: { orderId } });
+                if (!order) {
+                    throw appError_1.AppError.NotFound("Order not found");
+                }
+                const mergedData = { ...order.toJSON(), ...orderData };
+                const metrics = await (0, orderHelpers_1.calculateOrderMetrics)(mergedData);
+                await order.update({ ...orderData, ...metrics }, { transaction });
+                if (order.isBox) {
+                    await (0, orderHelpers_1.updateChildOrder)(orderId, box_1.Box, box);
+                }
+                else {
+                    await box_1.Box.destroy({ where: { orderId } });
+                }
+                return { message: "Order updated successfully", data: order };
             });
-            if (order.isBox) {
-                await (0, orderHelpers_1.updateChildOrder)(orderId, box_1.Box, box);
-            }
-            else {
-                await box_1.Box.destroy({ where: { orderId } });
-            }
-            return { message: "Order updated successfully", data: order };
         }
         catch (error) {
             console.error("Error in getOrderPendingAndReject:", error);
@@ -193,11 +234,13 @@ exports.orderService = {
     //delete order service
     deleteOrder: async (orderId) => {
         try {
-            const deleted = await order_1.Order.destroy({ where: { orderId } });
-            if (deleted === 0) {
-                throw appError_1.AppError.NotFound("Order không tồn tại");
-            }
-            return { message: "Order deleted successfully" };
+            return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
+                const deleted = await order_1.Order.destroy({ where: { orderId }, transaction });
+                if (deleted === 0) {
+                    throw appError_1.AppError.NotFound("Order không tồn tại");
+                }
+                return { message: "Order deleted successfully" };
+            });
         }
         catch (error) {
             console.error("Error in getOrderPendingAndReject:", error);

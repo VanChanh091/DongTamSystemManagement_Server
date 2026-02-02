@@ -8,21 +8,21 @@ const order_1 = require("../models/order/order");
 const product_1 = require("../models/product/product");
 const user_1 = require("../models/user/user");
 exports.adminRepository = {
-    //===============================ADMIN MACHINE=====================================
-    getAllMachine: async (model) => {
+    //===============================ADMIN CRUD=====================================
+    getAllItems: async ({ model }) => {
         return await model.findAll({ attributes: { exclude: ["createdAt", "updatedAt"] } });
     },
-    getMachineByPk: async (model, machineId) => {
-        return await model.findByPk(machineId);
+    getItemByPk: async ({ model, itemId }) => {
+        return await model.findByPk(itemId);
     },
-    createMachine: async (model, data, transaction) => {
+    createNewItem: async ({ model, data, transaction, }) => {
         return await model.create(data, { transaction });
     },
-    updateMachine: async (machine, machineUpdated) => {
-        return await machine.update(machineUpdated);
+    updateItem: async ({ model, dataUpdated, transaction, }) => {
+        return await model.update(dataUpdated, { transaction });
     },
-    deleteMachine: async (machine) => {
-        return await machine.destroy();
+    deleteItem: async ({ model }) => {
+        return await model.destroy();
     },
     //===============================ADMIN ORDER=====================================
     findOrderPending: async () => {
@@ -38,11 +38,7 @@ exports.adminRepository = {
                 { model: box_1.Box, as: "box" },
                 { model: user_1.User, attributes: ["fullName"] },
             ],
-            order: [
-                //lấy 3 số đầu tiên -> ép chuỗi thành số để so sánh -> sort
-                [sequelize_1.Sequelize.literal("CAST(SUBSTRING_INDEX(`Order`.`orderId`, '/', 1) AS UNSIGNED)"), "ASC"],
-                [sequelize_1.Sequelize.col("Order.createdAt"), "ASC"], // nếu trùng thì sort theo ngày tạo (tạo trước lên trên)
-            ],
+            order: [["orderSortValue", "ASC"]],
         });
     },
     findByOrderId: async (orderId) => {
@@ -94,19 +90,6 @@ exports.adminRepository = {
     },
     getUserByPk: async (userId) => {
         return await user_1.User.findByPk(userId);
-    },
-    //===============================ADMIN WASTE=====================================
-    getAllWaste: async (model) => {
-        return await model.findAll({ attributes: { exclude: ["createdAt", "updatedAt"] } });
-    },
-    getWasteByPk: async (model, wasteId) => {
-        return await model.findByPk(wasteId);
-    },
-    createWaste: async (model, wasteData, transaction) => {
-        return await model.create(wasteData, { transaction });
-    },
-    updateWaste: async (wasteModel, wasteDataUpdated) => {
-        return await wasteModel.update(wasteDataUpdated);
     },
 };
 //# sourceMappingURL=adminRepository.js.map

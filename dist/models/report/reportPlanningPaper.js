@@ -27,7 +27,18 @@ function initReportPlanningPaperModel(sequelize) {
         shiftManagement: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         //FK
         planningId: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
-    }, { sequelize, tableName: "ReportPlanningPapers", timestamps: true });
+    }, {
+        sequelize,
+        tableName: "ReportPlanningPapers",
+        timestamps: true,
+        indexes: [
+            //FK
+            { fields: ["planningId"] },
+            //indexes
+            { fields: ["dayReport"] },
+            { fields: ["shiftManagement"] },
+        ],
+    });
     return ReportPlanningPaper;
 }
 //# sourceMappingURL=reportPlanningPaper.js.map

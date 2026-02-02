@@ -10,6 +10,7 @@ const employeeController_1 = require("../../controller/user/employee/employeeCon
 const router = (0, express_1.default)();
 router.get("/", authMiddleware_1.default, employeeController_1.getAllEmployees);
 router.get("/filter", authMiddleware_1.default, employeeController_1.getEmployeesByField);
+router.get("/getByPosition", authMiddleware_1.default, employeeController_1.getEmployeeByPosition);
 router.post("/", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["HR"]), employeeController_1.createEmployee);
 router.put("/updateEmployee", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["HR"]), employeeController_1.updateEmployee);
 router.delete("/deleteEmployee", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["HR"]), employeeController_1.deleteEmployee);

@@ -10,6 +10,7 @@ const box_1 = require("../models/order/box");
 const planningBoxMachineTime_1 = require("../models/planning/planningBoxMachineTime");
 const planningBox_1 = require("../models/planning/planningBox");
 exports.manufactureRepository = {
+    //====================================PAPER========================================
     getManufacturePaper: async (machine) => {
         return await planningPaper_1.PlanningPaper.findAll({
             where: { chooseMachine: machine, dayStart: { [sequelize_1.Op.ne]: null } },
@@ -18,33 +19,30 @@ exports.manufactureRepository = {
                 {
                     model: timeOverflowPlanning_1.timeOverflowPlanning,
                     as: "timeOverFlow",
-                    attributes: { exclude: ["createdAt", "updatedAt"] },
+                    attributes: { exclude: ["createdAt", "updatedAt", "status"] },
                 },
                 {
                     model: order_1.Order,
-                    attributes: {
-                        exclude: [
-                            "acreage",
-                            "dvt",
-                            "price",
-                            "pricePaper",
-                            "discount",
-                            "profit",
-                            "vat",
-                            "rejectReason",
-                            "createdAt",
-                            "updatedAt",
-                            "lengthPaperCustomer",
-                            "paperSizeCustomer",
-                            "quantityCustomer",
-                        ],
-                    },
+                    attributes: [
+                        "orderId",
+                        "dayReceiveOrder",
+                        "flute",
+                        "QC_box",
+                        "canLan",
+                        "daoXa",
+                        "quantityManufacture",
+                        "dateRequestShipping",
+                        "instructSpecial",
+                        "isBox",
+                        "customerId",
+                        "productId",
+                    ],
                     include: [
                         { model: customer_1.Customer, attributes: ["customerName", "companyName"] },
                         {
                             model: box_1.Box,
                             as: "box",
-                            attributes: { exclude: ["createdAt", "updatedAt"] },
+                            attributes: { exclude: ["createdAt", "updatedAt", "orderId"] },
                         },
                     ],
                 },
@@ -57,7 +55,7 @@ exports.manufactureRepository = {
             where: { planningId },
             include: [
                 { model: timeOverflowPlanning_1.timeOverflowPlanning, as: "timeOverFlow" },
-                { model: order_1.Order, attributes: ["quantityCustomer"] },
+                { model: order_1.Order, attributes: ["quantityCustomer", "pricePaper"] },
             ],
             transaction,
             lock: transaction?.LOCK.UPDATE,
@@ -70,10 +68,13 @@ exports.manufactureRepository = {
             transaction,
         });
     },
+    //====================================BOX========================================
     getManufactureBox: async (machine) => {
         return await planningBox_1.PlanningBox.findAll({
             attributes: {
                 exclude: [
+                    "dayStart",
+                    "dayCompleted",
                     "hasIn",
                     "hasBe",
                     "hasXa",
@@ -96,30 +97,15 @@ exports.manufactureRepository = {
                 {
                     model: planningBoxMachineTime_1.PlanningBoxTime,
                     as: "allBoxTimes",
-                    where: {
-                        machine: { [sequelize_1.Op.ne]: machine },
-                    },
-                    attributes: {
-                        exclude: [
-                            "timeRunning",
-                            "dayStart",
-                            "dayCompleted",
-                            "wasteBox",
-                            "shiftManagement",
-                            "status",
-                            "sortPlanning",
-                            "rpWasteLoss",
-                            "createdAt",
-                            "updatedAt",
-                        ],
-                    },
+                    where: { machine: { [sequelize_1.Op.ne]: machine } },
+                    attributes: ["boxTimeId", "qtyProduced", "machine"],
                 },
                 {
                     model: timeOverflowPlanning_1.timeOverflowPlanning,
                     as: "timeOverFlow",
                     required: false,
                     where: { machine: machine },
-                    attributes: { exclude: ["createdAt", "updatedAt"] },
+                    attributes: { exclude: ["createdAt", "updatedAt", "status"] },
                 },
                 {
                     model: order_1.Order,
@@ -142,7 +128,7 @@ exports.manufactureRepository = {
                         {
                             model: box_1.Box,
                             as: "box",
-                            attributes: { exclude: ["createdAt", "updatedAt"] },
+                            attributes: { exclude: ["createdAt", "updatedAt", "orderId"] },
                         },
                     ],
                 },
@@ -164,6 +150,12 @@ exports.manufactureRepository = {
             ],
             transaction,
             lock: transaction?.LOCK.UPDATE,
+        });
+    },
+    getAllBoxTimeById: async (planningBoxId, transaction) => {
+        return await planningBoxMachineTime_1.PlanningBoxTime.findAll({
+            where: { planningBoxId },
+            transaction,
         });
     },
     updatePlanningBoxTime: async (planningBoxId, machine, transaction) => {

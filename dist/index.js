@@ -6,10 +6,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const http_1 = __importDefault(require("http"));
+const path_1 = __importDefault(require("path"));
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const connectDB_1 = require("./configs/connectDB");
+const connectDB_1 = require("./assest/configs/connectDB");
 const authMiddleware_1 = __importDefault(require("./middlewares/authMiddleware"));
+//routes
 const index_1 = require("./routes/index");
 //create table
 require("./models/index");
@@ -32,11 +34,16 @@ app.use((0, cors_1.default)({
 }));
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
-app.use("/uploads", express_1.default.static("uploads")); //set up to upload product image
+//test: curl -I http://localhost:5000/updates/dongtam.exe
+// app.use("/updates", express.static(path.join(process.cwd(), "updates")));
+const pathApp = path_1.default.join(process.cwd(), "updates");
+console.log("Static files served from:", pathApp);
+app.use("/updates", express_1.default.static(pathApp));
 // ========================
 //        ROUTES
 // ========================
 app.use("/auth", index_1.authRoutes);
+app.use(authMiddleware_1.default);
 app.use("/api/admin", index_1.adminRoutes);
 app.use("/api/dashboard", index_1.dashboardRoutes);
 app.use("/api/customer", index_1.customerRoutes);
@@ -47,23 +54,18 @@ app.use("/api/user", index_1.usersRoutes);
 app.use("/api/manufacture", index_1.manufactureRoutes);
 app.use("/api/report", index_1.reportRoutes);
 app.use("/api/employee", index_1.employeeRoutes);
+app.use("/api/warehouse", index_1.warehouseRoutes);
+app.use("/api/qc", index_1.qcRoutes);
+app.use("/api/delivery", index_1.deliveryRoutes);
 connectDB_1.sequelize
     // .sync({ alter: true })
     .sync()
     .then(() => console.log("✅ Database & tables synchronized"))
     .catch((err) => console.error("❌ Error syncing database:", err));
-app.use(authMiddleware_1.default);
 app.use((err, req, res, next) => {
     // Lỗi nghiệp vụ (client gây ra)
     if (err instanceof appError_1.AppError && err.isOperational) {
-        console.warn("⚠️ Operational error:", {
-            message: err.message,
-            errorCode: err.errorCode,
-            statusCode: err.statusCode,
-            path: req.originalUrl,
-        });
         return res.status(err.statusCode).json({
-            success: false,
             message: err.message,
             errorCode: err.errorCode,
         });
@@ -75,7 +77,6 @@ app.use((err, req, res, next) => {
         path: req.originalUrl,
     });
     return res.status(500).json({
-        success: false,
         message: "Internal server error",
         errorCode: "SERVER_ERROR",
     });
