@@ -151,6 +151,20 @@ export const orderService = {
     }
   },
 
+  countOrderRejected: async (userId: number) => {
+    try {
+      const count = await orderRepository.countOrderRejected(userId);
+
+      console.log(count);
+
+      return { message: "Count order rejected successfully", data: count };
+    } catch (error) {
+      console.error(`get order rejected failed:`, error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
   //start get Order for auto complete
   getOrderIdRaw: async (orderId: string) => {
     try {

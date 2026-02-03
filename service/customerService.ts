@@ -129,7 +129,10 @@ export const customerService = {
         );
 
         const prefixExists = existedCustomers.some((c) => c.customerId.startsWith(sanitizedPrefix));
-        const mstExists = existedCustomers.some((c) => c.mst === customerData.mst);
+        const mstExists =
+          customerData.mst && customerData.mst.trim() !== ""
+            ? existedCustomers.some((c) => c.mst === customerData.mst)
+            : false;
 
         if (prefixExists) {
           throw AppError.Conflict(
@@ -197,7 +200,7 @@ export const customerService = {
         if (orderCount > 0) {
           if (role != "admin") {
             throw AppError.Conflict(
-              `Customer with ID '${customerId}' has associated orders and cannot be deleted.`,
+              `CustomerId: ${customerId} has order and cannot be deleted`,
               "CUSTOMER_HAS_ORDERS",
             );
           }

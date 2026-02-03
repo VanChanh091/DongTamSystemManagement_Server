@@ -62,6 +62,12 @@ export const orderRepository = {
     return await FluteRatio.findOne({ where: { fluteName: flute }, attributes: ["ratio"] });
   },
 
+  countOrderRejected: async (userId: number) => {
+    return await Order.count({
+      where: { status: "reject", userId: userId },
+    });
+  },
+
   //repo for auto complete
   getOrderIdRaw: async (orderId: string) => {
     return await Order.findAll({

@@ -86,7 +86,7 @@ export const dashboardRepository = {
           ],
         },
       ],
-      order: [["orderSortValue", "ASC"]],
+      order: [[{ model: Order }, "orderSortValue", "ASC"]],
     };
 
     if (paginate) {

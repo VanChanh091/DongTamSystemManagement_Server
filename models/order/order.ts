@@ -49,6 +49,7 @@ interface OrderAttributes {
   vat?: number | null;
   instructSpecial?: string | null;
   rejectReason?: string | null;
+  orderIdCustomer?: string | null;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -99,6 +100,7 @@ export type OrderCreationAttributes = Optional<
   | "isBox"
   | "status"
   | "statusPriority"
+  | "orderIdCustomer"
   | "createdAt"
   | "updatedAt"
 >;
@@ -147,6 +149,7 @@ export class Order
   declare vat?: number | null;
   declare instructSpecial?: string | null;
   declare rejectReason?: string | null;
+  declare orderIdCustomer?: string | null;
 
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
@@ -216,6 +219,7 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
         defaultValue: "pending",
       },
       rejectReason: { type: DataTypes.STRING },
+      orderIdCustomer: { type: DataTypes.STRING },
 
       //sort
       orderSortValue: { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 },

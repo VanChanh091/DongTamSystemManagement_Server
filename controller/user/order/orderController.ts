@@ -88,6 +88,18 @@ export const getOrderPendingAndReject = async (req: Request, res: Response, next
   }
 };
 
+//count order pending
+export const countOrderRejected = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    console.log(req.user.userId);
+
+    const response = await orderService.countOrderRejected(req.user.userId);
+    return res.status(201).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
 //add order
 export const addOrder = async (req: Request, res: Response, next: NextFunction) => {
   try {

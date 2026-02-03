@@ -5,14 +5,14 @@ module.exports = {
     {
       name: "dongtam-api",
       script: "dist/index.js",
-      // exec_mode: "cluster", // cluster mode để cân bằng tải
-      exec_mode: "fork", // cluster mode để cân bằng tải
+      exec_mode: "cluster", // cluster mode để cân bằng tải
+      cwd: "D:/App/DongTamSystemManagement_Server",
       autorestart: true,
       watch: false,
       merge_logs: true,
       max_memory_restart: "500M",
-      instances: "max", // chạy với số core CPU được cấp
-      // instances: 1,
+      // instances: "max", // chạy với số core CPU được cấp
+      instances: 5,
 
       // Log files (PM2 sẽ lưu trong C:\\Users\userName\.pm2\logs\)
       error_file: "./logs/err/dongtam-api-error.log",
