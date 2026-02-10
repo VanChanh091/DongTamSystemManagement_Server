@@ -12,6 +12,7 @@ import employeeRoutes from "./userRouter/employeeRoutes";
 import warehouseRoutes from "./userRouter/warehouseRoutes";
 import qcRoutes from "./userRouter/qualityControlRoutes";
 import deliveryRoutes from "./userRouter/deliveryRoutes";
+import badgeRoutes from "./badgeRouter/badgeRoutes";
 
 export {
   customerRoutes,
@@ -28,4 +29,5 @@ export {
   warehouseRoutes,
   qcRoutes,
   deliveryRoutes,
+  badgeRoutes,
 };

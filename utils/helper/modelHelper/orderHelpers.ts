@@ -101,7 +101,9 @@ export const calculateOrderMetrics = async (data: any) => {
   const ratioData = await orderRepository.findOneFluteRatio(flute);
   const ratio = ratioData?.ratio ?? 1;
 
-  const volumeRaw = length * size * ratio;
+  const baseVolume = (length * size) / 10000;
+  const totalVolume = baseVolume * qty * ratio * 1.3;
+  const volumeRaw = Math.round(totalVolume * 100) / 100;
 
   const responseData = {
     flute,

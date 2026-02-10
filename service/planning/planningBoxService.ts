@@ -14,9 +14,10 @@ import { Request } from "express";
 import { calTimeRunningPlanningBox } from "./helper/timeRunningBox";
 import { getPlanningByField } from "../../utils/helper/modelHelper/planningHelper";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
+import { CacheKey } from "../../utils/helper/cache/cacheKey";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { box } = CacheManager.keys.planning;
+const { box } = CacheKey.planning;
 
 export const planningBoxService = {
   //Planning Box
@@ -33,7 +34,7 @@ export const planningBoxService = {
       );
 
       if (isChanged) {
-        await CacheManager.clearPlanningBox();
+        await CacheManager.clear("planningBox");
       } else {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {

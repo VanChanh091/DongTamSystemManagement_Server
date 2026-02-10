@@ -13,9 +13,10 @@ import { exportExcelResponse } from "../utils/helper/excelExporter";
 import { employeeColumns, mappingEmployeeRow } from "../utils/mapping/employeeRowAndColumn";
 import { runInTransaction } from "../utils/helper/transactionHelper";
 import redisCache from "../assest/configs/redisCache";
+import { CacheKey } from "../utils/helper/cache/cacheKey";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { employee } = CacheManager.keys;
+const { employee } = CacheKey;
 
 export const employeeService = {
   getAllEmployees: async ({
@@ -37,7 +38,7 @@ export const employeeService = {
       );
 
       if (isChanged) {
-        await CacheManager.clearEmployee();
+        await CacheManager.clear("employee");
       } else {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {

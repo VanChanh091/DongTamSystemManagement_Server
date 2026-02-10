@@ -17,9 +17,11 @@ import { Box } from "../models/order/box";
 import { Order } from "../models/order/order";
 import { runInTransaction } from "../utils/helper/transactionHelper";
 import { orderRepository } from "../repository/orderRepository";
+import { CacheKey } from "../utils/helper/cache/cacheKey";
+import { Request } from "express";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { order } = CacheManager.keys;
+const { order } = CacheKey;
 
 export const orderService = {
   getOrderAcceptAndPlanning: async (page: number, pageSize: number, ownOnly: string, user: any) => {
@@ -27,14 +29,15 @@ export const orderService = {
 
     try {
       const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
-      const cacheKey = order.acceptPlanning(keyRole, page); //orders:admin:accept_planning:page:1
+      const cacheKey = order.acceptPlanning(keyRole, page); //orders:all:accept_planning:page:1
+
       const { isChanged } = await CacheManager.check(
         [{ model: Order, where: { status: ["accept", "planning"] } }],
         "orderAccept",
       );
 
       if (isChanged) {
-        await CacheManager.clearOrderAcceptPlanning(keyRole);
+        await CacheManager.clear("orderAcceptPlanning", keyRole);
       } else {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {
@@ -81,7 +84,7 @@ export const orderService = {
       );
 
       if (isChanged) {
-        await CacheManager.clearOrderPendingReject(keyRole);
+        await CacheManager.clear("orderPendingReject", keyRole);
       } else {
         const cachedResult = await cachedStatus(redisCache, "pending", "reject", userId, role);
 
@@ -146,20 +149,6 @@ export const orderService = {
       return result;
     } catch (error) {
       console.error(`Failed to get orders by ${field}:`, error);
-      if (error instanceof AppError) throw error;
-      throw AppError.ServerError();
-    }
-  },
-
-  countOrderRejected: async (userId: number) => {
-    try {
-      const count = await orderRepository.countOrderRejected(userId);
-
-      console.log(count);
-
-      return { message: "Count order rejected successfully", data: count };
-    } catch (error) {
-      console.error(`get order rejected failed:`, error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
@@ -251,7 +240,7 @@ export const orderService = {
   },
 
   //update order service
-  updateOrder: async (data: any, orderId: string) => {
+  updateOrder: async (req: Request, data: any, orderId: string) => {
     const { box, ...orderData } = data;
 
     try {
@@ -271,6 +260,18 @@ export const orderService = {
         } else {
           await Box.destroy({ where: { orderId } });
         }
+
+        //update socket for reject order
+        const ownerId = order.userId;
+        const badgeCount = await Order.count({
+          where: { status: "reject", userId: ownerId },
+          transaction,
+        });
+
+        req.io?.to(`reject-order-${ownerId}`).emit("updateBadgeCount", {
+          type: "REJECTED_ORDER",
+          count: badgeCount,
+        });
 
         return { message: "Order updated successfully", data: order };
       });

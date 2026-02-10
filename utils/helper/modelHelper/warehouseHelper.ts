@@ -1,6 +1,7 @@
 import redisCache from "../../../assest/configs/redisCache";
 import { warehouseRepository } from "../../../repository/warehouseRepository";
 import { AppError } from "../../appError";
+import { CacheKey } from "../cache/cacheKey";
 import { CacheManager } from "../cacheManager";
 import { normalizeVN } from "../normalizeVN";
 
@@ -19,7 +20,7 @@ export const getInboundByField = async <T>({
 }) => {
   const lowerKeyword = keyword?.toLowerCase?.() || "";
 
-  const { inbound } = CacheManager.keys.warehouse;
+  const { inbound } = CacheKey.warehouse;
   const cacheKey = inbound.search(page);
 
   try {
@@ -77,7 +78,7 @@ export const getOutboundByField = async <T>({
 }) => {
   const lowerKeyword = keyword?.toLowerCase?.() || "";
 
-  const { outbound } = CacheManager.keys.warehouse;
+  const { outbound } = CacheKey.warehouse;
   const cacheKey = outbound.search(page);
 
   try {

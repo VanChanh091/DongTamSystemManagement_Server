@@ -13,9 +13,10 @@ import { Order } from "../../models/order/order";
 import { WasteNormPaper } from "../../models/admin/wasteNormPaper";
 import { WaveCrestCoefficient } from "../../models/admin/waveCrestCoefficient";
 import { PlanningBox } from "../../models/planning/planningBox";
+import { CacheKey } from "../../utils/helper/cache/cacheKey";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { stop, order } = CacheManager.keys.planning;
+const { stop, order } = CacheKey.planning;
 
 export const planningStatusService = {
   //===============================PLANNING ORDER=====================================
@@ -41,7 +42,7 @@ export const planningStatusService = {
       const isChangedData = order || planningPaper;
 
       if (isChangedData) {
-        await CacheManager.clearOrderAccept();
+        await CacheManager.clear("orderAccept");
       } else {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {
@@ -307,7 +308,7 @@ export const planningStatusService = {
       );
 
       if (isChanged) {
-        await CacheManager.clearPlanningStop();
+        await CacheManager.clear("planningStop");
       } else {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {

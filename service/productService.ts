@@ -2,7 +2,11 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import redisCache from "../assest/configs/redisCache";
+import { Op } from "sequelize";
+import { Request, Response } from "express";
+import { Order } from "../models/order/order";
 import { Product } from "../models/product/product";
+import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { productRepository } from "../repository/productRepository";
 import { AppError } from "../utils/appError";
 import { CacheManager } from "../utils/helper/cacheManager";
@@ -12,16 +16,13 @@ import {
   getCloudinaryPublicId,
   uploadImageToCloudinary,
 } from "../utils/image/converToWebp";
-import { Request, Response } from "express";
 import cloudinary from "../assest/configs/connectCloudinary";
 import { exportExcelResponse } from "../utils/helper/excelExporter";
 import { mappingProductRow, productColumns } from "../utils/mapping/productRowAndColumn";
 import { runInTransaction } from "../utils/helper/transactionHelper";
-import { Op } from "sequelize";
-import { Order } from "../models/order/order";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { product } = CacheManager.keys;
+const { product } = CacheKey;
 
 export const productService = {
   getAllProducts: async ({
@@ -40,7 +41,7 @@ export const productService = {
       const { isChanged } = await CacheManager.check(Product, "product");
 
       if (isChanged) {
-        await CacheManager.clearProduct();
+        await CacheManager.clear("product");
       } else {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {

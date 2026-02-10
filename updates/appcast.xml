@@ -3,12 +3,13 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 3.3.0</title>
-            <sparkle:version>3.3.0</sparkle:version> 
-            <description>Fix lỗi thêm nhân viên
-            Chặn xóa các khách hàng, sản phẩm đã có đơn hàng trong hệ thống
-            Fix lại UI sắp xếp lịch giao hàng
-            Cho phép gợi ý mã đơn hàng để lấy các thông tin giống nhau
+            <title>Version 3.4.0</title>
+            <sparkle:version>3.4.0</sparkle:version> 
+            <description>Hiển thị thông báo cho đơn bị từ chối
+            Không cho phép nhập số vào cuối mã khách hàng, mã sản phẩm
+            Sửa lại lỗi dao tề và đơn vị tính không đồng bộ khi chọn từ mã đơn hàng gợi ý
+            Thêm mã đơn của khách vào form nhập đơn
+            Cho phép nhập công thức chia vào ô nhập khổ (KH) 
             </description>
             <pubDate>Sat, 24 Jan 2026</pubDate>
             <enclosure url="dongtam.exe" 

@@ -1,8 +1,8 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import redisCache from "../../assest/configs/redisCache";
 import { Op } from "sequelize";
+import { Request } from "express";
 import { Order } from "../../models/order/order";
 import { machinePaperType, PlanningPaper } from "../../models/planning/planningPaper";
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
@@ -12,13 +12,14 @@ import { planningRepository } from "../../repository/planningRepository";
 import { PlanningBox } from "../../models/planning/planningBox";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
 import { MachinePaper } from "../../models/admin/machinePaper";
-import { Request } from "express";
 import { calculateTimeRunning, updateSortPlanning } from "./helper/timeRunningPaper";
 import { getPlanningByField } from "../../utils/helper/modelHelper/planningHelper";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
+import { CacheKey } from "../../utils/helper/cache/cacheKey";
+import redisCache from "../../assest/configs/redisCache";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { paper } = CacheManager.keys.planning;
+const { paper } = CacheKey.planning;
 
 export const planningPaperService = {
   //====================================PLANNING PAPER========================================
@@ -34,7 +35,7 @@ export const planningPaperService = {
       );
 
       if (isChanged) {
-        await CacheManager.clearPlanningPaper();
+        await CacheManager.clear("planningPaper");
       } else {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {
@@ -419,7 +420,7 @@ export const planningPaperService = {
                   }
 
                   await planning.destroy();
-                  await CacheManager.clearOrderAccept();
+                  await CacheManager.clear("orderAccept");
                 }
               }
             }

@@ -13,9 +13,10 @@ import { customerColumns, mappingCustomerRow } from "../utils/mapping/customerRo
 import { Response } from "express";
 import { runInTransaction } from "../utils/helper/transactionHelper";
 import { Order } from "../models/order/order";
+import { CacheKey } from "../utils/helper/cache/cacheKey";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { customer } = CacheManager.keys;
+const { customer } = CacheKey;
 
 export const customerService = {
   getAllCustomers: async ({
@@ -34,7 +35,7 @@ export const customerService = {
       const { isChanged } = await CacheManager.check(Customer, "customer");
 
       if (isChanged) {
-        await CacheManager.clearCustomer();
+        await CacheManager.clear("customer");
       } else {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {

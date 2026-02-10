@@ -13,10 +13,10 @@ import { exportExcelResponse } from "../utils/helper/excelExporter";
 import { mapReportPaperRow, reportPaperColumns } from "../utils/mapping/reportPaperRowAndColumn";
 import { mapReportBoxRow, reportBoxColumns } from "../utils/mapping/reportBoxRowAndColumn";
 import redisCache from "../assest/configs/redisCache";
+import { CacheKey } from "../utils/helper/cache/cacheKey";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { paper } = CacheManager.keys.report;
-const { box } = CacheManager.keys.report;
+const { paper, box } = CacheKey.report;
 
 export const reportService = {
   //====================================PAPER========================================
@@ -26,7 +26,7 @@ export const reportService = {
       const { isChanged } = await CacheManager.check(ReportPlanningPaper, "reportPaper");
 
       if (isChanged) {
-        await CacheManager.clearReportPaper();
+        await CacheManager.clear("reportPaper");
       } else {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {
@@ -105,7 +105,7 @@ export const reportService = {
       const { isChanged } = await CacheManager.check(ReportPlanningBox, "reportBox");
 
       if (isChanged) {
-        await CacheManager.clearReportBox();
+        await CacheManager.clear("reportBox");
       } else {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {

@@ -2,11 +2,12 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import redisCache from "../assest/configs/redisCache";
+import { Op } from "sequelize";
+import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { dashboardRepository } from "../repository/dashboardRepository";
 import { AppError } from "../utils/appError";
 import { CacheManager } from "../utils/helper/cacheManager";
 import { PlanningPaper } from "../models/planning/planningPaper";
-import { Op } from "sequelize";
 import { Request, Response } from "express";
 import { dbPlanningColumns, mappingDbPlanningRow } from "../utils/mapping/dbPlanningRowAndColumn";
 import { exportExcelDbPlanning } from "../utils/helper/excelExporter";
@@ -17,7 +18,7 @@ import {
 } from "../utils/helper/modelHelper/planningHelper";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { planning, details, search } = CacheManager.keys.dashboard;
+const { planning, details, search } = CacheKey.dashboard;
 
 export const dashboardService = {
   getAllDashboardPlanning: async (page: number, pageSize: number, status: string) => {
@@ -27,7 +28,7 @@ export const dashboardService = {
       const { isChanged } = await CacheManager.check(PlanningPaper, "dbPlanning");
 
       if (isChanged) {
-        await CacheManager.clearDbPlanning();
+        await CacheManager.clear("dbPlanning");
       } else {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {
@@ -70,7 +71,7 @@ export const dashboardService = {
       const { isChanged } = await CacheManager.check(PlanningBoxTime, "dbDetail");
 
       if (isChanged) {
-        await CacheManager.clearDbPlanningDetail();
+        await CacheManager.clear("dbPlanningDetail");
       } else {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {

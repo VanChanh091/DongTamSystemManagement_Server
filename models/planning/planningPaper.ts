@@ -35,9 +35,10 @@ interface PlanningPaperAttributes {
   lengthPaperPlanning: number;
   sizePaperPLaning: number;
   runningPlan: number;
-  qtyProduced?: number | null;
   numberChild: number;
+  qtyProduced?: number | null;
   ghepKho?: number | null;
+
   bottom?: number | null;
   fluteE?: number | null;
   fluteB?: number | null;
@@ -50,10 +51,12 @@ interface PlanningPaperAttributes {
   chooseMachine: machinePaperType;
   shiftProduction?: string | null;
   shiftManagement?: string | null;
+
   status: planningPaperStatus;
   statusRequest: statusRequestInbound;
-  hasOverFlow?: boolean | null;
+
   hasBox?: boolean | null;
+  hasOverFlow?: boolean | null;
   deliveryPlanned: statusDeliveryPlanned;
   sortPlanning?: number | null;
 

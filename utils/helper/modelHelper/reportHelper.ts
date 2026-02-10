@@ -11,6 +11,7 @@ import { CacheManager } from "../cacheManager";
 import redisCache from "../../../assest/configs/redisCache";
 import { normalizeVN } from "../normalizeVN";
 import { AppError } from "../../appError";
+import { CacheKey } from "../cache/cacheKey";
 
 export const filterReportByField = async ({
   keyword,
@@ -33,7 +34,7 @@ export const filterReportByField = async ({
   const currentPageSize = Number(pageSize) || 20;
   const lowerKeyword = keyword?.toLowerCase?.() || "";
 
-  const { paper, box } = CacheManager.keys.report;
+  const { paper, box } = CacheKey.report;
   const cacheKey = isBox ? box.search(machine) : paper.search(machine);
 
   try {
@@ -303,7 +304,7 @@ export const createReportPlanning = async ({
         shiftManagement: shiftManagementBox,
         machine: machine,
       },
-      { transaction }
+      { transaction },
     );
   } else {
     // paper
@@ -317,7 +318,7 @@ export const createReportPlanning = async ({
         shiftProduction: otherData!.shiftProduction,
         shiftManagement: otherData!.shiftManagement,
       },
-      { transaction }
+      { transaction },
     );
   }
 

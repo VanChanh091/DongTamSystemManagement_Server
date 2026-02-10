@@ -24,6 +24,7 @@ import {
   warehouseRoutes,
   qcRoutes,
   deliveryRoutes,
+  badgeRoutes,
 } from "./routes/index";
 
 //create table
@@ -80,6 +81,9 @@ app.use("/api/employee", employeeRoutes);
 app.use("/api/warehouse", warehouseRoutes);
 app.use("/api/qc", qcRoutes);
 app.use("/api/delivery", deliveryRoutes);
+
+//BADGE
+app.use("/api/badge", badgeRoutes);
 
 sequelize
   // .sync({ alter: true })

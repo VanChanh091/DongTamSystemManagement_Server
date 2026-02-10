@@ -8,7 +8,6 @@ import {
   getOrderByField,
   getOrderDetail,
   getOrderIdRaw,
-  countOrderRejected,
 } from "../../controller/user/order/orderController";
 import authenticate from "../../middlewares/authMiddleware";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
@@ -34,7 +33,6 @@ router.get(
   authorizeAnyPermission(["sale"]),
   getOrderPendingAndReject,
 );
-router.get("/countRejected", authenticate, authorizeAnyPermission(["sale"]), countOrderRejected);
 router.post("/", authenticate, authorizeAnyPermission(["sale"]), addOrder);
 router.put("/orders", authenticate, authorizeAnyPermission(["sale"]), updateOrder);
 router.delete("/orders", authenticate, authorizeAnyPermission(["sale"]), deleteOrder);

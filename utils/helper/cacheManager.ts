@@ -1,112 +1,36 @@
-import redisCache from "../../assest/configs/redisCache";
-import { checkLastChange } from "./checkLastChangeHelper";
 import dotenv from "dotenv";
 dotenv.config();
 
+import redisCache from "../../assest/configs/redisCache";
+import { CacheKey } from "./cache/cacheKey";
+import { checkLastChange } from "./checkLastChangeHelper";
+
 const devEnvironment = process.env.NODE_ENV !== "production";
 
+const CACHE_CONFIG = {
+  customer: ["customers:"],
+  product: ["products:"],
+  employee: ["employees:"],
+  orderAccept: ["orders:status:accept"],
+  orderPendingReject: (role: string) => [`orders:${role}:pending_reject`],
+  orderAcceptPlanning: (role: string) => ({
+    prefixes: [`orders:${role}:accept_planning:`],
+    extraKeys: [CacheKey.order.searchAcceptPlanning],
+  }),
+  planningPaper: ["planningPaper:machine:", "planningPaper:search:"],
+  planningStop: ["planningPaper:stop:"],
+  planningBox: ["planningBox:machine:", "planningBox:search:"],
+  manufacturePaper: ["manufacturePaper:machine:"],
+  manufactureBox: ["manufactureBox:machine:"],
+  reportPaper: ["reportPaper:"],
+  reportBox: ["reportBox:"],
+  dbPlanning: ["dashboard:planning:all:", "dashboard:search:all"],
+  dbPlanningDetail: ["dashboard:detail:"],
+  inbound: ["inboundHistory:page:"],
+  outbound: ["outboundHistory:page:"],
+};
+
 export const CacheManager = {
-  keys: {
-    customer: {
-      all: "customers:all",
-      page: (page: number) => `customers:page:${page}`,
-      search: "customers:search:all",
-      lastUpdated: "customer:lastUpdated",
-    },
-
-    dashboard: {
-      planning: {
-        all: (status: string, page: number) => `dashboard:planning:${status}:${page}`,
-        lastUpdated: "db:planning:lastUpdated", //planning paper
-      },
-      details: {
-        all: (planningId: number) => `dashboard:detail:${planningId}`,
-        lastUpdated: "db:detail:lastUpdated", //box time machine
-      },
-      search: "dashboard:search:all",
-    },
-
-    product: {
-      all: "products:all",
-      page: (page: number) => `products:page:${page}`,
-      search: "products:search:all",
-      lastUpdated: "product:lastUpdated",
-    },
-
-    employee: {
-      all: "employees:all",
-      page: (page: number) => `employees:page:${page}`,
-      search: "employees:search:all",
-      lastUpdated: "employee:lastUpdated",
-    },
-
-    order: {
-      pendingReject: (role: string) => `orders:${role}:pending_reject`,
-      acceptPlanning: (role: string, page: number) => `orders:${role}:accept_planning:page:${page}`,
-      searchAcceptPlanning: "orders:accept_planning",
-      lastUpdatedPending: "order:pending_reject:lastUpdated",
-      lastUpdatedAccept: "order:accept_planning:lastUpdated",
-    },
-
-    planning: {
-      order: {
-        all: "orders:status:accept",
-        lastUpdated: "orders:accept:lastUpdated",
-      },
-      paper: {
-        machine: (machine: string) => `planningPaper:machine:${machine}`,
-        search: (machine: string) => `planningPaper:search:${machine}`,
-        lastUpdated: "planningPaper:lastUpdated",
-      },
-      stop: {
-        page: (page: number) => `planningPaper:stop:page:${page}`,
-        lastUpdated: "planningPaper:stop:lastUpdated",
-      },
-      box: {
-        machine: (machine: string) => `planningBox:machine:${machine}`,
-        search: (machine: string) => `planningBox:search:${machine}`,
-        lastUpdated: "planningBox:lastUpdated",
-      },
-    },
-
-    manufacture: {
-      paper: {
-        machine: (machine: string) => `manufacturePaper:machine:${machine}`,
-        lastUpdated: "manufacturePaper:lastUpdated",
-      },
-      box: {
-        machine: (machine: string) => `manufactureBox:machine:${machine}`,
-        lastUpdated: "manufactureBoxs:lastUpdated",
-      },
-    },
-
-    report: {
-      paper: {
-        all: (machine: string, page: number) => `reportPaper:planning:${machine}:${page}`,
-        search: (machine: string) => `reportPaper:search:${machine}`,
-        lastUpdated: "report:paper:lastUpdated",
-      },
-      box: {
-        all: (machine: string, page: number) => `reportBox:planning:${machine}:${page}`,
-        search: (machine: string) => `reportBox:search:${machine}`,
-        lastUpdated: "report:box:lastUpdated",
-      },
-    },
-
-    warehouse: {
-      inbound: {
-        page: (page: number) => `inboundHistory:page:${page}`,
-        search: (page: number) => `inboundHistory:search:${page}`,
-        lastUpdated: "inbound:lastUpdated",
-      },
-      outbound: {
-        page: (page: number) => `outboundHistory:page:${page}`,
-        search: (page: number) => `outboundHistory:search:${page}`,
-        lastUpdated: "outbound:lastUpdated",
-      },
-    },
-  },
-
   //Xóa toàn bộ cache theo prefix
   async clearByPrefix(prefix: string) {
     const keys = await redisCache.keys(`${prefix}*`);
@@ -118,85 +42,35 @@ export const CacheManager = {
     }
   },
 
-  //Xóa cache cho nhóm cụ thể
-  async clearCustomer() {
-    await this.clearByPrefix("customers:");
-  },
+  /**
+   * Hàm clear tổng quát thay thế cho tất cả các hàm clear đơn lẻ
+   * @param module Tên module cần xóa (key trong CACHE_CONFIG)
+   * @param args Tham số phụ (ví dụ: role)
+   */
+  async clear(module: keyof typeof CACHE_CONFIG, ...args: any[]) {
+    const config = CACHE_CONFIG[module];
+    if (!config) return;
 
-  async clearProduct() {
-    await this.clearByPrefix("products:");
-  },
+    let prefixes: string[] = [];
+    let extraKeys: string[] = [];
 
-  async clearEmployee() {
-    await this.clearByPrefix("employees:");
-  },
+    // Xử lý nếu config là function (dành cho module có tham số như role)
+    const resolveConfig = typeof config === "function" ? (config as any)(...args) : config;
 
-  //clear order
-  async clearOrderAcceptPlanning(role: string) {
-    await this.clearByPrefix(`orders:${role}:accept_planning:`);
+    if (Array.isArray(resolveConfig)) {
+      prefixes = resolveConfig;
+    } else {
+      prefixes = resolveConfig.prefixes || [];
+      extraKeys = resolveConfig.extraKeys || [];
+    }
 
-    // Xoá cache tìm kiếm accept
-    await redisCache.del(this.keys.order.searchAcceptPlanning);
-  },
+    // Thực hiện xóa theo prefix
+    await Promise.all(prefixes.map((p) => this.clearByPrefix(p)));
 
-  async clearOrderPendingReject(role: string) {
-    await this.clearByPrefix(`orders:${role}:pending_reject`);
-  },
-
-  async clearOrderAccept() {
-    await this.clearByPrefix("orders:status:accept");
-  },
-
-  //clear planning
-  async clearPlanningPaper() {
-    await this.clearByPrefix("planningPaper:machine:");
-    await this.clearByPrefix("planningPaper:search:");
-  },
-
-  async clearPlanningStop() {
-    await this.clearByPrefix("planningPaper:stop:");
-  },
-
-  async clearPlanningBox() {
-    await this.clearByPrefix("planningBox:machine:");
-    await this.clearByPrefix("planningBox:search:");
-  },
-
-  //clear manufacture
-  async clearManufacturePaper() {
-    await this.clearByPrefix("manufacturePaper:machine:");
-  },
-
-  async clearManufactureBox() {
-    await this.clearByPrefix("manufactureBox:machine:");
-  },
-
-  //clear report
-  async clearReportPaper() {
-    await this.clearByPrefix("reportPaper:");
-  },
-
-  async clearReportBox() {
-    await this.clearByPrefix("reportBox:");
-  },
-
-  //clear dashboard
-  async clearDbPlanning() {
-    await this.clearByPrefix("dashboard:planning:all:");
-    await this.clearByPrefix("dashboard:search:all");
-  },
-
-  async clearDbPlanningDetail() {
-    await this.clearByPrefix("dashboard:detail:");
-  },
-
-  //clear inbound
-  async clearInbound() {
-    await this.clearByPrefix("inboundHistory:page:");
-  },
-
-  async clearOutbound() {
-    await this.clearByPrefix("outboundHistory:page:");
+    // Thực hiện xóa các key cụ thể (nếu có)
+    if (extraKeys.length > 0) {
+      await redisCache.del(...extraKeys);
+    }
   },
 
   /** Check lastChange cho 1 module */
@@ -204,36 +78,35 @@ export const CacheManager = {
     const { setCache = true } = options;
 
     const map: Record<string, string> = {
-      customer: this.keys.customer.lastUpdated,
-      product: this.keys.product.lastUpdated,
-      employee: this.keys.employee.lastUpdated,
+      customer: CacheKey.customer.lastUpdated,
+      product: CacheKey.product.lastUpdated,
+      employee: CacheKey.employee.lastUpdated,
 
       //order
-      orderPending: this.keys.order.lastUpdatedPending,
-      orderAccept: this.keys.order.lastUpdatedAccept,
-
+      orderPending: CacheKey.order.lastUpdatedPending,
+      orderAccept: CacheKey.order.lastUpdatedAccept,
       //planning
-      planningOrder: this.keys.planning.order.lastUpdated,
-      planningPaper: this.keys.planning.paper.lastUpdated,
-      planningOrderPaper: this.keys.planning.paper.lastUpdated, //using for cache planning order
-      planningStop: this.keys.planning.stop.lastUpdated,
-      planningBox: this.keys.planning.box.lastUpdated,
+      planningOrder: CacheKey.planning.order.lastUpdated,
+      planningPaper: CacheKey.planning.paper.lastUpdated,
+      planningOrderPaper: CacheKey.planning.paper.lastUpdated, //using for cache planning order
+      planningStop: CacheKey.planning.stop.lastUpdated,
+      planningBox: CacheKey.planning.box.lastUpdated,
 
       //manufacture
-      manufacturePaper: this.keys.manufacture.paper.lastUpdated,
-      manufactureBox: this.keys.manufacture.box.lastUpdated,
+      manufacturePaper: CacheKey.manufacture.paper.lastUpdated,
+      manufactureBox: CacheKey.manufacture.box.lastUpdated,
 
       //report
-      reportPaper: this.keys.report.paper.lastUpdated,
-      reportBox: this.keys.report.box.lastUpdated,
+      reportPaper: CacheKey.report.paper.lastUpdated,
+      reportBox: CacheKey.report.box.lastUpdated,
 
       //dashboard
-      dbPlanning: this.keys.dashboard.planning.lastUpdated,
-      dbDetail: this.keys.dashboard.details.lastUpdated,
+      dbPlanning: CacheKey.dashboard.planning.lastUpdated,
+      dbDetail: CacheKey.dashboard.details.lastUpdated,
 
       //warehouse
-      inbound: this.keys.warehouse.inbound.lastUpdated,
-      outbound: this.keys.warehouse.outbound.lastUpdated,
+      inbound: CacheKey.warehouse.inbound.lastUpdated,
+      outbound: CacheKey.warehouse.outbound.lastUpdated,
     };
 
     const key = map[module];

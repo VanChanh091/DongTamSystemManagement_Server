@@ -13,13 +13,14 @@ import { CacheManager } from "../../utils/helper/cacheManager";
 import { getInboundByField } from "../../utils/helper/modelHelper/warehouseHelper";
 import { dashboardRepository } from "../../repository/dashboardRepository";
 import { buildStagesDetails } from "../../utils/helper/modelHelper/planningHelper";
-import { Inventory } from "../../models/warehouse/inventory";
-import { inventoryService } from "./inventoryService";
-import { Order } from "../../models/order/order";
 import { PlanningPaper } from "../../models/planning/planningPaper";
+import { inventoryService } from "./inventoryService";
+import { Inventory } from "../../models/warehouse/inventory";
+import { Order } from "../../models/order/order";
+import { CacheKey } from "../../utils/helper/cache/cacheKey";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { inbound } = CacheManager.keys.warehouse;
+const { inbound } = CacheKey.warehouse;
 
 export const inboundService = {
   //====================================WAITING CHECK AND INBOUND QTY========================================
@@ -50,7 +51,7 @@ export const inboundService = {
           overflowRemoveFields.forEach((f) => delete overflow[f]);
           if (overflow.Order) {
             ["quantityManufacture", "totalPrice", "totalPriceVAT"].forEach(
-              (item) => delete overflow.Order[item]
+              (item) => delete overflow.Order[item],
             );
           }
 
@@ -127,7 +128,7 @@ export const inboundService = {
       if (totalInboundQty + inboundQty > qtyProduced) {
         throw AppError.BadRequest(
           "Số lượng nhập kho vượt quá số lượng sản xuất",
-          "INBOUND_EXCEED_PRODUCED"
+          "INBOUND_EXCEED_PRODUCED",
         );
       }
 
@@ -160,7 +161,7 @@ export const inboundService = {
         {
           where: { orderId: planning.orderId },
           transaction,
-        }
+        },
       );
 
       if (isFirstInbound) {
@@ -216,7 +217,7 @@ export const inboundService = {
       if (totalInboundQty + inboundQty > qtyProduced) {
         throw AppError.BadRequest(
           "Số lượng nhập kho vượt quá số lượng sản xuất",
-          "INBOUND_EXCEED_PRODUCED"
+          "INBOUND_EXCEED_PRODUCED",
         );
       }
 
@@ -249,7 +250,7 @@ export const inboundService = {
         {
           where: { orderId: planning.orderId },
           transaction,
-        }
+        },
       );
 
       if (isFirstInbound) {
@@ -286,7 +287,7 @@ export const inboundService = {
       const { isChanged } = await CacheManager.check(InboundHistory, "inbound");
 
       if (isChanged) {
-        await CacheManager.clearInbound();
+        await CacheManager.clear("inbound");
       } else {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {

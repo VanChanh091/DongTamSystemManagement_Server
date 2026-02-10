@@ -13,9 +13,10 @@ import redisCache from "../../assest/configs/redisCache";
 import { Inventory } from "../../models/warehouse/inventory";
 import { exportWarehouseSale } from "../../utils/helper/exportPDF";
 import { Response } from "express";
+import { CacheKey } from "../../utils/helper/cache/cacheKey";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { outbound } = CacheManager.keys.warehouse;
+const { outbound } = CacheKey.warehouse;
 
 export const outboundService = {
   getAllOutboundHistory: async (page: number, pageSize: number) => {
@@ -25,7 +26,7 @@ export const outboundService = {
       const { isChanged } = await CacheManager.check(OutboundHistory, "outbound");
 
       if (isChanged) {
-        await CacheManager.clearOutbound();
+        await CacheManager.clear("outbound");
       } else {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {
@@ -157,14 +158,14 @@ export const outboundService = {
           if (!inventory) {
             throw AppError.BadRequest(
               `Order: ${item.orderId} chưa có tồn kho`,
-              "INVENTORY_NOT_FOUND"
+              "INVENTORY_NOT_FOUND",
             );
           }
 
           if (inventory.qtyInventory < item.outboundQty) {
             throw AppError.BadRequest(
               `Xuất vượt tồn kho cho order ${item.orderId}`,
-              "OUTBOUND_EXCEED_INVENTORY"
+              "OUTBOUND_EXCEED_INVENTORY",
             );
           }
 
@@ -178,7 +179,7 @@ export const outboundService = {
           if (deliveredQty + item.outboundQty > order.quantityCustomer) {
             throw AppError.BadRequest(
               `Xuất vượt số lượng bán cho order ${item.orderId}`,
-              "OUTBOUND_QTY_EXCEED"
+              "OUTBOUND_QTY_EXCEED",
             );
           }
 
@@ -248,7 +249,7 @@ export const outboundService = {
             {
               where: { orderId: item.orderId },
               transaction,
-            }
+            },
           );
         }
 
@@ -319,7 +320,7 @@ export const outboundService = {
           if (!inventory) {
             throw AppError.BadRequest(
               `Order ${item.orderId} chưa có tồn kho`,
-              "INVENTORY_NOT_FOUND"
+              "INVENTORY_NOT_FOUND",
             );
           }
 
@@ -331,7 +332,7 @@ export const outboundService = {
           if (deltaQty > 0 && inventory.qtyInventory < deltaQty) {
             throw AppError.BadRequest(
               `Xuất vượt tồn kho cho order ${item.orderId}`,
-              "OUTBOUND_EXCEED_INVENTORY"
+              "OUTBOUND_EXCEED_INVENTORY",
             );
           }
 
@@ -346,7 +347,7 @@ export const outboundService = {
           if (deliveredQty + item.outboundQty > order.quantityCustomer) {
             throw AppError.BadRequest(
               `Xuất vượt số lượng bán cho order ${item.orderId}`,
-              "OUTBOUND_QTY_EXCEED"
+              "OUTBOUND_QTY_EXCEED",
             );
           }
 
@@ -358,7 +359,7 @@ export const outboundService = {
                 qtyInventory: -deltaQty,
                 valueInventory: -(deltaQty * order.pricePaper),
               },
-              { where: { orderId: item.orderId }, transaction }
+              { where: { orderId: item.orderId }, transaction },
             );
           }
 
@@ -379,7 +380,7 @@ export const outboundService = {
                 price: order.pricePaper,
                 totalPriceOutbound,
               },
-              { transaction }
+              { transaction },
             );
           } else {
             // ADD
@@ -392,7 +393,7 @@ export const outboundService = {
                 totalPriceOutbound,
                 deliveredQty,
               },
-              { transaction }
+              { transaction },
             );
           }
 
@@ -409,7 +410,7 @@ export const outboundService = {
                 qtyInventory: oldDetail.outboundQty,
                 valueInventory: oldDetail.outboundQty * oldDetail.price,
               },
-              { where: { orderId: oldDetail.orderId }, transaction }
+              { where: { orderId: oldDetail.orderId }, transaction },
             );
 
             await oldDetail.destroy({ transaction });
@@ -424,7 +425,7 @@ export const outboundService = {
             totalPricePayment,
             totalOutboundQty,
           },
-          { transaction }
+          { transaction },
         );
 
         return outbound;
@@ -462,7 +463,7 @@ export const outboundService = {
             {
               where: { orderId: detail.orderId },
               transaction,
-            }
+            },
           );
         }
 

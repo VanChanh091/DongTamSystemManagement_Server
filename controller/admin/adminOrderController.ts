@@ -17,7 +17,7 @@ export const updateStatusAdmin = async (req: Request, res: Response, next: NextF
   const { newStatus, rejectReason } = req.body;
 
   try {
-    const response = await adminService.updateStatusOrder(id, newStatus, rejectReason);
+    const response = await adminService.updateStatusOrder(req, id, newStatus, rejectReason);
     return res.status(200).json(response);
   } catch (error) {
     next(error);

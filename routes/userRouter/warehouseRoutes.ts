@@ -47,19 +47,19 @@ router.post(
   "/outbound/createOutbound",
   authorizeAnyPermission(["delivery"]),
   authenticate,
-  createOutbound
+  createOutbound,
 );
 router.put(
   "/outbound/updateOutbound",
   authorizeAnyPermission(["delivery"]),
   authenticate,
-  updateOutbound
+  updateOutbound,
 );
 router.delete(
   "/outbound/deleteOutbound",
   authorizeAnyPermission(["delivery"]),
   authenticate,
-  deleteOutbound
+  deleteOutbound,
 );
 
 //auto complete dialog

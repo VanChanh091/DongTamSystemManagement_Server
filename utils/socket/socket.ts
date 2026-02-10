@@ -1,24 +1,12 @@
-import { Server, Socket } from "socket.io";
-import jwt, { JwtPayload } from "jsonwebtoken";
-import { Server as HttpServer } from "http";
 import dotenv from "dotenv";
 dotenv.config();
 
+import jwt from "jsonwebtoken";
+import { Server } from "socket.io";
+import { Server as HttpServer } from "http";
+import { AuthenticatedSocket, DecodedToken, SocketAuth } from "../../interface/socket.type";
+
 const devEnvironment = process.env.NODE_ENV !== "production";
-
-interface DecodedToken extends JwtPayload {
-  userId: string;
-  username?: string;
-  role?: string;
-}
-
-interface SocketAuth {
-  token?: string;
-}
-
-interface AuthenticatedSocket extends Socket {
-  user?: DecodedToken;
-}
 
 export const initSocket = (server: HttpServer) => {
   const io = new Server(server, {
@@ -64,6 +52,12 @@ export const initSocket = (server: HttpServer) => {
     socket.on("leave-room", (room: string) => {
       socket.leave(room);
       if (devEnvironment) console.log(`📌 socket left: ${room}`);
+    });
+
+    //reject order
+    socket.on("join-user", (ownerId: number) => {
+      socket.join(`reject-order-${ownerId}`);
+      if (devEnvironment) console.log(`🔔 User joined notification: ${ownerId}`);
     });
   });
 

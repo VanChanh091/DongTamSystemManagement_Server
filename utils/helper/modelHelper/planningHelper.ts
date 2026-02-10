@@ -10,6 +10,7 @@ import { AppError } from "../../appError";
 import { dashboardRepository } from "../../../repository/dashboardRepository";
 import { normalizeVN } from "../normalizeVN";
 import { planningRepository } from "../../../repository/planningRepository";
+import { CacheKey } from "../cache/cacheKey";
 
 //get planningPaper properties
 export const getPlanningByField = async <T>({
@@ -64,7 +65,7 @@ export const getPlanningBoxByField = async (req: Request, res: Response, field: 
     });
   }
 
-  const { box } = CacheManager.keys.planning;
+  const { box } = CacheKey.planning;
   const cacheKey = box.machine(machine);
 
   try {

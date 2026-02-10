@@ -1,12 +1,18 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import bcrypt from "bcrypt";
 import cloudinary from "../../assest/configs/connectCloudinary";
+import { Request } from "express";
 import { validPermissions } from "../../assest/configs/machineLabels";
-import { OrderStatus } from "../../models/order/order";
+import { Order, OrderStatus } from "../../models/order/order";
 import { userRole } from "../../models/user/user";
 import { adminRepository } from "../../repository/adminRepository";
 import { AppError } from "../../utils/appError";
 import { getCloudinaryPublicId } from "../../utils/image/converToWebp";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
+
+const devEnvironment = process.env.NODE_ENV !== "production";
 
 export const adminService = {
   //===============================ADMIN CRUD=====================================
@@ -141,7 +147,12 @@ export const adminService = {
     }
   },
 
-  updateStatusOrder: async (orderId: string, newStatus: OrderStatus, rejectReason: string) => {
+  updateStatusOrder: async (
+    req: Request,
+    orderId: string,
+    newStatus: OrderStatus,
+    rejectReason: string,
+  ) => {
     try {
       if (!["accept", "reject"].includes(newStatus)) {
         throw AppError.BadRequest("Invalid status", "INVALID_STATUS");
@@ -174,7 +185,38 @@ export const adminService = {
 
       await order.save();
 
-      return { message: "Order status updated successfully", order };
+      const ownerId = order.userId;
+      const badgeCount = await Order.count({ where: { status: "reject", userId: ownerId } });
+
+      const roomName = `reject-order-${ownerId}`;
+      const sockets = await req.io?.in(roomName).fetchSockets();
+
+      // console.log(`-----------------------------------`);
+      // console.log(`📡 Event: updateBadgeCount`);
+      // console.log(`🏠 Room Target: ${roomName}`);
+      // console.log(`👥 Active sockets: ${sockets?.length ?? 0}`);
+      // console.log(`-----------------------------------`);
+
+      const hasSocket = sockets && sockets.length > 0;
+      if (!hasSocket) {
+        if (devEnvironment) {
+          console.log(`⚠️ No one is in room ${roomName}, skip emitting.`);
+        }
+        return { message: "Order status updated successfully, no active socket to notify" };
+      }
+
+      req.io?.to(roomName).emit("updateBadgeCount", {
+        type: "REJECTED_ORDER",
+        count: badgeCount,
+      });
+
+      return {
+        message: "Order status updated successfully",
+        notification: {
+          recipientId: ownerId,
+          badgeCount,
+        },
+      };
     } catch (error) {
       console.error("failed to update order", error);
       if (error instanceof AppError) throw error;
@@ -326,7 +368,7 @@ export const adminService = {
       if (invalid.length > 0) {
         throw AppError.BadRequest(
           `Invalid permissions: ${invalid.join(", ")}`,
-          "INVALID_PERMISSIONS"
+          "INVALID_PERMISSIONS",
         );
       }
 
@@ -382,7 +424,7 @@ export const adminService = {
       if (!Array.isArray(userIds) || userIds.length === 0 || !newPassword) {
         throw AppError.BadRequest(
           "userIds must be a non-empty array and newPassword is required",
-          "INVALID_INPUT"
+          "INVALID_INPUT",
         );
       }
       const saltPassword = 10;

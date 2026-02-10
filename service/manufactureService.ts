@@ -18,10 +18,10 @@ import { createReportPlanning } from "../utils/helper/modelHelper/reportHelper";
 import { ReportPlanningBox } from "../models/report/reportPlanningBox";
 import { mergeShiftField } from "../utils/helper/modelHelper/planningHelper";
 import { runInTransaction } from "../utils/helper/transactionHelper";
+import { CacheKey } from "../utils/helper/cache/cacheKey";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { paper } = CacheManager.keys.manufacture;
-const { box } = CacheManager.keys.manufacture;
+const { paper, box } = CacheKey.manufacture;
 
 export const manufactureService = {
   //====================================PAPER========================================
@@ -33,12 +33,12 @@ export const manufactureService = {
           { model: PlanningPaper },
           { model: timeOverflowPlanning, where: { planningId: { [Op.ne]: null } } },
         ],
-        "manufacturePaper"
+        "manufacturePaper",
       );
 
       if (isChanged) {
-        await CacheManager.clearManufacturePaper();
-        await CacheManager.clearOrderAccept();
+        await CacheManager.clear("manufacturePaper");
+        await CacheManager.clear("orderAccept");
       } else {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {
@@ -94,7 +94,7 @@ export const manufactureService = {
           overflowRemoveFields.forEach((f) => delete overflow[f]);
           if (overflow.Order) {
             ["quantityManufacture", "totalPrice", "totalPriceVAT"].forEach(
-              (item) => delete overflow.Order[item]
+              (item) => delete overflow.Order[item],
             );
           }
 
@@ -142,7 +142,7 @@ export const manufactureService = {
           if (!userPermissions.includes(machineLabel)) {
             throw AppError.Unauthorized(
               `Access denied: You don't have permission to report for machine ${machine}`,
-              "ACCESS_DENIED"
+              "ACCESS_DENIED",
             );
           }
         }
@@ -182,12 +182,12 @@ export const manufactureService = {
         // Merge shift fields
         let updatedShiftProduction = mergeShiftField(
           planning.shiftProduction || "",
-          otherData.shiftProduction
+          otherData.shiftProduction,
         );
 
         let updatedShiftManagement = mergeShiftField(
           planning.shiftManagement || "",
-          otherData.shiftManagement
+          otherData.shiftManagement,
         );
 
         await planningRepository.updateDataModel({
@@ -220,7 +220,7 @@ export const manufactureService = {
         //check qty to change status order
         const allPlans = await manufactureRepository.getPapersByOrderId(
           planning.orderId,
-          transaction
+          transaction,
         );
 
         const totalQtyProduced = allPlans.reduce((sum, p) => sum + Number(p.qtyProduced || 0), 0);
@@ -292,7 +292,7 @@ export const manufactureService = {
           if (!userPermissions.includes(machineLabel)) {
             throw AppError.Forbidden(
               `Access denied: You don't have permission to report for machine ${machine}`,
-              "ACCESS_DENIED"
+              "ACCESS_DENIED",
             );
           }
         }
@@ -342,11 +342,11 @@ export const manufactureService = {
           { model: PlanningBoxTime },
           { model: timeOverflowPlanning, where: { planningBoxId: { [Op.ne]: null } } },
         ],
-        "manufactureBox"
+        "manufactureBox",
       );
 
       if (isChanged) {
-        await CacheManager.clearManufactureBox();
+        await CacheManager.clear("manufactureBox");
       } else {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {
@@ -370,7 +370,7 @@ export const manufactureService = {
         const boxTimes = planning.boxTimes || [];
 
         const hasValidStatus = boxTimes.some((bt) =>
-          ["planning", "lackOfQty", "producing"].includes(bt.status)
+          ["planning", "lackOfQty", "producing"].includes(bt.status),
         );
 
         const hasRecentComplete = boxTimes.some((bt) => {
@@ -443,7 +443,7 @@ export const manufactureService = {
         const planning = await manufactureRepository.getBoxById(
           planningBoxId,
           machine,
-          transaction
+          transaction,
         );
         if (!planning) {
           throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
@@ -620,7 +620,7 @@ export const manufactureService = {
         if (planningBox.statusRequest == "requested") {
           throw AppError.BadRequest(
             "Đơn này đã yêu cầu kiểm tra rồi",
-            "PLANNING_ALREADY_REQUESTED"
+            "PLANNING_ALREADY_REQUESTED",
           );
         }
 
@@ -628,7 +628,7 @@ export const manufactureService = {
 
         //check qty produced
         const checkQtyProduced = steps.some(
-          (step) => step.qtyProduced == null || step.qtyProduced <= 0
+          (step) => step.qtyProduced == null || step.qtyProduced <= 0,
         );
 
         console.log(checkQtyProduced);
