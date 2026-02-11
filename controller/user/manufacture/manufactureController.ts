@@ -28,7 +28,7 @@ export const addReportPaper = async (req: Request, res: Response, next: NextFunc
     const response = await manufactureService.addReportPaper(
       Number(planningId),
       req.body,
-      req.user
+      req.user,
     );
     return res.status(201).json(response);
   } catch (error) {
@@ -45,7 +45,11 @@ export const confirmProducingPaper = async (req: Request, res: Response, next: N
       throw AppError.BadRequest("Missing planningId parameter", "MISSING_PARAMETERS");
     }
 
-    const response = await manufactureService.confirmProducingPaper(Number(planningId), req.user);
+    const response = await manufactureService.confirmProducingPaper(
+      req,
+      Number(planningId),
+      req.user,
+    );
     return res.status(201).json(response);
   } catch (error) {
     next(error);
@@ -78,7 +82,7 @@ export const addReportBox = async (req: Request, res: Response, next: NextFuncti
     const response = await manufactureService.addReportBox(
       Number(planningBoxId),
       machine,
-      req.body
+      req.body,
     );
     return res.status(201).json(response);
   } catch (error) {
@@ -96,9 +100,10 @@ export const confirmProducingBox = async (req: Request, res: Response, next: Nex
     }
 
     const response = await manufactureService.confirmProducingBox(
+      req,
       Number(planningBoxId),
       machine,
-      req.user
+      req.user,
     );
     return res.status(201).json(response);
   } catch (error) {
@@ -117,7 +122,7 @@ export const updateRequestStockCheck = async (req: Request, res: Response, next:
 
     const response = await manufactureService.updateRequestStockCheck(
       Number(planningBoxId),
-      machine
+      machine,
     );
     return res.status(201).json(response);
   } catch (error) {

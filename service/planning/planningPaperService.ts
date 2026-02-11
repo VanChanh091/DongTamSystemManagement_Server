@@ -526,14 +526,23 @@ export const planningPaperService = {
   },
 
   //planningPaperUpdated or planningBoxUpdated
-  notifyUpdatePlanning: async (req: Request, machine: string, keyName: string) => {
+  notifyUpdatePlanning: async (req: Request, isPlan: boolean, machine: string, keyName: string) => {
     try {
       const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
 
-      req.io?.to(roomName).emit(keyName, {
-        machine,
-        message: `Kế hoạch của ${machine} đã được cập nhật.`,
-      });
+      console.log(`roomName: ${roomName}`);
+
+      let item: any = {};
+      isPlan
+        ? (item = {
+            isPlan,
+            from: "Kế hoạch",
+            machine,
+            message: `Kế hoạch cho ${machine} đã được cập nhật.`,
+          })
+        : (item = { isPlan, message: `Chỉ định sản xuất cho đơn hàng thành công` });
+
+      req.io?.to(roomName).emit(keyName, item);
 
       return { message: "Đã gửi thông báo cập nhật kế hoạch" };
     } catch (error) {

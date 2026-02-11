@@ -73,7 +73,7 @@ export const confirmCompletePaper = async (req: Request, res: Response, next: Ne
 export const pauseOrAcceptLackQtyPLanning = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const { planningIds, newStatus, rejectReason } = req.body as {
     planningIds: number[];
@@ -89,7 +89,7 @@ export const pauseOrAcceptLackQtyPLanning = async (
     const response = await planningPaperService.pauseOrAcceptLackQtyPLanning(
       planningIds,
       newStatus,
-      rejectReason
+      rejectReason,
     );
     return res.status(201).json(response);
   } catch (error) {
@@ -129,10 +129,14 @@ export const updateIndex_TimeRunning = async (req: Request, res: Response, next:
 
 //update index & time running
 export const notifyUpdatePlanning = async (req: Request, res: Response, next: NextFunction) => {
-  const { machine, keyName } = req.body as { machine: string; keyName: string };
+  const { machine, keyName, isPlan } = req.body as {
+    machine: string;
+    keyName: string;
+    isPlan: boolean;
+  };
 
   try {
-    const response = await planningPaperService.notifyUpdatePlanning(req, machine, keyName);
+    const response = await planningPaperService.notifyUpdatePlanning(req, isPlan, machine, keyName);
     return res.status(201).json(response);
   } catch (error) {
     next(error);

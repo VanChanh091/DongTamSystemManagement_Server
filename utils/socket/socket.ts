@@ -49,15 +49,15 @@ export const initSocket = (server: HttpServer) => {
       if (devEnvironment) console.log(`📌 socket joined: ${roomName}`);
     });
 
-    socket.on("leave-room", (room: string) => {
-      socket.leave(room);
-      if (devEnvironment) console.log(`📌 socket left: ${room}`);
-    });
-
     //reject order
     socket.on("join-user", (ownerId: number) => {
       socket.join(`reject-order-${ownerId}`);
       if (devEnvironment) console.log(`🔔 User joined notification: ${ownerId}`);
+    });
+
+    socket.on("leave-room", (room: string) => {
+      socket.leave(room);
+      if (devEnvironment) console.log(`📌 socket left: ${room}`);
     });
   });
 

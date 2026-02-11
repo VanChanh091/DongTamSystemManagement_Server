@@ -3,13 +3,10 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 3.4.0</title>
-            <sparkle:version>3.4.0</sparkle:version> 
-            <description>Hiển thị thông báo cho đơn bị từ chối
-            Không cho phép nhập số vào cuối mã khách hàng, mã sản phẩm
-            Sửa lại lỗi dao tề và đơn vị tính không đồng bộ khi chọn từ mã đơn hàng gợi ý
-            Thêm mã đơn của khách vào form nhập đơn
-            Cho phép nhập công thức chia vào ô nhập khổ (KH) 
+            <title>Version 3.5.0</title>
+            <sparkle:version>3.5.0</sparkle:version> 
+            <description>Chỉnh sửa lại lỗi thông báo từ chối không đồng bộ với các người dùng
+            Thay đổi công thức tính thể tích cho đơn hàng
             </description>
             <pubDate>Sat, 24 Jan 2026</pubDate>
             <enclosure url="dongtam.exe" 

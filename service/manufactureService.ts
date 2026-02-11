@@ -19,6 +19,8 @@ import { ReportPlanningBox } from "../models/report/reportPlanningBox";
 import { mergeShiftField } from "../utils/helper/modelHelper/planningHelper";
 import { runInTransaction } from "../utils/helper/transactionHelper";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
+import { planningPaperService } from "./planning/planningPaperService";
+import { Request } from "express";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper, box } = CacheKey.manufacture;
@@ -266,11 +268,11 @@ export const manufactureService = {
     }
   },
 
-  confirmProducingPaper: async (planningId: number, user: any) => {
+  confirmProducingPaper: async (req: Request, planningId: number, user: any) => {
     const { role, permissions: userPermissions } = user;
 
     try {
-      return await runInTransaction(async (transaction) => {
+      const result = await runInTransaction(async (transaction) => {
         const planning = await PlanningPaper.findOne({
           where: { planningId },
           transaction,
@@ -325,6 +327,18 @@ export const manufactureService = {
 
         return { message: "Confirm producing paper successfully", data: planning };
       });
+
+      // --- GỬI SOCKET SAU KHI TRANSACTION THÀNH CÔNG ---
+      if (result.data) {
+        await planningPaperService.notifyUpdatePlanning(
+          req,
+          false,
+          result.data.chooseMachine,
+          "planningPaperUpdated",
+        );
+      }
+
+      return result;
     } catch (error) {
       console.error("Error confirming producing paper:", error);
       if (error instanceof AppError) throw error;
@@ -542,11 +556,11 @@ export const manufactureService = {
     }
   },
 
-  confirmProducingBox: async (planningBoxId: number, machine: string, user: any) => {
-    const { role, permissions: userPermissions } = user;
+  confirmProducingBox: async (req: Request, planningBoxId: number, machine: string, user: any) => {
+    // const { role, permissions: userPermissions } = user;
 
     try {
-      return await runInTransaction(async (transaction) => {
+      const result = await runInTransaction(async (transaction) => {
         // Lấy planning cần update
         const planning = await planningRepository.getModelById({
           model: PlanningBoxTime,
@@ -590,6 +604,18 @@ export const manufactureService = {
 
         return { message: "Confirm producing box successfully", data: planning };
       });
+
+      // --- GỬI SOCKET SAU KHI TRANSACTION THÀNH CÔNG ---
+      if (result.data) {
+        await planningPaperService.notifyUpdatePlanning(
+          req,
+          false,
+          result.data.machine,
+          "planningBoxUpdated",
+        );
+      }
+
+      return result;
     } catch (error) {
       console.error("Error confirming producing box:", error);
       if (error instanceof AppError) throw error;
