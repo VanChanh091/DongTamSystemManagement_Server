@@ -7,7 +7,7 @@ exports.planningStatusService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const appError_1 = require("../../utils/appError");
-const cacheManager_1 = require("../../utils/helper/cacheManager");
+const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
 const planningPaper_1 = require("../../models/planning/planningPaper");
 const timeOverflowPlanning_1 = require("../../models/planning/timeOverflowPlanning");
 const sequelize_1 = require("sequelize");
@@ -18,8 +18,9 @@ const order_1 = require("../../models/order/order");
 const wasteNormPaper_1 = require("../../models/admin/wasteNormPaper");
 const waveCrestCoefficient_1 = require("../../models/admin/waveCrestCoefficient");
 const planningBox_1 = require("../../models/planning/planningBox");
+const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { stop, order } = cacheManager_1.CacheManager.keys.planning;
+const { stop, order } = cacheKey_1.CacheKey.planning;
 exports.planningStatusService = {
     //===============================PLANNING ORDER=====================================
     getOrderAccept: async () => {
@@ -32,7 +33,7 @@ exports.planningStatusService = {
             ], "planningOrderPaper", { setCache: false });
             const isChangedData = order || planningPaper;
             if (isChangedData) {
-                await cacheManager_1.CacheManager.clearOrderAccept();
+                await cacheManager_1.CacheManager.clear("orderAccept");
             }
             else {
                 const cachedData = await redisCache_1.default.get(cacheKey);
@@ -241,7 +242,7 @@ exports.planningStatusService = {
                 { model: timeOverflowPlanning_1.timeOverflowPlanning, where: { planningId: { [sequelize_1.Op.ne]: null } } },
             ], "planningStop");
             if (isChanged) {
-                await cacheManager_1.CacheManager.clearPlanningStop();
+                await cacheManager_1.CacheManager.clear("planningStop");
             }
             else {
                 const cachedData = await redisCache_1.default.get(cacheKey);

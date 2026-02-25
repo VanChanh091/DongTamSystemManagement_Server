@@ -12,7 +12,7 @@ import {
 } from "../utils/helper/modelHelper/orderHelpers";
 import { AppError } from "../utils/appError";
 import redisCache from "../assest/configs/redisCache";
-import { CacheManager } from "../utils/helper/cacheManager";
+import { CacheManager } from "../utils/helper/cache/cacheManager";
 import { Box } from "../models/order/box";
 import { Order } from "../models/order/order";
 import { runInTransaction } from "../utils/helper/transactionHelper";

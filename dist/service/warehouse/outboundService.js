@@ -6,7 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.outboundService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const cacheManager_1 = require("../../utils/helper/cacheManager");
+const redisCache_1 = __importDefault(require("../../assest/configs/redisCache"));
+const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
 const appError_1 = require("../../utils/appError");
 const outboundHistory_1 = require("../../models/warehouse/outboundHistory");
 const warehouseRepository_1 = require("../../repository/warehouseRepository");
@@ -14,18 +15,18 @@ const outboundDetail_1 = require("../../models/warehouse/outboundDetail");
 const order_1 = require("../../models/order/order");
 const planningRepository_1 = require("../../repository/planningRepository");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
-const redisCache_1 = __importDefault(require("../../assest/configs/redisCache"));
 const inventory_1 = require("../../models/warehouse/inventory");
 const exportPDF_1 = require("../../utils/helper/exportPDF");
+const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { outbound } = cacheManager_1.CacheManager.keys.warehouse;
+const { outbound } = cacheKey_1.CacheKey.warehouse;
 exports.outboundService = {
     getAllOutboundHistory: async (page, pageSize) => {
         try {
             const cacheKey = outbound.page(page);
             const { isChanged } = await cacheManager_1.CacheManager.check(outboundHistory_1.OutboundHistory, "outbound");
             if (isChanged) {
-                await cacheManager_1.CacheManager.clearOutbound();
+                await cacheManager_1.CacheManager.clear("outbound");
             }
             else {
                 const cachedData = await redisCache_1.default.get(cacheKey);

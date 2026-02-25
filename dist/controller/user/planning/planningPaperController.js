@@ -97,9 +97,9 @@ const updateIndex_TimeRunning = async (req, res, next) => {
 exports.updateIndex_TimeRunning = updateIndex_TimeRunning;
 //update index & time running
 const notifyUpdatePlanning = async (req, res, next) => {
-    const { machine, keyName } = req.body;
+    const { machine, keyName, isPlan } = req.body;
     try {
-        const response = await planningPaperService_1.planningPaperService.notifyUpdatePlanning(req, machine, keyName);
+        const response = await planningPaperService_1.planningPaperService.notifyUpdatePlanning(req, isPlan, machine, keyName);
         return res.status(201).json(response);
     }
     catch (error) {

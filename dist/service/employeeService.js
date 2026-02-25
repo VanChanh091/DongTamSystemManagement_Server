@@ -7,7 +7,7 @@ exports.employeeService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const sequelize_1 = require("sequelize");
-const cacheManager_1 = require("../utils/helper/cacheManager");
+const cacheManager_1 = require("../utils/helper/cache/cacheManager");
 const appError_1 = require("../utils/appError");
 const employeeBasicInfo_1 = require("../models/employee/employeeBasicInfo");
 const employeeRepository_1 = require("../repository/employeeRepository");
@@ -17,8 +17,9 @@ const excelExporter_1 = require("../utils/helper/excelExporter");
 const employeeRowAndColumn_1 = require("../utils/mapping/employeeRowAndColumn");
 const transactionHelper_1 = require("../utils/helper/transactionHelper");
 const redisCache_1 = __importDefault(require("../assest/configs/redisCache"));
+const cacheKey_1 = require("../utils/helper/cache/cacheKey");
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { employee } = cacheManager_1.CacheManager.keys;
+const { employee } = cacheKey_1.CacheKey;
 exports.employeeService = {
     getAllEmployees: async ({ page = 1, pageSize = 20, noPaging = false, }) => {
         const noPagingMode = noPaging === "true";
@@ -26,7 +27,7 @@ exports.employeeService = {
         try {
             const { isChanged } = await cacheManager_1.CacheManager.check([{ model: employeeBasicInfo_1.EmployeeBasicInfo }, { model: employeeCompanyInfo_1.EmployeeCompanyInfo }], "employee");
             if (isChanged) {
-                await cacheManager_1.CacheManager.clearEmployee();
+                await cacheManager_1.CacheManager.clear("employee");
             }
             else {
                 const cachedData = await redisCache_1.default.get(cacheKey);

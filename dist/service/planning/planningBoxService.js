@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.planningBoxService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const cacheManager_1 = require("../../utils/helper/cacheManager");
+const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
 const planningRepository_1 = require("../../repository/planningRepository");
 const redisCache_1 = __importDefault(require("../../assest/configs/redisCache"));
 const appError_1 = require("../../utils/appError");
@@ -18,8 +18,9 @@ const machineBox_1 = require("../../models/admin/machineBox");
 const timeRunningBox_1 = require("./helper/timeRunningBox");
 const planningHelper_1 = require("../../utils/helper/modelHelper/planningHelper");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
+const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { box } = cacheManager_1.CacheManager.keys.planning;
+const { box } = cacheKey_1.CacheKey.planning;
 exports.planningBoxService = {
     //Planning Box
     getPlanningBox: async (machine) => {
@@ -31,7 +32,7 @@ exports.planningBoxService = {
                 { model: timeOverflowPlanning_1.timeOverflowPlanning, where: { planningBoxId: { [sequelize_1.Op.ne]: null } } },
             ], "planningBox");
             if (isChanged) {
-                await cacheManager_1.CacheManager.clearPlanningBox();
+                await cacheManager_1.CacheManager.clear("planningBox");
             }
             else {
                 const cachedData = await redisCache_1.default.get(cacheKey);

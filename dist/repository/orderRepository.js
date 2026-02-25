@@ -78,6 +78,8 @@ exports.orderRepository = {
                     "status",
                     "rejectReason",
                     "volume",
+                    "orderSortValue",
+                    "statusPriority",
                     "createdAt",
                     "updatedAt",
                 ],

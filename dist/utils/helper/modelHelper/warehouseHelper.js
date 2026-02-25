@@ -7,11 +7,11 @@ exports.getOutboundByField = exports.getInboundByField = void 0;
 const redisCache_1 = __importDefault(require("../../../assest/configs/redisCache"));
 const warehouseRepository_1 = require("../../../repository/warehouseRepository");
 const appError_1 = require("../../appError");
-const cacheManager_1 = require("../cacheManager");
+const cacheKey_1 = require("../cache/cacheKey");
 const normalizeVN_1 = require("../normalizeVN");
 const getInboundByField = async ({ keyword, getFieldValue, page, pageSize, message, }) => {
     const lowerKeyword = keyword?.toLowerCase?.() || "";
-    const { inbound } = cacheManager_1.CacheManager.keys.warehouse;
+    const { inbound } = cacheKey_1.CacheKey.warehouse;
     const cacheKey = inbound.search(page);
     try {
         let allData = await redisCache_1.default.get(cacheKey);
@@ -53,7 +53,7 @@ const getInboundByField = async ({ keyword, getFieldValue, page, pageSize, messa
 exports.getInboundByField = getInboundByField;
 const getOutboundByField = async ({ keyword, getFieldValue, page, pageSize, message, }) => {
     const lowerKeyword = keyword?.toLowerCase?.() || "";
-    const { outbound } = cacheManager_1.CacheManager.keys.warehouse;
+    const { outbound } = cacheKey_1.CacheKey.warehouse;
     const cacheKey = outbound.search(page);
     try {
         let allData = await redisCache_1.default.get(cacheKey);

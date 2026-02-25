@@ -3,7 +3,7 @@ dotenv.config();
 
 import { Op } from "sequelize";
 import { Response } from "express";
-import { CacheManager } from "../utils/helper/cacheManager";
+import { CacheManager } from "../utils/helper/cache/cacheManager";
 import { AppError } from "../utils/appError";
 import { EmployeeBasicInfo } from "../models/employee/employeeBasicInfo";
 import { employeeRepository } from "../repository/employeeRepository";

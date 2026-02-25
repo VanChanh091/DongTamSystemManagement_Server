@@ -6,7 +6,7 @@ import redisCache from "../assest/configs/redisCache";
 import { Customer } from "../models/customer/customer";
 import { customerRepository } from "../repository/customerRepository";
 import { AppError } from "../utils/appError";
-import { CacheManager } from "../utils/helper/cacheManager";
+import { CacheManager } from "../utils/helper/cache/cacheManager";
 import { exportExcelResponse } from "../utils/helper/excelExporter";
 import { filterDataFromCache } from "../utils/helper/modelHelper/orderHelpers";
 import { customerColumns, mappingCustomerRow } from "../utils/mapping/customerRowAndColumn";

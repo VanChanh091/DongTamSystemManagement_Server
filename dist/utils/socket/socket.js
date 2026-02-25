@@ -4,10 +4,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.initSocket = void 0;
-const socket_io_1 = require("socket.io");
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const socket_io_1 = require("socket.io");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const initSocket = (server) => {
     const io = new socket_io_1.Server(server, {
@@ -46,6 +46,12 @@ const initSocket = (server) => {
             socket.join(roomName);
             if (devEnvironment)
                 console.log(`📌 socket joined: ${roomName}`);
+        });
+        //reject order
+        socket.on("join-user", (ownerId) => {
+            socket.join(`reject-order-${ownerId}`);
+            if (devEnvironment)
+                console.log(`🔔 User joined notification: ${ownerId}`);
         });
         socket.on("leave-room", (room) => {
             socket.leave(room);

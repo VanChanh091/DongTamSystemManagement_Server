@@ -9,7 +9,7 @@ import { Product } from "../models/product/product";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { productRepository } from "../repository/productRepository";
 import { AppError } from "../utils/appError";
-import { CacheManager } from "../utils/helper/cacheManager";
+import { CacheManager } from "../utils/helper/cache/cacheManager";
 import { filterDataFromCache } from "../utils/helper/modelHelper/orderHelpers";
 import {
   convertToWebp,

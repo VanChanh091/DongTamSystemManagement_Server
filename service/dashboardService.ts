@@ -6,7 +6,7 @@ import { Op } from "sequelize";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { dashboardRepository } from "../repository/dashboardRepository";
 import { AppError } from "../utils/appError";
-import { CacheManager } from "../utils/helper/cacheManager";
+import { CacheManager } from "../utils/helper/cache/cacheManager";
 import { PlanningPaper } from "../models/planning/planningPaper";
 import { Request, Response } from "express";
 import { dbPlanningColumns, mappingDbPlanningRow } from "../utils/mapping/dbPlanningRowAndColumn";

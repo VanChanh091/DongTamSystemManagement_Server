@@ -57,6 +57,7 @@ function initOrderModel(sequelize) {
             defaultValue: "pending",
         },
         rejectReason: { type: sequelize_1.DataTypes.STRING },
+        orderIdCustomer: { type: sequelize_1.DataTypes.STRING },
         //sort
         orderSortValue: { type: sequelize_1.DataTypes.BIGINT, allowNull: false, defaultValue: 0 },
         statusPriority: { type: sequelize_1.DataTypes.INTEGER, allowNull: false, defaultValue: 1 },

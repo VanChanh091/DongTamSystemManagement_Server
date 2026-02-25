@@ -3,7 +3,7 @@ dotenv.config();
 
 import redisCache from "../assest/configs/redisCache";
 import { Op } from "sequelize";
-import { CacheManager } from "../utils/helper/cacheManager";
+import { CacheManager } from "../utils/helper/cache/cacheManager";
 import { AppError } from "../utils/appError";
 import { PlanningPaper } from "../models/planning/planningPaper";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";

@@ -7,7 +7,7 @@ import { ReportPlanningBox } from "../../../models/report/reportPlanningBox";
 import { PlanningBox } from "../../../models/planning/planningBox";
 import { PlanningBoxTime } from "../../../models/planning/planningBoxMachineTime";
 import { Op } from "sequelize";
-import { CacheManager } from "../cacheManager";
+import { CacheManager } from "../cache/cacheManager";
 import redisCache from "../../../assest/configs/redisCache";
 import { normalizeVN } from "../normalizeVN";
 import { AppError } from "../../appError";

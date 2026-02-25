@@ -4,7 +4,7 @@ dotenv.config();
 import { Op } from "sequelize";
 import { Response } from "express";
 import { AppError } from "../utils/appError";
-import { CacheManager } from "../utils/helper/cacheManager";
+import { CacheManager } from "../utils/helper/cache/cacheManager";
 import { ReportPlanningPaper } from "../models/report/reportPlanningPaper";
 import { reportRepository } from "../repository/reportRepository";
 import { filterReportByField } from "../utils/helper/modelHelper/reportHelper";

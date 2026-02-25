@@ -50,11 +50,11 @@ export const checkLastChange = async (models: any, cacheKey: string, { setCache 
   }
 
   // 5️⃣ Log debug cho dev mode
-  // if (process.env.NODE_ENV !== "production") {
-  //   console.table(details);
-  //   // console.log(`Cache Key: ${cacheKey}`);
-  //   console.log(`isChanged: ${isChanged}`);
-  // }
+  if (process.env.NODE_ENV !== "production") {
+    console.table(details);
+    // console.log(`Cache Key: ${cacheKey}`);
+    console.log(`isChanged: ${isChanged}`);
+  }
 
   return { isChanged, lastChange: combinedSignature };
 };

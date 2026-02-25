@@ -7,7 +7,7 @@ import { Order } from "../../models/order/order";
 import { machinePaperType, PlanningPaper } from "../../models/planning/planningPaper";
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
 import { AppError } from "../../utils/appError";
-import { CacheManager } from "../../utils/helper/cacheManager";
+import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { planningRepository } from "../../repository/planningRepository";
 import { PlanningBox } from "../../models/planning/planningBox";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";

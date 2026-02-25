@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { CacheManager } from "../../utils/helper/cacheManager";
+import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { planningRepository } from "../../repository/planningRepository";
 import redisCache from "../../assest/configs/redisCache";
 import { AppError } from "../../utils/appError";

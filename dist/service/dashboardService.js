@@ -7,24 +7,25 @@ exports.dashboardService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const redisCache_1 = __importDefault(require("../assest/configs/redisCache"));
+const sequelize_1 = require("sequelize");
+const cacheKey_1 = require("../utils/helper/cache/cacheKey");
 const dashboardRepository_1 = require("../repository/dashboardRepository");
 const appError_1 = require("../utils/appError");
-const cacheManager_1 = require("../utils/helper/cacheManager");
+const cacheManager_1 = require("../utils/helper/cache/cacheManager");
 const planningPaper_1 = require("../models/planning/planningPaper");
-const sequelize_1 = require("sequelize");
 const dbPlanningRowAndColumn_1 = require("../utils/mapping/dbPlanningRowAndColumn");
 const excelExporter_1 = require("../utils/helper/excelExporter");
 const planningBoxMachineTime_1 = require("../models/planning/planningBoxMachineTime");
 const planningHelper_1 = require("../utils/helper/modelHelper/planningHelper");
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { planning, details, search } = cacheManager_1.CacheManager.keys.dashboard;
+const { planning, details, search } = cacheKey_1.CacheKey.dashboard;
 exports.dashboardService = {
     getAllDashboardPlanning: async (page, pageSize, status) => {
         const cacheKey = planning.all(status, page);
         try {
             const { isChanged } = await cacheManager_1.CacheManager.check(planningPaper_1.PlanningPaper, "dbPlanning");
             if (isChanged) {
-                await cacheManager_1.CacheManager.clearDbPlanning();
+                await cacheManager_1.CacheManager.clear("dbPlanning");
             }
             else {
                 const cachedData = await redisCache_1.default.get(cacheKey);
@@ -62,7 +63,7 @@ exports.dashboardService = {
         try {
             const { isChanged } = await cacheManager_1.CacheManager.check(planningBoxMachineTime_1.PlanningBoxTime, "dbDetail");
             if (isChanged) {
-                await cacheManager_1.CacheManager.clearDbPlanningDetail();
+                await cacheManager_1.CacheManager.clear("dbPlanningDetail");
             }
             else {
                 const cachedData = await redisCache_1.default.get(cacheKey);

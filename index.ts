@@ -1,9 +1,10 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import http from "http";
 import path from "path";
-import dotenv from "dotenv";
-dotenv.config();
 
 import { connectDB, sequelize } from "./assest/configs/connectDB";
 import authenticate from "./middlewares/authMiddleware";
@@ -31,6 +32,7 @@ import {
 import "./models/index";
 import { initSocket } from "./utils/socket/socket";
 import { AppError } from "./utils/appError";
+import { cleanStackTrace, sendTelegramAlert } from "./utils/telegram/telegramSending";
 
 const app = express();
 
@@ -66,8 +68,9 @@ app.use("/updates", express.static(path.join(process.cwd(), "updates")));
 //        ROUTES
 // ========================
 app.use("/auth", authRoutes);
-app.use(authenticate);
 
+//sau khi đi qua authenticate thì mới vào được các route dưới đây
+app.use(authenticate);
 app.use("/api/admin", adminRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/customer", customerRoutes);
@@ -99,6 +102,23 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
       errorCode: err.errorCode,
     });
   }
+
+  //message telegram
+  const user = req.user;
+  const userInfo = `*User:* ${user.email} (ID: ${user.userId})`;
+
+  const cleanedStack = cleanStackTrace(err.stack);
+
+  const alertMessage = `
+  🚨 *SERVER ERROR (500)* 🚨
+  ---------------------------
+  ${userInfo}
+  *Path:* \`${req.method} ${req.originalUrl}\`
+  *Message:* ${err.message}
+  *Time:* ${new Date().toLocaleString("vi-VN")}
+  *Stack Trace:*\`\`\`${cleanedStack}\`\`\``;
+
+  sendTelegramAlert(alertMessage).catch(console.error);
 
   // Lỗi server thật (bug, DB lỗi, runtime crash)
   console.error("🔥 SERVER ERROR:", {

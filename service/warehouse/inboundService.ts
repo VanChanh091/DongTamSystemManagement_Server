@@ -9,7 +9,7 @@ import { manufactureRepository } from "../../repository/manufactureRepository";
 import { planningRepository } from "../../repository/planningRepository";
 import { PlanningBox } from "../../models/planning/planningBox";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
-import { CacheManager } from "../../utils/helper/cacheManager";
+import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { getInboundByField } from "../../utils/helper/modelHelper/warehouseHelper";
 import { dashboardRepository } from "../../repository/dashboardRepository";
 import { buildStagesDetails } from "../../utils/helper/modelHelper/planningHelper";
@@ -21,12 +21,32 @@ import { CacheKey } from "../../utils/helper/cache/cacheKey";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inbound } = CacheKey.warehouse;
+const { paper, box } = CacheKey.waitingCheck;
 
 export const inboundService = {
   //====================================WAITING CHECK AND INBOUND QTY========================================
 
   getPaperWaitingChecked: async () => {
+    const cacheKey = paper.all;
+
     try {
+      const { isChanged } = await CacheManager.check(PlanningPaper, "checkPaper");
+
+      if (isChanged) {
+        await CacheManager.clear("checkPaper");
+      } else {
+        const cachedData = await redisCache.get(cacheKey);
+        if (cachedData) {
+          console.log(`devEnvironment: ${devEnvironment}`);
+
+          if (devEnvironment) console.log("✅ Data waiting check paper from Redis");
+          return {
+            ...JSON.parse(cachedData),
+            message: `get planning paper waiting check from cache`,
+          };
+        }
+      }
+
       const planning = await warehouseRepository.getPaperWaitingChecked();
 
       const allPlannings: any[] = [];
@@ -67,10 +87,27 @@ export const inboundService = {
   },
 
   getBoxWaitingChecked: async () => {
+    const cacheKey = box.all;
+
     try {
+      const { isChanged } = await CacheManager.check(PlanningBox, "checkBox");
+
+      if (isChanged) {
+        await CacheManager.clear("checkBox");
+      } else {
+        const cachedData = await redisCache.get(cacheKey);
+        if (cachedData) {
+          if (devEnvironment) console.log("✅ Data waiting check box from Redis");
+          return {
+            ...JSON.parse(cachedData),
+            message: `get planning box waiting check from cache`,
+          };
+        }
+      }
+
       const planning = await warehouseRepository.getBoxWaitingChecked();
 
-      return { message: `get planning by machine waiting check`, data: planning };
+      return { message: `get planning box waiting check`, data: planning };
     } catch (error) {
       console.error("Failed to get box waiting checked", error);
       if (error instanceof AppError) throw error;

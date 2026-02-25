@@ -11,14 +11,15 @@ const redisCache_1 = __importDefault(require("../assest/configs/redisCache"));
 const customer_1 = require("../models/customer/customer");
 const customerRepository_1 = require("../repository/customerRepository");
 const appError_1 = require("../utils/appError");
-const cacheManager_1 = require("../utils/helper/cacheManager");
+const cacheManager_1 = require("../utils/helper/cache/cacheManager");
 const excelExporter_1 = require("../utils/helper/excelExporter");
 const orderHelpers_1 = require("../utils/helper/modelHelper/orderHelpers");
 const customerRowAndColumn_1 = require("../utils/mapping/customerRowAndColumn");
 const transactionHelper_1 = require("../utils/helper/transactionHelper");
 const order_1 = require("../models/order/order");
+const cacheKey_1 = require("../utils/helper/cache/cacheKey");
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { customer } = cacheManager_1.CacheManager.keys;
+const { customer } = cacheKey_1.CacheKey;
 exports.customerService = {
     getAllCustomers: async ({ page = 1, pageSize = 20, noPaging = false, }) => {
         const noPagingMode = noPaging === "true";
@@ -26,7 +27,7 @@ exports.customerService = {
         try {
             const { isChanged } = await cacheManager_1.CacheManager.check(customer_1.Customer, "customer");
             if (isChanged) {
-                await cacheManager_1.CacheManager.clearCustomer();
+                await cacheManager_1.CacheManager.clear("customer");
             }
             else {
                 const cachedData = await redisCache_1.default.get(cacheKey);
@@ -99,7 +100,9 @@ exports.customerService = {
                 const sanitizedPrefix = prefix.trim().replace(/\s+/g, "").toUpperCase();
                 const existedCustomers = await customerRepository_1.customerRepository.findByIdOrMst(sanitizedPrefix, customerData.mst, transaction);
                 const prefixExists = existedCustomers.some((c) => c.customerId.startsWith(sanitizedPrefix));
-                const mstExists = existedCustomers.some((c) => c.mst === customerData.mst);
+                const mstExists = customerData.mst && customerData.mst.trim() !== ""
+                    ? existedCustomers.some((c) => c.mst === customerData.mst)
+                    : false;
                 if (prefixExists) {
                     throw appError_1.AppError.Conflict(`Prefix '${sanitizedPrefix}' đã tồn tại, vui lòng chọn prefix khác`, "PREFIX_ALREADY_EXISTS");
                 }
@@ -152,7 +155,7 @@ exports.customerService = {
                 const orderCount = await order_1.Order.count({ where: { customerId }, transaction });
                 if (orderCount > 0) {
                     if (role != "admin") {
-                        throw appError_1.AppError.Conflict(`Customer with ID '${customerId}' has associated orders and cannot be deleted.`, "CUSTOMER_HAS_ORDERS");
+                        throw appError_1.AppError.Conflict(`CustomerId: ${customerId} has order and cannot be deleted`, "CUSTOMER_HAS_ORDERS");
                     }
                 }
                 await customerRepository_1.customerRepository.deleteCustomer(customerId, transaction);

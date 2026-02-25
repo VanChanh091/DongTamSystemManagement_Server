@@ -40,7 +40,7 @@ export const CacheKey = {
     },
     stop: {
       page: (page: number) => `planningPaper:stop:page:${page}`,
-      lastUpdated: "planningPaper:stop:lastUpdated",
+      lastUpdated: "planningStop:lastUpdated",
     },
     box: {
       machine: (machine: string) => `planningBox:machine:${machine}`,
@@ -87,7 +87,10 @@ export const CacheKey = {
       page: (page: number) => `register:page:${page}`,
       lastUpdated: "registerOrder:lastUpdated",
     },
-    schedule: { all: "deliverySchedule:all", lastUpdated: "schedule:lastUpdated" },
+    schedule: {
+      date: (date: Date) => `deliverySchedule:date:${date.toISOString()}`,
+      lastUpdated: "schedule:lastUpdated",
+    },
   },
 
   report: {

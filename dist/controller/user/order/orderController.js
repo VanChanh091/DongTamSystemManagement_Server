@@ -77,7 +77,7 @@ exports.addOrder = addOrder;
 const updateOrder = async (req, res, next) => {
     const { orderId } = req.query;
     try {
-        const response = await orderService_1.orderService.updateOrder(req.body, orderId);
+        const response = await orderService_1.orderService.updateOrder(req, req.body, orderId);
         return res.status(201).json(response);
     }
     catch (error) {

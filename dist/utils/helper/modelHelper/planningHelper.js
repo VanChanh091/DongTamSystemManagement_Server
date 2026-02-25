@@ -8,12 +8,12 @@ const sequelize_1 = require("sequelize");
 const order_1 = require("../../../models/order/order");
 const customer_1 = require("../../../models/customer/customer");
 const planningBox_1 = require("../../../models/planning/planningBox");
-const cacheManager_1 = require("../cacheManager");
 const redisCache_1 = __importDefault(require("../../../assest/configs/redisCache"));
 const appError_1 = require("../../appError");
 const dashboardRepository_1 = require("../../../repository/dashboardRepository");
 const normalizeVN_1 = require("../normalizeVN");
 const planningRepository_1 = require("../../../repository/planningRepository");
+const cacheKey_1 = require("../cache/cacheKey");
 //get planningPaper properties
 const getPlanningByField = async ({ cacheKey, keyword, getFieldValue, whereCondition, message, isBox = false, }) => {
     try {
@@ -55,7 +55,7 @@ const getPlanningBoxByField = async (req, res, field) => {
             message: "Thiếu machine hoặc giá trị tìm kiếm",
         });
     }
-    const { box } = cacheManager_1.CacheManager.keys.planning;
+    const { box } = cacheKey_1.CacheKey.planning;
     const cacheKey = box.machine(machine);
     try {
         const cachedData = await redisCache_1.default.get(cacheKey);

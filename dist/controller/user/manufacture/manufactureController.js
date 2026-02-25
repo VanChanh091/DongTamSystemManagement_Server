@@ -38,7 +38,7 @@ const confirmProducingPaper = async (req, res, next) => {
         if (!planningId) {
             throw appError_1.AppError.BadRequest("Missing planningId parameter", "MISSING_PARAMETERS");
         }
-        const response = await manufactureService_1.manufactureService.confirmProducingPaper(Number(planningId), req.user);
+        const response = await manufactureService_1.manufactureService.confirmProducingPaper(req, Number(planningId), req.user);
         return res.status(201).json(response);
     }
     catch (error) {
@@ -81,7 +81,7 @@ const confirmProducingBox = async (req, res, next) => {
         if (!planningBoxId || !machine) {
             throw appError_1.AppError.BadRequest("Missing planningBoxId parameter", "MISSING_PARAMETERS");
         }
-        const response = await manufactureService_1.manufactureService.confirmProducingBox(Number(planningBoxId), machine, req.user);
+        const response = await manufactureService_1.manufactureService.confirmProducingBox(req, Number(planningBoxId), machine, req.user);
         return res.status(201).json(response);
     }
     catch (error) {

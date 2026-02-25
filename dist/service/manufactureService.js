@@ -8,7 +8,7 @@ const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const redisCache_1 = __importDefault(require("../assest/configs/redisCache"));
 const sequelize_1 = require("sequelize");
-const cacheManager_1 = require("../utils/helper/cacheManager");
+const cacheManager_1 = require("../utils/helper/cache/cacheManager");
 const appError_1 = require("../utils/appError");
 const planningPaper_1 = require("../models/planning/planningPaper");
 const planningBoxMachineTime_1 = require("../models/planning/planningBoxMachineTime");
@@ -23,9 +23,10 @@ const reportHelper_1 = require("../utils/helper/modelHelper/reportHelper");
 const reportPlanningBox_1 = require("../models/report/reportPlanningBox");
 const planningHelper_1 = require("../utils/helper/modelHelper/planningHelper");
 const transactionHelper_1 = require("../utils/helper/transactionHelper");
+const cacheKey_1 = require("../utils/helper/cache/cacheKey");
+const planningPaperService_1 = require("./planning/planningPaperService");
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { paper } = cacheManager_1.CacheManager.keys.manufacture;
-const { box } = cacheManager_1.CacheManager.keys.manufacture;
+const { paper, box } = cacheKey_1.CacheKey.manufacture;
 exports.manufactureService = {
     //====================================PAPER========================================
     getPlanningPaper: async (machine) => {
@@ -36,8 +37,8 @@ exports.manufactureService = {
                 { model: timeOverflowPlanning_1.timeOverflowPlanning, where: { planningId: { [sequelize_1.Op.ne]: null } } },
             ], "manufacturePaper");
             if (isChanged) {
-                await cacheManager_1.CacheManager.clearManufacturePaper();
-                await cacheManager_1.CacheManager.clearOrderAccept();
+                await cacheManager_1.CacheManager.clear("manufacturePaper");
+                await cacheManager_1.CacheManager.clear("orderAccept");
             }
             else {
                 const cachedData = await redisCache_1.default.get(cacheKey);
@@ -219,10 +220,10 @@ exports.manufactureService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    confirmProducingPaper: async (planningId, user) => {
+    confirmProducingPaper: async (req, planningId, user) => {
         const { role, permissions: userPermissions } = user;
         try {
-            return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
+            const result = await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
                 const planning = await planningPaper_1.PlanningPaper.findOne({
                     where: { planningId },
                     transaction,
@@ -266,6 +267,11 @@ exports.manufactureService = {
                 });
                 return { message: "Confirm producing paper successfully", data: planning };
             });
+            // --- GỬI SOCKET SAU KHI TRANSACTION THÀNH CÔNG ---
+            if (result.data) {
+                await planningPaperService_1.planningPaperService.notifyUpdatePlanning(req, false, result.data.chooseMachine, "planningPaperUpdated");
+            }
+            return result;
         }
         catch (error) {
             console.error("Error confirming producing paper:", error);
@@ -284,7 +290,7 @@ exports.manufactureService = {
                 { model: timeOverflowPlanning_1.timeOverflowPlanning, where: { planningBoxId: { [sequelize_1.Op.ne]: null } } },
             ], "manufactureBox");
             if (isChanged) {
-                await cacheManager_1.CacheManager.clearManufactureBox();
+                await cacheManager_1.CacheManager.clear("manufactureBox");
             }
             else {
                 const cachedData = await redisCache_1.default.get(cacheKey);
@@ -447,10 +453,10 @@ exports.manufactureService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    confirmProducingBox: async (planningBoxId, machine, user) => {
-        const { role, permissions: userPermissions } = user;
+    confirmProducingBox: async (req, planningBoxId, machine, user) => {
+        // const { role, permissions: userPermissions } = user;
         try {
-            return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
+            const result = await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
                 // Lấy planning cần update
                 const planning = await planningRepository_1.planningRepository.getModelById({
                     model: planningBoxMachineTime_1.PlanningBoxTime,
@@ -487,6 +493,11 @@ exports.manufactureService = {
                 });
                 return { message: "Confirm producing box successfully", data: planning };
             });
+            // --- GỬI SOCKET SAU KHI TRANSACTION THÀNH CÔNG ---
+            if (result.data) {
+                await planningPaperService_1.planningPaperService.notifyUpdatePlanning(req, false, result.data.machine, "planningBoxUpdated");
+            }
+            return result;
         }
         catch (error) {
             console.error("Error confirming producing box:", error);

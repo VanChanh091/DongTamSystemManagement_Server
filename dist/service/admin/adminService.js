@@ -4,13 +4,17 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.adminService = void 0;
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const connectCloudinary_1 = __importDefault(require("../../assest/configs/connectCloudinary"));
 const machineLabels_1 = require("../../assest/configs/machineLabels");
+const order_1 = require("../../models/order/order");
 const adminRepository_1 = require("../../repository/adminRepository");
 const appError_1 = require("../../utils/appError");
 const converToWebp_1 = require("../../utils/image/converToWebp");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
+const devEnvironment = process.env.NODE_ENV !== "production";
 exports.adminService = {
     //===============================ADMIN CRUD=====================================
     getAllItems: async ({ model, message }) => {
@@ -105,7 +109,7 @@ exports.adminService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    updateStatusOrder: async (orderId, newStatus, rejectReason) => {
+    updateStatusOrder: async (req, orderId, newStatus, rejectReason) => {
         try {
             if (!["accept", "reject"].includes(newStatus)) {
                 throw appError_1.AppError.BadRequest("Invalid status", "INVALID_STATUS");
@@ -132,7 +136,33 @@ exports.adminService = {
                 });
             }
             await order.save();
-            return { message: "Order status updated successfully", order };
+            const ownerId = order.userId;
+            const badgeCount = await order_1.Order.count({ where: { status: "reject", userId: ownerId } });
+            const roomName = `reject-order-${ownerId}`;
+            const sockets = await req.io?.in(roomName).fetchSockets();
+            // console.log(`-----------------------------------`);
+            // console.log(`📡 Event: updateBadgeCount`);
+            // console.log(`🏠 Room Target: ${roomName}`);
+            // console.log(`👥 Active sockets: ${sockets?.length ?? 0}`);
+            // console.log(`-----------------------------------`);
+            const hasSocket = sockets && sockets.length > 0;
+            if (!hasSocket) {
+                if (devEnvironment) {
+                    console.log(`⚠️ No one is in room ${roomName}, skip emitting.`);
+                }
+                return { message: "Order status updated successfully, no active socket to notify" };
+            }
+            req.io?.to(roomName).emit("updateBadgeCount", {
+                type: "REJECTED_ORDER",
+                count: badgeCount,
+            });
+            return {
+                message: "Order status updated successfully",
+                notification: {
+                    recipientId: ownerId,
+                    badgeCount,
+                },
+            };
         }
         catch (error) {
             console.error("failed to update order", error);

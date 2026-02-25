@@ -6,13 +6,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.planningPaperService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const redisCache_1 = __importDefault(require("../../assest/configs/redisCache"));
 const sequelize_1 = require("sequelize");
 const order_1 = require("../../models/order/order");
 const planningPaper_1 = require("../../models/planning/planningPaper");
 const timeOverflowPlanning_1 = require("../../models/planning/timeOverflowPlanning");
 const appError_1 = require("../../utils/appError");
-const cacheManager_1 = require("../../utils/helper/cacheManager");
+const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
 const planningRepository_1 = require("../../repository/planningRepository");
 const planningBox_1 = require("../../models/planning/planningBox");
 const planningBoxMachineTime_1 = require("../../models/planning/planningBoxMachineTime");
@@ -20,8 +19,10 @@ const machinePaper_1 = require("../../models/admin/machinePaper");
 const timeRunningPaper_1 = require("./helper/timeRunningPaper");
 const planningHelper_1 = require("../../utils/helper/modelHelper/planningHelper");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
+const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
+const redisCache_1 = __importDefault(require("../../assest/configs/redisCache"));
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { paper } = cacheManager_1.CacheManager.keys.planning;
+const { paper } = cacheKey_1.CacheKey.planning;
 exports.planningPaperService = {
     //====================================PLANNING PAPER========================================
     getPlanningByMachine: async (machine) => {
@@ -32,7 +33,7 @@ exports.planningPaperService = {
                 { model: timeOverflowPlanning_1.timeOverflowPlanning, where: { planningId: { [sequelize_1.Op.ne]: null } } },
             ], "planningPaper");
             if (isChanged) {
-                await cacheManager_1.CacheManager.clearPlanningPaper();
+                await cacheManager_1.CacheManager.clear("planningPaper");
             }
             else {
                 const cachedData = await redisCache_1.default.get(cacheKey);
@@ -358,7 +359,7 @@ exports.planningPaperService = {
                                         await box.destroy();
                                     }
                                     await planning.destroy();
-                                    await cacheManager_1.CacheManager.clearOrderAccept();
+                                    await cacheManager_1.CacheManager.clear("orderAccept");
                                 }
                             }
                         }
@@ -442,13 +443,20 @@ exports.planningPaperService = {
         }
     },
     //planningPaperUpdated or planningBoxUpdated
-    notifyUpdatePlanning: async (req, machine, keyName) => {
+    notifyUpdatePlanning: async (req, isPlan, machine, keyName) => {
         try {
             const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
-            req.io?.to(roomName).emit(keyName, {
-                machine,
-                message: `Kế hoạch của ${machine} đã được cập nhật.`,
-            });
+            console.log(`roomName: ${roomName}`);
+            let item = {};
+            isPlan
+                ? (item = {
+                    isPlan,
+                    from: "Kế hoạch",
+                    machine,
+                    message: `Kế hoạch cho ${machine} đã được cập nhật.`,
+                })
+                : (item = { isPlan, message: `Chỉ định sản xuất cho đơn hàng thành công` });
+            req.io?.to(roomName).emit(keyName, item);
             return { message: "Đã gửi thông báo cập nhật kế hoạch" };
         }
         catch (error) {

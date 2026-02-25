@@ -35,10 +35,10 @@ app.use((0, cors_1.default)({
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
 //test: curl -I http://localhost:5000/updates/dongtam.exe
-// app.use("/updates", express.static(path.join(process.cwd(), "updates")));
-const pathApp = path_1.default.join(process.cwd(), "updates");
-console.log("Static files served from:", pathApp);
-app.use("/updates", express_1.default.static(pathApp));
+app.use("/updates", express_1.default.static(path_1.default.join(process.cwd(), "updates")));
+// const pathApp = path.join(process.cwd(), "updates");
+// console.log("Static files served from:", pathApp);
+// app.use("/updates", express.static(pathApp));
 // ========================
 //        ROUTES
 // ========================
@@ -57,6 +57,8 @@ app.use("/api/employee", index_1.employeeRoutes);
 app.use("/api/warehouse", index_1.warehouseRoutes);
 app.use("/api/qc", index_1.qcRoutes);
 app.use("/api/delivery", index_1.deliveryRoutes);
+//BADGE
+app.use("/api/badge", index_1.badgeRoutes);
 connectDB_1.sequelize
     // .sync({ alter: true })
     .sync()

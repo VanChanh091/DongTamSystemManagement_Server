@@ -8,7 +8,7 @@ const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const sequelize_1 = require("sequelize");
 const appError_1 = require("../utils/appError");
-const cacheManager_1 = require("../utils/helper/cacheManager");
+const cacheManager_1 = require("../utils/helper/cache/cacheManager");
 const reportPlanningPaper_1 = require("../models/report/reportPlanningPaper");
 const reportRepository_1 = require("../repository/reportRepository");
 const reportHelper_1 = require("../utils/helper/modelHelper/reportHelper");
@@ -17,9 +17,9 @@ const excelExporter_1 = require("../utils/helper/excelExporter");
 const reportPaperRowAndColumn_1 = require("../utils/mapping/reportPaperRowAndColumn");
 const reportBoxRowAndColumn_1 = require("../utils/mapping/reportBoxRowAndColumn");
 const redisCache_1 = __importDefault(require("../assest/configs/redisCache"));
+const cacheKey_1 = require("../utils/helper/cache/cacheKey");
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { paper } = cacheManager_1.CacheManager.keys.report;
-const { box } = cacheManager_1.CacheManager.keys.report;
+const { paper, box } = cacheKey_1.CacheKey.report;
 exports.reportService = {
     //====================================PAPER========================================
     getReportPaper: async (machine, page, pageSize) => {
@@ -27,7 +27,7 @@ exports.reportService = {
             const cacheKey = paper.all(machine, page);
             const { isChanged } = await cacheManager_1.CacheManager.check(reportPlanningPaper_1.ReportPlanningPaper, "reportPaper");
             if (isChanged) {
-                await cacheManager_1.CacheManager.clearReportPaper();
+                await cacheManager_1.CacheManager.clear("reportPaper");
             }
             else {
                 const cachedData = await redisCache_1.default.get(cacheKey);
@@ -94,7 +94,7 @@ exports.reportService = {
             const cacheKey = box.all(machine, page);
             const { isChanged } = await cacheManager_1.CacheManager.check(reportPlanningBox_1.ReportPlanningBox, "reportBox");
             if (isChanged) {
-                await cacheManager_1.CacheManager.clearReportBox();
+                await cacheManager_1.CacheManager.clear("reportBox");
             }
             else {
                 const cachedData = await redisCache_1.default.get(cacheKey);

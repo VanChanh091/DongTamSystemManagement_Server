@@ -77,7 +77,7 @@ exports.dashboardRepository = {
                     ],
                 },
             ],
-            order: [["orderSortValue", "ASC"]],
+            order: [[{ model: order_1.Order }, "orderSortValue", "ASC"]],
         };
         if (paginate) {
             query.offset = (page - 1) * pageSize;

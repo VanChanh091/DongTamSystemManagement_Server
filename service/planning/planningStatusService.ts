@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { AppError } from "../../utils/appError";
-import { CacheManager } from "../../utils/helper/cacheManager";
+import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { PlanningPaper, planningPaperStatus } from "../../models/planning/planningPaper";
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
 import { Op } from "sequelize";

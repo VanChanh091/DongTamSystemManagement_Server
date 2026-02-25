@@ -14,20 +14,36 @@ const manufactureRepository_1 = require("../../repository/manufactureRepository"
 const planningRepository_1 = require("../../repository/planningRepository");
 const planningBox_1 = require("../../models/planning/planningBox");
 const planningBoxMachineTime_1 = require("../../models/planning/planningBoxMachineTime");
-const cacheManager_1 = require("../../utils/helper/cacheManager");
+const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
 const warehouseHelper_1 = require("../../utils/helper/modelHelper/warehouseHelper");
 const dashboardRepository_1 = require("../../repository/dashboardRepository");
 const planningHelper_1 = require("../../utils/helper/modelHelper/planningHelper");
-const inventory_1 = require("../../models/warehouse/inventory");
-const inventoryService_1 = require("./inventoryService");
-const order_1 = require("../../models/order/order");
 const planningPaper_1 = require("../../models/planning/planningPaper");
+const inventoryService_1 = require("./inventoryService");
+const inventory_1 = require("../../models/warehouse/inventory");
+const order_1 = require("../../models/order/order");
+const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { inbound } = cacheManager_1.CacheManager.keys.warehouse;
+const { inbound } = cacheKey_1.CacheKey.warehouse;
+const { paper, box } = cacheKey_1.CacheKey.waitingCheck;
 exports.inboundService = {
     //====================================WAITING CHECK AND INBOUND QTY========================================
     getPaperWaitingChecked: async () => {
+        const cacheKey = paper.all;
         try {
+            const { isChanged } = await cacheManager_1.CacheManager.check(planningPaper_1.PlanningPaper, "checkPaper");
+            if (isChanged) {
+                await cacheManager_1.CacheManager.clear("checkPaper");
+            }
+            else {
+                const cachedData = await redisCache_1.default.get(cacheKey);
+                if (cachedData) {
+                    return {
+                        ...JSON.parse(cachedData),
+                        message: `get planning paper waiting check from cache`,
+                    };
+                }
+            }
             const planning = await warehouseRepository_1.warehouseRepository.getPaperWaitingChecked();
             const allPlannings = [];
             const overflowRemoveFields = ["runningPlan", "quantityManufacture"];
@@ -59,9 +75,23 @@ exports.inboundService = {
         }
     },
     getBoxWaitingChecked: async () => {
+        const cacheKey = box.all;
         try {
+            const { isChanged } = await cacheManager_1.CacheManager.check(planningBox_1.PlanningBox, "checkBox");
+            if (isChanged) {
+                await cacheManager_1.CacheManager.clear("checkBox");
+            }
+            else {
+                const cachedData = await redisCache_1.default.get(cacheKey);
+                if (cachedData) {
+                    return {
+                        ...JSON.parse(cachedData),
+                        message: `get planning box waiting check from cache`,
+                    };
+                }
+            }
             const planning = await warehouseRepository_1.warehouseRepository.getBoxWaitingChecked();
-            return { message: `get planning by machine waiting check`, data: planning };
+            return { message: `get planning box waiting check`, data: planning };
         }
         catch (error) {
             console.error("Failed to get box waiting checked", error);
@@ -223,7 +253,7 @@ exports.inboundService = {
         try {
             const { isChanged } = await cacheManager_1.CacheManager.check(inboundHistory_1.InboundHistory, "inbound");
             if (isChanged) {
-                await cacheManager_1.CacheManager.clearInbound();
+                await cacheManager_1.CacheManager.clear("inbound");
             }
             else {
                 const cachedData = await redisCache_1.default.get(cacheKey);

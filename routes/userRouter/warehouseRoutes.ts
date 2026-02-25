@@ -70,4 +70,8 @@ router.get("/outbound/getInboundQty", authenticate, getOrderInboundQty);
 router.get("/getAllInventory", authenticate, getAllInventory);
 router.post("/createInventory", authenticate, createNewInventory);
 
+router.get("/testCrash", (req, res) => {
+  throw new Error("Test lỗi 500 để bắn Telegram nè! 💣");
+});
+
 export default router;

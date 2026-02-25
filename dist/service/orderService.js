@@ -9,22 +9,23 @@ dotenv_1.default.config();
 const orderHelpers_1 = require("../utils/helper/modelHelper/orderHelpers");
 const appError_1 = require("../utils/appError");
 const redisCache_1 = __importDefault(require("../assest/configs/redisCache"));
-const cacheManager_1 = require("../utils/helper/cacheManager");
+const cacheManager_1 = require("../utils/helper/cache/cacheManager");
 const box_1 = require("../models/order/box");
 const order_1 = require("../models/order/order");
 const transactionHelper_1 = require("../utils/helper/transactionHelper");
 const orderRepository_1 = require("../repository/orderRepository");
+const cacheKey_1 = require("../utils/helper/cache/cacheKey");
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { order } = cacheManager_1.CacheManager.keys;
+const { order } = cacheKey_1.CacheKey;
 exports.orderService = {
     getOrderAcceptAndPlanning: async (page, pageSize, ownOnly, user) => {
         const { userId, role } = user;
         try {
             const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
-            const cacheKey = order.acceptPlanning(keyRole, page); //orders:admin:accept_planning:page:1
+            const cacheKey = order.acceptPlanning(keyRole, page); //orders:all:accept_planning:page:1
             const { isChanged } = await cacheManager_1.CacheManager.check([{ model: order_1.Order, where: { status: ["accept", "planning"] } }], "orderAccept");
             if (isChanged) {
-                await cacheManager_1.CacheManager.clearOrderAcceptPlanning(keyRole);
+                await cacheManager_1.CacheManager.clear("orderAcceptPlanning", keyRole);
             }
             else {
                 const cachedData = await redisCache_1.default.get(cacheKey);
@@ -65,7 +66,7 @@ exports.orderService = {
             const cacheKey = order.pendingReject(keyRole);
             const { isChanged } = await cacheManager_1.CacheManager.check([{ model: order_1.Order, where: { status: ["pending", "reject"] } }], "orderPending");
             if (isChanged) {
-                await cacheManager_1.CacheManager.clearOrderPendingReject(keyRole);
+                await cacheManager_1.CacheManager.clear("orderPendingReject", keyRole);
             }
             else {
                 const cachedResult = await (0, orderHelpers_1.cachedStatus)(redisCache_1.default, "pending", "reject", userId, role);
@@ -204,7 +205,7 @@ exports.orderService = {
         }
     },
     //update order service
-    updateOrder: async (data, orderId) => {
+    updateOrder: async (req, data, orderId) => {
         const { box, ...orderData } = data;
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
@@ -221,6 +222,16 @@ exports.orderService = {
                 else {
                     await box_1.Box.destroy({ where: { orderId } });
                 }
+                //update socket for reject order
+                const ownerId = order.userId;
+                const badgeCount = await order_1.Order.count({
+                    where: { status: "reject", userId: ownerId },
+                    transaction,
+                });
+                req.io?.to(`reject-order-${ownerId}`).emit("updateBadgeCount", {
+                    type: "REJECTED_ORDER",
+                    count: badgeCount,
+                });
                 return { message: "Order updated successfully", data: order };
             });
         }

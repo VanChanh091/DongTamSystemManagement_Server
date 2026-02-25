@@ -7,20 +7,21 @@ exports.productService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const redisCache_1 = __importDefault(require("../assest/configs/redisCache"));
+const sequelize_1 = require("sequelize");
+const order_1 = require("../models/order/order");
 const product_1 = require("../models/product/product");
+const cacheKey_1 = require("../utils/helper/cache/cacheKey");
 const productRepository_1 = require("../repository/productRepository");
 const appError_1 = require("../utils/appError");
-const cacheManager_1 = require("../utils/helper/cacheManager");
+const cacheManager_1 = require("../utils/helper/cache/cacheManager");
 const orderHelpers_1 = require("../utils/helper/modelHelper/orderHelpers");
 const converToWebp_1 = require("../utils/image/converToWebp");
 const connectCloudinary_1 = __importDefault(require("../assest/configs/connectCloudinary"));
 const excelExporter_1 = require("../utils/helper/excelExporter");
 const productRowAndColumn_1 = require("../utils/mapping/productRowAndColumn");
 const transactionHelper_1 = require("../utils/helper/transactionHelper");
-const sequelize_1 = require("sequelize");
-const order_1 = require("../models/order/order");
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { product } = cacheManager_1.CacheManager.keys;
+const { product } = cacheKey_1.CacheKey;
 exports.productService = {
     getAllProducts: async ({ page = 1, pageSize = 20, noPaging = false, }) => {
         const noPagingMode = noPaging === "true";
@@ -28,7 +29,7 @@ exports.productService = {
         try {
             const { isChanged } = await cacheManager_1.CacheManager.check(product_1.Product, "product");
             if (isChanged) {
-                await cacheManager_1.CacheManager.clearProduct();
+                await cacheManager_1.CacheManager.clear("product");
             }
             else {
                 const cachedData = await redisCache_1.default.get(cacheKey);

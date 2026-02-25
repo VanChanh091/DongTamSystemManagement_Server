@@ -13,15 +13,15 @@ const reportPlanningBox_1 = require("../../../models/report/reportPlanningBox");
 const planningBox_1 = require("../../../models/planning/planningBox");
 const planningBoxMachineTime_1 = require("../../../models/planning/planningBoxMachineTime");
 const sequelize_1 = require("sequelize");
-const cacheManager_1 = require("../cacheManager");
 const redisCache_1 = __importDefault(require("../../../assest/configs/redisCache"));
 const normalizeVN_1 = require("../normalizeVN");
 const appError_1 = require("../../appError");
+const cacheKey_1 = require("../cache/cacheKey");
 const filterReportByField = async ({ keyword, machine, getFieldValue, page, pageSize, message, isBox = false, }) => {
     const currentPage = Number(page) || 1;
     const currentPageSize = Number(pageSize) || 20;
     const lowerKeyword = keyword?.toLowerCase?.() || "";
-    const { paper, box } = cacheManager_1.CacheManager.keys.report;
+    const { paper, box } = cacheKey_1.CacheKey.report;
     const cacheKey = isBox ? box.search(machine) : paper.search(machine);
     try {
         let allReports = await redisCache_1.default.get(cacheKey);

@@ -18,7 +18,7 @@ const updateStatusAdmin = async (req, res, next) => {
     const { id } = req.query;
     const { newStatus, rejectReason } = req.body;
     try {
-        const response = await adminService_1.adminService.updateStatusOrder(id, newStatus, rejectReason);
+        const response = await adminService_1.adminService.updateStatusOrder(req, id, newStatus, rejectReason);
         return res.status(200).json(response);
     }
     catch (error) {
