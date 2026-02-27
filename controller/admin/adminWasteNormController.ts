@@ -8,7 +8,33 @@ import { adminService } from "../../service/admin/adminService";
 
 //===============================WASTE PAPER=====================================
 
-//get all
+export const getWastePaper = async (req: Request, res: Response, next: NextFunction) => {
+  const { wasteNormId } = req.query as { wasteNormId: string };
+
+  try {
+    let response;
+
+    if (wasteNormId) {
+      response = await adminService.getItemById({
+        model: WasteNormPaper,
+        itemId: Number(wasteNormId),
+        errMessage: "waste norm not found",
+        errCode: "WASTE_NOT_FOUND",
+      });
+    } else {
+      response = await adminService.getAllItems({
+        model: WasteNormPaper,
+        message: "get all waste successfully",
+      });
+    }
+
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+//get all //delete
 export const getAllWasteNorm = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const response = await adminService.getAllItems({
@@ -22,7 +48,7 @@ export const getAllWasteNorm = async (req: Request, res: Response, next: NextFun
   }
 };
 
-//get waste norm by id
+//get waste norm by id //delete
 //use to get id for update
 export const getWasteNormById = async (req: Request, res: Response, next: NextFunction) => {
   const { wasteNormId } = req.query as { wasteNormId: string };
@@ -97,6 +123,33 @@ export const deleteWasteNormById = async (req: Request, res: Response, next: Nex
 
 //===============================WASTE BOX=====================================
 
+export const getWasteBox = async (req: Request, res: Response, next: NextFunction) => {
+  const { wasteNormId } = req.query as { wasteNormId: string };
+
+  try {
+    let response;
+
+    if (wasteNormId) {
+      response = await adminService.getItemById({
+        model: WasteNormBox,
+        itemId: Number(wasteNormId),
+        errMessage: "waste norm not found",
+        errCode: "WASTE_NOT_FOUND",
+      });
+    } else {
+      response = await adminService.getAllItems({
+        model: WasteNormBox,
+        message: "get all waste successfully",
+      });
+    }
+
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+//delete
 export const getAllWasteBox = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const response = await adminService.getAllItems({
@@ -110,7 +163,7 @@ export const getAllWasteBox = async (req: Request, res: Response, next: NextFunc
   }
 };
 
-//get waste norm by id
+//get waste norm by id //delete
 //use to get id for update
 export const getWasteBoxById = async (req: Request, res: Response, next: NextFunction) => {
   const { wasteNormId } = req.query as { wasteNormId: string };

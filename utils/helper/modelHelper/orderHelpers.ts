@@ -103,7 +103,7 @@ export const calculateOrderMetrics = async (data: any) => {
 
   const baseVolume = (length * size) / 10000;
   const totalVolume = baseVolume * qty * ratio * 1.3;
-  const volumeRaw = Math.round(totalVolume * 100) / 100;
+  const volumeRaw = Math.round(totalVolume * 100) / 100; //làm tròn, lấy 2 số sau dấu phẩy
 
   const responseData = {
     flute,

@@ -50,6 +50,33 @@ export const getUserByPermission = async (req: Request, res: Response, next: Nex
   }
 };
 
+export const updateInfoUser = async (req: Request, res: Response, next: NextFunction) => {
+  const { userId, newRole } = req.query as { userId: string; newRole: userRole };
+  const { permissions, userIds, newPassword } = req.body as {
+    permissions: string | string[];
+    userIds: number | number[];
+    newPassword: string;
+  };
+
+  try {
+    let response;
+
+    if (userId && newRole) {
+      response = await adminService.updateUserRole(Number(userId), newRole);
+    } else if (userId && permissions) {
+      response = await adminService.updatePermissions(Number(userId), permissions);
+    } else if (newPassword) {
+      response = await adminService.resetPassword(userIds, newPassword);
+    } else {
+      return res.status(400).json({ message: "Invalid update parameters" });
+    }
+
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
 //update role of user
 export const updateUserRole = async (req: Request, res: Response, next: NextFunction) => {
   const { userId, newRole } = req.query as { userId: string; newRole: userRole };
@@ -79,24 +106,24 @@ export const updatePermissions = async (req: Request, res: Response, next: NextF
   }
 };
 
-//delete user
-export const deleteUserById = async (req: Request, res: Response, next: NextFunction) => {
-  const { userId } = req.query as { userId: string };
-
-  try {
-    const response = await adminService.deleteUserById(Number(userId));
-    return res.status(200).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
 //reset-password
 export const resetPassword = async (req: Request, res: Response, next: NextFunction) => {
   const { userIds, newPassword } = req.body as { userIds: number | number[]; newPassword: string };
 
   try {
     const response = await adminService.resetPassword(userIds, newPassword);
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+//delete user
+export const deleteUserById = async (req: Request, res: Response, next: NextFunction) => {
+  const { userId } = req.query as { userId: string };
+
+  try {
+    const response = await adminService.deleteUserById(Number(userId));
     return res.status(200).json(response);
   } catch (error) {
     next(error);

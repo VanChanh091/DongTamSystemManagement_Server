@@ -5,11 +5,37 @@ import {
 } from "../../models/admin/waveCrestCoefficient";
 import { adminService } from "../../service/admin/adminService";
 
-//get all wave crest coefficient
+export const getWaveCrestCoeff = async (req: Request, res: Response, next: NextFunction) => {
+  const { waveCrestId } = req.query as { waveCrestId: string };
+
+  try {
+    let response;
+
+    if (waveCrestId) {
+      response = await adminService.getItemById({
+        model: WaveCrestCoefficient,
+        itemId: Number(waveCrestId),
+        errMessage: "wave crest not found",
+        errCode: "WAVE_CREST_NOT_FOUND",
+      });
+    } else {
+      response = await adminService.getAllItems({
+        model: WaveCrestCoefficient,
+        message: "get all wave crest coefficient successfully",
+      });
+    }
+
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+//get all wave crest coefficient //delete
 export const getAllWaveCrestCoefficient = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const response = await adminService.getAllItems({
@@ -23,7 +49,7 @@ export const getAllWaveCrestCoefficient = async (
   }
 };
 
-//get wave crest by id
+//get wave crest by id //delete
 //use to get id for update
 export const getWaveCrestById = async (req: Request, res: Response, next: NextFunction) => {
   const { waveCrestId } = req.query as { waveCrestId: string };
@@ -46,7 +72,7 @@ export const getWaveCrestById = async (req: Request, res: Response, next: NextFu
 export const createWaveCrestCoefficient = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const response = await adminService.createNewItem({

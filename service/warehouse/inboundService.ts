@@ -37,8 +37,6 @@ export const inboundService = {
       } else {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {
-          console.log(`devEnvironment: ${devEnvironment}`);
-
           if (devEnvironment) console.log("✅ Data waiting check paper from Redis");
           return {
             ...JSON.parse(cachedData),
@@ -79,7 +77,14 @@ export const inboundService = {
         }
       });
 
-      return { message: `get planning paper waiting check`, data: allPlannings };
+      const responseData = {
+        message: "get planning paper waiting check successfully",
+        data: allPlannings,
+      };
+
+      await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+
+      return responseData;
     } catch (error) {
       console.error("Failed to get paper waiting checked:", error);
       throw AppError.ServerError();
@@ -96,6 +101,8 @@ export const inboundService = {
         await CacheManager.clear("checkBox");
       } else {
         const cachedData = await redisCache.get(cacheKey);
+        console.log(`data: ${cachedData ? true : false}`);
+
         if (cachedData) {
           if (devEnvironment) console.log("✅ Data waiting check box from Redis");
           return {
@@ -106,8 +113,11 @@ export const inboundService = {
       }
 
       const planning = await warehouseRepository.getBoxWaitingChecked();
+      const responseData = { message: `get planning box waiting check`, data: planning };
 
-      return { message: `get planning box waiting check`, data: planning };
+      await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+
+      return responseData;
     } catch (error) {
       console.error("Failed to get box waiting checked", error);
       if (error instanceof AppError) throw error;

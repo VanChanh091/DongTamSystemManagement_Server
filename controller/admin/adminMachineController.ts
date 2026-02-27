@@ -5,7 +5,33 @@ import { adminService } from "../../service/admin/adminService";
 
 //===============================PAPER=====================================
 
-//get all machine
+export const getMachinePapers = async (req: Request, res: Response, next: NextFunction) => {
+  const { machineId } = req.query as { machineId: string };
+
+  try {
+    let response;
+
+    if (machineId) {
+      response = await adminService.getItemById({
+        model: MachinePaper,
+        itemId: Number(machineId),
+        errMessage: "machine not found",
+        errCode: "MACHINE_NOT_FOUND",
+      });
+    } else {
+      response = await adminService.getAllItems({
+        model: MachinePaper,
+        message: "get all machine paper successfully",
+      });
+    }
+
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+//get all machine //delete
 export const getAllMachinePaper = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const response = await adminService.getAllItems({
@@ -19,7 +45,7 @@ export const getAllMachinePaper = async (req: Request, res: Response, next: Next
   }
 };
 
-//get machine by id
+//get machine by id //delete
 //use to get id for update
 export const getMachinePaperById = async (req: Request, res: Response, next: NextFunction) => {
   const { machineId } = req.query as { machineId: string };
@@ -95,7 +121,33 @@ export const deleteMachinePaperById = async (req: Request, res: Response, next: 
 
 //===============================BOX=====================================
 
-//get all machine
+export const getAllMachineBoxes = async (req: Request, res: Response, next: NextFunction) => {
+  const { machineId } = req.query as { machineId: string };
+
+  try {
+    let response;
+
+    if (machineId) {
+      response = await adminService.getItemById({
+        model: MachineBox,
+        itemId: Number(machineId),
+        errMessage: "machine not found",
+        errCode: "MACHINE_NOT_FOUND",
+      });
+    } else {
+      response = await adminService.getAllItems({
+        model: MachineBox,
+        message: "get all machine box successfully",
+      });
+    }
+
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+//get all machine //delete
 export const getAllMachineBox = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const response = await adminService.getAllItems({
@@ -109,7 +161,7 @@ export const getAllMachineBox = async (req: Request, res: Response, next: NextFu
   }
 };
 
-//get machine by id
+//get machine by id //delete
 //use to get id for update
 export const getMachineBoxById = async (req: Request, res: Response, next: NextFunction) => {
   const { machineId } = req.query as { machineId: string };

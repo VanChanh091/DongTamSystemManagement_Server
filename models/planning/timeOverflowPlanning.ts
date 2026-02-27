@@ -90,8 +90,8 @@ export function initTimeOverflowPlanningModel(sequelize: Sequelize): typeof time
       timestamps: true,
       indexes: [
         //FK
-        { fields: ["planningId"], unique: true },
-        { fields: ["planningBoxId"], unique: true },
+        { fields: ["planningId"] },
+        { fields: ["planningBoxId"] },
 
         //indexes
         { fields: ["overflowDayStart"] },

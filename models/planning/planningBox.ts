@@ -177,7 +177,7 @@ export function initPlanningBoxModel(sequelize: Sequelize): typeof PlanningBox {
       indexes: [
         //FK
         { fields: ["orderId"] },
-        { fields: ["planningId"], unique: true },
+        { fields: ["planningId"] },
 
         //indexes
         { fields: ["orderId", "planningId"] },
