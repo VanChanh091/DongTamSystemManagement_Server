@@ -27,48 +27,45 @@ export const getOrderDetail = async (req: Request, res: Response, next: NextFunc
 
 //===============================ACCEPT AND PLANNING=====================================
 
-//get order status accept and planning
-export const getOrderAcceptAndPlanning = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+export const getOrdersAcceptPlanning = async (req: Request, res: Response, next: NextFunction) => {
   const {
+    field,
+    keyword,
     page = 1,
     pageSize = 20,
     ownOnly = "false",
-  } = req.query as { page?: string; pageSize?: string; ownOnly?: string };
-
-  try {
-    const response = await orderService.getOrderAcceptAndPlanning(
-      Number(page),
-      Number(pageSize),
-      ownOnly,
-      req.user,
-    );
-    return res.status(201).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getOrderByField = async (req: Request, res: Response, next: NextFunction) => {
-  const { field, keyword, page, pageSize } = req.query as {
-    field: string;
-    keyword: string;
-    page: string;
-    pageSize: string;
+  } = req.query as {
+    field?: string;
+    keyword?: string;
+    page?: string;
+    pageSize?: string;
+    ownOnly?: string;
   };
 
   try {
-    const response = await orderService.getOrderByField(
-      field,
-      keyword,
-      Number(page),
-      Number(pageSize),
-      req.user,
-    );
-    return res.status(201).json(response);
+    let response;
+
+    // 1. Nhánh tìm kiếm theo field
+    if (field && keyword) {
+      response = await orderService.getOrderByField(
+        field,
+        keyword,
+        Number(page),
+        Number(pageSize),
+        req.user,
+      );
+    }
+    // 2. Nhánh lấy tất cả
+    else {
+      response = await orderService.getOrderAcceptAndPlanning(
+        Number(page),
+        Number(pageSize),
+        ownOnly,
+        req.user,
+      );
+    }
+
+    return res.status(200).json(response);
   } catch (error) {
     next(error);
   }
@@ -112,10 +109,10 @@ export const updateOrder = async (req: Request, res: Response, next: NextFunctio
 
 // delete order
 export const deleteOrder = async (req: Request, res: Response, next: NextFunction) => {
-  const { id } = req.query as { id: string };
+  const { orderId } = req.query as { orderId: string };
 
   try {
-    const response = await orderService.deleteOrder(id);
+    const response = await orderService.deleteOrder(orderId);
     return res.status(201).json(response);
   } catch (error) {
     next(error);

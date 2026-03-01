@@ -4,10 +4,9 @@ import {
   deleteOrder,
   updateOrder,
   getOrderPendingAndReject,
-  getOrderAcceptAndPlanning,
-  getOrderByField,
   getOrderDetail,
   getOrderIdRaw,
+  getOrdersAcceptPlanning,
 } from "../../controller/user/order/orderController";
 import authenticate from "../../middlewares/authMiddleware";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
@@ -20,10 +19,8 @@ router.get(
   "/accept-planning",
   authenticate,
   authorizeAnyPermission(["sale"]),
-  getOrderAcceptAndPlanning,
+  getOrdersAcceptPlanning,
 );
-
-router.get("/filter", authenticate, authorizeAnyPermission(["sale"]), getOrderByField);
 
 //===============================PENDING AND REJECT=====================================
 
@@ -34,12 +31,12 @@ router.get(
   getOrderPendingAndReject,
 );
 router.post("/", authenticate, authorizeAnyPermission(["sale"]), addOrder);
-router.put("/orders", authenticate, authorizeAnyPermission(["sale"]), updateOrder);
-router.delete("/orders", authenticate, authorizeAnyPermission(["sale"]), deleteOrder);
+router.put("/", authenticate, authorizeAnyPermission(["sale"]), updateOrder);
+router.delete("/", authenticate, authorizeAnyPermission(["sale"]), deleteOrder);
 
 //===============================ORDER AUTOCOMPLETE=====================================
 
-router.get("/getOrderIdRaw", authenticate, authorizeAnyPermission(["sale"]), getOrderIdRaw);
-router.get("/getOrderDetail", authenticate, authorizeAnyPermission(["sale"]), getOrderDetail);
+router.get("/order-id-raw", authenticate, authorizeAnyPermission(["sale"]), getOrderIdRaw);
+router.get("/order-detail", authenticate, authorizeAnyPermission(["sale"]), getOrderDetail);
 
 export default router;

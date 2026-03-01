@@ -23,7 +23,7 @@ const { paper } = CacheKey.planning;
 
 export const planningPaperService = {
   //====================================PLANNING PAPER========================================
-  getPlanningByMachine: async (machine: string) => {
+  getPlanningPaperByMachine: async (machine: string) => {
     try {
       const cacheKey = paper.machine(machine);
       const { isChanged } = await CacheManager.check(

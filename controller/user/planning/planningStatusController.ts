@@ -55,7 +55,7 @@ export const getPlanningStop = async (req: Request, res: Response, next: NextFun
 export const cancelOrContinuePlannning = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const { planningId, action } = req.body as {
     planningId: string | string[];

@@ -2,43 +2,41 @@ import { NextFunction, Request, Response } from "express";
 import { productService } from "../../../service/productService";
 import { ProductCreationAttributes } from "../../../models/product/product";
 
-//get all product
-export const getAllProduct = async (req: Request, res: Response, next: NextFunction) => {
+export const getProducts = async (req: Request, res: Response, next: NextFunction) => {
   const {
+    field,
+    keyword,
     page = 1,
     pageSize = 20,
     noPaging = false,
-  } = req.query as { page?: string; pageSize?: string; noPaging?: string | boolean };
-
-  try {
-    const response = await productService.getAllProducts({
-      page: Number(page),
-      pageSize: Number(pageSize),
-      noPaging,
-    });
-
-    return res.status(200).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
-//get product by fied
-export const getProductByField = async (req: Request, res: Response, next: NextFunction) => {
-  const { field, keyword, page, pageSize } = req.query as {
-    field: string;
-    keyword: string;
-    page: string;
-    pageSize: string;
+  } = req.query as {
+    field?: string;
+    keyword?: string;
+    page?: string;
+    pageSize?: string;
+    noPaging?: string | boolean;
   };
 
   try {
-    const response = await productService.getProductByField({
-      field,
-      keyword,
-      page: Number(page),
-      pageSize: Number(pageSize),
-    });
+    let response;
+
+    // 1. Nhánh tìm kiếm theo field
+    if (field && keyword) {
+      response = await productService.getProductByField({
+        field,
+        keyword,
+        page: Number(page),
+        pageSize: Number(pageSize),
+      });
+    }
+    // 2. Nhánh lấy tất cả
+    else {
+      response = await productService.getAllProducts({
+        page: Number(page),
+        pageSize: Number(pageSize),
+        noPaging,
+      });
+    }
 
     return res.status(200).json(response);
   } catch (error) {
@@ -58,11 +56,11 @@ export const addProduct = async (req: Request, res: Response, next: NextFunction
 
 //update product
 export const updateProduct = async (req: Request, res: Response, next: NextFunction) => {
-  const { id } = req.query as { id: string };
+  const { productId } = req.query as { productId: string };
   const productData = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
 
   try {
-    const response = await productService.updatedProduct(req, id, productData);
+    const response = await productService.updatedProduct(req, productId, productData);
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -71,10 +69,10 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
 
 //delete product
 export const deleteProduct = async (req: Request, res: Response, next: NextFunction) => {
-  const { id } = req.params;
+  const { productId } = req.query as { productId: string };
 
   try {
-    const response = await productService.deletedProduct(id, req.user.role);
+    const response = await productService.deletedProduct(productId, req.user.role);
     return res.status(200).json(response);
   } catch (error) {
     next(error);

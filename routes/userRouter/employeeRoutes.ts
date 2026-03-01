@@ -5,22 +5,20 @@ import {
   createEmployee,
   deleteEmployee,
   exportExcelEmployee,
-  getAllEmployees,
   getEmployeeByPosition,
-  getEmployeesByField,
+  getEmployees,
   updateEmployee,
 } from "../../controller/user/employee/employeeController";
 
 const router = Router();
 
-router.get("/", authenticate, getAllEmployees);
-router.get("/filter", authenticate, getEmployeesByField);
-router.get("/getByPosition", authenticate, getEmployeeByPosition);
+router.get("/", authenticate, getEmployees);
+router.get("/position", authenticate, getEmployeeByPosition);
 
 router.post("/", authenticate, authorizeAnyPermission(["HR"]), createEmployee);
-router.put("/updateEmployee", authenticate, authorizeAnyPermission(["HR"]), updateEmployee);
-router.delete("/deleteEmployee", authenticate, authorizeAnyPermission(["HR"]), deleteEmployee);
+router.put("/", authenticate, authorizeAnyPermission(["HR"]), updateEmployee);
+router.delete("/", authenticate, authorizeAnyPermission(["HR"]), deleteEmployee);
 
-router.post("/exportExcel", authenticate, authorizeAnyPermission(["HR"]), exportExcelEmployee);
+router.post("/export", authenticate, authorizeAnyPermission(["HR"]), exportExcelEmployee);
 
 export default router;

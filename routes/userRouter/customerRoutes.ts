@@ -4,8 +4,7 @@ import {
   createCustomer,
   deleteCustomer,
   exportExcelCustomer,
-  getAllCustomer,
-  getCustomerByField,
+  getCustomers,
   updateCustomer,
 } from "../../controller/user/customer/customerController";
 import authenticate from "../../middlewares/authMiddleware";
@@ -13,13 +12,14 @@ import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 
 const router = Router();
 
-router.get("/getAllCustomer", authenticate, getAllCustomer);
-router.get("/filter", authenticate, getCustomerByField);
-router.get("/orderCount", authenticate, checkCustomerInOrders);
+router.get("/", authenticate, getCustomers);
+router.get("/order-count", authenticate, checkCustomerInOrders);
 
-router.post("/newCustomer", authenticate, authorizeAnyPermission(["sale"]), createCustomer);
-router.post("/exportExcel", authenticate, exportExcelCustomer);
-router.put("/updateCus", authenticate, authorizeAnyPermission(["sale"]), updateCustomer);
-router.delete("/deleteCus", authenticate, authorizeAnyPermission(["sale"]), deleteCustomer);
+router.post("/", authenticate, authorizeAnyPermission(["sale"]), createCustomer);
+router.post("/export", authenticate, exportExcelCustomer);
+
+router.put("/", authenticate, authorizeAnyPermission(["sale"]), updateCustomer);
+
+router.delete("/", authenticate, authorizeAnyPermission(["sale"]), deleteCustomer);
 
 export default router;

@@ -2,43 +2,41 @@ import { NextFunction, Request, Response } from "express";
 import { employeeService } from "../../../service/employeeService";
 import { EmployeeBasicInfoCreationAttributes } from "../../../models/employee/employeeBasicInfo";
 
-//get all
-export const getAllEmployees = async (req: Request, res: Response, next: NextFunction) => {
+export const getEmployees = async (req: Request, res: Response, next: NextFunction) => {
   const {
+    field,
+    keyword,
     page = 1,
     pageSize = 20,
     noPaging = false,
-  } = req.query as { page?: string; pageSize?: string; noPaging?: string | boolean };
-
-  try {
-    const response = await employeeService.getAllEmployees({
-      page: Number(page),
-      pageSize: Number(pageSize),
-      noPaging,
-    });
-
-    return res.status(200).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
-//get by field
-export const getEmployeesByField = async (req: Request, res: Response, next: NextFunction) => {
-  const { field, keyword, page, pageSize } = req.query as {
-    field: string;
-    keyword: string;
-    page: string;
-    pageSize: string;
+  } = req.query as {
+    field?: string;
+    keyword?: string;
+    page?: string;
+    pageSize?: string;
+    noPaging?: string | boolean;
   };
 
   try {
-    const response = await employeeService.getEmployeesByField({
-      field,
-      keyword,
-      page: Number(page),
-      pageSize: Number(pageSize),
-    });
+    let response;
+
+    // 1. Nhánh tìm kiếm theo field
+    if (field && keyword) {
+      response = await employeeService.getEmployeesByField({
+        field,
+        keyword,
+        page: Number(page),
+        pageSize: Number(pageSize),
+      });
+    }
+    // 2. Nhánh lấy tất cả
+    else {
+      response = await employeeService.getAllEmployees({
+        page: Number(page),
+        pageSize: Number(pageSize),
+        noPaging,
+      });
+    }
 
     return res.status(200).json(response);
   } catch (error) {
@@ -61,7 +59,7 @@ export const getEmployeeByPosition = async (req: Request, res: Response, next: N
 export const createEmployee = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const response = await employeeService.createEmployee(
-      req.body as EmployeeBasicInfoCreationAttributes
+      req.body as EmployeeBasicInfoCreationAttributes,
     );
     return res.status(201).json(response);
   } catch (error) {
@@ -76,7 +74,7 @@ export const updateEmployee = async (req: Request, res: Response, next: NextFunc
   try {
     const response = await employeeService.updateEmployee(
       Number(employeeId),
-      req.body as EmployeeBasicInfoCreationAttributes
+      req.body as EmployeeBasicInfoCreationAttributes,
     );
     return res.status(201).json(response);
   } catch (error) {

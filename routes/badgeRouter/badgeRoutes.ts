@@ -13,31 +13,36 @@ import {
 const router = Router();
 
 //pending order
-router.get("/countPending", authenticate, authorizeAnyPermission(["admin"]), countOrderPending);
+router.get("/count-pending", authenticate, authorizeAnyPermission(["admin"]), countOrderPending);
 
 //order reject
-router.get("/countRejected", authenticate, authorizeAnyPermission(["sale"]), countOrderRejected);
+router.get("/count-rejected", authenticate, authorizeAnyPermission(["sale"]), countOrderRejected);
 
 //order pending planning
 router.get(
-  "/countPendingPlanning",
+  "/count-pending-planning",
   authenticate,
   authorizeAnyPermission(["plan"]),
   countOrderPendingPlanning,
 );
 
 //planning stop
-router.get("/countPlanningStop", authenticate, authorizeAnyPermission(["plan"]), countPlanningStop);
+router.get(
+  "/count-planning-stop",
+  authenticate,
+  authorizeAnyPermission(["plan"]),
+  countPlanningStop,
+);
 
 //waiting check paper & box
 router.get(
-  "/countWaitingCheckPaper",
+  "/count-waiting-check/paper",
   authenticate,
   authorizeAnyPermission(["QC"]),
   countWaitingCheckPaper,
 );
 router.get(
-  "/countWaitingCheckBox",
+  "/count-waiting-check/box",
   authenticate,
   authorizeAnyPermission(["QC"]),
   countWaitingCheckBox,

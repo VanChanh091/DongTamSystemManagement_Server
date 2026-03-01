@@ -225,7 +225,55 @@ export const adminService = {
   },
 
   //===============================ADMIN USER======================================
+  getUsersAdmin: async (field: string, keyword: string | string[]) => {
+    try {
+      let users: any[] = [];
+      let message = "Get all users successfully (excluding admin)";
 
+      if (!field || !keyword) {
+        // Nếu không có field/keyword -> Lấy tất cả
+        users = await adminRepository.getAllUser();
+      } else {
+        switch (field) {
+          case "name":
+            users = await adminRepository.getUserByName(keyword as string);
+            message = "Get all users by name from DB";
+            break;
+          case "phone":
+            users = await adminRepository.getUserByPhone(keyword as string);
+            message = "Get user by phone from DB";
+            break;
+          case "permission":
+            const permsArray = Array.isArray(keyword) ? keyword : [keyword];
+            const lowerPermissions = permsArray.map((p) => p.toLowerCase()).filter(Boolean);
+
+            // Lấy tất cả user và lọc theo logic permission của bạn
+            const allUsers = await adminRepository.getAllUser();
+            users = allUsers.filter((user) => {
+              const userPerms: string[] = Array.isArray(user.permissions)
+                ? (user.permissions as string[])
+                : JSON.parse((user.permissions as string) || "[]");
+
+              return userPerms.some((p) => lowerPermissions.includes(p.toLowerCase()));
+            });
+            message = "Get users by permission from DB";
+            break;
+        }
+      }
+
+      const sanitizedUsers = users
+        .map((user) => (typeof user.get === "function" ? user.get({ plain: true }) : user))
+        .filter((user) => user.role?.toLowerCase() !== "admin");
+
+      return { message, data: sanitizedUsers };
+    } catch (error) {
+      console.error(`Failed to get users by ${field}`, error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  //delete
   getAllUsers: async () => {
     try {
       const data = await adminRepository.getAllUser();
@@ -241,6 +289,7 @@ export const adminService = {
     }
   },
 
+  //delete
   getUserByName: async (name: string) => {
     try {
       if (!name) {
@@ -264,6 +313,7 @@ export const adminService = {
     }
   },
 
+  //delete
   getUserByPhone: async (phone: string) => {
     try {
       if (!phone) {
@@ -287,6 +337,7 @@ export const adminService = {
     }
   },
 
+  //delete
   getUserByPermission: async (permission: string | string[]) => {
     try {
       if (!permission) {
@@ -393,32 +444,6 @@ export const adminService = {
     }
   },
 
-  deleteUserById: async (userId: number) => {
-    try {
-      const user = await adminRepository.getUserByPk(userId);
-      if (!user) {
-        throw AppError.NotFound("User not found", "USER_NOT_FOUND");
-      }
-
-      const imageName = user.avatar;
-
-      await user.destroy();
-
-      if (imageName && imageName.includes("cloudinary.com")) {
-        const publicId = getCloudinaryPublicId(imageName);
-        if (publicId) {
-          await cloudinary.uploader.destroy(publicId);
-        }
-      }
-
-      return { message: "User deleted successfully" };
-    } catch (error) {
-      console.error("Error deleting user:", error);
-      if (error instanceof AppError) throw error;
-      throw AppError.ServerError();
-    }
-  },
-
   resetPassword: async (userIds: number | number[], newPassword: string) => {
     try {
       if (!Array.isArray(userIds) || userIds.length === 0 || !newPassword) {
@@ -448,6 +473,32 @@ export const adminService = {
       return { message: "Passwords reset successfully" };
     } catch (error) {
       console.error("Error resetting passwords:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  deleteUserById: async (userId: number) => {
+    try {
+      const user = await adminRepository.getUserByPk(userId);
+      if (!user) {
+        throw AppError.NotFound("User not found", "USER_NOT_FOUND");
+      }
+
+      const imageName = user.avatar;
+
+      await user.destroy();
+
+      if (imageName && imageName.includes("cloudinary.com")) {
+        const publicId = getCloudinaryPublicId(imageName);
+        if (publicId) {
+          await cloudinary.uploader.destroy(publicId);
+        }
+      }
+
+      return { message: "User deleted successfully" };
+    } catch (error) {
+      console.error("Error deleting user:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }

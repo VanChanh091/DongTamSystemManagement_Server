@@ -11,8 +11,8 @@ const authRoutes = Router();
 
 authRoutes.post("/login", login);
 authRoutes.post("/register", register);
-authRoutes.post("/getOtpCode", getOtpCode);
-authRoutes.post("/verifyOTPChangePassword", verifyOTPChangePassword);
-authRoutes.post("/changePassword", changePassword);
+authRoutes.post("/get-otp-code", getOtpCode);
+authRoutes.post("/verify-otp-change-password", verifyOTPChangePassword);
+authRoutes.post("/change-password", changePassword);
 
 export default authRoutes;

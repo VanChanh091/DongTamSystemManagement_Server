@@ -3,43 +3,41 @@ import { NextFunction, Request, Response } from "express";
 import { customerService } from "../../../service/customerService";
 import { CustomerCreationAttributes } from "../../../models/customer/customer";
 
-//get all
-export const getAllCustomer = async (req: Request, res: Response, next: NextFunction) => {
+export const getCustomers = async (req: Request, res: Response, next: NextFunction) => {
   const {
+    field,
+    keyword,
     page = 1,
     pageSize = 20,
     noPaging = false,
-  } = req.query as { page?: string; pageSize?: string; noPaging?: string | boolean };
-
-  try {
-    const response = await customerService.getAllCustomers({
-      page: Number(page),
-      pageSize: Number(pageSize),
-      noPaging,
-    });
-
-    return res.status(200).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
-//get by field
-export const getCustomerByField = async (req: Request, res: Response, next: NextFunction) => {
-  const { field, keyword, page, pageSize } = req.query as {
-    field: string;
-    keyword: string;
-    page: string;
-    pageSize: string;
+  } = req.query as {
+    field?: string;
+    keyword?: string;
+    page?: string;
+    pageSize?: string;
+    noPaging?: string | boolean;
   };
 
   try {
-    const response = await customerService.getCustomerByFields({
-      field,
-      keyword,
-      page: Number(page),
-      pageSize: Number(pageSize),
-    });
+    let response;
+
+    // 1. Nhánh tìm kiếm theo field
+    if (field && keyword) {
+      response = await customerService.getCustomerByFields({
+        field,
+        keyword,
+        page: Number(page),
+        pageSize: Number(pageSize),
+      });
+    }
+    // 2. Nhánh lấy tất cả
+    else {
+      response = await customerService.getAllCustomers({
+        page: Number(page),
+        pageSize: Number(pageSize),
+        noPaging,
+      });
+    }
 
     return res.status(200).json(response);
   } catch (error) {
@@ -48,7 +46,6 @@ export const getCustomerByField = async (req: Request, res: Response, next: Next
 };
 
 //get customerId in orders
-//unfinished
 export const checkCustomerInOrders = async (req: Request, res: Response, next: NextFunction) => {
   const { customerId } = req.query as { customerId: string };
 

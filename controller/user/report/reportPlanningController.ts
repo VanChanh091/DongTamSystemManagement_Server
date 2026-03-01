@@ -1,34 +1,11 @@
 import dotenv from "dotenv";
 dotenv.config();
+
 import { NextFunction, Request, Response } from "express";
 import { reportService } from "../../../service/reportService";
-import { AppError } from "../../../utils/appError";
 
 //===============================REPORT PAPER=====================================
-
-//get all report planning paper
-export const getReportPlanningPaper = async (req: Request, res: Response, next: NextFunction) => {
-  const {
-    machine,
-    page = 1,
-    pageSize = 20,
-  } = req.query as { machine: string; page?: string; pageSize?: string };
-
-  try {
-    if (!machine) {
-      throw AppError.BadRequest("Missing machine parameter", "MISSING_PARAMETERS");
-    }
-
-    const response = await reportService.getReportPaper(machine, Number(page), Number(pageSize));
-
-    return res.status(200).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
-//get reported paper by field
-export const getReportedPaperByField = async (req: Request, res: Response, next: NextFunction) => {
+export const getReportPapers = async (req: Request, res: Response, next: NextFunction) => {
   const {
     field,
     keyword,
@@ -44,13 +21,22 @@ export const getReportedPaperByField = async (req: Request, res: Response, next:
   };
 
   try {
-    const response = await reportService.getReportPaperByField(
-      field,
-      keyword,
-      machine,
-      Number(page),
-      Number(pageSize)
-    );
+    let response;
+
+    // 1. Nhánh tìm kiếm theo field
+    if (field && keyword && machine) {
+      response = await reportService.getReportPaperByField(
+        field,
+        keyword,
+        machine,
+        Number(page),
+        Number(pageSize),
+      );
+    }
+    // 2. Nhánh lấy tất cả
+    else {
+      response = await reportService.getReportPaper(machine, Number(page), Number(pageSize));
+    }
 
     return res.status(200).json(response);
   } catch (error) {
@@ -59,30 +45,7 @@ export const getReportedPaperByField = async (req: Request, res: Response, next:
 };
 
 //===============================REPORT BOX=====================================
-
-//get all report planning box
-export const getReportPlanningBox = async (req: Request, res: Response, next: NextFunction) => {
-  const {
-    machine,
-    page = 1,
-    pageSize = 20,
-  } = req.query as { machine: string; page: string; pageSize: string };
-
-  try {
-    if (!machine) {
-      throw AppError.BadRequest("Missing machine parameter", "MISSING_PARAMETERS");
-    }
-
-    const response = await reportService.getReportBox(machine, Number(page), Number(pageSize));
-
-    return res.status(200).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
-//get reported box by field
-export const getReportedBoxByField = async (req: Request, res: Response, next: NextFunction) => {
+export const getReportBoxes = async (req: Request, res: Response, next: NextFunction) => {
   const {
     field,
     keyword,
@@ -98,13 +61,22 @@ export const getReportedBoxByField = async (req: Request, res: Response, next: N
   };
 
   try {
-    const response = await reportService.getReportBoxByField(
-      field,
-      keyword,
-      machine,
-      Number(page),
-      Number(pageSize)
-    );
+    let response;
+
+    // 1. Nhánh tìm kiếm theo field
+    if (field && keyword && machine) {
+      response = await reportService.getReportBoxByField(
+        field,
+        keyword,
+        machine,
+        Number(page),
+        Number(pageSize),
+      );
+    }
+    // 2. Nhánh lấy tất cả
+    else {
+      response = await reportService.getReportBox(machine, Number(page), Number(pageSize));
+    }
 
     return res.status(200).json(response);
   } catch (error) {
@@ -129,7 +101,7 @@ export const exportExcelReportPaper = async (req: Request, res: Response, next: 
       fromDate,
       toDate,
       reportPaperId,
-      machine
+      machine,
     );
 
     return res.status(200).json(response);
@@ -153,7 +125,7 @@ export const exportExcelReportBox = async (req: Request, res: Response, next: Ne
       fromDate,
       toDate,
       reportBoxId,
-      machine
+      machine,
     );
 
     return res.status(200).json(response);

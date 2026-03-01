@@ -31,39 +31,6 @@ export const getMachinePapers = async (req: Request, res: Response, next: NextFu
   }
 };
 
-//get all machine //delete
-export const getAllMachinePaper = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const response = await adminService.getAllItems({
-      model: MachinePaper,
-      message: "get all machine paper successfully",
-    });
-
-    return res.status(200).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
-//get machine by id //delete
-//use to get id for update
-export const getMachinePaperById = async (req: Request, res: Response, next: NextFunction) => {
-  const { machineId } = req.query as { machineId: string };
-
-  try {
-    const response = await adminService.getItemById({
-      model: MachinePaper,
-      itemId: Number(machineId),
-      errMessage: "machine not found",
-      errCode: "MACHINE_NOT_FOUND",
-    });
-
-    return res.status(200).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
 //add machine
 export const createMachinePaper = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -80,7 +47,7 @@ export const createMachinePaper = async (req: Request, res: Response, next: Next
 };
 
 //update machine
-export const updateMachinePaperById = async (req: Request, res: Response, next: NextFunction) => {
+export const updateMachinePaper = async (req: Request, res: Response, next: NextFunction) => {
   const { machineId } = req.query as { machineId: string };
   const { ...machineUpdated } = req.body;
 
@@ -101,7 +68,7 @@ export const updateMachinePaperById = async (req: Request, res: Response, next: 
 };
 
 //delete machine
-export const deleteMachinePaperById = async (req: Request, res: Response, next: NextFunction) => {
+export const deleteMachinePaper = async (req: Request, res: Response, next: NextFunction) => {
   const { machineId } = req.query as { machineId: string };
 
   try {
@@ -121,7 +88,7 @@ export const deleteMachinePaperById = async (req: Request, res: Response, next: 
 
 //===============================BOX=====================================
 
-export const getAllMachineBoxes = async (req: Request, res: Response, next: NextFunction) => {
+export const getMachineBoxes = async (req: Request, res: Response, next: NextFunction) => {
   const { machineId } = req.query as { machineId: string };
 
   try {
@@ -147,46 +114,13 @@ export const getAllMachineBoxes = async (req: Request, res: Response, next: Next
   }
 };
 
-//get all machine //delete
-export const getAllMachineBox = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const response = await adminService.getAllItems({
-      model: MachineBox,
-      message: "get all machine box successfully",
-    });
-
-    return res.status(200).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
-//get machine by id //delete
-//use to get id for update
-export const getMachineBoxById = async (req: Request, res: Response, next: NextFunction) => {
-  const { machineId } = req.query as { machineId: string };
-
-  try {
-    const response = await adminService.getItemById({
-      model: MachineBox,
-      itemId: Number(machineId),
-      errMessage: "machine not found",
-      errCode: "MACHINE_NOT_FOUND",
-    });
-
-    return res.status(200).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
 //add machine
 export const createMachineBox = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const response = await adminService.createNewItem({
       model: MachineBox,
       data: req.body as MachineBoxCreationAttributes,
-      message: "Create machine successfully",
+      message: "Create machine box successfully",
     });
 
     return res.status(200).json(response);
@@ -196,7 +130,7 @@ export const createMachineBox = async (req: Request, res: Response, next: NextFu
 };
 
 //update machine
-export const updateMachineBoxById = async (req: Request, res: Response, next: NextFunction) => {
+export const updateMachineBox = async (req: Request, res: Response, next: NextFunction) => {
   const { machineId } = req.query as { machineId: string };
   const { ...machineUpdated } = req.body;
 
@@ -205,9 +139,9 @@ export const updateMachineBoxById = async (req: Request, res: Response, next: Ne
       model: MachineBox,
       itemId: Number(machineId),
       dataUpdated: machineUpdated,
-      message: "update machine successfully",
-      errMessage: "machine not found",
-      errCode: "MACHINE_NOT_FOUND",
+      message: "update machine box successfully",
+      errMessage: "machine box not found",
+      errCode: "MACHINE_BOX_NOT_FOUND",
     });
 
     return res.status(200).json(response);
@@ -217,7 +151,7 @@ export const updateMachineBoxById = async (req: Request, res: Response, next: Ne
 };
 
 //delete machine
-export const deleteMachineBoxById = async (req: Request, res: Response, next: NextFunction) => {
+export const deleteMachineBox = async (req: Request, res: Response, next: NextFunction) => {
   const { machineId } = req.query as { machineId: string };
 
   try {
@@ -225,8 +159,8 @@ export const deleteMachineBoxById = async (req: Request, res: Response, next: Ne
       model: MachineBox,
       itemId: Number(machineId),
       message: `delete machineId: ${machineId} successfully`,
-      errMessage: "machine not found",
-      errCode: "MACHINE_NOT_FOUND",
+      errMessage: "machine box not found",
+      errCode: "MACHINE_BOX_NOT_FOUND",
     });
 
     return res.status(200).json(response);

@@ -2,20 +2,15 @@ import { Router } from "express";
 import authenticate from "../../middlewares/authMiddleware";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 import {
-  changeMachinePlanning,
-  confirmCompletePaper,
-  getPlanningByMachine,
-  getPlanningPaperByfield,
+  getPlanningPapers,
   notifyUpdatePlanning,
-  pauseOrAcceptLackQtyPLanning,
   updateIndex_TimeRunning,
+  updatePlanningPapers,
 } from "../../controller/user/planning/planningPaperController";
 import {
-  acceptLackQtyBox,
-  confirmCompleteBox,
-  getPlanningBox,
-  getPlanningBoxByfield,
+  getPlanningBoxes,
   updateIndex_TimeRunningBox,
+  updatePlanningBoxes,
 } from "../../controller/user/planning/planningBoxController";
 import {
   getOrderAccept,
@@ -26,58 +21,51 @@ import {
 
 const router = Router();
 
-//=========================WAITING FOR PLANNING=========================
-router.get("/", authenticate, authorizeAnyPermission(["plan"]), getOrderAccept);
-router.post("/planningOrder", authenticate, authorizeAnyPermission(["plan"]), planningOrder);
+//=========================PLANNING STATUS=========================
+//planning order
+router.get("/planning-orders", authenticate, authorizeAnyPermission(["plan"]), getOrderAccept);
+router.post("/planning-orders", authenticate, authorizeAnyPermission(["plan"]), planningOrder);
+
+//planning stop
+router.get("/planning-stops", authenticate, authorizeAnyPermission(["plan"]), getPlanningStop);
+router.put(
+  "/planning-stops",
+  authenticate,
+  authorizeAnyPermission(["plan"]),
+  cancelOrContinuePlannning,
+);
 
 //=========================PLANNING PAPER=========================
-router.get("/byMachinePaper", authenticate, authorizeAnyPermission(["plan"]), getPlanningByMachine);
-router.get("/filterPaper", authenticate, authorizeAnyPermission(["plan"]), getPlanningPaperByfield);
+router.get("/planning-papers", authenticate, authorizeAnyPermission(["plan"]), getPlanningPapers);
 router.post(
-  "/updateIndex_TimeRunningPaper",
+  "/planning-papers",
   authenticate,
   authorizeAnyPermission(["plan"]),
-  updateIndex_TimeRunning
-);
-router.post(
-  "/notifyPlanning",
-  authenticate,
-  authorizeAnyPermission(["plan"]),
-  notifyUpdatePlanning
+  updateIndex_TimeRunning,
 );
 router.put(
-  "/changeMachinePaper",
+  "/planning-papers",
   authenticate,
   authorizeAnyPermission(["plan"]),
-  changeMachinePlanning
-);
-router.put("/confirmPaper", authenticate, authorizeAnyPermission(["plan"]), confirmCompletePaper);
-router.put(
-  "/pauseOrAcceptLackQtyPaper",
-  authenticate,
-  authorizeAnyPermission(["plan"]),
-  pauseOrAcceptLackQtyPLanning
+  updatePlanningPapers,
 );
 
 //=========================PLANNING BOX=========================
-router.get("/byMachineBox", authenticate, authorizeAnyPermission(["plan"]), getPlanningBox);
-router.get("/filterBox", authenticate, authorizeAnyPermission(["plan"]), getPlanningBoxByfield);
+router.get("/planning-boxes", authenticate, authorizeAnyPermission(["plan"]), getPlanningBoxes);
 router.post(
-  "/updateIndex_TimeRunningBox",
+  "/planning-boxes",
   authenticate,
   authorizeAnyPermission(["plan"]),
-  updateIndex_TimeRunningBox
+  updateIndex_TimeRunningBox,
 );
-router.put("/confirmBox", authenticate, authorizeAnyPermission(["plan"]), confirmCompleteBox);
-router.put("/acceptLackQtyBox", authenticate, authorizeAnyPermission(["plan"]), acceptLackQtyBox);
+router.put("/planning-boxes", authenticate, authorizeAnyPermission(["plan"]), updatePlanningBoxes);
 
-//=========================PLANNING BOX=========================
-router.get("/getPlanningStop", authenticate, authorizeAnyPermission(["plan"]), getPlanningStop);
-router.put(
-  "/updateStopById",
+//socket
+router.post(
+  "/notify-planning",
   authenticate,
   authorizeAnyPermission(["plan"]),
-  cancelOrContinuePlannning
+  notifyUpdatePlanning,
 );
 
 export default router;

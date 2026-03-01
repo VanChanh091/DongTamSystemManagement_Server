@@ -5,6 +5,6 @@ import upload from "../../utils/image/uploadImage";
 
 const router = Router();
 
-router.put("/updateUser", authenticate, upload.single("avatar"), updateProfileUser);
+router.put("/", authenticate, upload.single("avatar"), updateProfileUser);
 
 export default router;

@@ -4,26 +4,7 @@ import { planningPaperService } from "../../../service/planning/planningPaperSer
 import { OrderStatus } from "../../../models/order/order";
 import { AppError } from "../../../utils/appError";
 
-//===============================PRODUCTION QUEUE=====================================
-
-//get planning by machine
-export const getPlanningByMachine = async (req: Request, res: Response, next: NextFunction) => {
-  const { machine } = req.query as { machine: string };
-
-  try {
-    if (!machine) {
-      throw AppError.BadRequest("Missing machine parameter", "MISSING_PARAMETERS");
-    }
-
-    const response = await planningPaperService.getPlanningByMachine(machine);
-    return res.status(201).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
-//get planning paper by field
-export const getPlanningPaperByfield = async (req: Request, res: Response, next: NextFunction) => {
+export const getPlanningPapers = async (req: Request, res: Response, next: NextFunction) => {
   const { machine, field, keyword } = req.query as {
     machine: string;
     field: string;
@@ -31,54 +12,33 @@ export const getPlanningPaperByfield = async (req: Request, res: Response, next:
   };
 
   try {
-    const response = await planningPaperService.getPlanningByField(machine, field, keyword);
-    return res.status(201).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
-//change planning machine
-export const changeMachinePlanning = async (req: Request, res: Response, next: NextFunction) => {
-  const { planningIds, newMachine } = req.body as {
-    planningIds: number[];
-    newMachine: machinePaperType;
-  };
-
-  try {
-    if (!Array.isArray(planningIds) || planningIds.length === 0) {
-      throw AppError.BadRequest("Missing planningIds parameter", "MISSING_PARAMETERS");
+    if (!machine) {
+      throw AppError.BadRequest("Missing machine parameter", "MISSING_PARAMETERS");
     }
 
-    const response = await planningPaperService.changeMachinePlanning(planningIds, newMachine);
-    return res.status(201).json(response);
+    let response;
+    // 1. Nhánh tìm kiếm theo field
+    if (field && keyword) {
+      response = await planningPaperService.getPlanningByField(machine, field, keyword);
+    }
+    // 2. Nhánh lấy tất cả
+    else {
+      response = await planningPaperService.getPlanningPaperByMachine(machine);
+    }
+
+    return res.status(200).json(response);
   } catch (error) {
     next(error);
   }
 };
 
-//confirm complete
-export const confirmCompletePaper = async (req: Request, res: Response, next: NextFunction) => {
-  const { planningIds } = req.body as { planningIds: number[] };
-
-  try {
-    const response = await planningPaperService.confirmCompletePlanningPaper(planningIds);
-    return res.status(201).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
-//pause or accept lack of qty
-export const pauseOrAcceptLackQtyPLanning = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  const { planningIds, newStatus, rejectReason } = req.body as {
+export const updatePlanningPapers = async (req: Request, res: Response, next: NextFunction) => {
+  const { planningIds, newMachine, newStatus, rejectReason, isConfirm } = req.body as {
     planningIds: number[];
-    newStatus: OrderStatus;
+    newMachine?: machinePaperType;
+    newStatus?: OrderStatus;
     rejectReason?: string;
+    isConfirm?: boolean;
   };
 
   try {
@@ -86,12 +46,30 @@ export const pauseOrAcceptLackQtyPLanning = async (
       throw AppError.BadRequest("Missing planningIds parameter", "MISSING_PARAMETERS");
     }
 
-    const response = await planningPaperService.pauseOrAcceptLackQtyPLanning(
-      planningIds,
-      newStatus,
-      rejectReason,
-    );
-    return res.status(201).json(response);
+    let response;
+
+    // 1. Đổi máy
+    if (newMachine) {
+      response = await planningPaperService.changeMachinePlanning(planningIds, newMachine);
+    }
+
+    // 2. Xác nhận sản xuất
+    else if (isConfirm) {
+      response = await planningPaperService.confirmCompletePlanningPaper(planningIds);
+    }
+
+    // 3. Tạm dừng hoặc chấp nhận thiếu
+    else if (newStatus) {
+      response = await planningPaperService.pauseOrAcceptLackQtyPLanning(
+        planningIds,
+        newStatus,
+        rejectReason,
+      );
+    } else {
+      throw AppError.BadRequest("No valid action provided", "INVALID_ACTION");
+    }
+
+    return res.status(200).json(response);
   } catch (error) {
     next(error);
   }
