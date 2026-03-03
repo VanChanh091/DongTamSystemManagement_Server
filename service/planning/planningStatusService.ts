@@ -1,11 +1,12 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+import { Op } from "sequelize";
+import { Request } from "express";
 import { AppError } from "../../utils/appError";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { PlanningPaper, planningPaperStatus } from "../../models/planning/planningPaper";
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
-import { Op } from "sequelize";
 import redisCache from "../../assest/configs/redisCache";
 import { planningRepository } from "../../repository/planningRepository";
 import { machineMap } from "../../assest/configs/machineLabels";
@@ -14,6 +15,8 @@ import { WasteNormPaper } from "../../models/admin/wasteNormPaper";
 import { WaveCrestCoefficient } from "../../models/admin/waveCrestCoefficient";
 import { PlanningBox } from "../../models/planning/planningBox";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
+import { runInTransaction } from "../../utils/helper/transactionHelper";
+import { User } from "../../models/user/user";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { stop, order } = CacheKey.planning;
@@ -21,43 +24,67 @@ const { stop, order } = CacheKey.planning;
 export const planningStatusService = {
   //===============================PLANNING ORDER=====================================
 
-  getOrderAccept: async () => {
+  getOrderAccept: async (filter: string) => {
     const cacheKey = order.all;
 
     try {
-      const { isChanged: order } = await CacheManager.check(
-        [{ model: Order, where: { status: "accept" } }],
-        "planningOrder",
-      );
+      // const { isChanged: order } = await CacheManager.check(
+      //   [{ model: Order, where: { status: "accept" } }],
+      //   "planningOrder",
+      // );
 
-      const { isChanged: planningPaper } = await CacheManager.check(
-        [
-          { model: PlanningPaper },
-          { model: timeOverflowPlanning, where: { planningId: { [Op.ne]: null } } },
-        ],
-        "planningOrderPaper",
-        { setCache: false },
-      );
+      // const { isChanged: planningPaper } = await CacheManager.check(
+      //   [
+      //     { model: PlanningPaper },
+      //     { model: timeOverflowPlanning, where: { planningId: { [Op.ne]: null } } },
+      //   ],
+      //   "planningOrderPaper",
+      //   { setCache: false },
+      // );
 
-      const isChangedData = order || planningPaper;
+      // const isChangedData = order || planningPaper;
 
-      if (isChangedData) {
-        await CacheManager.clear("orderAccept");
-      } else {
-        const cachedData = await redisCache.get(cacheKey);
-        if (cachedData) {
-          return { ...JSON.parse(cachedData), fromCache: true };
-        }
-      }
+      // if (isChangedData) {
+      //   await CacheManager.clear("orderAccept");
+      // } else {
+      //   const cachedData = await redisCache.get(cacheKey);
+      //   if (cachedData) {
+      //     return { ...JSON.parse(cachedData), fromCache: true };
+      //   }
+      // }
 
-      const result = await planningRepository.getOrderAccept();
+      const result = await planningRepository.getOrderAccept(filter);
       const responseData = { message: "get order accept successfully", data: result };
 
-      await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+      // await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
 
       return responseData;
     } catch (error) {
       console.error("❌ get all order accept failed:", error);
+      throw AppError.ServerError();
+    }
+  },
+
+  getOrderAcceptByField: async (type: string, field: string, keyword: string) => {
+    try {
+      const fieldMap = {
+        orderId: (order: Order) => order.orderId,
+        customerName: (order: Order) => order?.Customer?.customerName,
+        QC_box: (order: Order) => order?.QC_box,
+      } as const;
+
+      const key = field as keyof typeof fieldMap;
+
+      if (!fieldMap[key]) {
+        throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
+      }
+
+      const result = await planningRepository.getOrderAccept(type, field, keyword);
+
+      return { message: `get order accept by ${field} successfully`, data: result };
+    } catch (error) {
+      console.error(`Failed to get orders by ${field}:`, error);
+      if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
   },
@@ -289,6 +316,59 @@ export const planningStatusService = {
       };
     } catch (error) {
       console.error("planningOrder error:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  backOrderToReject: async (req: Request, orderId: string) => {
+    try {
+      return await runInTransaction(async (transaction) => {
+        const order = await Order.findOne({
+          where: { orderId },
+          attributes: ["orderId", "userId"],
+          include: [{ model: User, attributes: ["fullName"] }],
+          transaction,
+        });
+        if (!order) {
+          throw AppError.BadRequest("Order not found", "ORDER_NOT_FOUND");
+        }
+
+        const planningPapers = await PlanningPaper.findAll({ where: { orderId }, transaction });
+        if (planningPapers.some((p) => (p.qtyProduced ?? 0) > 0)) {
+          throw AppError.BadRequest("Order has produced items", "ORDER_HAS_PRODUCED_ITEMS");
+        }
+
+        await order.update({ status: "reject" }, { transaction });
+
+        //socket
+        const ownerId = order.userId;
+        const badgeCount = await Order.count({ where: { status: "reject", userId: ownerId } });
+
+        const roomName = `reject-order-${ownerId}`;
+        const sockets = await req.io?.in(roomName).fetchSockets();
+
+        // console.log(`-----------------------------------`);
+        // console.log(`📡 Event: updateBadgeCount`);
+        // console.log(`🏠 Room Target: ${roomName}`);
+        // console.log(`👥 Active sockets: ${sockets?.length ?? 0}`);
+        // console.log(`-----------------------------------`);
+
+        const hasSocket = sockets && sockets.length > 0;
+        if (!hasSocket) {
+          if (devEnvironment) {
+            console.log(`⚠️ No one is in room ${roomName}, skip emitting.`);
+          }
+          return { message: "Order status updated successfully, no active socket to notify" };
+        }
+
+        req.io?.to(roomName).emit("updateBadgeCount", {
+          type: "REJECTED_ORDER",
+          count: badgeCount,
+        });
+      });
+    } catch (error) {
+      console.error("back order failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }

@@ -17,6 +17,8 @@ import {
   getPlanningStop,
   planningOrder,
   cancelOrContinuePlannning,
+  backOrderToReject,
+  getOrderAcceptByField,
 } from "../../controller/user/planning/planningStatusController";
 
 const router = Router();
@@ -25,6 +27,7 @@ const router = Router();
 //planning order
 router.get("/planning-orders", authenticate, authorizeAnyPermission(["plan"]), getOrderAccept);
 router.post("/planning-orders", authenticate, authorizeAnyPermission(["plan"]), planningOrder);
+router.put("/planning-orders", authenticate, authorizeAnyPermission(["plan"]), backOrderToReject);
 
 //planning stop
 router.get("/planning-stops", authenticate, authorizeAnyPermission(["plan"]), getPlanningStop);

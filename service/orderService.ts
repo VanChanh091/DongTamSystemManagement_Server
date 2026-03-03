@@ -135,6 +135,7 @@ export const orderService = {
       if (!fieldMap[key]) {
         throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
       }
+
       const result = await filterOrdersFromCache({
         userId,
         role,
@@ -222,7 +223,7 @@ export const orderService = {
         //create table data
         if (newOrder.isBox) {
           try {
-            await createDataTable(newOrderId, Box, box);
+            await createDataTable(newOrderId, Box, box, transaction);
           } catch (error) {
             console.error("Error creating related data:", error);
             if (error instanceof AppError) throw error;

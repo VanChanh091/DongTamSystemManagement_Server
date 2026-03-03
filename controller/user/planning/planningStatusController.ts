@@ -9,15 +9,44 @@ import { AppError } from "../../../utils/appError";
 
 //getOrderAccept
 export const getOrderAccept = async (req: Request, res: Response, next: NextFunction) => {
+  const { type, field, keyword } = req.query as {
+    type: string;
+    field: string;
+    keyword: string;
+  };
+  //planned and unplanned
+
   try {
-    const response = await planningStatusService.getOrderAccept();
+    let response;
+    if (field && keyword) {
+      response = await planningStatusService.getOrderAcceptByField(type, field, keyword);
+    } else {
+      response = await planningStatusService.getOrderAccept(type);
+    }
 
     return res.status(200).json({
       ...response,
-      message: response.fromCache
-        ? "get all order have status:accept from cache"
-        : "get all order have status:accept",
+      // message: response.fromCache //fix cache for 2 case: have running plan or not have running plan
+      //   ? "get all order have status:accept from cache"
+      //   : "get all order have status:accept",
+
+      message: "get all order have status:accept",
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getOrderAcceptByField = async (req: Request, res: Response, next: NextFunction) => {
+  const { type, field, keyword } = req.query as {
+    type: string;
+    field: string;
+    keyword: string;
+  };
+
+  try {
+    const response = await planningStatusService.getOrderAcceptByField(type, field, keyword);
+    return res.status(200).json(response);
   } catch (error) {
     next(error);
   }
@@ -34,6 +63,16 @@ export const planningOrder = async (req: Request, res: Response, next: NextFunct
     }
 
     const response = await planningStatusService.planningOrder(orderId, planningData);
+    return res.status(201).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const backOrderToReject = async (req: Request, res: Response, next: NextFunction) => {
+  const { orderId } = req.query as { orderId: string };
+  try {
+    const response = await planningStatusService.backOrderToReject(req, orderId);
     return res.status(201).json(response);
   } catch (error) {
     next(error);

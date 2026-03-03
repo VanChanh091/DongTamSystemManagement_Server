@@ -21,7 +21,7 @@ export const orderRepository = {
 
       order: [
         //1. sort theo accept -> planning | pending -> reject
-        ["statusPriority", "ASC"],
+        ["statusPriority", "DESC"],
         //2. sort theo orderId
         ["orderSortValue", "ASC"],
       ],

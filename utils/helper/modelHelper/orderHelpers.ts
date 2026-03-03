@@ -1,4 +1,4 @@
-import { Op } from "sequelize";
+import { Op, Transaction } from "sequelize";
 import { Customer } from "../../../models/customer/customer";
 import { Product } from "../../../models/product/product";
 import { Order } from "../../../models/order/order";
@@ -117,10 +117,15 @@ export const calculateOrderMetrics = async (data: any) => {
   return responseData;
 };
 
-export const createDataTable = async (id: string, model: any, data: Record<string, any>) => {
+export const createDataTable = async (
+  id: string,
+  model: any,
+  data: Record<string, any>,
+  transaction?: Transaction,
+) => {
   try {
     if (data) {
-      await model.create({ orderId: id, ...data });
+      await model.create({ orderId: id, ...data }, { transaction });
     }
   } catch (error) {
     console.error(`Create table ${model} error:`, error);

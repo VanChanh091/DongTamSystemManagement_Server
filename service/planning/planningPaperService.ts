@@ -122,19 +122,19 @@ export const planningPaperService = {
         const ghepB = b.ghepKho ?? 0;
         if (ghepB !== ghepA) return ghepB - ghepA;
 
-        const layerA = getLayer(a.Order.flute ?? "");
-        const layerB = getLayer(b.Order.flute ?? "");
-        if (layerB !== layerA) return layerB - layerA;
+        // const layerA = getLayer(a.Order.flute ?? "");
+        // const layerB = getLayer(b.Order.flute ?? "");
+        // if (layerB !== layerA) return layerB - layerA;
 
-        const waveA = getWavePriorityList(a.Order.flute ?? "");
-        const waveB = getWavePriorityList(b.Order.flute ?? "");
-        const maxLength = Math.max(waveA.length, waveB.length);
+        // const waveA = getWavePriorityList(a.Order.flute ?? "");
+        // const waveB = getWavePriorityList(b.Order.flute ?? "");
+        // const maxLength = Math.max(waveA.length, waveB.length);
 
-        for (let i = 0; i < maxLength; i++) {
-          const priA = waveA[i] ?? 0;
-          const priB = waveB[i] ?? 0;
-          if (priB !== priA) return priB - priA;
-        }
+        // for (let i = 0; i < maxLength; i++) {
+        //   const priA = waveA[i] ?? 0;
+        //   const priB = waveB[i] ?? 0;
+        //   if (priB !== priA) return priB - priA;
+        // }
 
         return 0;
       });

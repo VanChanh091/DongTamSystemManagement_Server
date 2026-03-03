@@ -95,7 +95,7 @@ router.put("/wave-crest-coeff", authenticate, authorizeRole(["admin"]), updateWa
 router.delete("/wave-crest-coeff", authenticate, authorizeRole(["admin"]), deleteWaveCrest);
 
 //===============================CRITERIA=====================================
-router.get("/criterias", authenticate, authorizeRole(["admin"]), getAllQcCriteria);
+router.get("/criterias", authenticate, authorizeRole(["admin", "QC"]), getAllQcCriteria);
 router.post("/criterias", authenticate, authorizeRole(["admin"]), createNewCriteria);
 router.put("/criterias", authenticate, authorizeRole(["admin"]), updateCriteria);
 router.delete("/criterias", authenticate, authorizeRole(["admin"]), deleteCriteria);
