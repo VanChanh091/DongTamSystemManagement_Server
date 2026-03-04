@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { badgeService } from "../../service/badge/badgeService";
+import { AppError } from "../../utils/appError";
 
 //pending order
 export const countOrderPending = async (req: Request, res: Response, next: NextFunction) => {
@@ -46,18 +47,19 @@ export const countPlanningStop = async (req: Request, res: Response, next: NextF
 };
 
 //waiting check paper & box
-export const countWaitingCheckPaper = async (req: Request, res: Response, next: NextFunction) => {
+export const countWaitingCheck = async (req: Request, res: Response, next: NextFunction) => {
+  const { type } = req.query as { type: "paper" | "box" };
   try {
-    const response = await badgeService.countWaitingCheckPaper();
-    return res.status(201).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
+    let response;
 
-export const countWaitingCheckBox = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const response = await badgeService.countWaitingCheckBox();
+    if (type === "paper") {
+      response = await badgeService.countWaitingCheckPaper();
+    } else if (type === "box") {
+      response = await badgeService.countWaitingCheckBox();
+    } else {
+      throw AppError.BadRequest("Invalid type query parameter. Must be 'paper' or 'box'.");
+    }
+
     return res.status(201).json(response);
   } catch (error) {
     next(error);

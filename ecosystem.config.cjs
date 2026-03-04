@@ -7,12 +7,13 @@ module.exports = {
       script: "dist/index.js",
       exec_mode: "cluster", // cluster mode để cân bằng tải
       cwd: "D:/App/DongTamSystemManagement_Server",
+      // cwd: "I:/ServerApp/DongTamSystemManagement_Server",
       autorestart: true,
       watch: false,
       merge_logs: true,
-      max_memory_restart: "500M",
+      max_memory_restart: "300M",
       // instances: "max", // chạy với số core CPU được cấp
-      instances: 5,
+      instances: 3,
 
       // Log files (PM2 sẽ lưu trong C:\\Users\userName\.pm2\logs\)
       error_file: "./logs/err/dongtam-api-error.log",

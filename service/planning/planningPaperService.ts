@@ -69,7 +69,7 @@ export const planningPaperService = {
         },
       });
 
-      //lọc đơn complete trong 3 ngày
+      //lọc đơn complete trong 1 ngày
       const truncateToDate = (date: Date) =>
         new Date(date.getFullYear(), date.getMonth(), date.getDate());
       const now = truncateToDate(new Date());
@@ -82,7 +82,7 @@ export const planningPaperService = {
           if (!dayCompleted || isNaN(dayCompleted.getTime())) return false;
 
           const expiredDate = truncateToDate(new Date(dayCompleted));
-          expiredDate.setDate(expiredDate.getDate() + 3);
+          expiredDate.setDate(expiredDate.getDate() + 1);
 
           return expiredDate >= now;
         }

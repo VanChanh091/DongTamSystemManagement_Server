@@ -3,12 +3,14 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 3.6.0</title>
-            <sparkle:version>3.6.0</sparkle:version> 
-            <description>Chỉnh sửa lại lỗi thông báo từ chối không đồng bộ với các người dùng
-            Thay đổi công thức tính thể tích cho đơn hàng
+            <title>Version 3.7.0</title>
+            <sparkle:version>3.7.0</sparkle:version> 
+            <description>Chỉnh lại tiêu đề cột đơn hàng
+            Thêm bộ lọc, hoàn đơn cho đơn hàng chờ lên kế hoạch
+            Thêm lọc đơn đã và chưa lên kế hoạch
+            Sửa lại lỗi báo warning đổi khổ bị sai
             </description>
-            <pubDate>Sat, 24 Jan 2026</pubDate>
+            <pubDate>Tue, 03 March 2026</pubDate>
             <enclosure url="dongtam.exe" 
                     sparkle:os="windows" 
                     length="12345678" 

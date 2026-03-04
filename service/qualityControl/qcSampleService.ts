@@ -71,14 +71,14 @@ export const qcSampleService = {
         if (s.sampleIndex < 1 || s.sampleIndex > session.totalSample) {
           throw AppError.BadRequest(
             `Invalid sample index ${s.sampleIndex}`,
-            "INVALID_SAMPLE_INDEX"
+            "INVALID_SAMPLE_INDEX",
           );
         }
 
         if (sampleIndexSet.has(s.sampleIndex)) {
           throw AppError.BadRequest(
             `Duplicate sample index ${s.sampleIndex}`,
-            "DUPLICATE_SAMPLE_INDEX"
+            "DUPLICATE_SAMPLE_INDEX",
           );
         }
 
@@ -88,7 +88,7 @@ export const qcSampleService = {
       // Lấy criteria REQUIRED
       const requiredCriteria = await qcRepository.getRequiredQcCriteria(
         session.processType,
-        transaction
+        transaction,
       );
 
       const requiredCriteriaCode = requiredCriteria.map((c) => String(c.criteriaCode));
@@ -99,7 +99,7 @@ export const qcSampleService = {
           if (!(criteriaCode in s.checklist)) {
             throw AppError.BadRequest(
               `Missing required criteria ${criteriaCode} at sample ${s.sampleIndex}`,
-              "MISSING_REQUIRED_CRITERIA"
+              "MISSING_REQUIRED_CRITERIA",
             );
           }
         }
@@ -160,7 +160,7 @@ export const qcSampleService = {
         // Lấy criteria REQUIRED
         const requiredCriteria = await qcRepository.getRequiredQcCriteria(
           session.processType,
-          transaction
+          transaction,
         );
 
         const normalize = (s: string) => s.trim().toUpperCase();
@@ -172,7 +172,7 @@ export const qcSampleService = {
           if (sampleIndex < 1 || sampleIndex > session.totalSample) {
             throw AppError.BadRequest(
               `Invalid sample index ${sampleIndex}`,
-              "INVALID_SAMPLE_INDEX"
+              "INVALID_SAMPLE_INDEX",
             );
           }
 
@@ -192,7 +192,7 @@ export const qcSampleService = {
             if (!checklistKeys.includes(code)) {
               throw AppError.BadRequest(
                 `Missing required criteria ${code} at sample ${sampleIndex}`,
-                "MISSING_REQUIRED_CRITERIA"
+                "MISSING_REQUIRED_CRITERIA",
               );
             }
           }
@@ -251,14 +251,14 @@ export const qcSampleService = {
         if (isPaper && !session.planningId) {
           throw AppError.BadRequest(
             "QC session không thuộc planning giấy",
-            "INVALID_QC_SESSION_TYPE"
+            "INVALID_QC_SESSION_TYPE",
           );
         }
 
         if (!isPaper && !session.planningBoxId) {
           throw AppError.BadRequest(
             "QC session không thuộc planning thùng",
-            "INVALID_QC_SESSION_TYPE"
+            "INVALID_QC_SESSION_TYPE",
           );
         }
 
@@ -315,7 +315,7 @@ export const qcSampleService = {
     if (totalInbound <= 0) {
       throw AppError.BadRequest(
         "Chưa có giá trị nhập kho, không thể hoàn thành phiên kiểm tra",
-        "NO_INBOUND_HISTORY"
+        "NO_INBOUND_HISTORY",
       );
     }
   },

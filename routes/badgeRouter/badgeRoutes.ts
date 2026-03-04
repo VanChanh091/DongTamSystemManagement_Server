@@ -6,8 +6,7 @@ import {
   countOrderPendingPlanning,
   countOrderRejected,
   countPlanningStop,
-  countWaitingCheckBox,
-  countWaitingCheckPaper,
+  countWaitingCheck,
 } from "../../controller/badge/badgeController";
 
 const router = Router();
@@ -35,17 +34,6 @@ router.get(
 );
 
 //waiting check paper & box
-router.get(
-  "/count-waiting-check/paper",
-  authenticate,
-  authorizeAnyPermission(["QC"]),
-  countWaitingCheckPaper,
-);
-router.get(
-  "/count-waiting-check/box",
-  authenticate,
-  authorizeAnyPermission(["QC"]),
-  countWaitingCheckBox,
-);
+router.get("/count-waiting-check", authenticate, authorizeAnyPermission(["QC"]), countWaitingCheck);
 
 export default router;
