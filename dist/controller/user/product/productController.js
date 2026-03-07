@@ -1,40 +1,35 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.exportExcelProduct = exports.deleteProduct = exports.updateProduct = exports.addProduct = exports.getProductByField = exports.getAllProduct = void 0;
+exports.exportExcelProduct = exports.deleteProduct = exports.updateProduct = exports.addProduct = exports.getProducts = void 0;
 const productService_1 = require("../../../service/productService");
-//get all product
-const getAllProduct = async (req, res, next) => {
-    const { page = 1, pageSize = 20, noPaging = false, } = req.query;
+const getProducts = async (req, res, next) => {
+    const { field, keyword, page = 1, pageSize = 20, noPaging = false, } = req.query;
     try {
-        const response = await productService_1.productService.getAllProducts({
-            page: Number(page),
-            pageSize: Number(pageSize),
-            noPaging,
-        });
+        let response;
+        // 1. Nhánh tìm kiếm theo field
+        if (field && keyword) {
+            response = await productService_1.productService.getProductByField({
+                field,
+                keyword,
+                page: Number(page),
+                pageSize: Number(pageSize),
+            });
+        }
+        // 2. Nhánh lấy tất cả
+        else {
+            response = await productService_1.productService.getAllProducts({
+                page: Number(page),
+                pageSize: Number(pageSize),
+                noPaging,
+            });
+        }
         return res.status(200).json(response);
     }
     catch (error) {
         next(error);
     }
 };
-exports.getAllProduct = getAllProduct;
-//get product by fied
-const getProductByField = async (req, res, next) => {
-    const { field, keyword, page, pageSize } = req.query;
-    try {
-        const response = await productService_1.productService.getProductByField({
-            field,
-            keyword,
-            page: Number(page),
-            pageSize: Number(pageSize),
-        });
-        return res.status(200).json(response);
-    }
-    catch (error) {
-        next(error);
-    }
-};
-exports.getProductByField = getProductByField;
+exports.getProducts = getProducts;
 //add product
 const addProduct = async (req, res, next) => {
     try {
@@ -48,10 +43,10 @@ const addProduct = async (req, res, next) => {
 exports.addProduct = addProduct;
 //update product
 const updateProduct = async (req, res, next) => {
-    const { id } = req.query;
+    const { productId } = req.query;
     const productData = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
     try {
-        const response = await productService_1.productService.updatedProduct(req, id, productData);
+        const response = await productService_1.productService.updatedProduct(req, productId, productData);
         return res.status(200).json(response);
     }
     catch (error) {
@@ -61,9 +56,9 @@ const updateProduct = async (req, res, next) => {
 exports.updateProduct = updateProduct;
 //delete product
 const deleteProduct = async (req, res, next) => {
-    const { id } = req.params;
+    const { productId } = req.query;
     try {
-        const response = await productService_1.productService.deletedProduct(id, req.user.role);
+        const response = await productService_1.productService.deletedProduct(productId, req.user.role);
         return res.status(200).json(response);
     }
     catch (error) {

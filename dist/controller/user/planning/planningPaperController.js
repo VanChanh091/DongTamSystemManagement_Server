@@ -1,78 +1,59 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.notifyUpdatePlanning = exports.updateIndex_TimeRunning = exports.pauseOrAcceptLackQtyPLanning = exports.confirmCompletePaper = exports.changeMachinePlanning = exports.getPlanningPaperByfield = exports.getPlanningByMachine = void 0;
+exports.notifyUpdatePlanning = exports.updateIndex_TimeRunning = exports.updatePlanningPapers = exports.getPlanningPapers = void 0;
 const planningPaperService_1 = require("../../../service/planning/planningPaperService");
 const appError_1 = require("../../../utils/appError");
-//===============================PRODUCTION QUEUE=====================================
-//get planning by machine
-const getPlanningByMachine = async (req, res, next) => {
-    const { machine } = req.query;
+const getPlanningPapers = async (req, res, next) => {
+    const { machine, field, keyword } = req.query;
     try {
         if (!machine) {
             throw appError_1.AppError.BadRequest("Missing machine parameter", "MISSING_PARAMETERS");
         }
-        const response = await planningPaperService_1.planningPaperService.getPlanningByMachine(machine);
-        return res.status(201).json(response);
+        let response;
+        // 1. Nhánh tìm kiếm theo field
+        if (field && keyword) {
+            response = await planningPaperService_1.planningPaperService.getPlanningByField(machine, field, keyword);
+        }
+        // 2. Nhánh lấy tất cả
+        else {
+            response = await planningPaperService_1.planningPaperService.getPlanningPaperByMachine(machine);
+        }
+        return res.status(200).json(response);
     }
     catch (error) {
         next(error);
     }
 };
-exports.getPlanningByMachine = getPlanningByMachine;
-//get planning paper by field
-const getPlanningPaperByfield = async (req, res, next) => {
-    const { machine, field, keyword } = req.query;
-    try {
-        const response = await planningPaperService_1.planningPaperService.getPlanningByField(machine, field, keyword);
-        return res.status(201).json(response);
-    }
-    catch (error) {
-        next(error);
-    }
-};
-exports.getPlanningPaperByfield = getPlanningPaperByfield;
-//change planning machine
-const changeMachinePlanning = async (req, res, next) => {
-    const { planningIds, newMachine } = req.body;
+exports.getPlanningPapers = getPlanningPapers;
+const updatePlanningPapers = async (req, res, next) => {
+    const { planningIds, newMachine, newStatus, rejectReason, isConfirm } = req.body;
     try {
         if (!Array.isArray(planningIds) || planningIds.length === 0) {
             throw appError_1.AppError.BadRequest("Missing planningIds parameter", "MISSING_PARAMETERS");
         }
-        const response = await planningPaperService_1.planningPaperService.changeMachinePlanning(planningIds, newMachine);
-        return res.status(201).json(response);
-    }
-    catch (error) {
-        next(error);
-    }
-};
-exports.changeMachinePlanning = changeMachinePlanning;
-//confirm complete
-const confirmCompletePaper = async (req, res, next) => {
-    const { planningIds } = req.body;
-    try {
-        const response = await planningPaperService_1.planningPaperService.confirmCompletePlanningPaper(planningIds);
-        return res.status(201).json(response);
-    }
-    catch (error) {
-        next(error);
-    }
-};
-exports.confirmCompletePaper = confirmCompletePaper;
-//pause or accept lack of qty
-const pauseOrAcceptLackQtyPLanning = async (req, res, next) => {
-    const { planningIds, newStatus, rejectReason } = req.body;
-    try {
-        if (!Array.isArray(planningIds) || planningIds.length === 0) {
-            throw appError_1.AppError.BadRequest("Missing planningIds parameter", "MISSING_PARAMETERS");
+        let response;
+        // 1. Đổi máy
+        if (newMachine) {
+            response = await planningPaperService_1.planningPaperService.changeMachinePlanning(planningIds, newMachine);
         }
-        const response = await planningPaperService_1.planningPaperService.pauseOrAcceptLackQtyPLanning(planningIds, newStatus, rejectReason);
-        return res.status(201).json(response);
+        // 2. Xác nhận sản xuất
+        else if (isConfirm) {
+            response = await planningPaperService_1.planningPaperService.confirmCompletePlanningPaper(planningIds);
+        }
+        // 3. Tạm dừng hoặc chấp nhận thiếu
+        else if (newStatus) {
+            response = await planningPaperService_1.planningPaperService.pauseOrAcceptLackQtyPLanning(planningIds, newStatus, rejectReason);
+        }
+        else {
+            throw appError_1.AppError.BadRequest("No valid action provided", "INVALID_ACTION");
+        }
+        return res.status(200).json(response);
     }
     catch (error) {
         next(error);
     }
 };
-exports.pauseOrAcceptLackQtyPLanning = pauseOrAcceptLackQtyPLanning;
+exports.updatePlanningPapers = updatePlanningPapers;
 //update index & time running
 const updateIndex_TimeRunning = async (req, res, next) => {
     const { machine, updateIndex, dayStart, timeStart, totalTimeWorking, isNewDay } = req.body;

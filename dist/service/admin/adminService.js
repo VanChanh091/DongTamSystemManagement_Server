@@ -136,6 +136,7 @@ exports.adminService = {
                 });
             }
             await order.save();
+            //socket
             const ownerId = order.userId;
             const badgeCount = await order_1.Order.count({ where: { status: "reject", userId: ownerId } });
             const roomName = `reject-order-${ownerId}`;
@@ -172,6 +173,52 @@ exports.adminService = {
         }
     },
     //===============================ADMIN USER======================================
+    getUsersAdmin: async (field, keyword) => {
+        try {
+            let users = [];
+            let message = "Get all users successfully (excluding admin)";
+            if (!field || !keyword) {
+                // Nếu không có field/keyword -> Lấy tất cả
+                users = await adminRepository_1.adminRepository.getAllUser();
+            }
+            else {
+                switch (field) {
+                    case "name":
+                        users = await adminRepository_1.adminRepository.getUserByName(keyword);
+                        message = "Get all users by name from DB";
+                        break;
+                    case "phone":
+                        users = await adminRepository_1.adminRepository.getUserByPhone(keyword);
+                        message = "Get user by phone from DB";
+                        break;
+                    case "permission":
+                        const permsArray = Array.isArray(keyword) ? keyword : [keyword];
+                        const lowerPermissions = permsArray.map((p) => p.toLowerCase()).filter(Boolean);
+                        // Lấy tất cả user và lọc theo logic permission của bạn
+                        const allUsers = await adminRepository_1.adminRepository.getAllUser();
+                        users = allUsers.filter((user) => {
+                            const userPerms = Array.isArray(user.permissions)
+                                ? user.permissions
+                                : JSON.parse(user.permissions || "[]");
+                            return userPerms.some((p) => lowerPermissions.includes(p.toLowerCase()));
+                        });
+                        message = "Get users by permission from DB";
+                        break;
+                }
+            }
+            const sanitizedUsers = users
+                .map((user) => (typeof user.get === "function" ? user.get({ plain: true }) : user))
+                .filter((user) => user.role?.toLowerCase() !== "admin");
+            return { message, data: sanitizedUsers };
+        }
+        catch (error) {
+            console.error(`Failed to get users by ${field}`, error);
+            if (error instanceof appError_1.AppError)
+                throw error;
+            throw appError_1.AppError.ServerError();
+        }
+    },
+    //delete
     getAllUsers: async () => {
         try {
             const data = await adminRepository_1.adminRepository.getAllUser();
@@ -185,6 +232,7 @@ exports.adminService = {
             throw appError_1.AppError.ServerError();
         }
     },
+    //delete
     getUserByName: async (name) => {
         try {
             if (!name) {
@@ -206,6 +254,7 @@ exports.adminService = {
             throw appError_1.AppError.ServerError();
         }
     },
+    //delete
     getUserByPhone: async (phone) => {
         try {
             if (!phone) {
@@ -227,6 +276,7 @@ exports.adminService = {
             throw appError_1.AppError.ServerError();
         }
     },
+    //delete
     getUserByPermission: async (permission) => {
         try {
             if (!permission) {
@@ -318,29 +368,6 @@ exports.adminService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    deleteUserById: async (userId) => {
-        try {
-            const user = await adminRepository_1.adminRepository.getUserByPk(userId);
-            if (!user) {
-                throw appError_1.AppError.NotFound("User not found", "USER_NOT_FOUND");
-            }
-            const imageName = user.avatar;
-            await user.destroy();
-            if (imageName && imageName.includes("cloudinary.com")) {
-                const publicId = (0, converToWebp_1.getCloudinaryPublicId)(imageName);
-                if (publicId) {
-                    await connectCloudinary_1.default.uploader.destroy(publicId);
-                }
-            }
-            return { message: "User deleted successfully" };
-        }
-        catch (error) {
-            console.error("Error deleting user:", error);
-            if (error instanceof appError_1.AppError)
-                throw error;
-            throw appError_1.AppError.ServerError();
-        }
-    },
     resetPassword: async (userIds, newPassword) => {
         try {
             if (!Array.isArray(userIds) || userIds.length === 0 || !newPassword) {
@@ -365,6 +392,29 @@ exports.adminService = {
         }
         catch (error) {
             console.error("Error resetting passwords:", error);
+            if (error instanceof appError_1.AppError)
+                throw error;
+            throw appError_1.AppError.ServerError();
+        }
+    },
+    deleteUserById: async (userId) => {
+        try {
+            const user = await adminRepository_1.adminRepository.getUserByPk(userId);
+            if (!user) {
+                throw appError_1.AppError.NotFound("User not found", "USER_NOT_FOUND");
+            }
+            const imageName = user.avatar;
+            await user.destroy();
+            if (imageName && imageName.includes("cloudinary.com")) {
+                const publicId = (0, converToWebp_1.getCloudinaryPublicId)(imageName);
+                if (publicId) {
+                    await connectCloudinary_1.default.uploader.destroy(publicId);
+                }
+            }
+            return { message: "User deleted successfully" };
+        }
+        catch (error) {
+            console.error("Error deleting user:", error);
             if (error instanceof appError_1.AppError)
                 throw error;
             throw appError_1.AppError.ServerError();

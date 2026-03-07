@@ -2,7 +2,6 @@ import redisCache from "../../../assest/configs/redisCache";
 import { warehouseRepository } from "../../../repository/warehouseRepository";
 import { AppError } from "../../appError";
 import { CacheKey } from "../cache/cacheKey";
-import { CacheManager } from "../cache/cacheManager";
 import { normalizeVN } from "../normalizeVN";
 
 export const getInboundByField = async <T>({

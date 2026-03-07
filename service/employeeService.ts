@@ -147,8 +147,6 @@ export const employeeService = {
           transaction,
         });
 
-        console.log(lastEmployee?.toJSON());
-
         let nextNumber = 1;
         if (lastEmployee && lastEmployee.employeeCode) {
           const part = lastEmployee.employeeCode.split("-");
@@ -159,8 +157,6 @@ export const employeeService = {
         // Generate next employee code - format: PREFIX-XXX
         const prefix = companyInfo.employeeCode.toUpperCase();
         const nextCode = `${prefix}-${nextNumber.toString().padStart(3, "0")}`;
-
-        console.log(nextCode);
 
         const newBasicInfo = await employeeRepository.createEmployee(
           EmployeeBasicInfo,
@@ -187,6 +183,8 @@ export const employeeService = {
     const { companyInfo, ...basicInfo } = data;
     try {
       return await runInTransaction(async (transaction) => {
+        console.log(data);
+
         const employee = await employeeRepository.findEmployeeByPk(employeeId, transaction);
         if (!employee) {
           throw AppError.NotFound("Employee not found", "EMPLOYEE_NOT_FOUND");

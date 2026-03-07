@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteOrder = exports.updateOrder = exports.addOrder = exports.getOrderPendingAndReject = exports.getOrderByField = exports.getOrderAcceptAndPlanning = exports.getOrderDetail = exports.getOrderIdRaw = void 0;
+exports.deleteOrder = exports.updateOrder = exports.addOrder = exports.getOrderPendingAndReject = exports.getOrdersAcceptPlanning = exports.getOrderDetail = exports.getOrderIdRaw = void 0;
 const orderService_1 = require("../../../service/orderService");
 //===============================ORDER AUTOCOMPLETE=====================================
 const getOrderIdRaw = async (req, res, next) => {
@@ -26,29 +26,25 @@ const getOrderDetail = async (req, res, next) => {
 };
 exports.getOrderDetail = getOrderDetail;
 //===============================ACCEPT AND PLANNING=====================================
-//get order status accept and planning
-const getOrderAcceptAndPlanning = async (req, res, next) => {
-    const { page = 1, pageSize = 20, ownOnly = "false", } = req.query;
+const getOrdersAcceptPlanning = async (req, res, next) => {
+    const { field, keyword, page = 1, pageSize = 20, ownOnly = "false", } = req.query;
     try {
-        const response = await orderService_1.orderService.getOrderAcceptAndPlanning(Number(page), Number(pageSize), ownOnly, req.user);
-        return res.status(201).json(response);
+        let response;
+        // 1. Nhánh tìm kiếm theo field
+        if (field && keyword) {
+            response = await orderService_1.orderService.getOrderByField(field, keyword, Number(page), Number(pageSize), req.user);
+        }
+        // 2. Nhánh lấy tất cả
+        else {
+            response = await orderService_1.orderService.getOrderAcceptAndPlanning(Number(page), Number(pageSize), ownOnly, req.user);
+        }
+        return res.status(200).json(response);
     }
     catch (error) {
         next(error);
     }
 };
-exports.getOrderAcceptAndPlanning = getOrderAcceptAndPlanning;
-const getOrderByField = async (req, res, next) => {
-    const { field, keyword, page, pageSize } = req.query;
-    try {
-        const response = await orderService_1.orderService.getOrderByField(field, keyword, Number(page), Number(pageSize), req.user);
-        return res.status(201).json(response);
-    }
-    catch (error) {
-        next(error);
-    }
-};
-exports.getOrderByField = getOrderByField;
+exports.getOrdersAcceptPlanning = getOrdersAcceptPlanning;
 //===============================PENDING AND REJECT=====================================
 //get order pending and reject
 const getOrderPendingAndReject = async (req, res, next) => {
@@ -87,9 +83,9 @@ const updateOrder = async (req, res, next) => {
 exports.updateOrder = updateOrder;
 // delete order
 const deleteOrder = async (req, res, next) => {
-    const { id } = req.query;
+    const { orderId } = req.query;
     try {
-        const response = await orderService_1.orderService.deleteOrder(id);
+        const response = await orderService_1.orderService.deleteOrder(orderId);
         return res.status(201).json(response);
     }
     catch (error) {

@@ -10,25 +10,23 @@ const planningPaperController_1 = require("../../controller/user/planning/planni
 const planningBoxController_1 = require("../../controller/user/planning/planningBoxController");
 const planningStatusController_1 = require("../../controller/user/planning/planningStatusController");
 const router = (0, express_1.Router)();
-//=========================WAITING FOR PLANNING=========================
-router.get("/", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningStatusController_1.getOrderAccept);
-router.post("/planningOrder", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningStatusController_1.planningOrder);
+//=========================PLANNING STATUS=========================
+//planning order
+router.get("/planning-orders", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningStatusController_1.getOrderAccept);
+router.post("/planning-orders", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningStatusController_1.planningOrder);
+router.put("/planning-orders", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningStatusController_1.backOrderToReject);
+//planning stop
+router.get("/planning-stops", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningStatusController_1.getPlanningStop);
+router.put("/planning-stops", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningStatusController_1.cancelOrContinuePlannning);
 //=========================PLANNING PAPER=========================
-router.get("/byMachinePaper", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningPaperController_1.getPlanningByMachine);
-router.get("/filterPaper", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningPaperController_1.getPlanningPaperByfield);
-router.post("/updateIndex_TimeRunningPaper", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningPaperController_1.updateIndex_TimeRunning);
-router.post("/notifyPlanning", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningPaperController_1.notifyUpdatePlanning);
-router.put("/changeMachinePaper", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningPaperController_1.changeMachinePlanning);
-router.put("/confirmPaper", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningPaperController_1.confirmCompletePaper);
-router.put("/pauseOrAcceptLackQtyPaper", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningPaperController_1.pauseOrAcceptLackQtyPLanning);
+router.get("/planning-papers", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningPaperController_1.getPlanningPapers);
+router.post("/planning-papers", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningPaperController_1.updateIndex_TimeRunning);
+router.put("/planning-papers", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningPaperController_1.updatePlanningPapers);
 //=========================PLANNING BOX=========================
-router.get("/byMachineBox", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningBoxController_1.getPlanningBox);
-router.get("/filterBox", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningBoxController_1.getPlanningBoxByfield);
-router.post("/updateIndex_TimeRunningBox", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningBoxController_1.updateIndex_TimeRunningBox);
-router.put("/confirmBox", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningBoxController_1.confirmCompleteBox);
-router.put("/acceptLackQtyBox", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningBoxController_1.acceptLackQtyBox);
-//=========================PLANNING BOX=========================
-router.get("/getPlanningStop", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningStatusController_1.getPlanningStop);
-router.put("/updateStopById", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningStatusController_1.cancelOrContinuePlannning);
+router.get("/planning-boxes", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningBoxController_1.getPlanningBoxes);
+router.post("/planning-boxes", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningBoxController_1.updateIndex_TimeRunningBox);
+router.put("/planning-boxes", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningBoxController_1.updatePlanningBoxes);
+//socket
+router.post("/notify-planning", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningPaperController_1.notifyUpdatePlanning);
 exports.default = router;
 //# sourceMappingURL=planningRoutes.js.map

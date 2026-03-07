@@ -9,11 +9,10 @@ const productController_1 = require("../../controller/user/product/productContro
 const uploadImage_1 = __importDefault(require("../../utils/image/uploadImage"));
 const permissionMiddleware_1 = require("../../middlewares/permissionMiddleware");
 const router = (0, express_1.Router)();
-router.get("/", authMiddleware_1.default, productController_1.getAllProduct);
-router.get("/filter", authMiddleware_1.default, productController_1.getProductByField);
-router.post("/exportExcel", authMiddleware_1.default, productController_1.exportExcelProduct);
+router.get("/", authMiddleware_1.default, productController_1.getProducts);
+router.post("/export", authMiddleware_1.default, productController_1.exportExcelProduct);
 router.post("/", authMiddleware_1.default, uploadImage_1.default.single("productImage"), (0, permissionMiddleware_1.authorizeAnyPermission)(["sale"]), productController_1.addProduct);
-router.put("/updateProduct", authMiddleware_1.default, uploadImage_1.default.single("productImage"), (0, permissionMiddleware_1.authorizeAnyPermission)(["sale"]), productController_1.updateProduct);
-router.delete("/:id", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["sale"]), productController_1.deleteProduct);
+router.put("/", authMiddleware_1.default, uploadImage_1.default.single("productImage"), (0, permissionMiddleware_1.authorizeAnyPermission)(["sale"]), productController_1.updateProduct);
+router.delete("/", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["sale"]), productController_1.deleteProduct);
 exports.default = router;
 //# sourceMappingURL=productRoutes.js.map

@@ -9,13 +9,14 @@ const manufactureController_1 = require("../../controller/user/manufacture/manuf
 const permissionMiddleware_1 = require("../../middlewares/permissionMiddleware");
 const router = (0, express_1.Router)();
 //=========================PAPER=========================
-router.get("/planningPaper", authMiddleware_1.default, manufactureController_1.getPlanningPaper);
-router.post("/reportPaper", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["machine1350", "machine1900", "machine2Layer", "MachineRollPaper"]), manufactureController_1.addReportPaper);
-router.post("/producingPaper", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["machine1350", "machine1900", "machine2Layer", "MachineRollPaper"]), manufactureController_1.confirmProducingPaper);
+router.get("/paper", authMiddleware_1.default, manufactureController_1.getPlanningPaper);
+router.post("/paper", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["machine1350", "machine1900", "machine2Layer", "MachineRollPaper"]), manufactureController_1.addReportPaper);
+router.post("/paper/confirm", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["machine1350", "machine1900", "machine2Layer", "MachineRollPaper"]), manufactureController_1.confirmProducingPaper);
+router.put("/paper", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["machine1350", "machine1900", "machine2Layer", "MachineRollPaper"]), manufactureController_1.updateReportPaper);
 //=========================BOX=========================
-router.get("/planningBox", authMiddleware_1.default, manufactureController_1.getPlanningBox);
-router.post("/reportBox", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["step2Production"]), manufactureController_1.addReportBox);
-router.post("/producingBox", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["step2Production"]), manufactureController_1.confirmProducingBox);
-router.put("/requestCheck", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["step2Production"]), manufactureController_1.updateRequestStockCheck);
+router.get("/box", authMiddleware_1.default, manufactureController_1.getPlanningBox);
+router.post("/box", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["step2Production"]), manufactureController_1.addReportBox);
+router.post("/box/confirm", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["step2Production"]), manufactureController_1.confirmProducingBox);
+router.put("/box", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["step2Production"]), manufactureController_1.updateRequestStockCheck);
 exports.default = router;
 //# sourceMappingURL=manufactureRoutes.js.map

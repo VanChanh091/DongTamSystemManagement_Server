@@ -13,7 +13,6 @@ const appError_1 = require("../utils/appError");
 const planningPaper_1 = require("../models/planning/planningPaper");
 const planningBoxMachineTime_1 = require("../models/planning/planningBoxMachineTime");
 const timeOverflowPlanning_1 = require("../models/planning/timeOverflowPlanning");
-const manufactureRepository_1 = require("../repository/manufactureRepository");
 const machineLabels_1 = require("../assest/configs/machineLabels");
 const planningRepository_1 = require("../repository/planningRepository");
 const planningBox_1 = require("../models/planning/planningBox");
@@ -25,6 +24,8 @@ const planningHelper_1 = require("../utils/helper/modelHelper/planningHelper");
 const transactionHelper_1 = require("../utils/helper/transactionHelper");
 const cacheKey_1 = require("../utils/helper/cache/cacheKey");
 const planningPaperService_1 = require("./planning/planningPaperService");
+const manufactureHelper_1 = require("../utils/helper/modelHelper/manufactureHelper");
+const manufactureRepository_1 = require("../repository/manufactureRepository");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper, box } = cacheKey_1.CacheKey.manufacture;
 exports.manufactureService = {
@@ -51,7 +52,7 @@ exports.manufactureService = {
                     };
                 }
             }
-            const planning = await manufactureRepository_1.manufactureRepository.getManufacturePaper(machine);
+            const planning = await manufactureRepository_1.manufactureRepo.getManufacturePaper(machine);
             // Lọc đơn complete chỉ giữ lại trong 1 ngày
             const truncateToDate = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
             const now = truncateToDate(new Date());
@@ -112,7 +113,7 @@ exports.manufactureService = {
                     throw appError_1.AppError.BadRequest("Missing required fields", "MISSING_PARAMETERS");
                 }
                 // 1. Tìm kế hoạch hiện tại
-                const planning = await manufactureRepository_1.manufactureRepository.getPapersById(planningId, transaction);
+                const planning = await manufactureRepository_1.manufactureRepo.getPapersById(planningId, transaction);
                 if (!planning) {
                     throw appError_1.AppError.NotFound("planning not found", "PLANNING_NOT_FOUND");
                 }
@@ -132,11 +133,11 @@ exports.manufactureService = {
                 const newQtyWasteNorm = Number(planning.qtyWasteNorm || 0) + Number(qtyWasteNorm || 0);
                 // update status dựa trên qtyProduced
                 const isCompleted = newQtyProduced >= planning.runningPlan;
+                // Logic Overflow
                 const isOverflowReport = planning.hasOverFlow &&
                     planning.timeOverFlow &&
                     new Date(dayCompleted) >= new Date(planning.timeOverFlow?.overflowDayStart ?? "");
                 let overflow, dayReportValue;
-                //get timeOverflowPlanning
                 if (planning.hasOverFlow) {
                     overflow = await planningRepository_1.planningRepository.getModelById({
                         model: timeOverflowPlanning_1.timeOverflowPlanning,
@@ -179,7 +180,7 @@ exports.manufactureService = {
                     await planningBox.update({ qtyPaper: newQtyProduced }, { transaction });
                 }
                 //check qty to change status order
-                const allPlans = await manufactureRepository_1.manufactureRepository.getPapersByOrderId(planning.orderId, transaction);
+                const allPlans = await manufactureRepository_1.manufactureRepo.getPapersByOrderId(planning.orderId, transaction);
                 const totalQtyProduced = allPlans.reduce((sum, p) => sum + Number(p.qtyProduced || 0), 0);
                 const quantityCustomer = planning.Order?.quantityCustomer || 0;
                 if (totalQtyProduced >= quantityCustomer) {
@@ -214,7 +215,97 @@ exports.manufactureService = {
             });
         }
         catch (error) {
-            console.error("Error add Report Production:", error);
+            console.error("Error add Report paper:", error);
+            if (error instanceof appError_1.AppError)
+                throw error;
+            throw appError_1.AppError.ServerError();
+        }
+    },
+    updateReportPaper: async (planningId, updateData, user) => {
+        const { role, permissions: userPermissions } = user;
+        const { qtyProduced: newQty, qtyWasteNorm: newWaste, ...otherData } = updateData;
+        try {
+            return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
+                //check report existed
+                const oldReport = await manufactureRepository_1.manufactureRepo.getReportPaperByPlanningId(planningId, transaction);
+                if (!oldReport) {
+                    throw appError_1.AppError.NotFound("Report not found", "REPORT_NOT_FOUND");
+                }
+                const planning = await manufactureRepository_1.manufactureRepo.getOldPlanningPaper(planningId, transaction);
+                if (!planning) {
+                    throw appError_1.AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
+                }
+                //check permission for machine
+                const machineLabel = machineLabels_1.machineLabels[planning.chooseMachine];
+                if (role !== "admin" && role !== "manager") {
+                    if (!userPermissions.includes(machineLabel)) {
+                        throw appError_1.AppError.Unauthorized("Access denied for this machine", "ACCESS_DENIED");
+                    }
+                }
+                const otherReportsSum = (await reportPlanningPaper_1.ReportPlanningPaper.sum("qtyProduced", {
+                    where: {
+                        planningId: planning.planningId,
+                        reportPaperId: { [sequelize_1.Op.ne]: oldReport.reportPaperId },
+                    },
+                    transaction,
+                })) || 0;
+                // Tính lại lackOfQty cho bản báo cáo này
+                const totalQtyProduced = Number(otherReportsSum) + Number(newQty);
+                console.log(`totalQtyProduced: ${totalQtyProduced}`);
+                const newLackOfQty = planning.runningPlan - totalQtyProduced;
+                //update report paper
+                await oldReport.update({
+                    qtyProduced: newQty,
+                    qtyWasteNorm: newWaste,
+                    lackOfQty: newLackOfQty,
+                    ...otherData,
+                }, { transaction });
+                // Lấy tất cả các lần báo cáo của planning này để gom lại
+                const allReports = await reportPlanningPaper_1.ReportPlanningPaper.findAll({
+                    where: { planningId: planning.planningId },
+                    transaction,
+                });
+                // Tính tổng số lượng từ tất cả báo cáo
+                const qty = allReports.reduce((sum, r) => sum + Number(r.qtyProduced || 0), 0);
+                console.log(`qty: ${qty}`);
+                const totalQtyWaste = allReports.reduce((sum, r) => sum + Number(r.qtyWasteNorm || 0), 0);
+                // Gom chuỗi shiftProduction và shiftManagement (Dùng hàm aggregateReportFields của ông)
+                const { combinedShiftProduction, combinedShiftManagement } = (0, manufactureHelper_1.aggregateReportFields)(allReports);
+                console.log(`combinedShiftProduction: ${combinedShiftProduction}, combinedShiftManagement: ${combinedShiftManagement}`);
+                await planning.update({
+                    qtyProduced: totalQtyProduced,
+                    qtyWasteNorm: totalQtyWaste,
+                    status: totalQtyProduced >= planning.runningPlan ? planning.status : "lackQty",
+                    shiftProduction: combinedShiftProduction,
+                    shiftManagement: combinedShiftManagement,
+                }, { transaction });
+                //update planning box nếu có
+                if (planning.hasBox) {
+                    const planningBox = await planningBox_1.PlanningBox.findOne({
+                        where: { orderId: planning.orderId, planningId: planning.planningId },
+                        transaction,
+                        lock: transaction?.LOCK.UPDATE,
+                    });
+                    if (planningBox) {
+                        await planningBox.update({ qtyPaper: totalQtyProduced }, { transaction });
+                    }
+                }
+                //check qty to change status order
+                const allPlans = await manufactureRepository_1.manufactureRepo.getPapersByOrderId(planning.orderId, transaction);
+                const totalOrderQty = allPlans.reduce((sum, p) => sum + Number(p.qtyProduced || 0), 0);
+                const quantityCustomer = planning.Order?.quantityCustomer || 0;
+                if (totalOrderQty >= quantityCustomer) {
+                    await planningRepository_1.planningRepository.updateDataModel({
+                        model: order_1.Order,
+                        data: { status: "planning" },
+                        options: { where: { orderId: planning.orderId }, transaction },
+                    });
+                }
+                return { message: "Update Report successfully", data: oldReport };
+            });
+        }
+        catch (error) {
+            console.error("Error update Report paper:", error);
             if (error instanceof appError_1.AppError)
                 throw error;
             throw appError_1.AppError.ServerError();
@@ -303,7 +394,7 @@ exports.manufactureService = {
                     };
                 }
             }
-            const planning = await manufactureRepository_1.manufactureRepository.getManufactureBox(machine);
+            const planning = await manufactureRepository_1.manufactureRepo.getManufactureBox(machine);
             //lọc đơn complete trong 1 ngày
             const truncateToDate = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
             const now = truncateToDate(new Date());
@@ -367,7 +458,7 @@ exports.manufactureService = {
                     throw appError_1.AppError.BadRequest("Missing required fields", "MISSING_PARAMETERS");
                 }
                 // 1. Tìm kế hoạch hiện tại
-                const planning = await manufactureRepository_1.manufactureRepository.getBoxById(planningBoxId, machine, transaction);
+                const planning = await manufactureRepository_1.manufactureRepo.getBoxById(planningBoxId, machine, transaction);
                 if (!planning) {
                     throw appError_1.AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
                 }
@@ -484,7 +575,7 @@ exports.manufactureService = {
                     throw appError_1.AppError.Unauthorized("Planning already completed", "PLANNING_HAS_COMPLETED");
                 }
                 // Reset những thằng đang "producing"
-                await manufactureRepository_1.manufactureRepository.updatePlanningBoxTime(planningBoxId, machine, transaction);
+                await manufactureRepository_1.manufactureRepo.updatePlanningBoxTime(planningBoxId, machine, transaction);
                 // Update sang producing
                 await planningRepository_1.planningRepository.updateDataModel({
                     model: planning,
@@ -510,25 +601,14 @@ exports.manufactureService = {
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
                 // Lấy planning cần update
-                const planningBox = await planningBox_1.PlanningBox.findByPk(planningBoxId, {
-                    include: [
-                        {
-                            model: planningBoxMachineTime_1.PlanningBoxTime,
-                            where: { machine, dayStart: { [sequelize_1.Op.ne]: null } },
-                            as: "boxTimes",
-                            attributes: ["boxTimeId", "qtyProduced", "machine", "isRequest"],
-                        },
-                    ],
-                    transaction,
-                    lock: transaction.LOCK.UPDATE,
-                });
+                const planningBox = await manufactureRepository_1.manufactureRepo.getBoxByPK(planningBoxId, machine, transaction);
                 if (!planningBox) {
                     throw appError_1.AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
                 }
                 if (planningBox.statusRequest == "requested") {
                     throw appError_1.AppError.BadRequest("Đơn này đã yêu cầu kiểm tra rồi", "PLANNING_ALREADY_REQUESTED");
                 }
-                const steps = await manufactureRepository_1.manufactureRepository.getAllBoxTimeById(planningBoxId, transaction);
+                const steps = await manufactureRepository_1.manufactureRepo.getAllBoxTimeById(planningBoxId, transaction);
                 //check qty produced
                 const checkQtyProduced = steps.some((step) => step.qtyProduced == null || step.qtyProduced <= 0);
                 console.log(checkQtyProduced);

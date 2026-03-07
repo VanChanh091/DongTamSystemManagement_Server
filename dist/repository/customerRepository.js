@@ -16,7 +16,7 @@ exports.customerRepository = {
     //get by field
     findCustomerByPage: async (page, pageSize) => {
         return await customer_1.Customer.findAll({
-            attributes: { exclude: ["createdAt", "updatedAt"] },
+            attributes: { exclude: ["updatedAt"] },
             offset: (page - 1) * pageSize,
             limit: pageSize,
             order: [["customerSeq", "ASC"]],

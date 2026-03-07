@@ -48,7 +48,7 @@ function initPlanningBoxModel(sequelize) {
         indexes: [
             //FK
             { fields: ["orderId"] },
-            { fields: ["planningId"], unique: true },
+            { fields: ["planningId"] },
             //indexes
             { fields: ["orderId", "planningId"] },
         ],

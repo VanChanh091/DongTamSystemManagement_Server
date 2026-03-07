@@ -8,9 +8,8 @@ import {
   createDeliveryPlan,
   exportScheduleDelivery,
   getAllScheduleDelivery,
-  getDeliveryPlanDetailForEdit,
+  getPendingDelivery,
   getPlanningEstimateTime,
-  getPlanningPendingDelivery,
 } from "../../controller/user/delivery/deliveryController";
 
 const router = Router();
@@ -18,13 +17,13 @@ const router = Router();
 //===============================PLANNING ESTIMATE TIME==================================
 
 router.get(
-  "/getPlanningEstimate",
+  "/estimate",
   authenticate,
   authorizeAnyPermission(["plan", "sale"]),
   getPlanningEstimateTime,
 );
 router.put(
-  "/confirmReadyDelivery",
+  "/estimate",
   authenticate,
   authorizeAnyPermission(["plan", "sale"]),
   confirmReadyDeliveryPlanning,
@@ -32,41 +31,20 @@ router.put(
 
 //=================================PLANNING DELIVERY=====================================
 
-router.get(
-  "/getPlanningPending",
-  authenticate,
-  authorizeAnyPermission(["plan"]),
-  getPlanningPendingDelivery,
-);
-router.get(
-  "/getDeliveryPlanDetail",
-  authenticate,
-  authorizeAnyPermission(["plan"]),
-  getDeliveryPlanDetailForEdit,
-);
-router.post(
-  "/createDeliveryPlan",
-  authenticate,
-  authorizeAnyPermission(["plan"]),
-  createDeliveryPlan,
-);
-router.put(
-  "/confirmDelivery",
-  authenticate,
-  authorizeAnyPermission(["plan"]),
-  confirmForDeliveryPlanning,
-);
+router.get("/delivery", authenticate, authorizeAnyPermission(["plan"]), getPendingDelivery);
+router.post("/delivery", authenticate, authorizeAnyPermission(["plan"]), createDeliveryPlan);
+router.put("/delivery", authenticate, authorizeAnyPermission(["plan"]), confirmForDeliveryPlanning);
 
 //=================================SCHEDULE DELIVERY=====================================
-router.get("/getScheduleDelivery", authenticate, getAllScheduleDelivery);
+router.get("/schedule", authenticate, getAllScheduleDelivery);
 router.put(
-  "/updateStatusDelivery",
+  "/schedule",
   authenticate,
   authorizeAnyPermission(["plan", "delivery"]),
   cancelOrCompleteDeliveryPlan,
 );
 router.post(
-  "/exportExcel",
+  "/schedule/export",
   authenticate,
   authorizeAnyPermission(["plan", "delivery"]),
   exportScheduleDelivery,

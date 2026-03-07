@@ -1,19 +1,28 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cancelOrContinuePlannning = exports.getPlanningStop = exports.planningOrder = exports.getOrderAccept = void 0;
+exports.cancelOrContinuePlannning = exports.getPlanningStop = exports.backOrderToReject = exports.planningOrder = exports.getOrderAcceptByField = exports.getOrderAccept = void 0;
 const planningStatusService_1 = require("../../../service/planning/planningStatusService");
 const appError_1 = require("../../../utils/appError");
 ///contain planning order and stop
 //===============================PLANNING ORDER=====================================
 //getOrderAccept
 const getOrderAccept = async (req, res, next) => {
+    const { type, field, keyword } = req.query;
+    //planned and unplanned
     try {
-        const response = await planningStatusService_1.planningStatusService.getOrderAccept();
+        let response;
+        if (field && keyword) {
+            response = await planningStatusService_1.planningStatusService.getOrderAcceptByField(type, field, keyword);
+        }
+        else {
+            response = await planningStatusService_1.planningStatusService.getOrderAccept(type);
+        }
         return res.status(200).json({
             ...response,
-            message: response.fromCache
-                ? "get all order have status:accept from cache"
-                : "get all order have status:accept",
+            // message: response.fromCache //fix cache for 2 case: have running plan or not have running plan
+            //   ? "get all order have status:accept from cache"
+            //   : "get all order have status:accept",
+            message: "get all order have status:accept",
         });
     }
     catch (error) {
@@ -21,6 +30,17 @@ const getOrderAccept = async (req, res, next) => {
     }
 };
 exports.getOrderAccept = getOrderAccept;
+const getOrderAcceptByField = async (req, res, next) => {
+    const { type, field, keyword } = req.query;
+    try {
+        const response = await planningStatusService_1.planningStatusService.getOrderAcceptByField(type, field, keyword);
+        return res.status(200).json(response);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.getOrderAcceptByField = getOrderAcceptByField;
 //planning order
 const planningOrder = async (req, res, next) => {
     const { orderId } = req.query;
@@ -37,6 +57,17 @@ const planningOrder = async (req, res, next) => {
     }
 };
 exports.planningOrder = planningOrder;
+const backOrderToReject = async (req, res, next) => {
+    const { orderId } = req.query;
+    try {
+        const response = await planningStatusService_1.planningStatusService.backOrderToReject(req, orderId);
+        return res.status(201).json(response);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.backOrderToReject = backOrderToReject;
 //===============================PLANNING STOP=====================================
 const getPlanningStop = async (req, res, next) => {
     const { page = 1, pageSize = 20 } = req.query;

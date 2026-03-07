@@ -9,15 +9,14 @@ const permissionMiddleware_1 = require("../../middlewares/permissionMiddleware")
 const badgeController_1 = require("../../controller/badge/badgeController");
 const router = (0, express_1.default)();
 //pending order
-router.get("/countPending", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["admin"]), badgeController_1.countOrderPending);
+router.get("/count-pending", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["admin"]), badgeController_1.countOrderPending);
 //order reject
-router.get("/countRejected", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["sale"]), badgeController_1.countOrderRejected);
+router.get("/count-rejected", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["sale"]), badgeController_1.countOrderRejected);
 //order pending planning
-router.get("/countPendingPlanning", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), badgeController_1.countOrderPendingPlanning);
+router.get("/count-pending-planning", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), badgeController_1.countOrderPendingPlanning);
 //planning stop
-router.get("/countPlanningStop", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), badgeController_1.countPlanningStop);
+router.get("/count-planning-stop", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), badgeController_1.countPlanningStop);
 //waiting check paper & box
-router.get("/countWaitingCheckPaper", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["QC"]), badgeController_1.countWaitingCheckPaper);
-router.get("/countWaitingCheckBox", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["QC"]), badgeController_1.countWaitingCheckBox);
+router.get("/count-waiting-check", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["QC"]), badgeController_1.countWaitingCheck);
 exports.default = router;
 //# sourceMappingURL=badgeRoutes.js.map

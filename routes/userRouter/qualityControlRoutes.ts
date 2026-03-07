@@ -5,8 +5,7 @@ import {
   createNewResult,
   createNewSession,
   getAllQcResult,
-  getAllQcSession,
-  getSessionByFk,
+  getQcSession,
   submitQC,
   updateResult,
   updateSession,
@@ -16,23 +15,17 @@ import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 const router = Router();
 
 //==================QC SESSION======================
-router.get("/getSession", authenticate, getAllQcSession);
-router.get("/getSessionByFk", authenticate, getSessionByFk);
-router.post("/newSession", authenticate, authorizeAnyPermission(["QC"]), createNewSession);
-router.put("/updateSession", authenticate, authorizeAnyPermission(["QC"]), updateSession);
+router.get("/session", authenticate, getQcSession);
+router.post("/session", authenticate, authorizeAnyPermission(["QC"]), createNewSession);
+router.put("/session", authenticate, authorizeAnyPermission(["QC"]), updateSession);
 
 //==================QC RESULT=======================
-router.get("/getResult", authenticate, getAllQcResult);
-router.post("/newResult", authorizeAnyPermission(["QC"]), authenticate, createNewResult);
-router.put("/updateResult", authorizeAnyPermission(["QC"]), authenticate, updateResult);
-router.put(
-  "/confirmFinalize",
-  authorizeAnyPermission(["QC"]),
-  authenticate,
-  confirmFinalizeSession
-);
+router.get("/result", authenticate, getAllQcResult);
+router.post("/result", authorizeAnyPermission(["QC"]), authenticate, createNewResult);
+router.put("/result", authorizeAnyPermission(["QC"]), authenticate, updateResult);
+router.put("/result/confirm", authorizeAnyPermission(["QC"]), authenticate, confirmFinalizeSession);
 
 //==================ORCHESTRATOR=======================
-router.post("/submitQC", authenticate, authorizeAnyPermission(["QC"]), submitQC);
+router.post("/submit", authenticate, authorizeAnyPermission(["QC"]), submitQC);
 
 export default router;

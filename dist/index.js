@@ -3,12 +3,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const http_1 = __importDefault(require("http"));
 const path_1 = __importDefault(require("path"));
-const dotenv_1 = __importDefault(require("dotenv"));
-dotenv_1.default.config();
 const connectDB_1 = require("./assest/configs/connectDB");
 const authMiddleware_1 = __importDefault(require("./middlewares/authMiddleware"));
 //routes
@@ -17,6 +17,7 @@ const index_1 = require("./routes/index");
 require("./models/index");
 const socket_1 = require("./utils/socket/socket");
 const appError_1 = require("./utils/appError");
+const telegramSending_1 = require("./utils/telegram/telegramSending");
 const app = (0, express_1.default)();
 const server = http_1.default.createServer(app);
 const io = (0, socket_1.initSocket)(server);
@@ -43,6 +44,7 @@ app.use("/updates", express_1.default.static(path_1.default.join(process.cwd(), 
 //        ROUTES
 // ========================
 app.use("/auth", index_1.authRoutes);
+//sau khi đi qua authenticate thì mới vào được các route dưới đây
 app.use(authMiddleware_1.default);
 app.use("/api/admin", index_1.adminRoutes);
 app.use("/api/dashboard", index_1.dashboardRoutes);
@@ -72,6 +74,19 @@ app.use((err, req, res, next) => {
             errorCode: err.errorCode,
         });
     }
+    //message telegram
+    const user = req.user;
+    const userInfo = `*User:* ${user.email} (ID: ${user.userId})`;
+    const cleanedStack = (0, telegramSending_1.cleanStackTrace)(err.stack);
+    const alertMessage = `
+  🚨 *SERVER ERROR (500)* 🚨
+  ---------------------------
+  ${userInfo}
+  *Path:* \`${req.method} ${req.originalUrl}\`
+  *Message:* ${err.message}
+  *Time:* ${new Date().toLocaleString("vi-VN")}
+  *Stack Trace:*\`\`\`${cleanedStack}\`\`\``;
+    (0, telegramSending_1.sendTelegramAlert)(alertMessage).catch(console.error);
     // Lỗi server thật (bug, DB lỗi, runtime crash)
     console.error("🔥 SERVER ERROR:", {
         message: err.message,

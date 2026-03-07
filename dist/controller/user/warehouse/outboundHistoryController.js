@@ -1,20 +1,31 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.exportFileOutbound = exports.getOrderInboundQty = exports.searchOrderIds = exports.searchOutboundByField = exports.deleteOutbound = exports.updateOutbound = exports.createOutbound = exports.getOutboundDetail = exports.getAllOutboundHistory = void 0;
+exports.exportFileOutbound = exports.outboundAutoComplete = exports.deleteOutbound = exports.updateOutbound = exports.createOutbound = exports.getOutboundDetail = exports.getOutboundHistory = void 0;
 const outboundService_1 = require("../../../service/warehouse/outboundService");
 const appError_1 = require("../../../utils/appError");
 //===============================OUTBOUND HISTORY=====================================
-const getAllOutboundHistory = async (req, res, next) => {
-    const { page, pageSize } = req.query;
+const getOutboundHistory = async (req, res, next) => {
+    const { field, keyword, page, pageSize } = req.query;
     try {
-        const response = await outboundService_1.outboundService.getAllOutboundHistory(Number(page), Number(pageSize));
+        let response;
+        if (field && keyword) {
+            response = await outboundService_1.outboundService.searchOutboundByField({
+                field,
+                keyword,
+                page: Number(page),
+                pageSize: Number(pageSize),
+            });
+        }
+        else {
+            response = await outboundService_1.outboundService.getAllOutboundHistory(Number(page), Number(pageSize));
+        }
         return res.status(200).json(response);
     }
     catch (error) {
         next(error);
     }
 };
-exports.getAllOutboundHistory = getAllOutboundHistory;
+exports.getOutboundHistory = getOutboundHistory;
 const getOutboundDetail = async (req, res, next) => {
     const { outboundId } = req.query;
     try {
@@ -71,44 +82,24 @@ const deleteOutbound = async (req, res, next) => {
     }
 };
 exports.deleteOutbound = deleteOutbound;
-const searchOutboundByField = async (req, res, next) => {
-    const { field, keyword, page, pageSize } = req.query;
+//auto complete -> searchOrderIds or getOrderInboundQty
+const outboundAutoComplete = async (req, res, next) => {
+    const { orderId, isSearch } = req.query;
     try {
-        const response = await outboundService_1.outboundService.searchOutboundByField({
-            field,
-            keyword,
-            page: Number(page),
-            pageSize: Number(pageSize),
-        });
+        let response;
+        if (isSearch === "true") {
+            response = await outboundService_1.outboundService.searchOrderIds(orderId);
+        }
+        else {
+            response = await outboundService_1.outboundService.getOrderInboundQty(orderId);
+        }
         return res.status(200).json(response);
     }
     catch (error) {
         next(error);
     }
 };
-exports.searchOutboundByField = searchOutboundByField;
-const searchOrderIds = async (req, res, next) => {
-    const { orderId } = req.query;
-    try {
-        const response = await outboundService_1.outboundService.searchOrderIds(orderId);
-        return res.status(200).json(response);
-    }
-    catch (error) {
-        next(error);
-    }
-};
-exports.searchOrderIds = searchOrderIds;
-const getOrderInboundQty = async (req, res, next) => {
-    const { orderId } = req.query;
-    try {
-        const response = await outboundService_1.outboundService.getOrderInboundQty(orderId);
-        return res.status(200).json(response);
-    }
-    catch (error) {
-        next(error);
-    }
-};
-exports.getOrderInboundQty = getOrderInboundQty;
+exports.outboundAutoComplete = outboundAutoComplete;
 const exportFileOutbound = async (req, res, next) => {
     const { outboundId } = req.query;
     try {

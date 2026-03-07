@@ -8,8 +8,8 @@ const authController_1 = require("../../controller/auth/authController");
 const authRoutes = (0, express_1.default)();
 authRoutes.post("/login", authController_1.login);
 authRoutes.post("/register", authController_1.register);
-authRoutes.post("/getOtpCode", authController_1.getOtpCode);
-authRoutes.post("/verifyOTPChangePassword", authController_1.verifyOTPChangePassword);
-authRoutes.post("/changePassword", authController_1.changePassword);
+authRoutes.post("/get-otp-code", authController_1.getOtpCode);
+authRoutes.post("/verify-otp-change-password", authController_1.verifyOTPChangePassword);
+authRoutes.post("/change-password", authController_1.changePassword);
 exports.default = authRoutes;
 //# sourceMappingURL=authRoutes.js.map

@@ -7,10 +7,8 @@ const express_1 = require("express");
 const authMiddleware_1 = __importDefault(require("../../middlewares/authMiddleware"));
 const dashboardController_1 = require("../../controller/dashboard/dashboardController");
 const router = (0, express_1.Router)();
-router.get("/paper", authMiddleware_1.default, dashboardController_1.getAllDashboardPlanning);
-router.get("/getDetail", authMiddleware_1.default, dashboardController_1.getDbPlanningDetail);
-router.get("/getDbByField", authMiddleware_1.default, dashboardController_1.getDbPlanningByFields);
-router.get("/getAll", authMiddleware_1.default, dashboardController_1.getAllDbPlanningStage);
-router.post("/exportExcel", authMiddleware_1.default, dashboardController_1.exportExcelDbPlanning);
+router.get("/", authMiddleware_1.default, dashboardController_1.getDashboardPlanning);
+router.get("/detail", authMiddleware_1.default, dashboardController_1.getDbPlanningDetail);
+router.post("/export", authMiddleware_1.default, dashboardController_1.exportExcelDbPlanning);
 exports.default = router;
 //# sourceMappingURL=dashboardRoutes.js.map

@@ -8,12 +8,11 @@ const customerController_1 = require("../../controller/user/customer/customerCon
 const authMiddleware_1 = __importDefault(require("../../middlewares/authMiddleware"));
 const permissionMiddleware_1 = require("../../middlewares/permissionMiddleware");
 const router = (0, express_1.default)();
-router.get("/getAllCustomer", authMiddleware_1.default, customerController_1.getAllCustomer);
-router.get("/filter", authMiddleware_1.default, customerController_1.getCustomerByField);
-router.get("/orderCount", authMiddleware_1.default, customerController_1.checkCustomerInOrders);
-router.post("/newCustomer", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["sale"]), customerController_1.createCustomer);
-router.post("/exportExcel", authMiddleware_1.default, customerController_1.exportExcelCustomer);
-router.put("/updateCus", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["sale"]), customerController_1.updateCustomer);
-router.delete("/deleteCus", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["sale"]), customerController_1.deleteCustomer);
+router.get("/", authMiddleware_1.default, customerController_1.getCustomers);
+router.get("/order-count", authMiddleware_1.default, customerController_1.checkCustomerInOrders);
+router.post("/", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["sale"]), customerController_1.createCustomer);
+router.post("/export", authMiddleware_1.default, customerController_1.exportExcelCustomer);
+router.put("/", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["sale"]), customerController_1.updateCustomer);
+router.delete("/", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["sale"]), customerController_1.deleteCustomer);
 exports.default = router;
 //# sourceMappingURL=customerRoutes.js.map

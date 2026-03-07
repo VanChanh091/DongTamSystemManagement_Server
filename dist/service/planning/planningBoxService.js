@@ -60,7 +60,7 @@ exports.planningBoxService = {
     getPlanningBoxSorted: async (machine) => {
         try {
             const data = await planningRepository_1.planningRepository.getAllPlanningBox({ machine });
-            //lọc đơn complete trong 3 ngày
+            //lọc đơn complete trong 1 ngày
             const truncateToDate = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
             const now = truncateToDate(new Date());
             const validData = data.filter((planning) => {
@@ -73,7 +73,7 @@ exports.planningBoxService = {
                     if (isNaN(dayCompleted.getTime()))
                         return false;
                     const expiredDate = truncateToDate(dayCompleted);
-                    expiredDate.setDate(expiredDate.getDate() + 3);
+                    expiredDate.setDate(expiredDate.getDate() + 1);
                     return expiredDate >= now;
                 });
                 return hasValidStatus || hasRecentComplete;

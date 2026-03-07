@@ -6,11 +6,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.planningStatusService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
+const sequelize_1 = require("sequelize");
 const appError_1 = require("../../utils/appError");
 const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
 const planningPaper_1 = require("../../models/planning/planningPaper");
 const timeOverflowPlanning_1 = require("../../models/planning/timeOverflowPlanning");
-const sequelize_1 = require("sequelize");
 const redisCache_1 = __importDefault(require("../../assest/configs/redisCache"));
 const planningRepository_1 = require("../../repository/planningRepository");
 const machineLabels_1 = require("../../assest/configs/machineLabels");
@@ -19,35 +19,64 @@ const wasteNormPaper_1 = require("../../models/admin/wasteNormPaper");
 const waveCrestCoefficient_1 = require("../../models/admin/waveCrestCoefficient");
 const planningBox_1 = require("../../models/planning/planningBox");
 const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
+const transactionHelper_1 = require("../../utils/helper/transactionHelper");
+const user_1 = require("../../models/user/user");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { stop, order } = cacheKey_1.CacheKey.planning;
 exports.planningStatusService = {
     //===============================PLANNING ORDER=====================================
-    getOrderAccept: async () => {
+    getOrderAccept: async (filter) => {
         const cacheKey = order.all;
         try {
-            const { isChanged: order } = await cacheManager_1.CacheManager.check([{ model: order_1.Order, where: { status: "accept" } }], "planningOrder");
-            const { isChanged: planningPaper } = await cacheManager_1.CacheManager.check([
-                { model: planningPaper_1.PlanningPaper },
-                { model: timeOverflowPlanning_1.timeOverflowPlanning, where: { planningId: { [sequelize_1.Op.ne]: null } } },
-            ], "planningOrderPaper", { setCache: false });
-            const isChangedData = order || planningPaper;
-            if (isChangedData) {
-                await cacheManager_1.CacheManager.clear("orderAccept");
-            }
-            else {
-                const cachedData = await redisCache_1.default.get(cacheKey);
-                if (cachedData) {
-                    return { ...JSON.parse(cachedData), fromCache: true };
-                }
-            }
-            const result = await planningRepository_1.planningRepository.getOrderAccept();
+            // const { isChanged: order } = await CacheManager.check(
+            //   [{ model: Order, where: { status: "accept" } }],
+            //   "planningOrder",
+            // );
+            // const { isChanged: planningPaper } = await CacheManager.check(
+            //   [
+            //     { model: PlanningPaper },
+            //     { model: timeOverflowPlanning, where: { planningId: { [Op.ne]: null } } },
+            //   ],
+            //   "planningOrderPaper",
+            //   { setCache: false },
+            // );
+            // const isChangedData = order || planningPaper;
+            // if (isChangedData) {
+            //   await CacheManager.clear("orderAccept");
+            // } else {
+            //   const cachedData = await redisCache.get(cacheKey);
+            //   if (cachedData) {
+            //     return { ...JSON.parse(cachedData), fromCache: true };
+            //   }
+            // }
+            const result = await planningRepository_1.planningRepository.getOrderAccept(filter);
             const responseData = { message: "get order accept successfully", data: result };
-            await redisCache_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+            // await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
             return responseData;
         }
         catch (error) {
             console.error("❌ get all order accept failed:", error);
+            throw appError_1.AppError.ServerError();
+        }
+    },
+    getOrderAcceptByField: async (type, field, keyword) => {
+        try {
+            const fieldMap = {
+                orderId: (order) => order.orderId,
+                customerName: (order) => order?.Customer?.customerName,
+                QC_box: (order) => order?.QC_box,
+            };
+            const key = field;
+            if (!fieldMap[key]) {
+                throw appError_1.AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
+            }
+            const result = await planningRepository_1.planningRepository.getOrderAccept(type, field, keyword);
+            return { message: `get order accept by ${field} successfully`, data: result };
+        }
+        catch (error) {
+            console.error(`Failed to get orders by ${field}:`, error);
+            if (error instanceof appError_1.AppError)
+                throw error;
             throw appError_1.AppError.ServerError();
         }
     },
@@ -228,6 +257,53 @@ exports.planningStatusService = {
         }
         catch (error) {
             console.error("planningOrder error:", error);
+            if (error instanceof appError_1.AppError)
+                throw error;
+            throw appError_1.AppError.ServerError();
+        }
+    },
+    backOrderToReject: async (req, orderId) => {
+        try {
+            return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
+                const order = await order_1.Order.findOne({
+                    where: { orderId },
+                    attributes: ["orderId", "userId"],
+                    include: [{ model: user_1.User, attributes: ["fullName"] }],
+                    transaction,
+                });
+                if (!order) {
+                    throw appError_1.AppError.BadRequest("Order not found", "ORDER_NOT_FOUND");
+                }
+                const planningPapers = await planningPaper_1.PlanningPaper.findAll({ where: { orderId }, transaction });
+                if (planningPapers.some((p) => (p.qtyProduced ?? 0) > 0)) {
+                    throw appError_1.AppError.BadRequest("Order has produced items", "ORDER_HAS_PRODUCED_ITEMS");
+                }
+                await order.update({ status: "reject" }, { transaction });
+                //socket
+                const ownerId = order.userId;
+                const badgeCount = await order_1.Order.count({ where: { status: "reject", userId: ownerId } });
+                const roomName = `reject-order-${ownerId}`;
+                const sockets = await req.io?.in(roomName).fetchSockets();
+                // console.log(`-----------------------------------`);
+                // console.log(`📡 Event: updateBadgeCount`);
+                // console.log(`🏠 Room Target: ${roomName}`);
+                // console.log(`👥 Active sockets: ${sockets?.length ?? 0}`);
+                // console.log(`-----------------------------------`);
+                const hasSocket = sockets && sockets.length > 0;
+                if (!hasSocket) {
+                    if (devEnvironment) {
+                        console.log(`⚠️ No one is in room ${roomName}, skip emitting.`);
+                    }
+                    return { message: "Order status updated successfully, no active socket to notify" };
+                }
+                req.io?.to(roomName).emit("updateBadgeCount", {
+                    type: "REJECTED_ORDER",
+                    count: badgeCount,
+                });
+            });
+        }
+        catch (error) {
+            console.error("back order failed:", error);
             if (error instanceof appError_1.AppError)
                 throw error;
             throw appError_1.AppError.ServerError();

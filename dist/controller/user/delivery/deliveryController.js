@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.exportScheduleDelivery = exports.cancelOrCompleteDeliveryPlan = exports.getAllScheduleDelivery = exports.confirmForDeliveryPlanning = exports.createDeliveryPlan = exports.getDeliveryPlanDetailForEdit = exports.getPlanningPendingDelivery = exports.confirmReadyDeliveryPlanning = exports.getPlanningEstimateTime = void 0;
+exports.exportScheduleDelivery = exports.cancelOrCompleteDeliveryPlan = exports.getAllScheduleDelivery = exports.confirmForDeliveryPlanning = exports.createDeliveryPlan = exports.getPendingDelivery = exports.confirmReadyDeliveryPlanning = exports.getPlanningEstimateTime = void 0;
 const deliveryService_1 = require("../../../service/deliveryService");
 //=================================PLANNING ESTIMATE TIME=====================================
 const getPlanningEstimateTime = async (req, res, next) => {
@@ -35,27 +35,23 @@ const confirmReadyDeliveryPlanning = async (req, res, next) => {
 };
 exports.confirmReadyDeliveryPlanning = confirmReadyDeliveryPlanning;
 //=================================PLANNING DELIVERY=====================================
-const getPlanningPendingDelivery = async (req, res, next) => {
-    try {
-        const response = await deliveryService_1.deliveryService.getPlanningPendingDelivery();
-        return res.status(200).json(response);
-    }
-    catch (error) {
-        next(error);
-    }
-};
-exports.getPlanningPendingDelivery = getPlanningPendingDelivery;
-const getDeliveryPlanDetailForEdit = async (req, res, next) => {
+const getPendingDelivery = async (req, res, next) => {
     const { deliveryDate } = req.query;
     try {
-        const response = await deliveryService_1.deliveryService.getDeliveryPlanDetailForEdit(new Date(deliveryDate));
+        let response;
+        if (deliveryDate) {
+            response = await deliveryService_1.deliveryService.getDeliveryPlanDetailForEdit(new Date(deliveryDate));
+        }
+        else {
+            response = await deliveryService_1.deliveryService.getPlanningPendingDelivery();
+        }
         return res.status(200).json(response);
     }
     catch (error) {
         next(error);
     }
 };
-exports.getDeliveryPlanDetailForEdit = getDeliveryPlanDetailForEdit;
+exports.getPendingDelivery = getPendingDelivery;
 const createDeliveryPlan = async (req, res, next) => {
     const { deliveryDate, items } = req.body;
     try {

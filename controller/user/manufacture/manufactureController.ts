@@ -36,6 +36,21 @@ export const addReportPaper = async (req: Request, res: Response, next: NextFunc
   }
 };
 
+export const updateReportPaper = async (req: Request, res: Response, next: NextFunction) => {
+  const { planningId } = req.query as { planningId: string };
+
+  try {
+    const response = await manufactureService.updateReportPaper(
+      Number(planningId),
+      req.body,
+      req.user,
+    );
+    return res.status(201).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
 //confirm producing paper
 export const confirmProducingPaper = async (req: Request, res: Response, next: NextFunction) => {
   const { planningId } = req.query as { planningId: string };

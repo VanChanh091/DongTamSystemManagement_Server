@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateRequestStockCheck = exports.confirmProducingBox = exports.addReportBox = exports.getPlanningBox = exports.confirmProducingPaper = exports.addReportPaper = exports.getPlanningPaper = void 0;
+exports.updateRequestStockCheck = exports.confirmProducingBox = exports.addReportBox = exports.getPlanningBox = exports.confirmProducingPaper = exports.updateReportPaper = exports.addReportPaper = exports.getPlanningPaper = void 0;
 const manufactureService_1 = require("../../../service/manufactureService");
 const appError_1 = require("../../../utils/appError");
 //===============================MANUFACTURE PAPER=====================================
@@ -31,6 +31,17 @@ const addReportPaper = async (req, res, next) => {
     }
 };
 exports.addReportPaper = addReportPaper;
+const updateReportPaper = async (req, res, next) => {
+    const { planningId } = req.query;
+    try {
+        const response = await manufactureService_1.manufactureService.updateReportPaper(Number(planningId), req.body, req.user);
+        return res.status(201).json(response);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.updateReportPaper = updateReportPaper;
 //confirm producing paper
 const confirmProducingPaper = async (req, res, next) => {
     const { planningId } = req.query;

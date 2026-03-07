@@ -1,21 +1,16 @@
 import { Router } from "express";
 import authenticate from "../../middlewares/authMiddleware";
 import {
-  getAllInboundHistory,
-  getBoxCheckedDetail,
-  getBoxWaitingChecked,
-  getPaperWaitingChecked,
-  searchInboundByField,
+  getPlanningWaitingCheck,
+  getInboundHistory,
 } from "../../controller/user/warehouse/inboundHistoryController";
 import {
   createOutbound,
   deleteOutbound,
   exportFileOutbound,
-  getAllOutboundHistory,
-  getOrderInboundQty,
   getOutboundDetail,
-  searchOrderIds,
-  searchOutboundByField,
+  getOutboundHistory,
+  outboundAutoComplete,
   updateOutbound,
 } from "../../controller/user/warehouse/outboundHistoryController";
 import {
@@ -28,50 +23,31 @@ const router = Router();
 
 //=====================CHECK AND INBOUND QTY========================
 
-router.get("/getPaperWaiting", authenticate, getPaperWaitingChecked);
-router.get("/getBoxWaiting", authenticate, getBoxWaitingChecked);
-router.get("/getBoxDetail", authenticate, getBoxCheckedDetail);
+router.get("/waiting-check", authenticate, getPlanningWaitingCheck);
 
 //========================INBOUND HISTORY===========================
 
-router.get("/inbound", authenticate, getAllInboundHistory);
-router.get("/inbound/filter", authenticate, searchInboundByField);
+router.get("/inbound", authenticate, getInboundHistory);
 
 //========================OUTBOUND HISTORY===========================
 
-router.get("/outbound", authenticate, getAllOutboundHistory);
+router.get("/outbound", authenticate, getOutboundHistory);
 router.get("/outbound/detail", authenticate, getOutboundDetail);
-router.get("/outbound/filter", authenticate, searchOutboundByField);
-router.post("/outbound/exportFile", authenticate, exportFileOutbound);
-router.post(
-  "/outbound/createOutbound",
-  authorizeAnyPermission(["delivery"]),
-  authenticate,
-  createOutbound,
-);
-router.put(
-  "/outbound/updateOutbound",
-  authorizeAnyPermission(["delivery"]),
-  authenticate,
-  updateOutbound,
-);
-router.delete(
-  "/outbound/deleteOutbound",
-  authorizeAnyPermission(["delivery"]),
-  authenticate,
-  deleteOutbound,
-);
+router.post("/outbound/export", authenticate, exportFileOutbound);
+router.post("/outbound", authorizeAnyPermission(["delivery"]), authenticate, createOutbound);
+router.put("/outbound", authorizeAnyPermission(["delivery"]), authenticate, updateOutbound);
+router.delete("/outbound", authorizeAnyPermission(["delivery"]), authenticate, deleteOutbound);
 
 //auto complete dialog
-router.get("/outbound/searchOrderIds", authenticate, searchOrderIds);
-router.get("/outbound/getInboundQty", authenticate, getOrderInboundQty);
+router.get("/outbound/get-search", authenticate, outboundAutoComplete);
 
 //========================INVENTORY===========================
-router.get("/getAllInventory", authenticate, getAllInventory);
-router.post("/createInventory", authenticate, createNewInventory);
+router.get("/inventory", authenticate, getAllInventory);
+router.post("/inventory", authenticate, createNewInventory);
 
-// router.get("/testCrash", (req, res) => {
-//   throw new Error("Test lỗi 500 để bắn Telegram nè! 💣");
-// });
+//========================TEST CRASH===========================
+router.get("/test-crash", (req, res) => {
+  throw new Error("Test lỗi 500 để bắn Telegram nè! 💣");
+});
 
 export default router;

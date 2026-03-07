@@ -2,6 +2,41 @@ import { NextFunction, Request, Response } from "express";
 import { dashboardService } from "../../service/dashboardService";
 
 //get all dashboard planning
+export const getDashboardPlanning = async (req: Request, res: Response, next: NextFunction) => {
+  const { field, keyword, page, pageSize, status } = req.query as {
+    field?: string;
+    keyword?: string;
+    page?: string;
+    pageSize?: string;
+    status?: string;
+  };
+
+  try {
+    let response;
+
+    if (status) {
+      response = await dashboardService.getAllDashboardPlanning(
+        Number(page),
+        Number(pageSize),
+        status,
+      );
+    } else if (field && keyword) {
+      response = await dashboardService.getDbPlanningByFields({
+        field,
+        keyword,
+        page: Number(page),
+        pageSize: Number(pageSize),
+      });
+    } else {
+      response = await dashboardService.getAllDbPlanningStage();
+    }
+
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getAllDashboardPlanning = async (req: Request, res: Response, next: NextFunction) => {
   const { page, pageSize, status } = req.query as {
     page: string;
@@ -14,7 +49,7 @@ export const getAllDashboardPlanning = async (req: Request, res: Response, next:
     const response = await dashboardService.getAllDashboardPlanning(
       Number(page),
       Number(pageSize),
-      status
+      status,
     );
     return res.status(200).json(response);
   } catch (error) {
@@ -33,40 +68,10 @@ export const getDbPlanningDetail = async (req: Request, res: Response, next: Nex
   }
 };
 
-export const getDbPlanningByFields = async (req: Request, res: Response, next: NextFunction) => {
-  const { field, keyword, page, pageSize } = req.query as {
-    field: string;
-    keyword: string;
-    page: string;
-    pageSize: string;
-  };
-
-  try {
-    const response = await dashboardService.getDbPlanningByFields({
-      field,
-      keyword,
-      page: Number(page),
-      pageSize: Number(pageSize),
-    });
-    return res.status(200).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
 //export excel
 export const exportExcelDbPlanning = async (req: Request, res: Response, next: NextFunction) => {
   try {
     await dashboardService.exportExcelDbPlanning(req, res);
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getAllDbPlanningStage = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const response = await dashboardService.getAllDbPlanningStage();
-    return res.status(200).json(response);
   } catch (error) {
     next(error);
   }

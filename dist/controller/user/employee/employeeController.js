@@ -1,40 +1,35 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.exportExcelEmployee = exports.deleteEmployee = exports.updateEmployee = exports.createEmployee = exports.getEmployeeByPosition = exports.getEmployeesByField = exports.getAllEmployees = void 0;
+exports.exportExcelEmployee = exports.deleteEmployee = exports.updateEmployee = exports.createEmployee = exports.getEmployeeByPosition = exports.getEmployees = void 0;
 const employeeService_1 = require("../../../service/employeeService");
-//get all
-const getAllEmployees = async (req, res, next) => {
-    const { page = 1, pageSize = 20, noPaging = false, } = req.query;
+const getEmployees = async (req, res, next) => {
+    const { field, keyword, page = 1, pageSize = 20, noPaging = false, } = req.query;
     try {
-        const response = await employeeService_1.employeeService.getAllEmployees({
-            page: Number(page),
-            pageSize: Number(pageSize),
-            noPaging,
-        });
+        let response;
+        // 1. Nhánh tìm kiếm theo field
+        if (field && keyword) {
+            response = await employeeService_1.employeeService.getEmployeesByField({
+                field,
+                keyword,
+                page: Number(page),
+                pageSize: Number(pageSize),
+            });
+        }
+        // 2. Nhánh lấy tất cả
+        else {
+            response = await employeeService_1.employeeService.getAllEmployees({
+                page: Number(page),
+                pageSize: Number(pageSize),
+                noPaging,
+            });
+        }
         return res.status(200).json(response);
     }
     catch (error) {
         next(error);
     }
 };
-exports.getAllEmployees = getAllEmployees;
-//get by field
-const getEmployeesByField = async (req, res, next) => {
-    const { field, keyword, page, pageSize } = req.query;
-    try {
-        const response = await employeeService_1.employeeService.getEmployeesByField({
-            field,
-            keyword,
-            page: Number(page),
-            pageSize: Number(pageSize),
-        });
-        return res.status(200).json(response);
-    }
-    catch (error) {
-        next(error);
-    }
-};
-exports.getEmployeesByField = getEmployeesByField;
+exports.getEmployees = getEmployees;
 //get by field
 const getEmployeeByPosition = async (req, res, next) => {
     try {

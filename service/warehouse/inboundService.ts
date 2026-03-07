@@ -5,7 +5,7 @@ import redisCache from "../../assest/configs/redisCache";
 import { AppError } from "../../utils/appError";
 import { InboundHistory } from "../../models/warehouse/inboundHistory";
 import { warehouseRepository } from "../../repository/warehouseRepository";
-import { manufactureRepository } from "../../repository/manufactureRepository";
+import { manufactureRepo } from "../../repository/manufactureRepository";
 import { planningRepository } from "../../repository/planningRepository";
 import { PlanningBox } from "../../models/planning/planningBox";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
@@ -161,7 +161,7 @@ export const inboundService = {
     transaction?: any;
   }) => {
     try {
-      const planning = await manufactureRepository.getPapersById(planningId, transaction);
+      const planning = await manufactureRepo.getPapersById(planningId, transaction);
       if (!planning) {
         throw AppError.NotFound("Không tìm thấy kế hoạch", "PLANNING_NOT_FOUND");
       }

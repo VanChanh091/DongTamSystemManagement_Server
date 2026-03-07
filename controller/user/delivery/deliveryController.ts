@@ -46,28 +46,18 @@ export const confirmReadyDeliveryPlanning = async (
 };
 
 //=================================PLANNING DELIVERY=====================================
-export const getPlanningPendingDelivery = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  try {
-    const response = await deliveryService.getPlanningPendingDelivery();
-    return res.status(200).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getDeliveryPlanDetailForEdit = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+export const getPendingDelivery = async (req: Request, res: Response, next: NextFunction) => {
   const { deliveryDate } = req.query as { deliveryDate: string };
 
   try {
-    const response = await deliveryService.getDeliveryPlanDetailForEdit(new Date(deliveryDate));
+    let response;
+
+    if (deliveryDate) {
+      response = await deliveryService.getDeliveryPlanDetailForEdit(new Date(deliveryDate));
+    } else {
+      response = await deliveryService.getPlanningPendingDelivery();
+    }
+
     return res.status(200).json(response);
   } catch (error) {
     next(error);

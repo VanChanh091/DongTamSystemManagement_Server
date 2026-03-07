@@ -7,28 +7,25 @@ import { qcChecklistData } from "../../../models/qualityControl/qcSampleResult";
 import { qcSubmitService } from "../../../service/qualityControl/orchestratorService";
 
 //===============================QC SESSION=================================
-
-//get all qc session
-export const getAllQcSession = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const response = await qcSessionService.getAllQcSession();
-    return res.status(200).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getSessionByFk = async (req: Request, res: Response, next: NextFunction) => {
+//get qc session
+export const getQcSession = async (req: Request, res: Response, next: NextFunction) => {
   const { planningId, planningBoxId } = req.query as {
     planningId?: string;
     planningBoxId?: string;
   };
 
   try {
-    const response = await qcSessionService.getSessionByFk({
-      planningId: planningId ? Number(planningId) : undefined,
-      planningBoxId: planningBoxId ? Number(planningBoxId) : undefined,
-    });
+    let response;
+
+    if (planningId || planningBoxId) {
+      response = await qcSessionService.getSessionByFk({
+        planningId: planningId ? Number(planningId) : undefined,
+        planningBoxId: planningBoxId ? Number(planningBoxId) : undefined,
+      });
+    } else {
+      response = await qcSessionService.getAllQcSession();
+    }
+
     return res.status(200).json(response);
   } catch (error) {
     next(error);

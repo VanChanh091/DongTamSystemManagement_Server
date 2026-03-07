@@ -38,6 +38,8 @@ exports.inboundService = {
             else {
                 const cachedData = await redisCache_1.default.get(cacheKey);
                 if (cachedData) {
+                    if (devEnvironment)
+                        console.log("✅ Data waiting check paper from Redis");
                     return {
                         ...JSON.parse(cachedData),
                         message: `get planning paper waiting check from cache`,
@@ -67,7 +69,12 @@ exports.inboundService = {
                     allPlannings.push(overflow);
                 }
             });
-            return { message: `get planning paper waiting check`, data: allPlannings };
+            const responseData = {
+                message: "get planning paper waiting check successfully",
+                data: allPlannings,
+            };
+            await redisCache_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+            return responseData;
         }
         catch (error) {
             console.error("Failed to get paper waiting checked:", error);
@@ -83,7 +90,10 @@ exports.inboundService = {
             }
             else {
                 const cachedData = await redisCache_1.default.get(cacheKey);
+                console.log(`data: ${cachedData ? true : false}`);
                 if (cachedData) {
+                    if (devEnvironment)
+                        console.log("✅ Data waiting check box from Redis");
                     return {
                         ...JSON.parse(cachedData),
                         message: `get planning box waiting check from cache`,
@@ -91,7 +101,9 @@ exports.inboundService = {
                 }
             }
             const planning = await warehouseRepository_1.warehouseRepository.getBoxWaitingChecked();
-            return { message: `get planning box waiting check`, data: planning };
+            const responseData = { message: `get planning box waiting check`, data: planning };
+            await redisCache_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+            return responseData;
         }
         catch (error) {
             console.error("Failed to get box waiting checked", error);
@@ -125,7 +137,7 @@ exports.inboundService = {
     //inbound paper
     inboundQtyPaper: async ({ planningId, inboundQty, qcSessionId, transaction, }) => {
         try {
-            const planning = await manufactureRepository_1.manufactureRepository.getPapersById(planningId, transaction);
+            const planning = await manufactureRepository_1.manufactureRepo.getPapersById(planningId, transaction);
             if (!planning) {
                 throw appError_1.AppError.NotFound("Không tìm thấy kế hoạch", "PLANNING_NOT_FOUND");
             }

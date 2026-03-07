@@ -1,35 +1,31 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.submitQC = exports.confirmFinalizeSession = exports.updateResult = exports.createNewResult = exports.getAllQcResult = exports.updateSession = exports.createNewSession = exports.getSessionByFk = exports.getAllQcSession = void 0;
+exports.submitQC = exports.confirmFinalizeSession = exports.updateResult = exports.createNewResult = exports.getAllQcResult = exports.updateSession = exports.createNewSession = exports.getQcSession = void 0;
 const qcSessionService_1 = require("../../../service/qualityControl/qcSessionService");
 const qcSampleService_1 = require("../../../service/qualityControl/qcSampleService");
 const orchestratorService_1 = require("../../../service/qualityControl/orchestratorService");
 //===============================QC SESSION=================================
-//get all qc session
-const getAllQcSession = async (req, res, next) => {
-    try {
-        const response = await qcSessionService_1.qcSessionService.getAllQcSession();
-        return res.status(200).json(response);
-    }
-    catch (error) {
-        next(error);
-    }
-};
-exports.getAllQcSession = getAllQcSession;
-const getSessionByFk = async (req, res, next) => {
+//get qc session
+const getQcSession = async (req, res, next) => {
     const { planningId, planningBoxId } = req.query;
     try {
-        const response = await qcSessionService_1.qcSessionService.getSessionByFk({
-            planningId: planningId ? Number(planningId) : undefined,
-            planningBoxId: planningBoxId ? Number(planningBoxId) : undefined,
-        });
+        let response;
+        if (planningId || planningBoxId) {
+            response = await qcSessionService_1.qcSessionService.getSessionByFk({
+                planningId: planningId ? Number(planningId) : undefined,
+                planningBoxId: planningBoxId ? Number(planningBoxId) : undefined,
+            });
+        }
+        else {
+            response = await qcSessionService_1.qcSessionService.getAllQcSession();
+        }
         return res.status(200).json(response);
     }
     catch (error) {
         next(error);
     }
 };
-exports.getSessionByFk = getSessionByFk;
+exports.getQcSession = getQcSession;
 //create new qc session
 const createNewSession = async (req, res, next) => {
     const { processType, planningId, planningBoxId, totalSample } = req.body;

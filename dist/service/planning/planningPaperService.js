@@ -25,7 +25,7 @@ const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper } = cacheKey_1.CacheKey.planning;
 exports.planningPaperService = {
     //====================================PLANNING PAPER========================================
-    getPlanningByMachine: async (machine) => {
+    getPlanningPaperByMachine: async (machine) => {
         try {
             const cacheKey = paper.machine(machine);
             const { isChanged } = await cacheManager_1.CacheManager.check([
@@ -66,7 +66,7 @@ exports.planningPaperService = {
                     status: { [sequelize_1.Op.ne]: "stop" },
                 },
             });
-            //lọc đơn complete trong 3 ngày
+            //lọc đơn complete trong 1 ngày
             const truncateToDate = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
             const now = truncateToDate(new Date());
             const validData = data.filter((planning) => {
@@ -77,7 +77,7 @@ exports.planningPaperService = {
                     if (!dayCompleted || isNaN(dayCompleted.getTime()))
                         return false;
                     const expiredDate = truncateToDate(new Date(dayCompleted));
-                    expiredDate.setDate(expiredDate.getDate() + 3);
+                    expiredDate.setDate(expiredDate.getDate() + 1);
                     return expiredDate >= now;
                 }
                 return false;
@@ -111,19 +111,17 @@ exports.planningPaperService = {
                 const ghepB = b.ghepKho ?? 0;
                 if (ghepB !== ghepA)
                     return ghepB - ghepA;
-                const layerA = getLayer(a.Order.flute ?? "");
-                const layerB = getLayer(b.Order.flute ?? "");
-                if (layerB !== layerA)
-                    return layerB - layerA;
-                const waveA = getWavePriorityList(a.Order.flute ?? "");
-                const waveB = getWavePriorityList(b.Order.flute ?? "");
-                const maxLength = Math.max(waveA.length, waveB.length);
-                for (let i = 0; i < maxLength; i++) {
-                    const priA = waveA[i] ?? 0;
-                    const priB = waveB[i] ?? 0;
-                    if (priB !== priA)
-                        return priB - priA;
-                }
+                // const layerA = getLayer(a.Order.flute ?? "");
+                // const layerB = getLayer(b.Order.flute ?? "");
+                // if (layerB !== layerA) return layerB - layerA;
+                // const waveA = getWavePriorityList(a.Order.flute ?? "");
+                // const waveB = getWavePriorityList(b.Order.flute ?? "");
+                // const maxLength = Math.max(waveA.length, waveB.length);
+                // for (let i = 0; i < maxLength; i++) {
+                //   const priA = waveA[i] ?? 0;
+                //   const priB = waveB[i] ?? 0;
+                //   if (priB !== priA) return priB - priA;
+                // }
                 return 0;
             });
             const sortedPlannings = [...withSort, ...noSort];

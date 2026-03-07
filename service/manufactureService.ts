@@ -8,7 +8,6 @@ import { AppError } from "../utils/appError";
 import { PlanningPaper } from "../models/planning/planningPaper";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
-import { manufactureRepository } from "../repository/manufactureRepository";
 import { machineLabels } from "../assest/configs/machineLabels";
 import { planningRepository } from "../repository/planningRepository";
 import { PlanningBox } from "../models/planning/planningBox";
@@ -21,6 +20,8 @@ import { runInTransaction } from "../utils/helper/transactionHelper";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { planningPaperService } from "./planning/planningPaperService";
 import { Request } from "express";
+import { aggregateReportFields } from "../utils/helper/modelHelper/manufactureHelper";
+import { manufactureRepo } from "../repository/manufactureRepository";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper, box } = CacheKey.manufacture;
@@ -52,7 +53,7 @@ export const manufactureService = {
         }
       }
 
-      const planning = await manufactureRepository.getManufacturePaper(machine);
+      const planning = await manufactureRepo.getManufacturePaper(machine);
 
       // Lọc đơn complete chỉ giữ lại trong 1 ngày
       const truncateToDate = (date: Date) =>
@@ -128,7 +129,7 @@ export const manufactureService = {
         }
 
         // 1. Tìm kế hoạch hiện tại
-        const planning = await manufactureRepository.getPapersById(planningId, transaction);
+        const planning = await manufactureRepo.getPapersById(planningId, transaction);
         if (!planning) {
           throw AppError.NotFound("planning not found", "PLANNING_NOT_FOUND");
         }
@@ -156,6 +157,7 @@ export const manufactureService = {
         // update status dựa trên qtyProduced
         const isCompleted = newQtyProduced >= planning.runningPlan;
 
+        // Logic Overflow
         const isOverflowReport =
           planning.hasOverFlow &&
           planning.timeOverFlow &&
@@ -163,7 +165,6 @@ export const manufactureService = {
 
         let overflow, dayReportValue;
 
-        //get timeOverflowPlanning
         if (planning.hasOverFlow) {
           overflow = await planningRepository.getModelById({
             model: timeOverflowPlanning,
@@ -220,10 +221,7 @@ export const manufactureService = {
         }
 
         //check qty to change status order
-        const allPlans = await manufactureRepository.getPapersByOrderId(
-          planning.orderId,
-          transaction,
-        );
+        const allPlans = await manufactureRepo.getPapersByOrderId(planning.orderId, transaction);
 
         const totalQtyProduced = allPlans.reduce((sum, p) => sum + Number(p.qtyProduced || 0), 0);
         const quantityCustomer = planning.Order?.quantityCustomer || 0;
@@ -262,7 +260,123 @@ export const manufactureService = {
         };
       });
     } catch (error) {
-      console.error("Error add Report Production:", error);
+      console.error("Error add Report paper:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  updateReportPaper: async (planningId: number, updateData: any, user: any) => {
+    const { role, permissions: userPermissions } = user;
+    const { qtyProduced: newQty, qtyWasteNorm: newWaste, ...otherData } = updateData;
+
+    try {
+      return await runInTransaction(async (transaction) => {
+        //check report existed
+        const oldReport = await manufactureRepo.getReportPaperByPlanningId(planningId, transaction);
+        if (!oldReport) {
+          throw AppError.NotFound("Report not found", "REPORT_NOT_FOUND");
+        }
+
+        const planning = await manufactureRepo.getOldPlanningPaper(planningId, transaction);
+        if (!planning) {
+          throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
+        }
+
+        //check permission for machine
+        const machineLabel = machineLabels[planning.chooseMachine];
+        if (role !== "admin" && role !== "manager") {
+          if (!userPermissions.includes(machineLabel)) {
+            throw AppError.Unauthorized("Access denied for this machine", "ACCESS_DENIED");
+          }
+        }
+
+        const otherReportsSum =
+          (await ReportPlanningPaper.sum("qtyProduced", {
+            where: {
+              planningId: planning.planningId,
+              reportPaperId: { [Op.ne]: oldReport.reportPaperId },
+            },
+            transaction,
+          })) || 0;
+
+        // Tính lại lackOfQty cho bản báo cáo này
+        const totalQtyProduced = Number(otherReportsSum) + Number(newQty);
+        console.log(`totalQtyProduced: ${totalQtyProduced}`);
+        const newLackOfQty = planning.runningPlan - totalQtyProduced;
+
+        //update report paper
+        await oldReport.update(
+          {
+            qtyProduced: newQty,
+            qtyWasteNorm: newWaste,
+            lackOfQty: newLackOfQty,
+            ...otherData,
+          },
+          { transaction },
+        );
+
+        // Lấy tất cả các lần báo cáo của planning này để gom lại
+        const allReports = await ReportPlanningPaper.findAll({
+          where: { planningId: planning.planningId },
+          transaction,
+        });
+
+        // Tính tổng số lượng từ tất cả báo cáo
+        const qty = allReports.reduce((sum, r) => sum + Number(r.qtyProduced || 0), 0);
+        console.log(`qty: ${qty}`);
+        const totalQtyWaste = allReports.reduce((sum, r) => sum + Number(r.qtyWasteNorm || 0), 0);
+
+        // Gom chuỗi shiftProduction và shiftManagement (Dùng hàm aggregateReportFields của ông)
+        const { combinedShiftProduction, combinedShiftManagement } =
+          aggregateReportFields(allReports);
+
+        console.log(
+          `combinedShiftProduction: ${combinedShiftProduction}, combinedShiftManagement: ${combinedShiftManagement}`,
+        );
+
+        await planning.update(
+          {
+            qtyProduced: totalQtyProduced,
+            qtyWasteNorm: totalQtyWaste,
+            status: totalQtyProduced >= planning.runningPlan ? planning.status : "lackQty",
+            shiftProduction: combinedShiftProduction,
+            shiftManagement: combinedShiftManagement,
+          },
+          { transaction },
+        );
+
+        //update planning box nếu có
+        if (planning.hasBox) {
+          const planningBox = await PlanningBox.findOne({
+            where: { orderId: planning.orderId, planningId: planning.planningId },
+            transaction,
+            lock: transaction?.LOCK.UPDATE,
+          });
+
+          if (planningBox) {
+            await planningBox.update({ qtyPaper: totalQtyProduced }, { transaction });
+          }
+        }
+
+        //check qty to change status order
+        const allPlans = await manufactureRepo.getPapersByOrderId(planning.orderId, transaction);
+
+        const totalOrderQty = allPlans.reduce((sum, p) => sum + Number(p.qtyProduced || 0), 0);
+        const quantityCustomer = planning.Order?.quantityCustomer || 0;
+
+        if (totalOrderQty >= quantityCustomer) {
+          await planningRepository.updateDataModel({
+            model: Order,
+            data: { status: "planning" },
+            options: { where: { orderId: planning.orderId }, transaction },
+          });
+        }
+
+        return { message: "Update Report successfully", data: oldReport };
+      });
+    } catch (error) {
+      console.error("Error update Report paper:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
@@ -372,7 +486,7 @@ export const manufactureService = {
         }
       }
 
-      const planning = await manufactureRepository.getManufactureBox(machine);
+      const planning = await manufactureRepo.getManufactureBox(machine);
 
       //lọc đơn complete trong 1 ngày
       const truncateToDate = (date: Date) =>
@@ -454,11 +568,7 @@ export const manufactureService = {
         }
 
         // 1. Tìm kế hoạch hiện tại
-        const planning = await manufactureRepository.getBoxById(
-          planningBoxId,
-          machine,
-          transaction,
-        );
+        const planning = await manufactureRepo.getBoxById(planningBoxId, machine, transaction);
         if (!planning) {
           throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
         }
@@ -593,7 +703,7 @@ export const manufactureService = {
         }
 
         // Reset những thằng đang "producing"
-        await manufactureRepository.updatePlanningBoxTime(planningBoxId, machine, transaction);
+        await manufactureRepo.updatePlanningBoxTime(planningBoxId, machine, transaction);
 
         // Update sang producing
         await planningRepository.updateDataModel({
@@ -627,18 +737,7 @@ export const manufactureService = {
     try {
       return await runInTransaction(async (transaction) => {
         // Lấy planning cần update
-        const planningBox = await PlanningBox.findByPk(planningBoxId, {
-          include: [
-            {
-              model: PlanningBoxTime,
-              where: { machine, dayStart: { [Op.ne]: null } },
-              as: "boxTimes",
-              attributes: ["boxTimeId", "qtyProduced", "machine", "isRequest"],
-            },
-          ],
-          transaction,
-          lock: transaction.LOCK.UPDATE,
-        });
+        const planningBox = await manufactureRepo.getBoxByPK(planningBoxId, machine, transaction);
         if (!planningBox) {
           throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
         }
@@ -650,7 +749,7 @@ export const manufactureService = {
           );
         }
 
-        const steps = await manufactureRepository.getAllBoxTimeById(planningBoxId, transaction);
+        const steps = await manufactureRepo.getAllBoxTimeById(planningBoxId, transaction);
 
         //check qty produced
         const checkQtyProduced = steps.some(

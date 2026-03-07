@@ -63,7 +63,7 @@ export const planningBoxService = {
     try {
       const data = await planningRepository.getAllPlanningBox({ machine });
 
-      //lọc đơn complete trong 3 ngày
+      //lọc đơn complete trong 1 ngày
       const truncateToDate = (date: Date) =>
         new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
@@ -83,7 +83,7 @@ export const planningBoxService = {
           if (isNaN(dayCompleted.getTime())) return false;
 
           const expiredDate = truncateToDate(dayCompleted);
-          expiredDate.setDate(expiredDate.getDate() + 3);
+          expiredDate.setDate(expiredDate.getDate() + 1);
 
           return expiredDate >= now;
         });

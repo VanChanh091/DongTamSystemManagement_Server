@@ -25,9 +25,32 @@ exports.planningRepository = {
         return await model.create(data, { transaction });
     },
     //====================================PLANNING ORDER========================================
-    getOrderAccept: async () => {
+    getOrderAccept: async (type, searchField, keyword) => {
+        const whereOrder = { status: "accept" };
+        let isPlanningRequired = false;
+        //lọc theo planned/unplanned
+        if (type === "planned") {
+            isPlanningRequired = true;
+        }
+        else if (type === "unplanned") {
+            whereOrder["$PlanningPapers.planningId$"] = { [sequelize_1.Op.is]: null };
+            isPlanningRequired = false;
+        }
+        //search
+        if (searchField && keyword) {
+            const searchCondition = { [sequelize_1.Op.like]: `%${keyword}%` };
+            if (searchField === "customerName") {
+                whereOrder["$Customer.customerName$"] = searchCondition;
+            }
+            else if (searchField === "orderId") {
+                whereOrder.orderId = searchCondition;
+            }
+            else if (searchField === "QC_box") {
+                whereOrder.QC_box = searchCondition;
+            }
+        }
         return await order_1.Order.findAll({
-            where: { status: "accept" },
+            where: whereOrder,
             attributes: {
                 exclude: [
                     "lengthPaperCustomer",
@@ -51,12 +74,17 @@ exports.planningRepository = {
                     attributes: ["customerName", "companyName"],
                 },
                 { model: product_1.Product, attributes: ["typeProduct", "productName"] },
-                { model: planningPaper_1.PlanningPaper, attributes: ["planningId", "runningPlan", "qtyProduced"] },
+                {
+                    model: planningPaper_1.PlanningPaper,
+                    attributes: ["planningId", "runningPlan", "qtyProduced"],
+                    required: isPlanningRequired,
+                },
             ],
             order: [
                 ["orderSortValue", "ASC"],
                 ["dateRequestShipping", "ASC"],
             ],
+            subQuery: false,
         });
     },
     findOrderById: async (orderId) => {

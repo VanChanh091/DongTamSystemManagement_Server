@@ -1,43 +1,37 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.exportExcelCustomer = exports.deleteCustomer = exports.updateCustomer = exports.createCustomer = exports.checkCustomerInOrders = exports.getCustomerByField = exports.getAllCustomer = void 0;
+exports.exportExcelCustomer = exports.deleteCustomer = exports.updateCustomer = exports.createCustomer = exports.checkCustomerInOrders = exports.getCustomers = void 0;
 const order_1 = require("../../../models/order/order");
 const customerService_1 = require("../../../service/customerService");
-//get all
-const getAllCustomer = async (req, res, next) => {
-    const { page = 1, pageSize = 20, noPaging = false, } = req.query;
+const getCustomers = async (req, res, next) => {
+    const { field, keyword, page = 1, pageSize = 20, noPaging = false, } = req.query;
     try {
-        const response = await customerService_1.customerService.getAllCustomers({
-            page: Number(page),
-            pageSize: Number(pageSize),
-            noPaging,
-        });
+        let response;
+        // 1. Nhánh tìm kiếm theo field
+        if (field && keyword) {
+            response = await customerService_1.customerService.getCustomerByFields({
+                field,
+                keyword,
+                page: Number(page),
+                pageSize: Number(pageSize),
+            });
+        }
+        // 2. Nhánh lấy tất cả
+        else {
+            response = await customerService_1.customerService.getAllCustomers({
+                page: Number(page),
+                pageSize: Number(pageSize),
+                noPaging,
+            });
+        }
         return res.status(200).json(response);
     }
     catch (error) {
         next(error);
     }
 };
-exports.getAllCustomer = getAllCustomer;
-//get by field
-const getCustomerByField = async (req, res, next) => {
-    const { field, keyword, page, pageSize } = req.query;
-    try {
-        const response = await customerService_1.customerService.getCustomerByFields({
-            field,
-            keyword,
-            page: Number(page),
-            pageSize: Number(pageSize),
-        });
-        return res.status(200).json(response);
-    }
-    catch (error) {
-        next(error);
-    }
-};
-exports.getCustomerByField = getCustomerByField;
+exports.getCustomers = getCustomers;
 //get customerId in orders
-//unfinished
 const checkCustomerInOrders = async (req, res, next) => {
     const { customerId } = req.query;
     try {

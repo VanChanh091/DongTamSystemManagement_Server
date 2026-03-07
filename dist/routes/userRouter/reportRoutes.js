@@ -7,14 +7,10 @@ const express_1 = require("express");
 const authMiddleware_1 = __importDefault(require("../../middlewares/authMiddleware"));
 const reportPlanningController_1 = require("../../controller/user/report/reportPlanningController");
 const router = (0, express_1.Router)();
-//==================Report Planning Paper=====================
-router.get("/reportPaper", authMiddleware_1.default, reportPlanningController_1.getReportPlanningPaper);
-router.get("/reportPaper/filter", authMiddleware_1.default, reportPlanningController_1.getReportedPaperByField);
-//==================Report Planning Box=====================
-router.get("/reportBox", authMiddleware_1.default, reportPlanningController_1.getReportPlanningBox);
-router.get("/reportBox/filter", authMiddleware_1.default, reportPlanningController_1.getReportedBoxByField);
+router.get("/paper", authMiddleware_1.default, reportPlanningController_1.getReportPapers);
+router.get("/box", authMiddleware_1.default, reportPlanningController_1.getReportBoxes);
 //==================EXPORT EXCEL=====================
-router.post("/exportExcelPaper", authMiddleware_1.default, reportPlanningController_1.exportExcelReportPaper);
-router.post("/exportExcelBox", authMiddleware_1.default, reportPlanningController_1.exportExcelReportBox);
+router.post("/export-paper", authMiddleware_1.default, reportPlanningController_1.exportExcelReportPaper);
+router.post("/export-box", authMiddleware_1.default, reportPlanningController_1.exportExcelReportBox);
 exports.default = router;
 //# sourceMappingURL=reportRoutes.js.map

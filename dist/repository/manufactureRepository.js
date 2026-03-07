@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.manufactureRepository = void 0;
+exports.manufactureRepo = void 0;
 const sequelize_1 = require("sequelize");
 const order_1 = require("../models/order/order");
 const planningPaper_1 = require("../models/planning/planningPaper");
@@ -9,7 +9,8 @@ const customer_1 = require("../models/customer/customer");
 const box_1 = require("../models/order/box");
 const planningBoxMachineTime_1 = require("../models/planning/planningBoxMachineTime");
 const planningBox_1 = require("../models/planning/planningBox");
-exports.manufactureRepository = {
+const reportPlanningPaper_1 = require("../models/report/reportPlanningPaper");
+exports.manufactureRepo = {
     //====================================PAPER========================================
     getManufacturePaper: async (machine) => {
         return await planningPaper_1.PlanningPaper.findAll({
@@ -65,6 +66,30 @@ exports.manufactureRepository = {
         return await planningPaper_1.PlanningPaper.findAll({
             where: { orderId: orderId },
             attributes: ["qtyProduced"],
+            transaction,
+        });
+    },
+    getReportPaperByPlanningId: async (planningId, transaction) => {
+        return await reportPlanningPaper_1.ReportPlanningPaper.findOne({
+            where: { planningId },
+            order: [["createdAt", "DESC"]],
+            transaction,
+            lock: transaction?.LOCK.UPDATE,
+        });
+    },
+    getOldPlanningPaper: async (planningId, transaction) => {
+        return await planningPaper_1.PlanningPaper.findByPk(planningId, {
+            attributes: [
+                "planningId",
+                "chooseMachine",
+                "runningPlan",
+                "qtyProduced",
+                "dayCompleted",
+                "status",
+                "hasBox",
+                "orderId",
+            ],
+            include: [{ model: order_1.Order, attributes: ["orderId", "quantityCustomer"] }],
             transaction,
         });
     },
@@ -156,6 +181,21 @@ exports.manufactureRepository = {
         return await planningBoxMachineTime_1.PlanningBoxTime.findAll({
             where: { planningBoxId },
             transaction,
+        });
+    },
+    //updateRequestStockCheck
+    getBoxByPK: async (planningBoxId, machine, transaction) => {
+        return await planningBox_1.PlanningBox.findByPk(planningBoxId, {
+            include: [
+                {
+                    model: planningBoxMachineTime_1.PlanningBoxTime,
+                    where: { machine, dayStart: { [sequelize_1.Op.ne]: null } },
+                    as: "boxTimes",
+                    attributes: ["boxTimeId", "qtyProduced", "machine", "isRequest"],
+                },
+            ],
+            transaction,
+            lock: transaction.LOCK.UPDATE,
         });
     },
     updatePlanningBoxTime: async (planningBoxId, machine, transaction) => {

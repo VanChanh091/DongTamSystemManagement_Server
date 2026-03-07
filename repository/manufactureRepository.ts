@@ -1,4 +1,4 @@
-import { Op } from "sequelize";
+import { Op, Transaction } from "sequelize";
 import { Order } from "../models/order/order";
 import { PlanningPaper } from "../models/planning/planningPaper";
 import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
@@ -6,8 +6,9 @@ import { Customer } from "../models/customer/customer";
 import { Box } from "../models/order/box";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { PlanningBox } from "../models/planning/planningBox";
+import { ReportPlanningPaper } from "../models/report/reportPlanningPaper";
 
-export const manufactureRepository = {
+export const manufactureRepo = {
   //====================================PAPER========================================
 
   getManufacturePaper: async (machine: string) => {
@@ -70,6 +71,31 @@ export const manufactureRepository = {
     });
   },
 
+  getReportPaperByPlanningId: async (planningId: number, transaction?: Transaction) => {
+    return await ReportPlanningPaper.findOne({
+      where: { planningId },
+      order: [["createdAt", "DESC"]],
+      transaction,
+      lock: transaction?.LOCK.UPDATE,
+    });
+  },
+
+  getOldPlanningPaper: async (planningId: number, transaction?: Transaction) => {
+    return await PlanningPaper.findByPk(planningId, {
+      attributes: [
+        "planningId",
+        "chooseMachine",
+        "runningPlan",
+        "qtyProduced",
+        "dayCompleted",
+        "status",
+        "hasBox",
+        "orderId",
+      ],
+      include: [{ model: Order, attributes: ["orderId", "quantityCustomer"] }],
+      transaction,
+    });
+  },
   //====================================BOX========================================
 
   getManufactureBox: async (machine: string) => {
@@ -164,6 +190,22 @@ export const manufactureRepository = {
     });
   },
 
+  //updateRequestStockCheck
+  getBoxByPK: async (planningBoxId: number, machine: string, transaction: Transaction) => {
+    return await PlanningBox.findByPk(planningBoxId, {
+      include: [
+        {
+          model: PlanningBoxTime,
+          where: { machine, dayStart: { [Op.ne]: null } },
+          as: "boxTimes",
+          attributes: ["boxTimeId", "qtyProduced", "machine", "isRequest"],
+        },
+      ],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+  },
+
   updatePlanningBoxTime: async (planningBoxId: number, machine: string, transaction?: any) => {
     return await PlanningBoxTime.update(
       { status: "planning" },
@@ -174,7 +216,7 @@ export const manufactureRepository = {
           planningBoxId: { [Op.ne]: planningBoxId },
         },
         transaction,
-      }
+      },
     );
   },
 };

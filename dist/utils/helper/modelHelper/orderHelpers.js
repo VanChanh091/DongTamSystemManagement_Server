@@ -98,7 +98,7 @@ const calculateOrderMetrics = async (data) => {
     const ratio = ratioData?.ratio ?? 1;
     const baseVolume = (length * size) / 10000;
     const totalVolume = baseVolume * qty * ratio * 1.3;
-    const volumeRaw = Math.round(totalVolume * 100) / 100;
+    const volumeRaw = Math.round(totalVolume * 100) / 100; //làm tròn, lấy 2 số sau dấu phẩy
     const responseData = {
         flute,
         acreage,
@@ -110,10 +110,10 @@ const calculateOrderMetrics = async (data) => {
     return responseData;
 };
 exports.calculateOrderMetrics = calculateOrderMetrics;
-const createDataTable = async (id, model, data) => {
+const createDataTable = async (id, model, data, transaction) => {
     try {
         if (data) {
-            await model.create({ orderId: id, ...data });
+            await model.create({ orderId: id, ...data }, { transaction });
         }
     }
     catch (error) {

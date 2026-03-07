@@ -185,7 +185,7 @@ exports.orderService = {
                 //create table data
                 if (newOrder.isBox) {
                     try {
-                        await (0, orderHelpers_1.createDataTable)(newOrderId, box_1.Box, box);
+                        await (0, orderHelpers_1.createDataTable)(newOrderId, box_1.Box, box, transaction);
                     }
                     catch (error) {
                         console.error("Error creating related data:", error);
