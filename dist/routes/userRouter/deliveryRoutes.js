@@ -12,9 +12,9 @@ const router = (0, express_1.default)();
 router.get("/estimate", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan", "sale"]), deliveryController_1.getPlanningEstimateTime);
 router.put("/estimate", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan", "sale"]), deliveryController_1.confirmReadyDeliveryPlanning);
 //=================================PLANNING DELIVERY=====================================
-router.get("/delivery", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), deliveryController_1.getPendingDelivery);
-router.post("/delivery", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), deliveryController_1.createDeliveryPlan);
-router.put("/delivery", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), deliveryController_1.confirmForDeliveryPlanning);
+router.get("/planning", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), deliveryController_1.getPendingDelivery);
+router.post("/planning", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), deliveryController_1.createDeliveryPlan);
+router.put("/planning", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), deliveryController_1.confirmForDeliveryPlanning);
 //=================================SCHEDULE DELIVERY=====================================
 router.get("/schedule", authMiddleware_1.default, deliveryController_1.getAllScheduleDelivery);
 router.put("/schedule", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan", "delivery"]), deliveryController_1.cancelOrCompleteDeliveryPlan);

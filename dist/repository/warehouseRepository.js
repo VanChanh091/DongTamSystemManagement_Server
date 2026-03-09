@@ -326,6 +326,15 @@ exports.warehouseRepository = {
             limit: pageSize,
         });
     },
+    inventoryTotals: async () => {
+        const result = await inventory_1.Inventory.findAll({
+            attributes: [
+                [sequelize_1.Sequelize.fn("SUM", sequelize_1.Sequelize.col("valueInventory")), "totalValueInventory"],
+            ],
+            raw: true,
+        });
+        return result[0];
+    },
     findInventoryByOrderId: async (orderId) => {
         return await inventory_1.Inventory.findOne({
             where: { orderId },

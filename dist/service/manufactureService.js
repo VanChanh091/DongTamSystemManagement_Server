@@ -547,7 +547,7 @@ exports.manufactureService = {
         }
     },
     updateReportBox: async (planningBoxId, machine, updateData) => {
-        const { qtyProduced: newQty, rpWasteLoss: newWaste, shiftManagement, } = updateData;
+        const { qtyProduced: newQty, rpWasteLoss: newWaste, shiftManagement } = updateData;
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
                 //check report existed
@@ -569,16 +569,15 @@ exports.manufactureService = {
                 })) || 0;
                 // Tính lại lackOfQty cho bản báo cáo này
                 const totalQtyProduced = Number(otherReportsSum) + Number(newQty);
-                console.log(`totalQtyProduced: ${totalQtyProduced}`);
                 const newLackOfQty = (planning.runningPlan || 0) - totalQtyProduced;
                 //update report box
                 await oldReport.update({
                     qtyProduced: newQty,
                     wasteLoss: newWaste,
                     lackOfQty: newLackOfQty,
-                    shiftManagement: shiftManagement
+                    shiftManagement: shiftManagement,
                 }, { transaction });
-                // Lấy tất cả các lần báo cáo của planning này để gom lại
+                // Lấy tất cả các lần báo cáo của planning này
                 const allReports = await reportPlanningBox_1.ReportPlanningBox.findAll({
                     where: { planningBoxId: planningBoxId, machine: machine },
                     transaction,
@@ -587,7 +586,6 @@ exports.manufactureService = {
                 const totalQtyWaste = allReports.reduce((sum, r) => sum + Number(r.wasteLoss || 0), 0);
                 // Gom chuỗi shiftProduction và shiftManagement
                 const { combinedShiftManagement } = (0, manufactureHelper_1.aggregateReportFields)(allReports);
-                console.log(`combinedShiftManagement: ${combinedShiftManagement}`);
                 await planning.update({
                     qtyProduced: totalQtyProduced,
                     rpWasteLoss: totalQtyWaste,

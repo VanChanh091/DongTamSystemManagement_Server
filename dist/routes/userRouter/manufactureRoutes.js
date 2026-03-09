@@ -18,6 +18,6 @@ router.get("/box", authMiddleware_1.default, manufactureController_1.getPlanning
 router.post("/box", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["step2Production"]), manufactureController_1.addReportBox);
 router.post("/box/confirm", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["step2Production"]), manufactureController_1.confirmProducingBox);
 router.put("/box", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["step2Production"]), manufactureController_1.updateReportBox);
-router.put("/box/request-stock", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["step2Production"]), manufactureController_1.updateRequestStockCheck);
+router.put("/box/request", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["step2Production"]), manufactureController_1.updateRequestStockCheck);
 exports.default = router;
 //# sourceMappingURL=manufactureRoutes.js.map
