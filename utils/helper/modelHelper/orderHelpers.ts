@@ -30,7 +30,10 @@ export const generateOrderId = async (prefix: string) => {
   });
 
   let number = 1;
+  let existingCustomerId: string | null = null;
+  
   if (lastOrder && lastOrder.orderId) {
+    existingCustomerId = lastOrder.customerId;
     const lastNumber = parseInt(lastOrder.orderId.slice(sanitizedPrefix.length), 10);
     if (!isNaN(lastNumber)) {
       number = lastNumber + 1;
@@ -38,7 +41,10 @@ export const generateOrderId = async (prefix: string) => {
   }
 
   const formattedNumber = number.toString().padStart(3, "0");
-  return `${sanitizedPrefix}${formattedNumber}`;
+  return { 
+    newOrderId: `${sanitizedPrefix}${formattedNumber}`, 
+    existingCustomerId 
+  };
 };
 
 const calculateFlutePaper = (fields: any) => {

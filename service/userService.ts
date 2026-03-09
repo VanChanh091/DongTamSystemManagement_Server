@@ -43,7 +43,11 @@ export const userService = {
           .replace(/[^\w-]/g, ""); // bỏ ký tự đặc biệt
 
         const fileName = `${sanitizeName}-userId:${userId}`;
-        const result = await uploadImageToCloudinary(webpBuffer, "users", fileName);
+        const result = await uploadImageToCloudinary({
+          buffer: webpBuffer,
+          folder: "users",
+          publicId: fileName,
+        });
 
         parsedUser.avatar = result.secure_url;
       }

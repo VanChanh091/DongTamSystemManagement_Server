@@ -10,6 +10,7 @@ import {
 } from "../../controller/user/order/orderController";
 import authenticate from "../../middlewares/authMiddleware";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
+import upload from "../../utils/image/uploadImage";
 
 const router = Router();
 
@@ -30,8 +31,20 @@ router.get(
   authorizeAnyPermission(["sale"]),
   getOrderPendingAndReject,
 );
-router.post("/", authenticate, authorizeAnyPermission(["sale"]), addOrder);
-router.put("/", authenticate, authorizeAnyPermission(["sale"]), updateOrder);
+router.post(
+  "/",
+  authenticate,
+  upload.single("orderImage"),
+  authorizeAnyPermission(["sale"]),
+  addOrder,
+);
+router.put(
+  "/",
+  authenticate,
+  upload.single("orderImage"),
+  authorizeAnyPermission(["sale"]),
+  updateOrder,
+);
 router.delete("/", authenticate, authorizeAnyPermission(["sale"]), deleteOrder);
 
 //===============================ORDER AUTOCOMPLETE=====================================

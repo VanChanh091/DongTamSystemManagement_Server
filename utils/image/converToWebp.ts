@@ -12,11 +12,15 @@ export const convertToWebp = async (buffer: Buffer, quality: number = 80) => {
   }
 };
 
-export const uploadImageToCloudinary = (
-  buffer: Buffer,
-  folder: string = "products",
-  publicId: string = ""
-): Promise<{ secure_url: string }> =>
+export const uploadImageToCloudinary = ({
+  buffer,
+  folder,
+  publicId,
+}: {
+  buffer: Buffer;
+  folder: string;
+  publicId: string;
+}): Promise<{ secure_url: string }> =>
   new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
@@ -27,7 +31,7 @@ export const uploadImageToCloudinary = (
       (error, result) => {
         if (result) resolve(result);
         else reject(error);
-      }
+      },
     );
 
     streamifier.createReadStream(buffer).pipe(uploadStream);

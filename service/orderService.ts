@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
+
 import {
   cachedStatus,
   calculateOrderMetrics,
@@ -19,6 +20,7 @@ import { runInTransaction } from "../utils/helper/transactionHelper";
 import { orderRepository } from "../repository/orderRepository";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { Request } from "express";
+import { convertToWebp, uploadImageToCloudinary } from "../utils/image/converToWebp";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { order } = CacheKey;
@@ -190,9 +192,11 @@ export const orderService = {
   //end get Order for auto complete
 
   //create order service
-  createOrder: async (user: any, data: any) => {
-    const { userId } = user;
-    const { prefix, customerId, productId, box, ...orderData } = data;
+  createOrder: async (req: Request) => {
+    const { userId } = req.user;
+    const { orderData } = req.body;
+    const parsedOrderData = typeof orderData === "string" ? JSON.parse(orderData) : orderData;
+    const { prefix = "DH", customerId, productId, box, ...restOrderData } = parsedOrderData;
 
     try {
       return await runInTransaction(async (transaction) => {
@@ -204,8 +208,31 @@ export const orderService = {
         if (!validation.success) throw AppError.NotFound(validation.message);
 
         //create id + number auto increase
-        const metrics = await calculateOrderMetrics(orderData);
-        const newOrderId = await generateOrderId(prefix);
+        const metrics = await calculateOrderMetrics(restOrderData);
+        const { newOrderId, existingCustomerId } = await generateOrderId(prefix);
+
+        if (existingCustomerId && existingCustomerId !== customerId) {
+          throw AppError.Conflict(
+            `Khách hàng cho mã đơn hàng ${prefix} không trùng khớp.`,
+            "PREFIX_CUSTOMER_MISMATCH",
+          );
+        }
+
+        //upload image
+        if (req.file) {
+          const webpBuffer = await convertToWebp(req.file.buffer);
+
+          const sanitizeOrderId = newOrderId
+            .replace(/\s+/g, "_") // Xử lý khoảng trắng
+            .replace(/\//g, "_"); // thay dấu / bằng _
+
+          const result = await uploadImageToCloudinary({
+            buffer: webpBuffer,
+            folder: "orders",
+            publicId: sanitizeOrderId,
+          });
+          restOrderData.orderImage = result.secure_url;
+        }
 
         //create order
         const newOrder = await Order.create(
@@ -214,7 +241,7 @@ export const orderService = {
             customerId: customerId,
             productId: productId,
             userId: userId,
-            ...orderData,
+            ...restOrderData,
             ...metrics,
           },
           { transaction },
@@ -241,8 +268,10 @@ export const orderService = {
   },
 
   //update order service
-  updateOrder: async (req: Request, data: any, orderId: string) => {
-    const { box, ...orderData } = data;
+  updateOrder: async (req: Request, orderId: string) => {
+    const { orderData } = req.body;
+    const parsedOrderData = typeof orderData === "string" ? JSON.parse(orderData) : orderData;
+    const { box, ...restOrderData } = parsedOrderData;
 
     try {
       return await runInTransaction(async (transaction) => {
@@ -251,10 +280,26 @@ export const orderService = {
           throw AppError.NotFound("Order not found");
         }
 
-        const mergedData = { ...order.toJSON(), ...orderData };
+        const mergedData = { ...order.toJSON(), ...restOrderData };
         const metrics = await calculateOrderMetrics(mergedData);
 
-        await order.update({ ...orderData, ...metrics }, { transaction });
+        //upload image
+        if (req.file) {
+          const webpBuffer = await convertToWebp(req.file.buffer);
+
+          const sanitizeOrderId = orderId
+            .replace(/\s+/g, "_") // Xử lý khoảng trắng
+            .replace(/\//g, "_"); // thay dấu / bằng _
+
+          const result = await uploadImageToCloudinary({
+            buffer: webpBuffer,
+            folder: "orders",
+            publicId: sanitizeOrderId,
+          });
+          restOrderData.orderImage = result.secure_url;
+        }
+
+        await order.update({ ...restOrderData, ...metrics }, { transaction });
 
         if (order.isBox) {
           await updateChildOrder(orderId, Box, box);

@@ -147,11 +147,11 @@ export const productService = {
 
         if (req.file) {
           const webpBuffer = await convertToWebp(req.file.buffer);
-          const result = await uploadImageToCloudinary(
-            webpBuffer,
-            "products",
-            newProductId.replace(/\s+/g, "_"),
-          );
+          const result = await uploadImageToCloudinary({
+            buffer: webpBuffer,
+            folder: "products",
+            publicId: newProductId.replace(/\s+/g, "_"),
+          });
           parsedProduct.productImage = result.secure_url;
         }
 
@@ -181,7 +181,11 @@ export const productService = {
         if (req.file) {
           if (req.file) {
             const webpBuffer = await convertToWebp(req.file.buffer);
-            const result = await uploadImageToCloudinary(webpBuffer, "products", producId);
+            const result = await uploadImageToCloudinary({
+              buffer: webpBuffer,
+              folder: "products",
+              publicId: producId,
+            });
             productData.productImage = result.secure_url;
           }
         }

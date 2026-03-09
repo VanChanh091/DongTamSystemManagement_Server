@@ -88,7 +88,7 @@ export const getOrderPendingAndReject = async (req: Request, res: Response, next
 //add order
 export const addOrder = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await orderService.createOrder(req.user, req.body);
+    const response = await orderService.createOrder(req);
     return res.status(201).json(response);
   } catch (error) {
     next(error);
@@ -100,7 +100,7 @@ export const updateOrder = async (req: Request, res: Response, next: NextFunctio
   const { orderId } = req.query as { orderId: string };
 
   try {
-    const response = await orderService.updateOrder(req, req.body, orderId);
+    const response = await orderService.updateOrder(req, orderId);
     return res.status(201).json(response);
   } catch (error) {
     next(error);
