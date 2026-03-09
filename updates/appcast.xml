@@ -4,13 +4,14 @@
         <title>DongTam Updates</title>
         <item>
             <title>Version 3.7.0</title>
-            <sparkle:version>3.7.0</sparkle:version> 
-            <description>Chỉnh lại tiêu đề cột đơn hàng
-            Thêm bộ lọc, hoàn đơn cho đơn hàng chờ lên kế hoạch
-            Thêm lọc đơn đã và chưa lên kế hoạch
-            Sửa lại lỗi báo warning đổi khổ bị sai
+            <sparkle:version>3.8.0</sparkle:version> 
+            <description>Tách kế hoạch thành 2 màn: giấy tấm và công đoạn 2
+            Nút di chuyển kế hoạch có thể nhấn giữ để di chuyển liên tục
+            Thêm nút sửa báo cáo cho cả giấy tấm và công đoạn 2
+            Sửa lại lỗi không lấy được tiêu chí kiểm tra cho QC
+            Sửa lại lỗi không hiển thị thông báo khi chỉ định sản xuất đơn hàng
             </description>
-            <pubDate>Tue, 03 March 2026</pubDate>
+            <pubDate>Mon, 09 March 2026</pubDate>
             <enclosure url="dongtam.exe" 
                     sparkle:os="windows" 
                     length="12345678" 

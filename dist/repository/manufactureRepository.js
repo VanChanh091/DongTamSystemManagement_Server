@@ -10,6 +10,7 @@ const box_1 = require("../models/order/box");
 const planningBoxMachineTime_1 = require("../models/planning/planningBoxMachineTime");
 const planningBox_1 = require("../models/planning/planningBox");
 const reportPlanningPaper_1 = require("../models/report/reportPlanningPaper");
+const reportPlanningBox_1 = require("../models/report/reportPlanningBox");
 exports.manufactureRepo = {
     //====================================PAPER========================================
     getManufacturePaper: async (machine) => {
@@ -181,6 +182,14 @@ exports.manufactureRepo = {
         return await planningBoxMachineTime_1.PlanningBoxTime.findAll({
             where: { planningBoxId },
             transaction,
+        });
+    },
+    getReportBoxByPlanningBoxId: async (planningBoxId, machine, transaction) => {
+        return await reportPlanningBox_1.ReportPlanningBox.findOne({
+            where: { planningBoxId, machine },
+            order: [["createdAt", "DESC"]],
+            transaction,
+            lock: transaction?.LOCK.UPDATE,
         });
     },
     //updateRequestStockCheck

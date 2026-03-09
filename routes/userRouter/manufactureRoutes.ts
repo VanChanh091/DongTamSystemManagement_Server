@@ -9,6 +9,7 @@ import {
   confirmProducingBox,
   updateRequestStockCheck,
   updateReportPaper,
+  updateReportBox,
 } from "../../controller/user/manufacture/manufactureController";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 
@@ -46,6 +47,12 @@ router.post(
 );
 router.put(
   "/box",
+  authenticate,
+  authorizeAnyPermission(["step2Production"]),
+  updateReportBox,
+);
+router.put(
+  "/box/request",
   authenticate,
   authorizeAnyPermission(["step2Production"]),
   updateRequestStockCheck,

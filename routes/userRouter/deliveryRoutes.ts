@@ -31,9 +31,9 @@ router.put(
 
 //=================================PLANNING DELIVERY=====================================
 
-router.get("/delivery", authenticate, authorizeAnyPermission(["plan"]), getPendingDelivery);
-router.post("/delivery", authenticate, authorizeAnyPermission(["plan"]), createDeliveryPlan);
-router.put("/delivery", authenticate, authorizeAnyPermission(["plan"]), confirmForDeliveryPlanning);
+router.get("/planning", authenticate, authorizeAnyPermission(["plan"]), getPendingDelivery);
+router.post("/planning", authenticate, authorizeAnyPermission(["plan"]), createDeliveryPlan);
+router.put("/planning", authenticate, authorizeAnyPermission(["plan"]), confirmForDeliveryPlanning);
 
 //=================================SCHEDULE DELIVERY=====================================
 router.get("/schedule", authenticate, getAllScheduleDelivery);

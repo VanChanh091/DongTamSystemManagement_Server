@@ -105,6 +105,21 @@ export const addReportBox = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
+export const updateReportBox = async (req: Request, res: Response, next: NextFunction) => {
+  const { planningBoxId, machine } = req.query as { planningBoxId: string; machine: string };
+
+  try {
+    const response = await manufactureService.updateReportBox(
+      Number(planningBoxId),
+      machine,
+      req.body,
+    );
+    return res.status(201).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
 //confirm producing box
 export const confirmProducingBox = async (req: Request, res: Response, next: NextFunction) => {
   const { planningBoxId, machine } = req.query as { planningBoxId: string; machine: string };

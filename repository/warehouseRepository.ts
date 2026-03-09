@@ -377,6 +377,17 @@ export const warehouseRepository = {
     });
   },
 
+  inventoryTotals: async () => {
+    const result = await Inventory.findAll({
+      attributes: [
+        [Sequelize.fn("SUM", Sequelize.col("valueInventory")), "totalValueInventory"],
+      ],
+      raw: true,
+    });
+
+    return result[0];
+  },
+
   findInventoryByOrderId: async (orderId: string) => {
     return await Inventory.findOne({
       where: { orderId },

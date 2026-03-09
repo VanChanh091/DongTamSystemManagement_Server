@@ -302,7 +302,6 @@ export const manufactureService = {
 
         // Tính lại lackOfQty cho bản báo cáo này
         const totalQtyProduced = Number(otherReportsSum) + Number(newQty);
-        console.log(`totalQtyProduced: ${totalQtyProduced}`);
         const newLackOfQty = planning.runningPlan - totalQtyProduced;
 
         //update report paper
@@ -322,18 +321,12 @@ export const manufactureService = {
           transaction,
         });
 
-        // Tính tổng số lượng từ tất cả báo cáo
-        const qty = allReports.reduce((sum, r) => sum + Number(r.qtyProduced || 0), 0);
-        console.log(`qty: ${qty}`);
+        // Tính tổng phế liệu từ tất cả báo cáo
         const totalQtyWaste = allReports.reduce((sum, r) => sum + Number(r.qtyWasteNorm || 0), 0);
 
-        // Gom chuỗi shiftProduction và shiftManagement (Dùng hàm aggregateReportFields của ông)
+        // Gom chuỗi shiftProduction và shiftManagement
         const { combinedShiftProduction, combinedShiftManagement } =
           aggregateReportFields(allReports);
-
-        console.log(
-          `combinedShiftProduction: ${combinedShiftProduction}, combinedShiftManagement: ${combinedShiftManagement}`,
-        );
 
         await planning.update(
           {
@@ -444,12 +437,13 @@ export const manufactureService = {
 
       // --- GỬI SOCKET SAU KHI TRANSACTION THÀNH CÔNG ---
       if (result.data) {
-        await planningPaperService.notifyUpdatePlanning(
+        await planningPaperService.notifyUpdatePlanning({
           req,
-          false,
-          result.data.chooseMachine,
-          "planningPaperUpdated",
-        );
+          isPlan: false,
+          machine: result.data.chooseMachine,
+          keyName: "planningPaperUpdated",
+          senderId: user?.userId,
+        });
       }
 
       return result;
@@ -666,6 +660,82 @@ export const manufactureService = {
     }
   },
 
+  updateReportBox: async (planningBoxId: number, machine: string, updateData: any) => {
+    const { qtyProduced: newQty, rpWasteLoss: newWaste, shiftManagement } = updateData;
+
+    try {
+      return await runInTransaction(async (transaction) => {
+        //check report existed
+        const oldReport = await manufactureRepo.getReportBoxByPlanningBoxId(
+          planningBoxId,
+          machine,
+          transaction,
+        );
+        if (!oldReport) {
+          throw AppError.NotFound("Report not found", "REPORT_NOT_FOUND");
+        }
+
+        const planning = await manufactureRepo.getBoxById(planningBoxId, machine, transaction);
+        if (!planning) {
+          throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
+        }
+
+        const otherReportsSum =
+          (await ReportPlanningBox.sum("qtyProduced", {
+            where: {
+              planningBoxId: planningBoxId,
+              machine: machine,
+              reportBoxId: { [Op.ne]: oldReport.reportBoxId },
+            },
+            transaction,
+          })) || 0;
+
+        // Tính lại lackOfQty cho bản báo cáo này
+        const totalQtyProduced = Number(otherReportsSum) + Number(newQty);
+        const newLackOfQty = (planning.runningPlan || 0) - totalQtyProduced;
+
+        //update report box
+        await oldReport.update(
+          {
+            qtyProduced: newQty,
+            wasteLoss: newWaste,
+            lackOfQty: newLackOfQty,
+            shiftManagement: shiftManagement,
+          },
+          { transaction },
+        );
+
+        // Lấy tất cả các lần báo cáo của planning này
+        const allReports = await ReportPlanningBox.findAll({
+          where: { planningBoxId: planningBoxId, machine: machine },
+          transaction,
+        });
+
+        // Tính tổng phế liệu từ tất cả báo cáo
+        const totalQtyWaste = allReports.reduce((sum, r) => sum + Number(r.wasteLoss || 0), 0);
+
+        // Gom chuỗi shiftProduction và shiftManagement
+        const { combinedShiftManagement } = aggregateReportFields(allReports);
+
+        await planning.update(
+          {
+            qtyProduced: totalQtyProduced,
+            rpWasteLoss: totalQtyWaste,
+            status: totalQtyProduced >= (planning.runningPlan || 0) ? planning.status : "lackOfQty",
+            shiftManagement: combinedShiftManagement,
+          },
+          { transaction },
+        );
+
+        return { message: "Update Report successfully", data: oldReport };
+      });
+    } catch (error) {
+      console.error("Error update Report box:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
   confirmProducingBox: async (req: Request, planningBoxId: number, machine: string, user: any) => {
     // const { role, permissions: userPermissions } = user;
 
@@ -717,12 +787,13 @@ export const manufactureService = {
 
       // --- GỬI SOCKET SAU KHI TRANSACTION THÀNH CÔNG ---
       if (result.data) {
-        await planningPaperService.notifyUpdatePlanning(
+        await planningPaperService.notifyUpdatePlanning({
           req,
-          false,
-          result.data.machine,
-          "planningBoxUpdated",
-        );
+          isPlan: false,
+          machine: result.data.machine,
+          keyName: "planningBoxUpdated",
+          senderId: user?.userId,
+        });
       }
 
       return result;

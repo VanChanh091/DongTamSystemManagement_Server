@@ -251,7 +251,6 @@ exports.manufactureService = {
                 })) || 0;
                 // Tính lại lackOfQty cho bản báo cáo này
                 const totalQtyProduced = Number(otherReportsSum) + Number(newQty);
-                console.log(`totalQtyProduced: ${totalQtyProduced}`);
                 const newLackOfQty = planning.runningPlan - totalQtyProduced;
                 //update report paper
                 await oldReport.update({
@@ -265,13 +264,10 @@ exports.manufactureService = {
                     where: { planningId: planning.planningId },
                     transaction,
                 });
-                // Tính tổng số lượng từ tất cả báo cáo
-                const qty = allReports.reduce((sum, r) => sum + Number(r.qtyProduced || 0), 0);
-                console.log(`qty: ${qty}`);
+                // Tính tổng phế liệu từ tất cả báo cáo
                 const totalQtyWaste = allReports.reduce((sum, r) => sum + Number(r.qtyWasteNorm || 0), 0);
-                // Gom chuỗi shiftProduction và shiftManagement (Dùng hàm aggregateReportFields của ông)
+                // Gom chuỗi shiftProduction và shiftManagement
                 const { combinedShiftProduction, combinedShiftManagement } = (0, manufactureHelper_1.aggregateReportFields)(allReports);
-                console.log(`combinedShiftProduction: ${combinedShiftProduction}, combinedShiftManagement: ${combinedShiftManagement}`);
                 await planning.update({
                     qtyProduced: totalQtyProduced,
                     qtyWasteNorm: totalQtyWaste,
@@ -360,7 +356,13 @@ exports.manufactureService = {
             });
             // --- GỬI SOCKET SAU KHI TRANSACTION THÀNH CÔNG ---
             if (result.data) {
-                await planningPaperService_1.planningPaperService.notifyUpdatePlanning(req, false, result.data.chooseMachine, "planningPaperUpdated");
+                await planningPaperService_1.planningPaperService.notifyUpdatePlanning({
+                    req,
+                    isPlan: false,
+                    machine: result.data.chooseMachine,
+                    keyName: "planningPaperUpdated",
+                    senderId: user?.userId,
+                });
             }
             return result;
         }
@@ -544,6 +546,64 @@ exports.manufactureService = {
             throw appError_1.AppError.ServerError();
         }
     },
+    updateReportBox: async (planningBoxId, machine, updateData) => {
+        const { qtyProduced: newQty, rpWasteLoss: newWaste, shiftManagement, } = updateData;
+        try {
+            return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
+                //check report existed
+                const oldReport = await manufactureRepository_1.manufactureRepo.getReportBoxByPlanningBoxId(planningBoxId, machine, transaction);
+                if (!oldReport) {
+                    throw appError_1.AppError.NotFound("Report not found", "REPORT_NOT_FOUND");
+                }
+                const planning = await manufactureRepository_1.manufactureRepo.getBoxById(planningBoxId, machine, transaction);
+                if (!planning) {
+                    throw appError_1.AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
+                }
+                const otherReportsSum = (await reportPlanningBox_1.ReportPlanningBox.sum("qtyProduced", {
+                    where: {
+                        planningBoxId: planningBoxId,
+                        machine: machine,
+                        reportBoxId: { [sequelize_1.Op.ne]: oldReport.reportBoxId },
+                    },
+                    transaction,
+                })) || 0;
+                // Tính lại lackOfQty cho bản báo cáo này
+                const totalQtyProduced = Number(otherReportsSum) + Number(newQty);
+                console.log(`totalQtyProduced: ${totalQtyProduced}`);
+                const newLackOfQty = (planning.runningPlan || 0) - totalQtyProduced;
+                //update report box
+                await oldReport.update({
+                    qtyProduced: newQty,
+                    wasteLoss: newWaste,
+                    lackOfQty: newLackOfQty,
+                    shiftManagement: shiftManagement
+                }, { transaction });
+                // Lấy tất cả các lần báo cáo của planning này để gom lại
+                const allReports = await reportPlanningBox_1.ReportPlanningBox.findAll({
+                    where: { planningBoxId: planningBoxId, machine: machine },
+                    transaction,
+                });
+                // Tính tổng phế liệu từ tất cả báo cáo
+                const totalQtyWaste = allReports.reduce((sum, r) => sum + Number(r.wasteLoss || 0), 0);
+                // Gom chuỗi shiftProduction và shiftManagement
+                const { combinedShiftManagement } = (0, manufactureHelper_1.aggregateReportFields)(allReports);
+                console.log(`combinedShiftManagement: ${combinedShiftManagement}`);
+                await planning.update({
+                    qtyProduced: totalQtyProduced,
+                    rpWasteLoss: totalQtyWaste,
+                    status: totalQtyProduced >= (planning.runningPlan || 0) ? planning.status : "lackOfQty",
+                    shiftManagement: combinedShiftManagement,
+                }, { transaction });
+                return { message: "Update Report successfully", data: oldReport };
+            });
+        }
+        catch (error) {
+            console.error("Error update Report box:", error);
+            if (error instanceof appError_1.AppError)
+                throw error;
+            throw appError_1.AppError.ServerError();
+        }
+    },
     confirmProducingBox: async (req, planningBoxId, machine, user) => {
         // const { role, permissions: userPermissions } = user;
         try {
@@ -586,7 +646,13 @@ exports.manufactureService = {
             });
             // --- GỬI SOCKET SAU KHI TRANSACTION THÀNH CÔNG ---
             if (result.data) {
-                await planningPaperService_1.planningPaperService.notifyUpdatePlanning(req, false, result.data.machine, "planningBoxUpdated");
+                await planningPaperService_1.planningPaperService.notifyUpdatePlanning({
+                    req,
+                    isPlan: false,
+                    machine: result.data.machine,
+                    keyName: "planningBoxUpdated",
+                    senderId: user?.userId,
+                });
             }
             return result;
         }

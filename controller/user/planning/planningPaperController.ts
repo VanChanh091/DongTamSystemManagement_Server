@@ -114,7 +114,13 @@ export const notifyUpdatePlanning = async (req: Request, res: Response, next: Ne
   };
 
   try {
-    const response = await planningPaperService.notifyUpdatePlanning(req, isPlan, machine, keyName);
+    const response = await planningPaperService.notifyUpdatePlanning({
+      req,
+      isPlan,
+      machine,
+      keyName,
+      senderId: (req as any).user?.userId,
+    });
     return res.status(201).json(response);
   } catch (error) {
     next(error);

@@ -526,11 +526,21 @@ export const planningPaperService = {
   },
 
   //planningPaperUpdated or planningBoxUpdated
-  notifyUpdatePlanning: async (req: Request, isPlan: boolean, machine: string, keyName: string) => {
+  notifyUpdatePlanning: async ({
+    req,
+    isPlan,
+    machine,
+    keyName,
+    senderId,
+  }: {
+    req: Request;
+    isPlan: boolean;
+    machine: string;
+    keyName: string;
+    senderId?: number;
+  }) => {
     try {
       const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
-
-      console.log(`roomName: ${roomName}`);
 
       let item: any = {};
       isPlan
@@ -539,8 +549,9 @@ export const planningPaperService = {
             from: "Kế hoạch",
             machine,
             message: `Kế hoạch cho ${machine} đã được cập nhật.`,
+            senderId,
           })
-        : (item = { isPlan, message: `Chỉ định sản xuất cho đơn hàng thành công` });
+        : (item = { isPlan, message: `Chỉ định sản xuất cho đơn hàng thành công`, senderId });
 
       req.io?.to(roomName).emit(keyName, item);
 

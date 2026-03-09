@@ -7,6 +7,7 @@ import { Box } from "../models/order/box";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { PlanningBox } from "../models/planning/planningBox";
 import { ReportPlanningPaper } from "../models/report/reportPlanningPaper";
+import { ReportPlanningBox } from "../models/report/reportPlanningBox";
 
 export const manufactureRepo = {
   //====================================PAPER========================================
@@ -187,6 +188,15 @@ export const manufactureRepo = {
     return await PlanningBoxTime.findAll({
       where: { planningBoxId },
       transaction,
+    });
+  },
+
+  getReportBoxByPlanningBoxId: async (planningBoxId: number, machine: string, transaction?: Transaction) => {
+    return await ReportPlanningBox.findOne({
+      where: { planningBoxId, machine },
+      order: [["createdAt", "DESC"]],
+      transaction,
+      lock: transaction?.LOCK.UPDATE,
     });
   },
 

@@ -80,7 +80,13 @@ exports.updateIndex_TimeRunning = updateIndex_TimeRunning;
 const notifyUpdatePlanning = async (req, res, next) => {
     const { machine, keyName, isPlan } = req.body;
     try {
-        const response = await planningPaperService_1.planningPaperService.notifyUpdatePlanning(req, isPlan, machine, keyName);
+        const response = await planningPaperService_1.planningPaperService.notifyUpdatePlanning({
+            req,
+            isPlan,
+            machine,
+            keyName,
+            senderId: req.user?.userId,
+        });
         return res.status(201).json(response);
     }
     catch (error) {

@@ -441,10 +441,9 @@ exports.planningPaperService = {
         }
     },
     //planningPaperUpdated or planningBoxUpdated
-    notifyUpdatePlanning: async (req, isPlan, machine, keyName) => {
+    notifyUpdatePlanning: async ({ req, isPlan, machine, keyName, senderId, }) => {
         try {
             const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
-            console.log(`roomName: ${roomName}`);
             let item = {};
             isPlan
                 ? (item = {
@@ -452,8 +451,9 @@ exports.planningPaperService = {
                     from: "Kế hoạch",
                     machine,
                     message: `Kế hoạch cho ${machine} đã được cập nhật.`,
+                    senderId,
                 })
-                : (item = { isPlan, message: `Chỉ định sản xuất cho đơn hàng thành công` });
+                : (item = { isPlan, message: `Chỉ định sản xuất cho đơn hàng thành công`, senderId });
             req.io?.to(roomName).emit(keyName, item);
             return { message: "Đã gửi thông báo cập nhật kế hoạch" };
         }

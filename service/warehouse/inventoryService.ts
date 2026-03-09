@@ -22,6 +22,7 @@ export const inventoryService = {
       const totalInventory = await warehouseRepository.inventoryCount();
       const totalPages = Math.ceil(totalInventory / pageSize);
       const data = await warehouseRepository.getInventoryByPage(page, pageSize);
+      const totals: any = await warehouseRepository.inventoryTotals();
 
       const responseData = {
         message: "Get all inventory successfully",
@@ -29,6 +30,7 @@ export const inventoryService = {
         totalInventory,
         totalPages,
         currentPage: page,
+        totalValueInventory: totals?.totalValueInventory || 0,
       };
 
       //   await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
