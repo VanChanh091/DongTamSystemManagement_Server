@@ -34,6 +34,9 @@ import { initSocket } from "./utils/socket/socket";
 import { AppError } from "./utils/appError";
 import { cleanStackTrace, sendTelegramAlert } from "./utils/telegram/telegramSending";
 
+//cron job auto delete image on Cloudinary
+import "./utils/autoDeleteImage";
+
 const app = express();
 
 const server = http.createServer(app);
@@ -133,9 +136,10 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-server.listen({ port: Number(process.env.PORT) || 5000, host: "0.0.0.0" }, (err?: Error) => {
+server.listen({ port: Number(process.env.PORT) || 5000, host: "0.0.0.0" }, async (err?: Error) => {
   if (err) {
     console.log(err);
   }
-  connectDB();
+  await connectDB();
+  console.log("✅ Cron Job đã được kích hoạt!");
 });

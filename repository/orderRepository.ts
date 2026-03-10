@@ -5,6 +5,7 @@ import { Product } from "../models/product/product";
 import { User } from "../models/user/user";
 import { Order } from "../models/order/order";
 import { FluteRatio } from "../models/admin/fluteRatio";
+import { OrderImage } from "../models/order/orderImage";
 
 export const orderRepository = {
   buildQueryOptions: (whereCondition: any = {}, statusList: string[]): FindOptions => {
@@ -16,6 +17,7 @@ export const orderRepository = {
         { model: Customer, attributes: ["customerName", "companyName"] },
         { model: Product, attributes: ["typeProduct", "productName", "maKhuon"] },
         { model: Box, as: "box", attributes: { exclude: ["createdAt", "updatedAt"] } },
+        { model: OrderImage, attributes: ["imageUrl"] },
         { model: User, attributes: ["fullName"] },
       ],
 

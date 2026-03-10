@@ -50,7 +50,6 @@ interface OrderAttributes {
   instructSpecial?: string | null;
   rejectReason?: string | null;
   orderIdCustomer?: string | null;
-  orderImage?: string | null;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -102,7 +101,6 @@ export type OrderCreationAttributes = Optional<
   | "status"
   | "statusPriority"
   | "orderIdCustomer"
-  | "orderImage"
   | "createdAt"
   | "updatedAt"
 >;
@@ -152,7 +150,6 @@ export class Order
   declare instructSpecial?: string | null;
   declare rejectReason?: string | null;
   declare orderIdCustomer?: string | null;
-  declare orderImage?: string | null;
 
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
@@ -227,9 +224,6 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
       //sort
       orderSortValue: { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 },
       statusPriority: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
-
-      //image
-      orderImage: { type: DataTypes.STRING },
 
       //FK
       customerId: { type: DataTypes.STRING },

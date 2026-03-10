@@ -20,7 +20,7 @@ export const uploadImageToCloudinary = ({
   buffer: Buffer;
   folder: string;
   publicId: string;
-}): Promise<{ secure_url: string }> =>
+}): Promise<{ secure_url: string; public_id: string }> =>
   new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
@@ -29,8 +29,12 @@ export const uploadImageToCloudinary = ({
         resource_type: "image",
       },
       (error, result) => {
-        if (result) resolve(result);
-        else reject(error);
+        if (result) {
+          resolve({
+            secure_url: result.secure_url,
+            public_id: result.public_id,
+          });
+        } else reject(error);
       },
     );
 

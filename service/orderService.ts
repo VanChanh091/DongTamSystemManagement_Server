@@ -21,6 +21,7 @@ import { orderRepository } from "../repository/orderRepository";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { Request } from "express";
 import { convertToWebp, uploadImageToCloudinary } from "../utils/image/converToWebp";
+import { OrderImage } from "../models/order/orderImage";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { order } = CacheKey;
@@ -218,6 +219,8 @@ export const orderService = {
           );
         }
 
+        let imageData = null;
+
         //upload image
         if (req.file) {
           const webpBuffer = await convertToWebp(req.file.buffer);
@@ -231,7 +234,12 @@ export const orderService = {
             folder: "orders",
             publicId: sanitizeOrderId,
           });
-          restOrderData.orderImage = result.secure_url;
+
+          imageData = {
+            orderId: newOrderId,
+            publicId: result.public_id,
+            imageUrl: result.secure_url,
+          };
         }
 
         //create order
@@ -246,6 +254,10 @@ export const orderService = {
           },
           { transaction },
         );
+
+        if (imageData) {
+          await OrderImage.create(imageData, { transaction });
+        }
 
         //create table data
         if (newOrder.isBox) {
@@ -283,6 +295,8 @@ export const orderService = {
         const mergedData = { ...order.toJSON(), ...restOrderData };
         const metrics = await calculateOrderMetrics(mergedData);
 
+        let imageData = null;
+
         //upload image
         if (req.file) {
           const webpBuffer = await convertToWebp(req.file.buffer);
@@ -296,7 +310,22 @@ export const orderService = {
             folder: "orders",
             publicId: sanitizeOrderId,
           });
-          restOrderData.orderImage = result.secure_url;
+
+          imageData = {
+            orderId: orderId,
+            publicId: result.public_id,
+            imageUrl: result.secure_url,
+          };
+        }
+
+        if (imageData) {
+          const existingImage = await OrderImage.findOne({ where: { orderId }, transaction });
+
+          if (existingImage) {
+            await existingImage.update(imageData, { transaction });
+          } else {
+            await OrderImage.create(imageData, { transaction });
+          }
         }
 
         await order.update({ ...restOrderData, ...metrics }, { transaction });
