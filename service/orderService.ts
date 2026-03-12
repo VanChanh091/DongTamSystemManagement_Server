@@ -20,8 +20,8 @@ import { runInTransaction } from "../utils/helper/transactionHelper";
 import { orderRepository } from "../repository/orderRepository";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { Request } from "express";
-import { convertToWebp, uploadImageToCloudinary } from "../utils/image/converToWebp";
 import { OrderImage } from "../models/order/orderImage";
+import { CrudHelper } from "../repository/helper/crud.helper.repository";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { order } = CacheKey;
@@ -274,11 +274,11 @@ export const orderService = {
   updateOrder: async (req: Request, orderId: string) => {
     const { orderData } = req.body;
     const parsedOrderData = typeof orderData === "string" ? JSON.parse(orderData) : orderData;
-    const { box, imageData, ...restOrderData } = parsedOrderData;
+    const { box, imageData, isDeleteImage, ...restOrderData } = parsedOrderData;
 
     try {
       return await runInTransaction(async (transaction) => {
-        const order = await Order.findOne({ where: { orderId } });
+        const order = await CrudHelper.findOne({ model: Order, whereCondition: { orderId } });
         if (!order) {
           throw AppError.NotFound("Order not found");
         }
@@ -286,9 +286,11 @@ export const orderService = {
         const mergedData = { ...order.toJSON(), ...restOrderData };
         const metrics = await calculateOrderMetrics(mergedData);
 
-        //Cập nhật thông tin hình ảnh
-        if (imageData && imageData.imageUrl && imageData.publicId) {
-          const existingImage = await OrderImage.findOne({
+        //Cập nhật thông tin hoặc xóa hình ảnh
+        if (isDeleteImage) {
+          await OrderImage.destroy({ where: { orderId }, transaction });
+        } else if (imageData && imageData.imageUrl && imageData.publicId) {
+          const existedImg = await OrderImage.findOne({
             where: { orderId },
             transaction,
           });
@@ -299,8 +301,8 @@ export const orderService = {
             imageUrl: imageData.imageUrl,
           };
 
-          if (existingImage) {
-            await existingImage.update(newImagePayload, { transaction });
+          if (existedImg) {
+            await existedImg.update(newImagePayload, { transaction });
           } else {
             await OrderImage.create(newImagePayload, { transaction });
           }

@@ -370,6 +370,7 @@ export const warehouseRepository = {
             "vat",
             "totalPriceVAT",
           ],
+          include: [{ model: Customer, attributes: ["customerName"] }],
         },
       ],
       offset: (page - 1) * pageSize,
@@ -379,9 +380,7 @@ export const warehouseRepository = {
 
   inventoryTotals: async () => {
     const result = await Inventory.findAll({
-      attributes: [
-        [Sequelize.fn("SUM", Sequelize.col("valueInventory")), "totalValueInventory"],
-      ],
+      attributes: [[Sequelize.fn("SUM", Sequelize.col("valueInventory")), "totalValueInventory"]],
       raw: true,
     });
 
