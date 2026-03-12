@@ -1,5 +1,9 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import { NextFunction, Request, Response } from "express";
 import { orderService } from "../../../service/orderService";
+import cloudinary from "../../../assest/configs/connectCloudinary";
 
 //===============================ORDER AUTOCOMPLETE=====================================
 
@@ -23,6 +27,33 @@ export const getOrderDetail = async (req: Request, res: Response, next: NextFunc
   } catch (error) {
     next(error);
   }
+};
+
+//===============================CLOUDINARY IMAGE=====================================
+
+export const getCloudinarySignature = async (req: Request, res: Response) => {
+  const { CLOUDINARY_API_SECRET, CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY } = process.env;
+
+  // Kiểm tra xem các biến môi trường có tồn tại không
+  if (!CLOUDINARY_API_SECRET || !CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY) {
+    return res.status(500).json({
+      message: "Cloudinary configuration is missing in environment variables",
+    });
+  }
+
+  const timestamp = Math.round(new Date().getTime() / 1000);
+  const folder = "orders";
+
+  // Bây giờ TypeScript sẽ biết chắc chắn CLOUDINARY_API_SECRET là string
+  const signature = cloudinary.utils.api_sign_request({ timestamp, folder }, CLOUDINARY_API_SECRET);
+
+  return res.json({
+    signature,
+    timestamp,
+    cloudName: CLOUDINARY_CLOUD_NAME,
+    apiKey: CLOUDINARY_API_KEY,
+    folder,
+  });
 };
 
 //===============================ACCEPT AND PLANNING=====================================

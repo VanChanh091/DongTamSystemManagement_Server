@@ -4,6 +4,7 @@ import { Box } from "../models/order/box";
 import { Order } from "../models/order/order";
 import { Product } from "../models/product/product";
 import { User } from "../models/user/user";
+import { OrderImage } from "../models/order/orderImage";
 
 export const adminRepository = {
   //===============================ADMIN CRUD=====================================
@@ -56,6 +57,7 @@ export const adminRepository = {
           attributes: ["typeProduct", "productName", "maKhuon", "productImage"],
         },
         { model: Box, as: "box" },
+        { model: OrderImage, attributes: ["imageUrl"] },
         { model: User, attributes: ["fullName"] },
       ],
       order: [["orderSortValue", "ASC"]],

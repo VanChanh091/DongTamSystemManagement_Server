@@ -197,7 +197,14 @@ export const orderService = {
     const { userId } = req.user;
     const { orderData } = req.body;
     const parsedOrderData = typeof orderData === "string" ? JSON.parse(orderData) : orderData;
-    const { prefix = "DH", customerId, productId, box, ...restOrderData } = parsedOrderData;
+    const {
+      prefix = "DH",
+      customerId,
+      productId,
+      box,
+      imageData,
+      ...restOrderData
+    } = parsedOrderData;
 
     try {
       return await runInTransaction(async (transaction) => {
@@ -214,32 +221,9 @@ export const orderService = {
 
         if (existingCustomerId && existingCustomerId !== customerId) {
           throw AppError.Conflict(
-            `Khách hàng cho mã đơn hàng ${prefix} không trùng khớp.`,
+            `Mã đơn hàng: ${newOrderId} đã liên kết với khách hàng ${existingCustomerId}.`,
             "PREFIX_CUSTOMER_MISMATCH",
           );
-        }
-
-        let imageData = null;
-
-        //upload image
-        if (req.file) {
-          const webpBuffer = await convertToWebp(req.file.buffer);
-
-          const sanitizeOrderId = newOrderId
-            .replace(/\s+/g, "_") // Xử lý khoảng trắng
-            .replace(/\//g, "_"); // thay dấu / bằng _
-
-          const result = await uploadImageToCloudinary({
-            buffer: webpBuffer,
-            folder: "orders",
-            publicId: sanitizeOrderId,
-          });
-
-          imageData = {
-            orderId: newOrderId,
-            publicId: result.public_id,
-            imageUrl: result.secure_url,
-          };
         }
 
         //create order
@@ -255,8 +239,15 @@ export const orderService = {
           { transaction },
         );
 
-        if (imageData) {
-          await OrderImage.create(imageData, { transaction });
+        //Cập nhật thông tin hình ảnh
+        if (imageData && imageData.imageUrl && imageData.publicId) {
+          const newImagePayload = {
+            orderId: newOrderId,
+            publicId: imageData.publicId,
+            imageUrl: imageData.imageUrl,
+          };
+
+          await OrderImage.create(newImagePayload, { transaction });
         }
 
         //create table data
@@ -283,7 +274,7 @@ export const orderService = {
   updateOrder: async (req: Request, orderId: string) => {
     const { orderData } = req.body;
     const parsedOrderData = typeof orderData === "string" ? JSON.parse(orderData) : orderData;
-    const { box, ...restOrderData } = parsedOrderData;
+    const { box, imageData, ...restOrderData } = parsedOrderData;
 
     try {
       return await runInTransaction(async (transaction) => {
@@ -295,36 +286,23 @@ export const orderService = {
         const mergedData = { ...order.toJSON(), ...restOrderData };
         const metrics = await calculateOrderMetrics(mergedData);
 
-        let imageData = null;
-
-        //upload image
-        if (req.file) {
-          const webpBuffer = await convertToWebp(req.file.buffer);
-
-          const sanitizeOrderId = orderId
-            .replace(/\s+/g, "_") // Xử lý khoảng trắng
-            .replace(/\//g, "_"); // thay dấu / bằng _
-
-          const result = await uploadImageToCloudinary({
-            buffer: webpBuffer,
-            folder: "orders",
-            publicId: sanitizeOrderId,
+        //Cập nhật thông tin hình ảnh
+        if (imageData && imageData.imageUrl && imageData.publicId) {
+          const existingImage = await OrderImage.findOne({
+            where: { orderId },
+            transaction,
           });
 
-          imageData = {
+          const newImagePayload = {
             orderId: orderId,
-            publicId: result.public_id,
-            imageUrl: result.secure_url,
+            publicId: imageData.publicId,
+            imageUrl: imageData.imageUrl,
           };
-        }
-
-        if (imageData) {
-          const existingImage = await OrderImage.findOne({ where: { orderId }, transaction });
 
           if (existingImage) {
-            await existingImage.update(imageData, { transaction });
+            await existingImage.update(newImagePayload, { transaction });
           } else {
-            await OrderImage.create(imageData, { transaction });
+            await OrderImage.create(newImagePayload, { transaction });
           }
         }
 

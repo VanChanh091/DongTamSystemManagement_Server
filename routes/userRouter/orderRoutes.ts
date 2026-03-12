@@ -7,6 +7,7 @@ import {
   getOrderDetail,
   getOrderIdRaw,
   getOrdersAcceptPlanning,
+  getCloudinarySignature,
 } from "../../controller/user/order/orderController";
 import authenticate from "../../middlewares/authMiddleware";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
@@ -51,5 +52,13 @@ router.delete("/", authenticate, authorizeAnyPermission(["sale"]), deleteOrder);
 
 router.get("/order-id-raw", authenticate, authorizeAnyPermission(["sale"]), getOrderIdRaw);
 router.get("/order-detail", authenticate, authorizeAnyPermission(["sale"]), getOrderDetail);
+
+//===============================CLOUDINARY IMAGE=====================================
+router.get(
+  "/get-signature",
+  authenticate,
+  authorizeAnyPermission(["sale"]),
+  getCloudinarySignature,
+);
 
 export default router;
