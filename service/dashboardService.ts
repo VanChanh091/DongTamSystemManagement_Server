@@ -240,7 +240,7 @@ export const dashboardService = {
 
       const rawPapers = await dashboardRepository.exportExcelDbPlanning({ whereCondition });
 
-      // Format dữ liệu thành 2 tầng cho FE
+      // Format dữ liệu thành 2 tầng
       const formatted = await Promise.all(
         rawPapers.map(async (paper) => {
           const box = paper.PlanningBox;

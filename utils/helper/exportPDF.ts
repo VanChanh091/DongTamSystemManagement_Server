@@ -1,12 +1,12 @@
-import { Response } from "express";
-import PDFDocument from "pdfkit";
 import path from "path";
-import { OutboundHistory } from "../../models/warehouse/outboundHistory";
-import { Order } from "../../models/order/order";
-import { Customer } from "../../models/customer/customer";
-import { Product } from "../../models/product/product";
+import PDFDocument from "pdfkit";
+import { Response } from "express";
 import { AppError } from "../appError";
 import { User } from "../../models/user/user";
+import { Order } from "../../models/order/order";
+import { Product } from "../../models/product/product";
+import { Customer } from "../../models/customer/customer";
+import { OutboundHistory } from "../../models/warehouse/outboundHistory";
 import { OutboundDetail } from "../../models/warehouse/outboundDetail";
 
 const FONT_REGULAR = path.join(process.cwd(), "assest/fonts/NotoSerif-Regular.ttf");
@@ -14,7 +14,7 @@ const FONT_BOLD = path.join(process.cwd(), "assest/fonts/NotoSerif-Bold.ttf");
 const FONT_ITALIC = path.join(process.cwd(), "assest/fonts/NotoSerif-Italic.ttf");
 const FONT_BOLD_ITALIC = path.join(process.cwd(), "assest/fonts/NotoSerif-BoldItalic.ttf");
 
-export async function exportWarehouseSale(res: Response, outboundId: number) {
+export async function exportWarehouse(res: Response, outboundId: number) {
   const outbound = await OutboundHistory.findOne({
     where: { outboundId },
     attributes: { exclude: ["createdAt", "updatedAt", "totalOutboundQty"] },
@@ -82,7 +82,7 @@ function buildWarehouseSalePDF({ res, outbound }: { res: Response; outbound: any
       {
         align: "left",
         lineGap: 4,
-      }
+      },
     );
 
   doc.moveDown(1);
@@ -265,8 +265,8 @@ function drawItemTable(doc: PDFKit.PDFDocument, outbound: any) {
   const items = Array.isArray(outbound.detail)
     ? outbound.detail
     : outbound.detail
-    ? [outbound.detail]
-    : [];
+      ? [outbound.detail]
+      : [];
 
   const startY = doc.y;
   const startX = 40;
@@ -306,7 +306,7 @@ function drawItemTable(doc: PDFKit.PDFDocument, outbound: any) {
 
     const lengthCode = formatDimension(order.lengthPaperCustomer ?? 0);
     const sizeCode = formatDimension(order.paperSizeCustomer ?? 0);
-    const qcBox = order.QC_box != null ? `(${order.QC_box})` : "";
+    const qcBox = order.QC_box != "" && order.QC_box != null ? `(${order.QC_box})` : "";
 
     const rowH = drawTableRow({
       doc,
@@ -353,25 +353,25 @@ function drawItemTable(doc: PDFKit.PDFDocument, outbound: any) {
   const col2 = leftBlockWidth * 0.1;
   const col3 = leftBlockWidth * 0.3;
 
-  // 1️⃣ Label Thuế suất
+  // Label Thuế suất
   doc.text("Thuế suất GTGT:", tableLeft + paddingX, currentY + 6, {
     width: col1 - paddingX,
     align: "left",
   });
 
-  // 2️⃣ Giá trị %
+  // Giá trị %
   doc.text(`${outbound.detail?.[0]?.Order?.vat ?? 0}%`, tableLeft + col1, currentY + 6, {
     width: col2 - paddingX,
     align: "right",
   });
 
-  // 3️⃣ Label Tiền thuế
+  // Label Tiền thuế
   doc.text("Tiền thuế GTGT:", tableLeft + col1 + col2 + paddingX, currentY + 6, {
     width: col3 - paddingX * 2,
     align: "left",
   });
 
-  // 4️⃣ Giá trị tiền thuế (cột Thành tiền)
+  // Giá trị tiền thuế (cột Thành tiền)
   doc.text(fmt(outbound.totalPriceVAT ?? 0), amountColX + paddingX, currentY + 6, {
     width: tableRight - amountColX - paddingX * 2,
     align: "right",

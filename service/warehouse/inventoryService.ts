@@ -1,3 +1,6 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import { Inventory } from "../../models/warehouse/inventory";
 import { warehouseRepository } from "../../repository/warehouseRepository";
 import { AppError } from "../../utils/appError";

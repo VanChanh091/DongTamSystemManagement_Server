@@ -31,6 +31,7 @@ export const exportExcelResponse = async <T>(
 
     const now = new Date();
     const dateStr = now.toISOString().split("T")[0];
+
     const fullName = `${fileName}_${dateStr}`;
 
     // Xuất file
@@ -107,6 +108,7 @@ export const exportExcelDbPlanning = async <T>(
     headerStyleAndAutofitColumns(worksheet);
 
     // ===== RETURN FILE =====
+
     const dateStr = new Date().toISOString().split("T")[0];
     const fullName = `${fileName}_${dateStr}`;
 

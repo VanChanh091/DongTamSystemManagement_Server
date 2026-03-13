@@ -37,16 +37,18 @@ export const reportPaperColumns: Partial<ExcelJS.Column>[] = [
 ];
 
 export const mapReportPaperRow = (item: ReportPlanningPaper, index: number) => {
-  const orderCell = item.Planning.Order || {};
-  const planningCell = item.Planning || {};
+  const planningCell = item.PlanningPaper || {};
+  const orderCell = planningCell.Order || {};
 
   return {
     index: index + 1,
     orderId: orderCell.orderId,
     customerName: orderCell.Customer.customerName,
+
     dateShipping: new Date(orderCell.dateRequestShipping),
     dayStartProduction: new Date(planningCell.dayStart ?? ""),
     dayReported: new Date(item.dayReport),
+
     structure: formatterStructureOrder(planningCell),
     flute: orderCell.flute,
     daoXa: orderCell.daoXa,
@@ -54,13 +56,16 @@ export const mapReportPaperRow = (item: ReportPlanningPaper, index: number) => {
     size: Number(planningCell.sizePaperPLaning),
     child: orderCell.numberChild,
     khoCapGiay: planningCell.ghepKho,
+
     quantityOrd: orderCell.quantityManufacture,
     runningPlanProd: planningCell.runningPlan,
     qtyReported: item.qtyProduced,
     lackOfQty: item.lackOfQty,
+
     timeRunningProd: planningCell.timeRunning,
     HD_special: orderCell.instructSpecial,
     totalPrice: Number(orderCell.totalPrice),
+
     bottom: planningCell.bottom,
     fluteE: planningCell.fluteE,
     fluteB: planningCell.fluteB,
@@ -68,8 +73,10 @@ export const mapReportPaperRow = (item: ReportPlanningPaper, index: number) => {
     knife: planningCell.knife,
     totalLoss: planningCell.totalLoss,
     qtyWasteRp: planningCell.qtyWasteNorm,
+
     shiftProduct: item.shiftProduction,
     shiftManager: item.shiftManagement,
+
     machine: planningCell.chooseMachine,
     hasMadeBox: planningCell.hasBox ? "Có" : "",
   };

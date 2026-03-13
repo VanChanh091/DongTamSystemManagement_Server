@@ -40,7 +40,7 @@ export class ReportPlanningPaper
 
   //FK
   declare planningId: number;
-  declare Planning: PlanningPaper;
+  declare PlanningPaper: PlanningPaper;
 }
 
 export function initReportPlanningPaperModel(sequelize: Sequelize): typeof ReportPlanningPaper {

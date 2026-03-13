@@ -11,7 +11,7 @@ import { Order } from "../../models/order/order";
 import { planningRepository } from "../../repository/planningRepository";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { Inventory } from "../../models/warehouse/inventory";
-import { exportWarehouseSale } from "../../utils/helper/exportPDF";
+import { exportWarehouse } from "../../utils/helper/exportPDF";
 import { Response } from "express";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 
@@ -206,10 +206,12 @@ export const outboundService = {
 
         // Generate slip code
         const now = new Date();
-        const slipCode = `XK${now.getDate()}${now.getMonth() + 1}${now
-          .getFullYear()
-          .toString()
-          .slice(-2)}`;
+
+        const day = now.getDate().toString().padStart(2, "0");
+        const month = (now.getMonth() + 1).toString().padStart(2, "0");
+        const year = now.getFullYear().toString().slice(-2);
+
+        const slipCode = `XK${year}${month}${day}`;
 
         // Tạo outbound
         const outbound = await planningRepository.createData({
@@ -526,7 +528,7 @@ export const outboundService = {
 
   exportFileOutbound: async (res: Response, outboundId: number) => {
     try {
-      await exportWarehouseSale(res, outboundId);
+      await exportWarehouse(res, outboundId);
     } catch (error) {
       console.error("Error export file outbound:", error);
       if (error instanceof AppError) throw error;

@@ -227,14 +227,7 @@ export const reportRepository = {
                   "status",
                 ],
               },
-              include: [
-                { model: Customer, attributes: ["customerName", "companyName"] },
-                {
-                  model: Box,
-                  as: "box",
-                  attributes: { exclude: ["createdAt", "updatedAt"] },
-                },
-              ],
+              include: [{ model: Customer, attributes: ["customerName", "companyName"] }],
             },
           ],
         },

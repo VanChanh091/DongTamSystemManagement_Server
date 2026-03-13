@@ -247,7 +247,16 @@ export const warehouseRepository = {
       include: [
         {
           model: Order,
-          attributes: ["dayReceiveOrder", "flute", "QC_box", "quantityCustomer", "dvt", "discount"],
+          attributes: [
+            "dayReceiveOrder",
+            "flute",
+            "QC_box",
+            "lengthPaperCustomer",
+            "paperSizeCustomer",
+            "quantityCustomer",
+            "dvt",
+            "discount",
+          ],
           include: [
             { model: Customer, attributes: ["customerName", "companyName"] },
             { model: Product, attributes: ["typeProduct", "productName"] },
@@ -370,7 +379,10 @@ export const warehouseRepository = {
             "vat",
             "totalPriceVAT",
           ],
-          include: [{ model: Customer, attributes: ["customerName"] }],
+          include: [
+            { model: Customer, attributes: ["customerName"] },
+            { model: Product, attributes: ["typeProduct", "productName"] },
+          ],
         },
       ],
       offset: (page - 1) * pageSize,

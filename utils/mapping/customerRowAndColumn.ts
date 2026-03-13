@@ -20,21 +20,23 @@ export const customerColumns: Partial<ExcelJS.Column>[] = [
   { header: "Đánh Giá", key: "rateCustomer" },
 ];
 
-export const mappingCustomerRow = (item: Customer, index: number) => ({
-  index: index + 1,
-  customerId: item.customerId,
-  mst: item.mst,
-  customerName: item.customerName,
-  phone: item.phone,
-  contactPerson: item.contactPerson,
-  dayCreated: item.dayCreated ? new Date(String(item.dayCreated)) : null,
-  debtLimit: Number(item.debtLimit),
-  debtCurrent: Number(item.debtCurrent),
-  timePayment: item.timePayment ? new Date(String(item.timePayment)) : null,
-  companyName: item.companyName,
-  companyAddress: item.companyAddress,
-  shippingAddress: item.shippingAddress,
-  distance: item.distance,
-  cskh: item.cskh,
-  rateCustomer: item.rateCustomer,
-});
+export const mappingCustomerRow = (item: Customer, index: number) => {
+  return {
+    index: index + 1,
+    customerId: item.customerId,
+    mst: item.mst,
+    customerName: item.customerName,
+    phone: item.phone,
+    contactPerson: item.contactPerson,
+    dayCreated: item.dayCreated ? new Date(String(item.dayCreated)) : null,
+    debtLimit: Number(item.debtLimit),
+    debtCurrent: Number(item.debtCurrent),
+    timePayment: item.timePayment ? new Date(String(item.timePayment)) : null,
+    companyName: item.companyName,
+    companyAddress: item.companyAddress,
+    shippingAddress: item.shippingAddress,
+    distance: item.distance,
+    cskh: item.cskh,
+    rateCustomer: item.rateCustomer,
+  };
+};

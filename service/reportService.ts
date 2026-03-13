@@ -14,6 +14,8 @@ import { mapReportPaperRow, reportPaperColumns } from "../utils/mapping/reportPa
 import { mapReportBoxRow, reportBoxColumns } from "../utils/mapping/reportBoxRowAndColumn";
 import redisCache from "../assest/configs/redisCache";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
+import { stringify } from "querystring";
+import { normalizeVN } from "../utils/helper/normalizeVN";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper, box } = CacheKey.report;
@@ -70,10 +72,10 @@ export const reportService = {
     try {
       const fieldMap = {
         customerName: (report: ReportPlanningPaper) =>
-          report?.Planning?.Order?.Customer?.customerName,
+          report?.PlanningPaper?.Order?.Customer?.customerName,
         dayReported: (report: ReportPlanningPaper) => report?.dayReport,
         shiftManagement: (report: ReportPlanningPaper) => report?.shiftManagement,
-        orderId: (report: ReportPlanningPaper) => report?.Planning?.Order?.orderId,
+        orderId: (report: ReportPlanningPaper) => report?.PlanningPaper?.Order?.orderId,
       } as const;
 
       const key = field as keyof typeof fieldMap;
@@ -203,10 +205,12 @@ export const reportService = {
 
       const data = await reportRepository.exportReportPaper(whereCondition, machine);
 
+      const safeMachineName = machine.replace(/\s+/g, "-");
+
       await exportExcelResponse(res, {
         data: data,
         sheetName: "Báo cáo sản xuất giấy tấm",
-        fileName: `report_paper_${machine}`,
+        fileName: `bao-cao-${normalizeVN(safeMachineName)}`,
         columns: reportPaperColumns,
         rows: mapReportPaperRow,
       });
@@ -225,7 +229,7 @@ export const reportService = {
     machine: string,
   ) => {
     try {
-      let whereCondition: any = {};
+      let whereCondition: any = { machine: machine };
 
       if (reportBoxId && reportBoxId.length > 0) {
         whereCondition.reportBoxId = reportBoxId;
@@ -240,10 +244,12 @@ export const reportService = {
 
       const data = await reportRepository.exportReportBox(whereCondition, machine);
 
+      const safeMachineName = machine.replace(/\s+/g, "-");
+
       await exportExcelResponse(res, {
         data: data,
         sheetName: "Báo cáo sản xuất thùng",
-        fileName: `report_box_${machine}`,
+        fileName: `bao-cao-${normalizeVN(safeMachineName)}`,
         columns: reportBoxColumns,
         rows: mapReportBoxRow,
       });
