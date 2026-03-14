@@ -13,8 +13,8 @@ export const getCustomers = async (req: Request, res: Response, next: NextFuncti
   } = req.query as {
     field?: string;
     keyword?: string;
-    page?: string;
-    pageSize?: string;
+    page: string;
+    pageSize: string;
     noPaging?: string | boolean;
   };
 

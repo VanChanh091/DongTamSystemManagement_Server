@@ -4,9 +4,24 @@ dotenv.config();
 import { Inventory } from "../../models/warehouse/inventory";
 import { warehouseRepository } from "../../repository/warehouseRepository";
 import { AppError } from "../../utils/appError";
+import { CacheKey } from "../../utils/helper/cache/cacheKey";
+import { filterDataFromCache } from "../../utils/helper/modelHelper/orderHelpers";
+
+const devEnvironment = process.env.NODE_ENV !== "production";
+const { inventory } = CacheKey.warehouse;
 
 export const inventoryService = {
-  getAllInventory: async (page: number, pageSize: number) => {
+  getAllInventory: async ({
+    field,
+    keyword,
+    page,
+    pageSize,
+  }: {
+    field?: string;
+    keyword?: string;
+    page: number;
+    pageSize: number;
+  }) => {
     // const cacheKey = inbound.page(page);
 
     try {
@@ -22,15 +37,19 @@ export const inventoryService = {
       //     }
       //   }
 
-      const totalInventory = await warehouseRepository.inventoryCount();
-      const totalPages = Math.ceil(totalInventory / pageSize);
-      const data = await warehouseRepository.getInventoryByPage(page, pageSize);
+      const { count, rows } = await warehouseRepository.getInventoryByPage({
+        field: field,
+        keyword: keyword,
+        page: page,
+        pageSize: pageSize,
+      });
+      const totalPages = Math.ceil(count / pageSize);
       const totals: any = await warehouseRepository.inventoryTotals();
 
       const responseData = {
         message: "Get all inventory successfully",
-        data,
-        totalInventory,
+        data: rows,
+        totalInventory: count,
         totalPages,
         currentPage: page,
         totalValueInventory: totals?.totalValueInventory || 0,

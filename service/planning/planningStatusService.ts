@@ -67,17 +67,17 @@ export const planningStatusService = {
 
   getOrderAcceptByField: async (type: string, field: string, keyword: string) => {
     try {
-      const fieldMap = {
-        orderId: (order: Order) => order.orderId,
-        customerName: (order: Order) => order?.Customer?.customerName,
-        QC_box: (order: Order) => order?.QC_box,
-      } as const;
+      // const fieldMap = {
+      //   orderId: (order: Order) => order.orderId,
+      //   customerName: (order: Order) => order?.Customer?.customerName,
+      //   QC_box: (order: Order) => order?.QC_box,
+      // } as const;
 
-      const key = field as keyof typeof fieldMap;
+      // const key = field as keyof typeof fieldMap;
 
-      if (!fieldMap[key]) {
-        throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
-      }
+      // if (!fieldMap[key]) {
+      //   throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
+      // }
 
       const result = await planningRepository.getOrderAccept(type, field, keyword);
 

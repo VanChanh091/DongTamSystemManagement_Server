@@ -78,6 +78,7 @@ export const CacheKey = {
     },
     inventory: {
       page: (page: number) => `inventory:page:${page}`,
+      search: "inventory:search:all",
       lastUpdated: "inventories:lastUpdated",
     },
   },

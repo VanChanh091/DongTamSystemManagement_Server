@@ -13,6 +13,7 @@ import { Op, Sequelize } from "sequelize";
 import { User } from "../models/user/user";
 import { Inventory } from "../models/warehouse/inventory";
 import { InboundSumByPlanning } from "../interface/types";
+import { get } from "axios";
 
 export const warehouseRepository = {
   //====================================WAITING CHECK========================================
@@ -347,12 +348,31 @@ export const warehouseRepository = {
 
   //====================================INVENTORY========================================
 
-  inventoryCount: async () => {
-    return await Inventory.count();
-  },
+  getInventoryByPage: async ({
+    field,
+    keyword,
+    page,
+    pageSize,
+  }: {
+    field?: string;
+    keyword?: string;
+    page: number;
+    pageSize: number;
+  }) => {
+    const whereClause: any = {};
 
-  getInventoryByPage: async (page: number, pageSize: number) => {
-    return await Inventory.findAll({
+    if (field && keyword) {
+      const searchCondition = { [Op.like]: `%${keyword}%` };
+
+      if (field === "customerName") {
+        whereClause["$Order.Customer.customerName$"] = searchCondition;
+      } else if (field === "orderId") {
+        whereClause["orderId"] = searchCondition;
+      }
+    }
+
+    return await Inventory.findAndCountAll({
+      where: whereClause,
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {
