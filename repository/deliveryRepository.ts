@@ -11,14 +11,14 @@ import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { DeliveryPlan } from "../models/delivery/deliveryPlan";
 import { DeliveryItem, statusDeliveryItem } from "../models/delivery/deliveryItem";
 import { Vehicle } from "../models/admin/vehicle";
-import { FluteRatio } from "../models/admin/fluteRatio";
+import { DeliveryRequest, statusDelivery } from "../models/delivery/deliveryRequest";
 
 export const deliveryRepository = {
   //================================PLANNING ESTIMATE TIME==================================
   getPlanningEstimateTime: async (dayStart: Date) => {
     return await PlanningPaper.findAll({
       where: {
-        deliveryPlanned: "none",
+        deliveryPlanned: { [Op.in]: ["none", "pending"] },
         dayStart: { [Op.lte]: dayStart },
         status: { [Op.notIn]: ["stop", "cancel"] },
       },
@@ -83,7 +83,7 @@ export const deliveryRepository = {
             { model: Customer, attributes: ["customerName", "companyName"] },
             { model: Product, attributes: ["typeProduct", "productName"] },
             { model: User, attributes: ["fullName"] },
-            { model: Inventory, attributes: ["totalQtyOutbound"] },
+            { model: Inventory, attributes: ["qtyInventory"] },
           ],
         },
         {
@@ -123,12 +123,15 @@ export const deliveryRepository = {
     });
   },
 
-  getPaperDeliveryPlanned: async (planningIds: number[], transaction: Transaction) => {
-    return await PlanningPaper.findAll({
-      where: {
-        planningId: planningIds,
-        deliveryPlanned: "none",
-      },
+  getPaperDeliveryPlanned: async (planningId: number, transaction: Transaction) => {
+    return await PlanningPaper.findOne({
+      where: { planningId, deliveryPlanned: { [Op.in]: ["none", "pending"] } },
+      include: [
+        {
+          model: Order,
+          attributes: ["quantityCustomer", "lengthPaperCustomer", "paperSizeCustomer", "flute"],
+        },
+      ],
       transaction,
       lock: transaction.LOCK.UPDATE,
     });
@@ -165,48 +168,62 @@ export const deliveryRepository = {
     });
   },
 
-  // getDeliveryRequest: async () => {
-  //   return await DeliveryRequest.findAll({
-  //     where: { status: "requested" },
-  //     attributes: ["requestId"],
-  //     include: [
-  //       { model: User, attributes: ["fullName"] },
-  //       {
-  //         model: PlanningPaper,
-  //         attributes: ["planningId", "lengthPaperPlanning", "sizePaperPLaning"],
-  //         include: [
-  //           {
-  //             model: Order,
-  //             attributes: ["orderId", "dayReceiveOrder", "flute", "QC_box"],
-  //             include: [
-  //               { model: Customer, attributes: ["customerName", "companyName"] },
-  //               { model: Product, attributes: ["typeProduct", "productName"] },
-  //             ],
-  //           },
-  //           {
-  //             model: PlanningBox,
-  //             required: false,
-  //             attributes: ["planningBoxId"],
-  //           },
-  //         ],
-  //       },
-  //     ],
-  //   });
-  // },
-
-  findAllFluteRatio: async () => {
-    return await FluteRatio.findAll({ attributes: ["fluteName", "ratio"], raw: true });
+  getDeliveryRequest: async () => {
+    return await DeliveryRequest.findAll({
+      where: { status: "requested" },
+      attributes: { exclude: ["createdAt", "updatedAt"] },
+      include: [
+        {
+          model: PlanningPaper,
+          attributes: ["planningId", "orderId", "lengthPaperPlanning", "sizePaperPLaning"],
+          include: [
+            {
+              model: Order,
+              attributes: ["orderId", "dayReceiveOrder", "flute", "QC_box"],
+              include: [
+                { model: Customer, attributes: ["customerName", "companyName"] },
+                { model: Product, attributes: ["typeProduct", "productName"] },
+              ],
+            },
+          ],
+        },
+        { model: User, attributes: ["fullName"] },
+      ],
+    });
   },
 
   getDeliveryPlanByDate: async (deliveryDate: Date) => {
     return await DeliveryPlan.findOne({
       where: { deliveryDate },
-      attributes: { exclude: ["createdAt", "updatedAt"] },
+      attributes: ["deliveryId", "deliveryDate"],
       include: [
         {
           model: DeliveryItem,
           attributes: { exclude: ["createdAt", "updatedAt"] },
-          include: [{ model: Vehicle, attributes: ["vehicleName", "licensePlate"] }],
+          include: [
+            {
+              model: DeliveryRequest,
+              attributes: ["requestId", "volume", "qtyRegistered"],
+              include: [
+                {
+                  model: PlanningPaper,
+                  attributes: ["planningId", "orderId", "lengthPaperPlanning", "sizePaperPLaning"],
+                  include: [
+                    {
+                      model: Order,
+                      attributes: ["orderId", "dayReceiveOrder", "flute", "QC_box"],
+                      include: [
+                        { model: Customer, attributes: ["customerName", "companyName"] },
+                        { model: Product, attributes: ["typeProduct", "productName"] },
+                      ],
+                    },
+                  ],
+                },
+                { model: User, attributes: ["fullName"] },
+              ],
+            },
+            { model: Vehicle, attributes: ["vehicleName", "licensePlate"] },
+          ],
         },
       ],
       order: [["deliveryId", "ASC"]],
@@ -307,21 +324,6 @@ export const deliveryRepository = {
     });
   },
 
-  updatePlanningPaperById: async ({
-    planningIds,
-    status,
-    transaction,
-  }: {
-    planningIds: number[];
-    status: "pending" | "planned";
-    transaction: Transaction;
-  }) => {
-    return await PlanningPaper.update(
-      { deliveryPlanned: status },
-      { where: { planningId: { [Op.in]: planningIds } }, transaction },
-    );
-  },
-
   updateDeliveryItemById: async ({
     statusUpdate,
     whereCondition,
@@ -337,6 +339,21 @@ export const deliveryRepository = {
     );
   },
 
+  // Trong delivery.repository.ts
+  updateDeliveryRequestStatus: async (
+    requestIds: number[],
+    status: statusDelivery,
+    transaction?: Transaction,
+  ) => {
+    return await DeliveryRequest.update(
+      { status },
+      {
+        where: { requestId: requestIds },
+        transaction,
+      },
+    );
+  },
+
   bulkUpsert: async (item: any, transaction: Transaction) => {
     return await DeliveryItem.bulkCreate(item, {
       updateOnDuplicate: ["vehicleId", "sequence", "note", "status"],
@@ -347,9 +364,7 @@ export const deliveryRepository = {
   //=================================SCHEDULE DELIVERY=====================================
 
   getAllDeliveryPlanByDate: async (deliveryDate: Date, status?: string) => {
-    const whereCondition: any = {
-      deliveryDate: new Date(deliveryDate),
-    };
+    const whereCondition: any = { deliveryDate: new Date(deliveryDate) };
 
     if (status) {
       whereCondition.status = status;
@@ -362,7 +377,48 @@ export const deliveryRepository = {
         {
           model: DeliveryItem,
           attributes: { exclude: ["createdAt", "updatedAt"] },
-          include: [{ model: Vehicle, attributes: { exclude: ["createdAt", "updatedAt"] } }],
+          include: [
+            {
+              model: DeliveryRequest,
+              attributes: { exclude: ["status", "userId", "planningId", "createdAt", "updatedAt"] },
+              include: [
+                {
+                  model: PlanningPaper,
+                  attributes: ["planningId"],
+                  include: [
+                    {
+                      model: Order,
+                      attributes: [
+                        "orderId",
+                        "dayReceiveOrder",
+                        "flute",
+                        "QC_box",
+                        "day",
+                        "matE",
+                        "matB",
+                        "matC",
+                        "matE2",
+                        "songE",
+                        "songB",
+                        "songC",
+                        "songE2",
+                        "lengthPaperCustomer",
+                        "paperSizeCustomer",
+                        "quantityCustomer",
+                        "dvt",
+                      ],
+                      include: [
+                        { model: Customer, attributes: ["customerName", "companyName"] },
+                        { model: Product, attributes: ["typeProduct", "productName"] },
+                        { model: Inventory, attributes: ["qtyInventory"] },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+            { model: Vehicle, attributes: { exclude: ["createdAt", "updatedAt"] } },
+          ],
         },
       ],
     });
@@ -381,7 +437,6 @@ export const deliveryRepository = {
   getDeliveryItemByIds: async (itemIds: number[], transaction: Transaction) => {
     return await DeliveryItem.findAll({
       where: { deliveryItemId: itemIds },
-      attributes: ["targetType", "targetId"],
       transaction,
       lock: transaction.LOCK.UPDATE,
     });

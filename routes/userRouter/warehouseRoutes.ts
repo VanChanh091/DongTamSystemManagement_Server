@@ -15,6 +15,7 @@ import {
 } from "../../controller/user/warehouse/outboundHistoryController";
 import {
   createNewInventory,
+  exportInventory,
   getAllInventory,
 } from "../../controller/user/warehouse/inventoryController";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
@@ -44,6 +45,7 @@ router.get("/outbound/get-search", authenticate, outboundAutoComplete);
 //========================INVENTORY===========================
 router.get("/inventory", authenticate, getAllInventory);
 router.post("/inventory", authenticate, createNewInventory);
+router.post("/inventory/export", authenticate, authorizeAnyPermission(["plan"]), exportInventory);
 
 //========================TEST CRASH===========================
 router.get("/test-crash", (req, res) => {

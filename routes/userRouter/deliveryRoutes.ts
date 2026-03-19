@@ -4,12 +4,12 @@ import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 import {
   cancelOrCompleteDeliveryPlan,
   confirmForDeliveryPlanning,
-  confirmReadyDeliveryPlanning,
   createDeliveryPlan,
   exportScheduleDelivery,
   getAllScheduleDelivery,
-  getPendingDelivery,
   getPlanningEstimateTime,
+  getPlanningRequest,
+  registerQtyDelivery,
 } from "../../controller/user/delivery/deliveryController";
 
 const router = Router();
@@ -26,12 +26,13 @@ router.put(
   "/estimate",
   authenticate,
   authorizeAnyPermission(["plan", "sale"]),
-  confirmReadyDeliveryPlanning,
+  registerQtyDelivery,
 );
 
-//=================================PLANNING DELIVERY=====================================
+//=================================DELIVERY PLANNING=====================================
 
-router.get("/planning", authenticate, authorizeAnyPermission(["plan"]), getPendingDelivery);
+// router.get("/planning", authenticate, authorizeAnyPermission(["plan"]), getPendingDelivery);
+router.get("/planning", authenticate, authorizeAnyPermission(["plan"]), getPlanningRequest);
 router.post("/planning", authenticate, authorizeAnyPermission(["plan"]), createDeliveryPlan);
 router.put("/planning", authenticate, authorizeAnyPermission(["plan"]), confirmForDeliveryPlanning);
 

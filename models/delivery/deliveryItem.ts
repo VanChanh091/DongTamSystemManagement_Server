@@ -1,21 +1,20 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { DeliveryPlan } from "./deliveryPlan";
 import { Vehicle } from "../admin/vehicle";
+import { DeliveryRequest } from "./deliveryRequest";
 
-export type targetType = "paper" | "box";
 export type statusDeliveryItem = "none" | "planned" | "cancelled" | "completed";
 
 //định nghĩa trường trong bảng
 interface DeliveryItemAttributes {
   deliveryItemId: number;
-  targetType: targetType;
-  targetId: number; //planningPaper or planningBox
   sequence: string;
   note?: string;
   status: statusDeliveryItem;
 
   //FK
   deliveryId: number;
+  requestId: number;
   vehicleId: number;
 
   createdAt?: Date;
@@ -34,17 +33,17 @@ export class DeliveryItem
   implements DeliveryItemAttributes
 {
   declare deliveryItemId: number;
-  declare targetType: targetType;
-  declare targetId: number;
   declare sequence: string;
   declare note?: string;
   declare status: statusDeliveryItem;
 
   //FK
   declare deliveryId: number;
+  declare requestId: number;
   declare vehicleId: number;
 
   declare DeliveryPlan: DeliveryPlan;
+  declare DeliveryRequest: DeliveryRequest;
   declare Vehicle: Vehicle;
 
   declare readonly createdAt?: Date;
@@ -55,8 +54,6 @@ export function initDeliveryItemModel(sequelize: Sequelize): typeof DeliveryItem
   DeliveryItem.init(
     {
       deliveryItemId: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-      targetType: { type: DataTypes.STRING, allowNull: false },
-      targetId: { type: DataTypes.INTEGER, allowNull: false },
       sequence: { type: DataTypes.STRING, allowNull: false },
       note: { type: DataTypes.STRING },
       status: {
@@ -67,6 +64,7 @@ export function initDeliveryItemModel(sequelize: Sequelize): typeof DeliveryItem
 
       //FK
       deliveryId: { type: DataTypes.INTEGER, allowNull: false },
+      requestId: { type: DataTypes.INTEGER, allowNull: false },
       vehicleId: { type: DataTypes.INTEGER, allowNull: false },
     },
     {
@@ -76,6 +74,7 @@ export function initDeliveryItemModel(sequelize: Sequelize): typeof DeliveryItem
       indexes: [
         //FK
         { fields: ["deliveryId"] },
+        { fields: ["requestId"] },
         { fields: ["vehicleId"] },
 
         //indexes

@@ -120,12 +120,17 @@ export const manufactureService = {
 
   addReportPaper: async (planningId: number, data: any, user: any) => {
     const { role, permissions: userPermissions } = user;
-    const { qtyProduced, qtyWasteNorm, dayCompleted, ...otherData } = data;
+    const { qtyProduced, qtyWasteNorm, dayCompleted, reportedBy, ...otherData } = data;
 
     try {
       return await runInTransaction(async (transaction) => {
         if (!planningId || !qtyProduced || !dayCompleted || !qtyWasteNorm) {
           throw AppError.BadRequest("Missing required fields", "MISSING_PARAMETERS");
+        }
+
+        const employee = await manufactureRepo.getEmployeeByCode(reportedBy);
+        if (!employee) {
+          throw AppError.NotFound("employee not found", "EMPLOYEE_NOT_FOUND");
         }
 
         // 1. Tìm kế hoạch hiện tại
@@ -241,6 +246,7 @@ export const manufactureService = {
           qtyProduced,
           qtyWasteNorm,
           dayReportValue,
+          reportedBy: employee.fullName,
           otherData,
           transaction,
         });
@@ -268,10 +274,19 @@ export const manufactureService = {
 
   updateReportPaper: async (planningId: number, updateData: any, user: any) => {
     const { role, permissions: userPermissions } = user;
-    const { qtyProduced: newQty, qtyWasteNorm: newWaste, ...otherData } = updateData;
+    const { qtyProduced: newQty, qtyWasteNorm: newWaste, reportedBy, ...otherData } = updateData;
 
     try {
       return await runInTransaction(async (transaction) => {
+        if (!reportedBy) {
+          throw AppError.BadRequest("Missing employee code", "MISSING_EMPLOYEE_CODE");
+        }
+
+        const employee = await manufactureRepo.getEmployeeByCode(reportedBy);
+        if (!employee) {
+          throw AppError.NotFound("employee not found", "EMPLOYEE_NOT_FOUND");
+        }
+
         //check report existed
         const oldReport = await manufactureRepo.getReportPaperByPlanningId(planningId, transaction);
         if (!oldReport) {
@@ -310,6 +325,7 @@ export const manufactureService = {
             qtyProduced: newQty,
             qtyWasteNorm: newWaste,
             lackOfQty: newLackOfQty,
+            reportedBy: employee.fullName,
             ...otherData,
           },
           { transaction },
@@ -553,12 +569,17 @@ export const manufactureService = {
   },
 
   addReportBox: async (planningBoxId: number, machine: string, data: any) => {
-    const { qtyProduced, rpWasteLoss, dayCompleted, shiftManagement } = data;
+    const { qtyProduced, rpWasteLoss, dayCompleted, shiftManagement, reportedBy } = data;
 
     try {
       return await runInTransaction(async (transaction) => {
         if (!planningBoxId || !qtyProduced || !dayCompleted || !rpWasteLoss || !shiftManagement) {
           throw AppError.BadRequest("Missing required fields", "MISSING_PARAMETERS");
+        }
+
+        const employee = await manufactureRepo.getEmployeeByCode(reportedBy);
+        if (!employee) {
+          throw AppError.NotFound("employee not found", "EMPLOYEE_NOT_FOUND");
         }
 
         // 1. Tìm kế hoạch hiện tại
@@ -636,6 +657,7 @@ export const manufactureService = {
           dayReportValue: new Date(dayReportValue ?? ""),
           shiftManagementBox: shiftManagement,
           machine: planning.machine,
+          reportedBy: employee.fullName,
           transaction,
           isBox: true,
         });
@@ -661,10 +683,19 @@ export const manufactureService = {
   },
 
   updateReportBox: async (planningBoxId: number, machine: string, updateData: any) => {
-    const { qtyProduced: newQty, rpWasteLoss: newWaste, shiftManagement } = updateData;
+    const { qtyProduced: newQty, rpWasteLoss: newWaste, shiftManagement, reportedBy } = updateData;
 
     try {
       return await runInTransaction(async (transaction) => {
+        if (!reportedBy) {
+          throw AppError.BadRequest("Missing employee code", "MISSING_EMPLOYEE_CODE");
+        }
+
+        const employee = await manufactureRepo.getEmployeeByCode(reportedBy);
+        if (!employee) {
+          throw AppError.NotFound("employee not found", "EMPLOYEE_NOT_FOUND");
+        }
+
         //check report existed
         const oldReport = await manufactureRepo.getReportBoxByPlanningBoxId(
           planningBoxId,
@@ -701,6 +732,7 @@ export const manufactureService = {
             wasteLoss: newWaste,
             lackOfQty: newLackOfQty,
             shiftManagement: shiftManagement,
+            reportedBy: employee.fullName,
           },
           { transaction },
         );

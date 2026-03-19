@@ -2,12 +2,12 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import redisCache from "../../assest/configs/redisCache";
-import { CacheManager } from "../../utils/helper/cache/cacheManager";
+import { Order } from "../../models/order/order";
 import { AppError } from "../../utils/appError";
+import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { OutboundHistory } from "../../models/warehouse/outboundHistory";
 import { warehouseRepository } from "../../repository/warehouseRepository";
 import { OutboundDetail } from "../../models/warehouse/outboundDetail";
-import { Order } from "../../models/order/order";
 import { planningRepository } from "../../repository/planningRepository";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { Inventory } from "../../models/warehouse/inventory";
@@ -73,6 +73,45 @@ export const outboundService = {
       return { message: "get outbound detail successfully", data: details };
     } catch (error) {
       if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  searchOutboundByField: async ({
+    field,
+    keyword,
+    page,
+    pageSize,
+  }: {
+    field: string;
+    keyword: string;
+    page: number;
+    pageSize: number;
+  }) => {
+    try {
+      // const fieldMap = {
+      //   orderId: (outbound: OutboundHistory) => outbound.detail.orderId,
+      //   outboundSlipCode: (outbound: OutboundHistory) => outbound.outboundSlipCode,
+      //   dateOutbound: (outbound: OutboundHistory) => outbound.dateOutbound,
+      //   companyName: (outbound: OutboundHistory) =>
+      //     outbound.outboundDetail.Order.Customer.companyName,
+      //   productName: (outbound: OutboundHistory) =>
+      //     outbound.outboundDetail.Order.Product.productName,
+      // } as const;
+      // const key = field as keyof typeof fieldMap;
+      // if (!fieldMap[key]) {
+      //   throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
+      // }
+      // const result = await getOutboundByField({
+      //   keyword: keyword,
+      //   getFieldValue: fieldMap[key],
+      //   page,
+      //   pageSize,
+      //   message: `get all by ${field} from filtered cache`,
+      // });
+      // return result;
+    } catch (error) {
+      console.error(`Failed to get outbound history by ${field}:`, error);
       throw AppError.ServerError();
     }
   },
@@ -483,45 +522,6 @@ export const outboundService = {
     } catch (error) {
       console.log("err to delete outbound: ", error);
       if (error instanceof AppError) throw error;
-      throw AppError.ServerError();
-    }
-  },
-
-  searchOutboundByField: async ({
-    field,
-    keyword,
-    page,
-    pageSize,
-  }: {
-    field: string;
-    keyword: string;
-    page: number;
-    pageSize: number;
-  }) => {
-    try {
-      // const fieldMap = {
-      //   orderId: (outbound: OutboundHistory) => outbound.detail.orderId,
-      //   outboundSlipCode: (outbound: OutboundHistory) => outbound.outboundSlipCode,
-      //   dateOutbound: (outbound: OutboundHistory) => outbound.dateOutbound,
-      //   companyName: (outbound: OutboundHistory) =>
-      //     outbound.outboundDetail.Order.Customer.companyName,
-      //   productName: (outbound: OutboundHistory) =>
-      //     outbound.outboundDetail.Order.Product.productName,
-      // } as const;
-      // const key = field as keyof typeof fieldMap;
-      // if (!fieldMap[key]) {
-      //   throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
-      // }
-      // const result = await getOutboundByField({
-      //   keyword: keyword,
-      //   getFieldValue: fieldMap[key],
-      //   page,
-      //   pageSize,
-      //   message: `get all by ${field} from filtered cache`,
-      // });
-      // return result;
-    } catch (error) {
-      console.error(`Failed to get outbound history by ${field}:`, error);
       throw AppError.ServerError();
     }
   },

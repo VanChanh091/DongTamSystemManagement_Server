@@ -7,6 +7,8 @@ export type statusDelivery = "requested" | "scheduled" | "cancelled";
 //định nghĩa trường trong bảng
 interface DeliveryRequestAttributes {
   requestId: number;
+  qtyRegistered: number;
+  volume: number;
   status: statusDelivery;
 
   //FK
@@ -20,7 +22,7 @@ interface DeliveryRequestAttributes {
 //cho phép bỏ qua id khi tạo
 export type DeliveryRequestCreationAttributes = Optional<
   DeliveryRequestAttributes,
-  "requestId" | "status" | "createdAt" | "updatedAt"
+  "requestId" | "status" | "volume" | "createdAt" | "updatedAt"
 >;
 
 //định nghĩa kiểu OOP
@@ -29,6 +31,8 @@ export class DeliveryRequest
   implements DeliveryRequestAttributes
 {
   declare requestId: number;
+  declare qtyRegistered: number;
+  declare volume: number;
   declare status: statusDelivery;
 
   //ASSOCIATION
@@ -46,6 +50,8 @@ export function initDeliveryRequestModel(sequelize: Sequelize): typeof DeliveryR
   DeliveryRequest.init(
     {
       requestId: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+      qtyRegistered: { type: DataTypes.INTEGER, allowNull: false },
+      volume: { type: DataTypes.DOUBLE, allowNull: false },
       status: {
         type: DataTypes.ENUM("requested", "scheduled", "cancelled"),
         allowNull: false,

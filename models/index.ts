@@ -282,6 +282,9 @@ DeliveryRequest.belongsTo(User, { foreignKey: "userId" });
 DeliveryPlan.hasMany(DeliveryItem, { foreignKey: "deliveryId", onDelete: "CASCADE" });
 DeliveryItem.belongsTo(DeliveryPlan, { foreignKey: "deliveryId" });
 
+DeliveryRequest.hasOne(DeliveryItem, { foreignKey: "requestId", onDelete: "CASCADE" });
+DeliveryItem.belongsTo(DeliveryRequest, { foreignKey: "requestId" });
+
 Vehicle.hasOne(DeliveryItem, { foreignKey: "vehicleId" });
 DeliveryItem.belongsTo(Vehicle, { foreignKey: "vehicleId" });
 

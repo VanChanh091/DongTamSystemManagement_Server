@@ -101,8 +101,6 @@ export const inboundService = {
         await CacheManager.clear("checkBox");
       } else {
         const cachedData = await redisCache.get(cacheKey);
-        console.log(`data: ${cachedData ? true : false}`);
-
         if (cachedData) {
           if (devEnvironment) console.log("✅ Data waiting check box from Redis");
           return {

@@ -33,3 +33,12 @@ export const createNewInventory = async (req: Request, res: Response, next: Next
     next(error);
   }
 };
+
+//export excel
+export const exportInventory = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await inventoryService.exportExcelInventory(res);
+  } catch (error) {
+    next(error);
+  }
+};

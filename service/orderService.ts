@@ -284,6 +284,9 @@ export const orderService = {
         }
 
         const mergedData = { ...order.toJSON(), ...restOrderData };
+
+        console.log(mergedData);
+
         const metrics = await calculateOrderMetrics(mergedData);
 
         //Cập nhật thông tin hoặc xóa hình ảnh

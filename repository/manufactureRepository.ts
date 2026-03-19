@@ -8,8 +8,23 @@ import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { PlanningBox } from "../models/planning/planningBox";
 import { ReportPlanningPaper } from "../models/report/reportPlanningPaper";
 import { ReportPlanningBox } from "../models/report/reportPlanningBox";
+import { EmployeeBasicInfo } from "../models/employee/employeeBasicInfo";
+import { EmployeeCompanyInfo } from "../models/employee/employeeCompanyInfo";
 
 export const manufactureRepo = {
+  //====================================HELPER=======================================
+  getEmployeeByCode: async (reportedBy: string) => {
+    return await EmployeeBasicInfo.findOne({
+      attributes: ["fullName"],
+      include: {
+        model: EmployeeCompanyInfo,
+        as: "companyInfo",
+        where: { employeeCode: reportedBy },
+        attributes: ["employeeCode"],
+      },
+    });
+  },
+
   //====================================PAPER========================================
 
   getManufacturePaper: async (machine: string) => {
@@ -191,7 +206,11 @@ export const manufactureRepo = {
     });
   },
 
-  getReportBoxByPlanningBoxId: async (planningBoxId: number, machine: string, transaction?: Transaction) => {
+  getReportBoxByPlanningBoxId: async (
+    planningBoxId: number,
+    machine: string,
+    transaction?: Transaction,
+  ) => {
     return await ReportPlanningBox.findOne({
       where: { planningBoxId, machine },
       order: [["createdAt", "DESC"]],

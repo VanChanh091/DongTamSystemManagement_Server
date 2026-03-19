@@ -6,6 +6,7 @@ import redisCache from "../../../assest/configs/redisCache";
 import { FilterDataFromCacheProps } from "../../../interface/types";
 import { orderRepository } from "../../../repository/orderRepository";
 import { normalizeVN } from "../normalizeVN";
+import { number } from "yargs";
 
 export const validateCustomerAndProduct = async (customerId: string, productId: string) => {
   const customer = await Customer.findOne({ where: { customerId } });
@@ -31,7 +32,7 @@ export const generateOrderId = async (prefix: string) => {
 
   let number = 1;
   let existingCustomerId: string | null = null;
-  
+
   if (lastOrder && lastOrder.orderId) {
     existingCustomerId = lastOrder.customerId;
     const lastNumber = parseInt(lastOrder.orderId.slice(sanitizedPrefix.length), 10);
@@ -41,9 +42,9 @@ export const generateOrderId = async (prefix: string) => {
   }
 
   const formattedNumber = number.toString().padStart(3, "0");
-  return { 
-    newOrderId: `${sanitizedPrefix}${formattedNumber}`, 
-    existingCustomerId 
+  return {
+    newOrderId: `${sanitizedPrefix}${formattedNumber}`,
+    existingCustomerId,
   };
 };
 
@@ -103,13 +104,14 @@ export const calculateOrderMetrics = async (data: any) => {
   const totalPrice = Math.round(qty * totalPricePaper);
   const totalPriceVAT = Math.round(totalPrice * (1 + vat / 100));
 
-  //volume
-  const ratioData = await orderRepository.findOneFluteRatio(flute);
-  const ratio = ratioData?.ratio ?? 1;
+  const volume = await calculateVolume({
+    flute,
+    lengthCustomer: length,
+    sizeCustomer: size,
+    quantity: qty,
+  });
 
-  const baseVolume = (length * size) / 10000;
-  const totalVolume = baseVolume * qty * ratio * 1.3;
-  const volumeRaw = Math.round(totalVolume * 100) / 100; //làm tròn, lấy 2 số sau dấu phẩy
+  console.log(`volume: ${volume}`);
 
   const responseData = {
     flute,
@@ -117,10 +119,30 @@ export const calculateOrderMetrics = async (data: any) => {
     pricePaper: totalPricePaper,
     totalPrice,
     totalPriceVAT,
-    volume: volumeRaw,
+    volume,
   };
 
   return responseData;
+};
+
+export const calculateVolume = async ({
+  flute,
+  lengthCustomer,
+  sizeCustomer,
+  quantity,
+}: {
+  flute: string;
+  lengthCustomer: number;
+  sizeCustomer: number;
+  quantity: number;
+}) => {
+  const ratioData = await orderRepository.findOneFluteRatio(flute);
+  const ratio = ratioData?.ratio ?? 1;
+
+  const baseVolume = (lengthCustomer * sizeCustomer) / 10000;
+  const totalVolume = baseVolume * quantity * ratio * 1.3;
+  const volumeRaw = Number(Math.round(totalVolume * 100) / 100); //làm tròn, lấy 2 số sau dấu phẩy
+  return volumeRaw;
 };
 
 export const createDataTable = async (

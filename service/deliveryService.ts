@@ -1,17 +1,18 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { Op } from "sequelize";
 import { Response } from "express";
 import { AppError } from "../utils/appError";
 import { deliveryRepository } from "../repository/deliveryRepository";
 import { runInTransaction } from "../utils/helper/transactionHelper";
 import { PlanningPaper } from "../models/planning/planningPaper";
-import { DeliveryItem } from "../models/delivery/deliveryItem";
-import { DeliveryPlan } from "../models/delivery/deliveryPlan";
 import { exportDeliveryExcelResponse } from "../utils/helper/excelExporter";
 import { deliveryColumns, mappingDeliveryRow } from "../utils/mapping/deliveryRowAndComlumn";
-import { getDeliveryByDate } from "../utils/helper/modelHelper/deliveryHelper";
+import { calculateVolume } from "../utils/helper/modelHelper/orderHelpers";
+import { DeliveryRequest } from "../models/delivery/deliveryRequest";
+import { Op } from "sequelize";
+import { DeliveryItem } from "../models/delivery/deliveryItem";
+import { DeliveryPlan } from "../models/delivery/deliveryPlan";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 
@@ -117,52 +118,68 @@ export const deliveryService = {
     }
   },
 
-  confirmReadyDeliveryPlanning: async ({
-    planningIds,
+  registerQtyDelivery: async ({
+    planningId,
+    qtyRegistered,
     userId,
   }: {
-    planningIds: number[];
+    planningId: number;
+    qtyRegistered: number;
     userId: number;
   }) => {
     try {
-      if (!planningIds || planningIds.length === 0) {
-        throw AppError.BadRequest("Danh sách planning rỗng", "EMPTY_PLANNING_LIST");
+      if (!planningId || !qtyRegistered || qtyRegistered <= 0) {
+        throw AppError.BadRequest("missing parameters", "MISSING_PARAMETERS");
       }
 
       return await runInTransaction(async (transaction) => {
-        const plannings = await deliveryRepository.getPaperDeliveryPlanned(
-          planningIds,
-          transaction,
+        const planning = await deliveryRepository.getPaperDeliveryPlanned(planningId, transaction);
+        if (!planning) {
+          throw AppError.BadRequest("Planning không tồn tại", "PLANNING_NOT_FOUND");
+        }
+
+        if (planning.hasOverFlow) {
+          throw AppError.BadRequest(`Planning ${planningId} bị overflow`, "PLANNING_OVERFLOW");
+        }
+
+        if (qtyRegistered > planning.qtyProduced!) {
+          throw AppError.BadRequest(
+            `Số lượng đăng ký (${qtyRegistered}) vượt quá số lượng đã sản xuất (${planning.qtyProduced})`,
+            "QTY_EXCEEDED",
+          );
+        }
+
+        const newDeliveryStatus = qtyRegistered === planning.qtyProduced ? "delivered" : "pending";
+
+        //calculate volume
+        const volume = await calculateVolume({
+          flute: planning.Order.flute!,
+          lengthCustomer: planning.Order.lengthPaperCustomer,
+          sizeCustomer: planning.Order.paperSizeCustomer,
+          quantity: qtyRegistered,
+        });
+
+        await DeliveryRequest.create(
+          {
+            planningId,
+            userId,
+            qtyRegistered,
+            volume,
+            status: "requested",
+          },
+          { transaction },
         );
 
-        if (plannings.length !== planningIds.length) {
-          throw AppError.BadRequest(
-            "Một số planning không tồn tại hoặc đã được xác nhận",
-            "INVALID_PLANNING_IDS",
-          );
-        }
-
-        const overflowPlanning = plannings.find((p) => p.hasOverFlow);
-        if (overflowPlanning) {
-          throw AppError.BadRequest(
-            `Planning ${overflowPlanning.planningId} bị overflow`,
-            "PLANNING_OVERFLOW",
-          );
-        }
-
-        const planningIdMap = plannings.map((p) => p.planningId);
-
+        // Cập nhật trạng thái PlanningPaper
         await PlanningPaper.update(
-          { deliveryPlanned: "pending" },
-          { where: { planningId: planningIdMap }, transaction },
+          { deliveryPlanned: newDeliveryStatus },
+          { where: { planningId }, transaction },
         );
 
-        // await DeliveryRequest.bulkCreate(
-        //   planningIdMap.map((planningId) => ({ planningId, userId, status: "requested" })),
-        //   { transaction },
-        // );
-
-        return { message: "confirm ready delivery planning successfully" };
+        return {
+          message: "Xác nhận đăng ký giao hàng thành công",
+          data: { statusPlanning: newDeliveryStatus, volume },
+        };
       });
     } catch (error) {
       console.error("❌ confirm ready delivery planning failed:", error);
@@ -173,85 +190,28 @@ export const deliveryService = {
 
   //=================================PLANNING DELIVERY=====================================
 
-  getPlanningPendingDelivery: async () => {
+  getDeliveryRequest: async () => {
     try {
-      const data = await deliveryRepository.getPlanningPendingDelivery();
+      const request = await deliveryRepository.getDeliveryRequest();
 
-      return { message: "get planning waiting delivery successfully", data };
+      return { message: "get planning waiting delivery successfully", data: request };
     } catch (error) {
       console.error("❌ get planning waiting delivery failed:", error);
       throw AppError.ServerError();
     }
   },
 
-  // getDeliveryRequest: async () => {
-  //   try {
-  //     const request = await deliveryRepository.getDeliveryRequest();
-
-  //     return { message: "get planning waiting delivery successfully", data: request };
-  //   } catch (error) {
-  //     console.error("❌ get planning waiting delivery failed:", error);
-  //     throw AppError.ServerError();
-  //   }
-  // },
-
   //using for re-order  when hasn't confirm delivery
-
   getDeliveryPlanDetailForEdit: async (deliveryDate: Date) => {
     try {
       const plan = await deliveryRepository.getDeliveryPlanByDate(deliveryDate);
       if (!plan) {
-        return {
-          message: "delivery for date has no plan",
-          data: [],
-        };
+        return { message: "delivery for date hasn't plan", data: [] };
       }
-
-      // const results: any[] = [];
-      const items = plan.DeliveryItems ?? [];
-
-      //step 1: get all planning detail
-      const paperIds = items.filter((i) => i.targetType === "paper").map((i) => i.targetId);
-      const boxIds = items.filter((i) => i.targetType === "box").map((i) => i.targetId);
-
-      const boxes = boxIds.length > 0 ? await deliveryRepository.getAllBoxByIds(boxIds, true) : [];
-
-      //map planningBoxId to planningId
-      const boxIdToPlanningIdMap: Record<number, number> = Object.fromEntries(
-        boxes.map((b) => [b.planningBoxId, b.planningId]),
-      );
-
-      const allPlanningIds = [...paperIds, ...boxes.map((b) => b.planningId).filter((id) => id)];
-
-      //step 2: get all planning paper detail
-      const paperData =
-        allPlanningIds.length > 0 ? await deliveryRepository.getAllPaperByIds(allPlanningIds) : [];
-
-      //create map for quick access
-      const paperMap = Object.fromEntries(paperData.map((p) => [p.planningId, p]));
-
-      //step 3: merge data
-      const results = items.map((item) => {
-        const itemPlain = item.get({ plain: true });
-
-        const targetId =
-          item.targetType === "paper" ? item.targetId : boxIdToPlanningIdMap[item.targetId];
-
-        let paperInfo = paperMap[targetId] ? { ...paperMap[targetId] } : null;
-
-        return { ...itemPlain, Planning: paperInfo };
-      });
 
       return {
         message: "get delivery plan detail for edit successfully",
-        data: [
-          {
-            deliveryId: plan.deliveryId,
-            deliveryDate: plan.deliveryDate,
-            status: plan.status,
-            DeliveryItems: results,
-          },
-        ],
+        data: plan,
       };
     } catch (error) {
       console.error("❌ get planning detail for edit:", error);
@@ -266,8 +226,7 @@ export const deliveryService = {
   }: {
     deliveryDate: Date;
     items: {
-      targetType: "paper" | "box";
-      targetId: number;
+      requestId: number;
       vehicleId: number;
       sequence: string;
       note?: string;
@@ -283,91 +242,58 @@ export const deliveryService = {
         const [plan] = await deliveryRepository.findOrCreateDeliveryPlan(deliveryDate, transaction);
 
         const existingItems = plan.DeliveryItems ?? [];
+        const incomingRequestIds = items.map((i) => i.requestId);
 
-        //group boxIds
-        const incomingBoxIds = items.filter((i) => i.targetType === "box").map((i) => i.targetId);
-        const existingBoxIds = existingItems
-          .filter((i) => i.targetType === "box")
-          .map((i) => i.targetId);
-        const allBoxIds = [...new Set([...incomingBoxIds, ...existingBoxIds])];
+        // 2. Xác định các Request bị loại khỏi kế hoạch
+        const itemsToDelete = existingItems.filter(
+          (i) => !incomingRequestIds.includes(i.requestId),
+        );
+        const requestIdsToReset = itemsToDelete.map((i) => i.requestId);
 
-        //map boxId to planningId
-        const boxToPaperMap = new Map<number, number>();
-        if (allBoxIds.length > 0) {
-          const boxes = await deliveryRepository.getAllBoxByIds(allBoxIds, false);
-          boxes.forEach((b) => boxToPaperMap.set(b.planningBoxId, b.planningId));
-        }
+        // 3. Chuẩn bị dữ liệu để đồng bộ
+        const existingMap = new Map(existingItems.map((i) => [i.requestId, i]));
 
-        const existingMap = new Map(existingItems.map((i) => [`${i.targetType}-${i.targetId}`, i]));
-        const incomingKeys = new Set(items.map((i) => `${i.targetType}-${i.targetId}`));
-
-        const paperIdsToPlanned = new Set<number>();
-        const paperIdsToReset = new Set<number>();
-
-        // Tạo mảng để Bulk Sync (Vừa Create vừa Update)
         const allItemsToSync = items.map((item) => {
-          const key = `${item.targetType}-${item.targetId}`;
-          const existingItem = existingMap.get(key);
-
-          // Thu thập PlanningId để cập nhật trạng thái "Planned"
-          const pId =
-            item.targetType === "paper" ? item.targetId : boxToPaperMap.get(item.targetId);
-          if (pId) paperIdsToPlanned.add(pId);
+          const existingItem = existingMap.get(item.requestId);
 
           return {
-            //if has old ID then pass to DB for UPDATE, else INSERT
             ...(existingItem ? { deliveryItemId: existingItem.deliveryItemId } : {}),
             deliveryId: plan.deliveryId,
-            targetType: item.targetType,
-            targetId: item.targetId,
+            requestId: item.requestId,
             vehicleId: item.vehicleId,
             sequence: item.sequence,
             note: item.note ?? "",
-            status: existingItem ? existingItem.status : "none",
+            status: "none",
           };
         });
 
-        const itemsToDelete = existingItems.filter(
-          (i) => !incomingKeys.has(`${i.targetType}-${i.targetId}`),
-        );
+        // ----------- THỰC THI DATABASE --------------
 
-        //delete item out of list
+        // Xóa những item không còn nằm trong danh sách xếp chuyến
         if (itemsToDelete.length > 0) {
-          itemsToDelete.forEach((delItem) => {
-            const pId =
-              delItem.targetType === "paper"
-                ? delItem.targetId
-                : boxToPaperMap.get(delItem.targetId);
-            if (pId) paperIdsToReset.add(pId);
-          });
-
           await deliveryRepository.destroyItemById(
             itemsToDelete.map((i) => i.deliveryItemId),
             transaction,
           );
+
+          // Trả trạng thái DeliveryRequest về 'requested' để có thể xếp chuyến khác
+          await deliveryRepository.updateDeliveryRequestStatus(
+            requestIdsToReset,
+            "requested",
+            transaction,
+          );
         }
 
-        //create or update items
+        // Cập nhật hoặc thêm mới các Item vào chuyến xe
         if (allItemsToSync.length > 0) {
           await deliveryRepository.bulkUpsert(allItemsToSync, transaction);
-        }
 
-        if (paperIdsToPlanned.size > 0) {
-          await deliveryRepository.updatePlanningPaperById({
-            planningIds: [...paperIdsToPlanned],
-            status: "planned",
+          // Cập nhật trạng thái các DeliveryRequest
+          await deliveryRepository.updateDeliveryRequestStatus(
+            incomingRequestIds,
+            "scheduled",
             transaction,
-          });
-        }
-
-        //reset pending for removed items
-        const finalResetIds = [...paperIdsToReset].filter((id) => !paperIdsToPlanned.has(id));
-        if (finalResetIds.length > 0) {
-          await deliveryRepository.updatePlanningPaperById({
-            planningIds: finalResetIds,
-            status: "pending",
-            transaction,
-          });
+          );
         }
 
         return { message: "Sync delivery plan success" };
@@ -382,7 +308,7 @@ export const deliveryService = {
   confirmForDeliveryPlanning: async (deliveryDate: Date) => {
     try {
       return await runInTransaction(async (transaction) => {
-        let existedPlan = await deliveryRepository.findOneDeliveryPlanByDate(
+        const existedPlan = await deliveryRepository.findOneDeliveryPlanByDate(
           deliveryDate,
           transaction,
         );
@@ -413,7 +339,7 @@ export const deliveryService = {
   //=================================SCHEDULE DELIVERY=====================================
   getAllScheduleDelivery: async (deliveryDate: Date) => {
     try {
-      const finalData = await getDeliveryByDate(deliveryDate, "planned");
+      const finalData = await deliveryRepository.getAllDeliveryPlanByDate(deliveryDate, "planned");
 
       return { message: "get schedule delivery successfully", data: finalData };
     } catch (error) {
@@ -434,6 +360,23 @@ export const deliveryService = {
   }) => {
     try {
       return runInTransaction(async (transaction) => {
+        const items = await DeliveryItem.findAll({
+          where: { deliveryItemId: { [Op.in]: itemIds }, deliveryId },
+          include: [
+            {
+              model: DeliveryRequest,
+              attributes: ["requestId", "planningId"],
+            },
+          ],
+          transaction,
+        });
+
+        if (items.length === 0) {
+          throw AppError.BadRequest("Không tìm thấy item nào để cập nhật", "ITEMS_NOT_FOUND");
+        }
+
+        const requestIds = items.map((i) => i.requestId);
+
         if (action === "complete") {
           await deliveryRepository.updateDeliveryItemById({
             statusUpdate: "completed",
@@ -442,34 +385,21 @@ export const deliveryService = {
           });
         } else if (action === "cancel") {
           const itemsCancel = await deliveryRepository.getDeliveryItemByIds(itemIds, transaction);
-
           if (itemsCancel.length > 0) {
-            const paperIds = itemsCancel
-              .filter((i) => i.targetType === "paper")
-              .map((i) => i.targetId);
-            const boxIds = itemsCancel.filter((i) => i.targetType === "box").map((i) => i.targetId);
-
-            const boxes =
-              boxIds.length > 0 ? await deliveryRepository.getAllBoxByIds(boxIds, true) : [];
-
-            const allPlanningIds = [
-              ...paperIds,
-              ...boxes.map((b) => b.planningId).filter((id) => id),
-            ];
-
-            //update planning paper deliveryPlanned to pending
-            await PlanningPaper.update(
-              { deliveryPlanned: "pending" },
-              { where: { planningId: allPlanningIds }, transaction },
+            //return delivery request to 'requested' for re-schedule
+            await DeliveryRequest.update(
+              { status: "requested" },
+              { where: { requestId: { [Op.in]: requestIds } }, transaction },
             );
 
             //update delivery item status
             await DeliveryItem.update(
               { status: "cancelled" },
-              { where: { deliveryItemId: itemIds, deliveryId }, transaction },
+              { where: { deliveryItemId: { [Op.in]: itemIds } }, transaction },
             );
           }
         }
+
         //check order not in complete or cancel
         const remainingPlannedItems = await deliveryRepository.deliveryCount(
           deliveryId,
@@ -497,7 +427,7 @@ export const deliveryService = {
 
   exportScheduleDelivery: async (res: Response, deliveryDate: Date) => {
     try {
-      const data = await getDeliveryByDate(deliveryDate);
+      const data = await deliveryRepository.getAllDeliveryPlanByDate(deliveryDate);
 
       await exportDeliveryExcelResponse(res, {
         data: data,

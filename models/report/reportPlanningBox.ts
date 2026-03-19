@@ -10,6 +10,8 @@ interface ReportPlanningBoxAttributes {
   wasteLoss: number;
   shiftManagement: string;
   machine: string;
+  reportedBy: string;
+
   createdAt?: Date;
   updatedAt?: Date;
 
@@ -35,6 +37,8 @@ export class ReportPlanningBox
   declare wasteLoss: number;
   declare shiftManagement: string;
   declare machine: string;
+  declare reportedBy: string;
+
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
 
@@ -61,6 +65,7 @@ export function initReportPlanningBoxModel(sequelize: Sequelize): typeof ReportP
       wasteLoss: { type: DataTypes.DOUBLE, allowNull: false },
       shiftManagement: { type: DataTypes.STRING, allowNull: false },
       machine: { type: DataTypes.STRING, allowNull: false },
+      reportedBy: { type: DataTypes.STRING, allowNull: false },
 
       //FK
       planningBoxId: { type: DataTypes.INTEGER, allowNull: false },

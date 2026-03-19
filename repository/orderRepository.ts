@@ -1,4 +1,4 @@
-import { FindOptions, Op } from "sequelize";
+import { FindOptions, Op, Transaction } from "sequelize";
 import { Customer } from "../models/customer/customer";
 import { Box } from "../models/order/box";
 import { Product } from "../models/product/product";
@@ -60,8 +60,12 @@ export const orderRepository = {
     });
   },
 
-  findOneFluteRatio: async (flute: string) => {
-    return await FluteRatio.findOne({ where: { fluteName: flute }, attributes: ["ratio"] });
+  findOneFluteRatio: async (flute: string, transaction?: Transaction) => {
+    return await FluteRatio.findOne({
+      where: { fluteName: flute },
+      attributes: ["ratio"],
+      transaction,
+    });
   },
 
   //repo for auto complete

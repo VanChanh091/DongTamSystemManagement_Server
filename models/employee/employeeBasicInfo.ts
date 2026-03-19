@@ -79,7 +79,16 @@ export function initEmployeeBasicInfoModel(sequelize: Sequelize): typeof Employe
       temporaryAddress: { type: DataTypes.STRING, allowNull: false },
       ethnicity: { type: DataTypes.STRING, allowNull: false }, //dân tộc
     },
-    { sequelize, tableName: "EmployeeBasicInfos", timestamps: true },
+    {
+      sequelize,
+      tableName: "EmployeeBasicInfos",
+      timestamps: true,
+      indexes: [
+        //search
+        { fields: ["fullName"] },
+        { fields: ["phoneNumber"] },
+      ],
+    },
   );
 
   return EmployeeBasicInfo;

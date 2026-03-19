@@ -241,18 +241,16 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
           }
 
           if (order.changed("orderId") && order.orderId) {
-            const parts = order.orderId.split("/"); // Ví dụ: [123, 11, 25, D002]
+            const parts = order.orderId.split("/"); // Ví dụ: [1234, 11, 25, D001]
 
             if (parts.length >= 4) {
               const po = parseInt(parts[0], 10) || 0;
               const month = parseInt(parts[1], 10) || 0;
               const year = parseInt(parts[2], 10) || 0;
+              const suffix = parseInt(parts[3].replace(/\D/g, ""), 10) || 0; // Tách số từ hậu tố "D002" -> 002
 
-              // Tách số từ hậu tố "D002" -> 002
-              const suffix = parseInt(parts[3].replace(/\D/g, ""), 10) || 0;
-
-              // Công thức: Value = (Year * 10^9) + (Month * 10^7) + (PO * 10^3) + Suffix
-              order.orderSortValue = year * 1000000000 + month * 10000000 + po * 1000 + suffix;
+              // Công thức: Value = (Year * 10^11) + (Month * 10^9) + (PO * 10^4) + Suffix
+              order.orderSortValue = year * 100000000000 + month * 1000000000 + po * 10000 + suffix;
             }
           }
         },

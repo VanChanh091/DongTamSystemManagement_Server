@@ -356,10 +356,10 @@ export const warehouseRepository = {
   }: {
     field?: string;
     keyword?: string;
-    page: number;
-    pageSize: number;
+    page?: number;
+    pageSize?: number;
   }) => {
-    const whereClause: any = {};
+    const whereClause: any = { qtyInventory: { [Op.gt]: 0 } };
 
     if (field && keyword) {
       const searchCondition = { [Op.like]: `%${keyword}%` };
@@ -371,7 +371,7 @@ export const warehouseRepository = {
       }
     }
 
-    return await Inventory.findAndCountAll({
+    const options: any = {
       where: whereClause,
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
@@ -405,9 +405,14 @@ export const warehouseRepository = {
           ],
         },
       ],
-      offset: (page - 1) * pageSize,
-      limit: pageSize,
-    });
+    };
+
+    if (page !== undefined && pageSize !== undefined) {
+      options.offset = (page - 1) * pageSize;
+      options.limit = pageSize;
+    }
+
+    return await Inventory.findAndCountAll(options);
   },
 
   inventoryTotals: async () => {

@@ -1,6 +1,5 @@
 import { NextFunction, Request, Response } from "express";
 import { deliveryService } from "../../../service/deliveryService";
-import { targetType } from "../../../models/delivery/deliveryItem";
 
 //=================================PLANNING ESTIMATE TIME=====================================
 
@@ -25,18 +24,13 @@ export const getPlanningEstimateTime = async (req: Request, res: Response, next:
   }
 };
 
-export const confirmReadyDeliveryPlanning = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  const { planningIds } = req.query as { planningIds: string[] };
+export const registerQtyDelivery = async (req: Request, res: Response, next: NextFunction) => {
+  const { planningId, qtyRegistered } = req.body as { planningId: string; qtyRegistered: string };
 
   try {
-    const ids = Array.isArray(planningIds) ? planningIds : planningIds ? [planningIds] : [];
-
-    const response = await deliveryService.confirmReadyDeliveryPlanning({
-      planningIds: ids.map((id) => Number(id)),
+    const response = await deliveryService.registerQtyDelivery({
+      planningId: Number(planningId),
+      qtyRegistered: Number(qtyRegistered),
       userId: req.user.userId,
     });
     return res.status(200).json(response);
@@ -45,8 +39,9 @@ export const confirmReadyDeliveryPlanning = async (
   }
 };
 
-//=================================PLANNING DELIVERY=====================================
-export const getPendingDelivery = async (req: Request, res: Response, next: NextFunction) => {
+//=================================DELIVERY PLANNING=====================================
+
+export const getPlanningRequest = async (req: Request, res: Response, next: NextFunction) => {
   const { deliveryDate } = req.query as { deliveryDate: string };
 
   try {
@@ -55,7 +50,7 @@ export const getPendingDelivery = async (req: Request, res: Response, next: Next
     if (deliveryDate) {
       response = await deliveryService.getDeliveryPlanDetailForEdit(new Date(deliveryDate));
     } else {
-      response = await deliveryService.getPlanningPendingDelivery();
+      response = await deliveryService.getDeliveryRequest();
     }
 
     return res.status(200).json(response);
@@ -68,8 +63,7 @@ export const createDeliveryPlan = async (req: Request, res: Response, next: Next
   const { deliveryDate, items } = req.body as {
     deliveryDate: Date;
     items: {
-      targetType: targetType;
-      targetId: number;
+      requestId: number;
       vehicleId: number;
       sequence: string;
       note?: string;

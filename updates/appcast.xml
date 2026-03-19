@@ -3,15 +3,17 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 3.8.0</title>
-            <sparkle:version>3.8.0</sparkle:version> 
-            <description>Tách kế hoạch thành 2 màn: giấy tấm và công đoạn 2
-            Nút di chuyển kế hoạch có thể nhấn giữ để di chuyển liên tục
-            Thêm nút sửa báo cáo cho cả giấy tấm và công đoạn 2
-            Sửa lại lỗi không lấy được tiêu chí kiểm tra cho QC
-            Sửa lại lỗi không hiển thị thông báo khi chỉ định sản xuất đơn hàng
+            <title>Version 3.9.5</title>
+            <sparkle:version>3.9.5</sparkle:version> 
+            <description>Mở rộng chức năng cho phần đơn hàng: Có thể thêm ảnh và tiến trình xử lí 
+            Thêm mục nhập mã nhân viên khi báo cáo số lượng
+            Thay đổi cách thức đăng ký giao hàng
+            Có thể xuất kho tại tồn kho và lịch giao hàng
+            Bio đơn hàng có thể nhập từ 3-4 số
+            Fix lại các lỗi search và xuất excel
+            Thêm phần nhắc lưu cho trang xếp xe
             </description>
-            <pubDate>Mon, 09 March 2026</pubDate>
+            <pubDate>Thu, 19 March 2026</pubDate>
             <enclosure url="dongtam.exe" 
                     sparkle:os="windows" 
                     length="12345678" 

@@ -10,6 +10,8 @@ interface ReportPlanningPaperAttributes {
   qtyWasteNorm: number;
   shiftProduction: "Ca 1" | "Ca 2" | "Ca 3";
   shiftManagement: string;
+  reportedBy: string;
+
   createdAt?: Date;
   updatedAt?: Date;
 
@@ -35,6 +37,8 @@ export class ReportPlanningPaper
   declare qtyWasteNorm: number;
   declare shiftProduction: "Ca 1" | "Ca 2" | "Ca 3";
   declare shiftManagement: string;
+  declare reportedBy: string;
+
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
 
@@ -61,6 +65,7 @@ export function initReportPlanningPaperModel(sequelize: Sequelize): typeof Repor
       qtyWasteNorm: { type: DataTypes.DOUBLE, allowNull: false },
       shiftProduction: { type: DataTypes.ENUM("Ca 1", "Ca 2", "Ca 3"), allowNull: false },
       shiftManagement: { type: DataTypes.STRING, allowNull: false },
+      reportedBy: { type: DataTypes.STRING, allowNull: false },
 
       //FK
       planningId: { type: DataTypes.INTEGER, allowNull: false },

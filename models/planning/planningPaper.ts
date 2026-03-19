@@ -256,6 +256,7 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
         { fields: ["dayStart", "timeRunning"] },
 
         //get paper waiting check
+        { fields: ["statusRequest"] },
         { fields: ["hasBox", "statusRequest"] },
       ],
     },

@@ -5,7 +5,9 @@ import { Inventory } from "../../models/warehouse/inventory";
 import { warehouseRepository } from "../../repository/warehouseRepository";
 import { AppError } from "../../utils/appError";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
-import { filterDataFromCache } from "../../utils/helper/modelHelper/orderHelpers";
+import { exportExcelResponse } from "../../utils/helper/excelExporter";
+import { Response } from "express";
+import { inventoryColumns, mappingInventoryRow } from "../../utils/mapping/inventoryRowAndColumn";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inventory } = CacheKey.warehouse;
@@ -82,8 +84,17 @@ export const inventoryService = {
     }
   },
 
-  exportExcelInventory: async () => {
+  exportExcelInventory: async (res: Response) => {
     try {
+      const { rows } = await warehouseRepository.getInventoryByPage({});
+
+      await exportExcelResponse(res, {
+        data: rows,
+        sheetName: "Tồn Kho",
+        fileName: "inventory",
+        columns: inventoryColumns,
+        rows: mappingInventoryRow,
+      });
     } catch (error) {
       console.error("Error create inventory:", error);
       if (error instanceof AppError) throw error;

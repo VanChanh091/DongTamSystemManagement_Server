@@ -250,6 +250,7 @@ export const createReportPlanning = async ({
   dayReportValue,
   shiftManagementBox = "",
   machine = "",
+  reportedBy,
   otherData,
   transaction,
   isBox = false,
@@ -261,6 +262,7 @@ export const createReportPlanning = async ({
   dayReportValue: Date | string;
   shiftManagementBox?: string;
   machine?: string;
+  reportedBy: string;
   otherData?: {
     shiftProduction: string;
     shiftManagement: string;
@@ -303,6 +305,7 @@ export const createReportPlanning = async ({
         wasteLoss: qtyWasteNorm,
         shiftManagement: shiftManagementBox,
         machine: machine,
+        reportedBy: reportedBy,
       },
       { transaction },
     );
@@ -317,6 +320,7 @@ export const createReportPlanning = async ({
         qtyWasteNorm: qtyWasteNorm,
         shiftProduction: otherData!.shiftProduction,
         shiftManagement: otherData!.shiftManagement,
+        reportedBy: reportedBy,
       },
       { transaction },
     );
