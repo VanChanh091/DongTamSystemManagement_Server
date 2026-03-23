@@ -225,7 +225,7 @@ const findAllReportBox = async ({ isBox, machine }) => {
         throw appError_1.AppError.ServerError();
     }
 };
-const createReportPlanning = async ({ planning, model, qtyProduced, qtyWasteNorm, dayReportValue, shiftManagementBox = "", machine = "", otherData, transaction, isBox = false, }) => {
+const createReportPlanning = async ({ planning, model, qtyProduced, qtyWasteNorm, dayReportValue, shiftManagementBox = "", machine = "", reportedBy, otherData, transaction, isBox = false, }) => {
     //condition to get id
     const whereCondition = isBox
         ? {
@@ -255,6 +255,7 @@ const createReportPlanning = async ({ planning, model, qtyProduced, qtyWasteNorm
             wasteLoss: qtyWasteNorm,
             shiftManagement: shiftManagementBox,
             machine: machine,
+            reportedBy: reportedBy,
         }, { transaction });
     }
     else {
@@ -267,6 +268,7 @@ const createReportPlanning = async ({ planning, model, qtyProduced, qtyWasteNorm
             qtyWasteNorm: qtyWasteNorm,
             shiftProduction: otherData.shiftProduction,
             shiftManagement: otherData.shiftManagement,
+            reportedBy: reportedBy,
         }, { transaction });
     }
     return {

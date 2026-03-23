@@ -1,10 +1,10 @@
-import { processTypeQC } from "../../models/qualityControl/qcCriteria";
-import { qcChecklistData } from "../../models/qualityControl/qcSampleResult";
 import { AppError } from "../../utils/appError";
-import { runInTransaction } from "../../utils/helper/transactionHelper";
-import { inboundService } from "../warehouse/inboundService";
 import { qcSampleService } from "./qcSampleService";
 import { qcSessionService } from "./qcSessionService";
+import { inboundService } from "../warehouse/inboundService";
+import { processTypeQC } from "../../models/qualityControl/qcCriteria";
+import { runInTransaction } from "../../utils/helper/transactionHelper";
+import { qcChecklistData } from "../../models/qualityControl/qcSampleResult";
 
 export const qcSubmitService = {
   submitQC: async ({

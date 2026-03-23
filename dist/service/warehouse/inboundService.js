@@ -90,7 +90,6 @@ exports.inboundService = {
             }
             else {
                 const cachedData = await redisCache_1.default.get(cacheKey);
-                console.log(`data: ${cachedData ? true : false}`);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ Data waiting check box from Redis");
@@ -276,13 +275,12 @@ exports.inboundService = {
                     return { ...parsed, message: `Get all inbound from cache` };
                 }
             }
-            const totalInbounds = await warehouseRepository_1.warehouseRepository.inboundHistoryCount();
-            const totalPages = Math.ceil(totalInbounds / pageSize);
-            const data = await warehouseRepository_1.warehouseRepository.findInboundByPage({ page, pageSize });
+            const { rows, count } = await warehouseRepository_1.warehouseRepository.findInboundByPage({ page, pageSize });
+            const totalPages = Math.ceil(count / pageSize);
             const responseData = {
                 message: "Get all inbound history successfully",
-                data,
-                totalInbounds,
+                data: rows,
+                totalInbounds: count,
                 totalPages,
                 currentPage: page,
             };

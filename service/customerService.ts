@@ -44,15 +44,17 @@ export const customerService = {
         }
       }
 
-      let data, totalPages;
-      const totalCustomers = await customerRepository.customerCount();
-
+      let data, totalPages, totalCustomers;
       if (noPagingMode) {
-        totalPages = 1;
         data = await customerRepository.findAllCustomer();
+        totalCustomers = data.length;
+        totalPages = 1;
       } else {
+        const { rows, count } = await customerRepository.findCustomerByPage(page, pageSize);
+
+        data = rows;
+        totalCustomers = count;
         totalPages = Math.ceil(totalCustomers / pageSize);
-        data = await customerRepository.findCustomerByPage(page, pageSize);
       }
 
       const responseData = {

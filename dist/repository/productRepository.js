@@ -4,9 +4,6 @@ exports.productRepository = void 0;
 const product_1 = require("../models/product/product");
 exports.productRepository = {
     //get all
-    productCount: async () => {
-        return await product_1.Product.count();
-    },
     findAllProduct: async () => {
         return await product_1.Product.findAll({
             attributes: { exclude: ["createdAt", "updatedAt"] },
@@ -16,7 +13,7 @@ exports.productRepository = {
         return await product_1.Product.findByPk(producId);
     },
     findProductByPage: async (page, pageSize) => {
-        return await product_1.Product.findAll({
+        return await product_1.Product.findAndCountAll({
             attributes: { exclude: ["createdAt", "updatedAt"] },
             offset: (page - 1) * pageSize,
             limit: pageSize,

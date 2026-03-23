@@ -10,6 +10,8 @@ exports.DeliveryRequest = DeliveryRequest;
 function initDeliveryRequestModel(sequelize) {
     DeliveryRequest.init({
         requestId: { type: sequelize_1.DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+        qtyRegistered: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
+        volume: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false },
         status: {
             type: sequelize_1.DataTypes.ENUM("requested", "scheduled", "cancelled"),
             allowNull: false,

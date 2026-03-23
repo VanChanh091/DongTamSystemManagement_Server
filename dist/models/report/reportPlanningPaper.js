@@ -25,6 +25,7 @@ function initReportPlanningPaperModel(sequelize) {
         qtyWasteNorm: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false },
         shiftProduction: { type: sequelize_1.DataTypes.ENUM("Ca 1", "Ca 2", "Ca 3"), allowNull: false },
         shiftManagement: { type: sequelize_1.DataTypes.STRING, allowNull: false },
+        reportedBy: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         //FK
         planningId: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
     }, {

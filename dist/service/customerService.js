@@ -37,15 +37,17 @@ exports.customerService = {
                     return { ...JSON.parse(cachedData), message: `Get all customers from cache` };
                 }
             }
-            let data, totalPages;
-            const totalCustomers = await customerRepository_1.customerRepository.customerCount();
+            let data, totalPages, totalCustomers;
             if (noPagingMode) {
-                totalPages = 1;
                 data = await customerRepository_1.customerRepository.findAllCustomer();
+                totalCustomers = data.length;
+                totalPages = 1;
             }
             else {
+                const { rows, count } = await customerRepository_1.customerRepository.findCustomerByPage(page, pageSize);
+                data = rows;
+                totalCustomers = count;
                 totalPages = Math.ceil(totalCustomers / pageSize);
-                data = await customerRepository_1.customerRepository.findCustomerByPage(page, pageSize);
             }
             const responseData = {
                 message: "Get all customers successfully",

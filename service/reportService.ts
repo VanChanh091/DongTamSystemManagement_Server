@@ -14,7 +14,6 @@ import { mapReportPaperRow, reportPaperColumns } from "../utils/mapping/reportPa
 import { mapReportBoxRow, reportBoxColumns } from "../utils/mapping/reportBoxRowAndColumn";
 import redisCache from "../assest/configs/redisCache";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
-import { stringify } from "querystring";
 import { normalizeVN } from "../utils/helper/normalizeVN";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
@@ -38,16 +37,19 @@ export const reportService = {
         }
       }
 
-      const totalOrders = await reportRepository.reportCount(ReportPlanningPaper);
-      const totalPages = Math.ceil(totalOrders / pageSize);
       const offset = (page - 1) * pageSize;
+      const { rows, count } = await reportRepository.findReportPaperByMachine(
+        machine,
+        pageSize,
+        offset,
+      );
 
-      const data = await reportRepository.findReportPaperByMachine(machine, pageSize, offset);
+      const totalPages = Math.ceil(count / pageSize);
 
       const responseData = {
         message: "get all report planning paper successfully",
-        data,
-        totalOrders,
+        data: rows,
+        totalOrders: count,
         totalPages,
         currentPage: page,
       };
@@ -117,15 +119,15 @@ export const reportService = {
         }
       }
 
-      const totalOrders = await reportRepository.reportCount(ReportPlanningBox);
-      const totalPages = Math.ceil(totalOrders / pageSize);
       const offset = (page - 1) * pageSize;
+      const { rows, count } = await reportRepository.findAlReportBox(machine, pageSize, offset);
 
-      const data = await reportRepository.findAlReportBox(machine, pageSize, offset);
+      const totalPages = Math.ceil(count / pageSize);
+
       const responseData = {
         message: "get all report planning paper successfully",
-        data,
-        totalOrders,
+        data: rows,
+        totalOrders: count,
         totalPages,
         currentPage: page,
       };

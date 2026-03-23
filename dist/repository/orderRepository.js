@@ -8,6 +8,7 @@ const product_1 = require("../models/product/product");
 const user_1 = require("../models/user/user");
 const order_1 = require("../models/order/order");
 const fluteRatio_1 = require("../models/admin/fluteRatio");
+const orderImage_1 = require("../models/order/orderImage");
 exports.orderRepository = {
     buildQueryOptions: (whereCondition = {}, statusList) => {
         return {
@@ -17,6 +18,7 @@ exports.orderRepository = {
                 { model: customer_1.Customer, attributes: ["customerName", "companyName"] },
                 { model: product_1.Product, attributes: ["typeProduct", "productName", "maKhuon"] },
                 { model: box_1.Box, as: "box", attributes: { exclude: ["createdAt", "updatedAt"] } },
+                { model: orderImage_1.OrderImage, attributes: ["imageUrl"] },
                 { model: user_1.User, attributes: ["fullName"] },
             ],
             order: [
@@ -54,8 +56,12 @@ exports.orderRepository = {
             order: [["createdAt", "DESC"]],
         });
     },
-    findOneFluteRatio: async (flute) => {
-        return await fluteRatio_1.FluteRatio.findOne({ where: { fluteName: flute }, attributes: ["ratio"] });
+    findOneFluteRatio: async (flute, transaction) => {
+        return await fluteRatio_1.FluteRatio.findOne({
+            where: { fluteName: flute },
+            attributes: ["ratio"],
+            transaction,
+        });
     },
     //repo for auto complete
     getOrderIdRaw: async (orderId) => {

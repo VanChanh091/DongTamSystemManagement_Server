@@ -1,4 +1,4 @@
-import redisCache from "../../assest/configs/redisCache";
+import redisCache from "../../../assest/configs/redisCache";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -42,7 +42,6 @@ export const checkLastChange = async (models: any, cacheKey: string, { setCache 
 
   //So sánh với cache Redis
   const lastCached = await redisCache.get(cacheKey);
-
   const isChanged = lastCached !== combinedSignature;
 
   if (setCache && isChanged) {

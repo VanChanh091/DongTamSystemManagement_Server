@@ -74,17 +74,18 @@ exports.CacheKey = {
         },
         inventory: {
             page: (page) => `inventory:page:${page}`,
+            search: "inventory:search:all",
             lastUpdated: "inventories:lastUpdated",
         },
     },
     delivery: {
-        register: {
-            page: (page) => `register:page:${page}`,
-            lastUpdated: "registerOrder:lastUpdated",
+        estimate: {
+            page: (page) => `estimate:page:${page}`,
+            lastUpdated: "estimateOrder:lastUpdated",
         },
         schedule: {
-            date: (date) => `deliverySchedule:date:${date.toISOString()}`,
-            lastUpdated: "schedule:lastUpdated",
+            date: (date) => `schedule:date:${date.toISOString()}`,
+            lastUpdated: "scheduleOrder:lastUpdated",
         },
     },
     report: {

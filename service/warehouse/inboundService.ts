@@ -342,14 +342,13 @@ export const inboundService = {
         }
       }
 
-      const totalInbounds = await warehouseRepository.inboundHistoryCount();
-      const totalPages = Math.ceil(totalInbounds / pageSize);
-      const data = await warehouseRepository.findInboundByPage({ page, pageSize });
+      const { rows, count } = await warehouseRepository.findInboundByPage({ page, pageSize });
+      const totalPages = Math.ceil(count / pageSize);
 
       const responseData = {
         message: "Get all inbound history successfully",
-        data,
-        totalInbounds,
+        data: rows,
+        totalInbounds: count,
         totalPages,
         currentPage: page,
       };

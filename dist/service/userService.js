@@ -32,7 +32,11 @@ exports.userService = {
                     .replace(/\s+/g, "_") // khoảng trắng -> _
                     .replace(/[^\w-]/g, ""); // bỏ ký tự đặc biệt
                 const fileName = `${sanitizeName}-userId:${userId}`;
-                const result = await (0, converToWebp_1.uploadImageToCloudinary)(webpBuffer, "users", fileName);
+                const result = await (0, converToWebp_1.uploadImageToCloudinary)({
+                    buffer: webpBuffer,
+                    folder: "users",
+                    publicId: fileName,
+                });
                 parsedUser.avatar = result.secure_url;
             }
             await user.update(parsedUser);

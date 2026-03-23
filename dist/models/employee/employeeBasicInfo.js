@@ -25,7 +25,16 @@ function initEmployeeBasicInfoModel(sequelize) {
         permanentAddress: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         temporaryAddress: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         ethnicity: { type: sequelize_1.DataTypes.STRING, allowNull: false }, //dân tộc
-    }, { sequelize, tableName: "EmployeeBasicInfos", timestamps: true });
+    }, {
+        sequelize,
+        tableName: "EmployeeBasicInfos",
+        timestamps: true,
+        indexes: [
+            //search
+            { fields: ["fullName"] },
+            { fields: ["phoneNumber"] },
+        ],
+    });
     return EmployeeBasicInfo;
 }
 //# sourceMappingURL=employeeBasicInfo.js.map

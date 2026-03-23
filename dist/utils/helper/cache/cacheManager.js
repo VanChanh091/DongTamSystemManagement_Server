@@ -8,7 +8,7 @@ const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const redisCache_1 = __importDefault(require("../../../assest/configs/redisCache"));
 const cacheKey_1 = require("./cacheKey");
-const checkLastChangeHelper_1 = require("../checkLastChangeHelper");
+const checkLastChangeHelper_1 = require("./checkLastChangeHelper");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const CACHE_CONFIG = {
     customer: ["customers:"],
@@ -42,8 +42,8 @@ const CACHE_CONFIG = {
     outbound: ["outboundHistory:"],
     inventory: ["inventory:"],
     //delivery
-    register: ["register:page:"],
-    schedule: ["deliverySchedule:"],
+    estimate: ["estimate:"],
+    schedule: ["schedule:"],
 };
 exports.CacheManager = {
     //Xóa toàn bộ cache theo prefix
@@ -116,7 +116,7 @@ exports.CacheManager = {
             outbound: cacheKey_1.CacheKey.warehouse.outbound.lastUpdated,
             inventory: cacheKey_1.CacheKey.warehouse.inventory.lastUpdated,
             //delivery
-            registerOrder: cacheKey_1.CacheKey.delivery.register.lastUpdated,
+            estimate: cacheKey_1.CacheKey.delivery.estimate.lastUpdated,
             schedule: cacheKey_1.CacheKey.delivery.schedule.lastUpdated,
         };
         const key = map[module];

@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getOrderByStatus = exports.filterDataFromCache = exports.filterOrdersFromCache = exports.cachedStatus = exports.updateChildOrder = exports.createDataTable = exports.calculateOrderMetrics = exports.generateOrderId = exports.validateCustomerAndProduct = void 0;
+exports.getOrderByStatus = exports.filterDataFromCache = exports.filterOrdersFromCache = exports.cachedStatus = exports.updateChildOrder = exports.createDataTable = exports.calculateVolume = exports.calculateOrderMetrics = exports.generateOrderId = exports.validateCustomerAndProduct = void 0;
 exports.formatterStructureOrder = formatterStructureOrder;
 const sequelize_1 = require("sequelize");
 const customer_1 = require("../../../models/customer/customer");
@@ -31,14 +31,19 @@ const generateOrderId = async (prefix) => {
         order: [["orderId", "DESC"]],
     });
     let number = 1;
+    let existingCustomerId = null;
     if (lastOrder && lastOrder.orderId) {
+        existingCustomerId = lastOrder.customerId;
         const lastNumber = parseInt(lastOrder.orderId.slice(sanitizedPrefix.length), 10);
         if (!isNaN(lastNumber)) {
             number = lastNumber + 1;
         }
     }
     const formattedNumber = number.toString().padStart(3, "0");
-    return `${sanitizedPrefix}${formattedNumber}`;
+    return {
+        newOrderId: `${sanitizedPrefix}${formattedNumber}`,
+        existingCustomerId,
+    };
 };
 exports.generateOrderId = generateOrderId;
 const calculateFlutePaper = (fields) => {
@@ -93,23 +98,33 @@ const calculateOrderMetrics = async (data) => {
     // total price & vat
     const totalPrice = Math.round(qty * totalPricePaper);
     const totalPriceVAT = Math.round(totalPrice * (1 + vat / 100));
-    //volume
-    const ratioData = await orderRepository_1.orderRepository.findOneFluteRatio(flute);
-    const ratio = ratioData?.ratio ?? 1;
-    const baseVolume = (length * size) / 10000;
-    const totalVolume = baseVolume * qty * ratio * 1.3;
-    const volumeRaw = Math.round(totalVolume * 100) / 100; //làm tròn, lấy 2 số sau dấu phẩy
+    const volume = await (0, exports.calculateVolume)({
+        flute,
+        lengthCustomer: length,
+        sizeCustomer: size,
+        quantity: qty,
+    });
+    console.log(`volume: ${volume}`);
     const responseData = {
         flute,
         acreage,
         pricePaper: totalPricePaper,
         totalPrice,
         totalPriceVAT,
-        volume: volumeRaw,
+        volume,
     };
     return responseData;
 };
 exports.calculateOrderMetrics = calculateOrderMetrics;
+const calculateVolume = async ({ flute, lengthCustomer, sizeCustomer, quantity, }) => {
+    const ratioData = await orderRepository_1.orderRepository.findOneFluteRatio(flute);
+    const ratio = ratioData?.ratio ?? 1;
+    const baseVolume = (lengthCustomer * sizeCustomer) / 10000;
+    const totalVolume = baseVolume * quantity * ratio * 1.3;
+    const volumeRaw = Number(Math.round(totalVolume * 100) / 100); //làm tròn, lấy 2 số sau dấu phẩy
+    return volumeRaw;
+};
+exports.calculateVolume = calculateVolume;
 const createDataTable = async (id, model, data, transaction) => {
     try {
         if (data) {

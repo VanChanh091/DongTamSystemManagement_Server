@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.badgeRoutes = exports.deliveryRoutes = exports.qcRoutes = exports.warehouseRoutes = exports.employeeRoutes = exports.dashboardRoutes = exports.reportRoutes = exports.manufactureRoutes = exports.usersRoutes = exports.authRoutes = exports.adminRoutes = exports.productRoutes = exports.planningRoutes = exports.orderRoutes = exports.customerRoutes = void 0;
+exports.processingRoutes = exports.badgeRoutes = exports.deliveryRoutes = exports.qcRoutes = exports.warehouseRoutes = exports.employeeRoutes = exports.dashboardRoutes = exports.reportRoutes = exports.manufactureRoutes = exports.usersRoutes = exports.authRoutes = exports.adminRoutes = exports.productRoutes = exports.planningRoutes = exports.orderRoutes = exports.customerRoutes = void 0;
 const adminRoutes_1 = __importDefault(require("./adminRouter/adminRoutes"));
 exports.adminRoutes = adminRoutes_1.default;
 const authRoutes_1 = __importDefault(require("./authRouter/authRoutes"));
@@ -34,4 +34,6 @@ const deliveryRoutes_1 = __importDefault(require("./userRouter/deliveryRoutes"))
 exports.deliveryRoutes = deliveryRoutes_1.default;
 const badgeRoutes_1 = __importDefault(require("./badgeRouter/badgeRoutes"));
 exports.badgeRoutes = badgeRoutes_1.default;
+const processingRoutes_1 = __importDefault(require("./userRouter/processingRoutes"));
+exports.processingRoutes = processingRoutes_1.default;
 //# sourceMappingURL=index.js.map

@@ -7,6 +7,7 @@ const box_1 = require("../models/order/box");
 const order_1 = require("../models/order/order");
 const product_1 = require("../models/product/product");
 const user_1 = require("../models/user/user");
+const orderImage_1 = require("../models/order/orderImage");
 exports.adminRepository = {
     //===============================ADMIN CRUD=====================================
     getAllItems: async ({ model }) => {
@@ -36,6 +37,7 @@ exports.adminRepository = {
                     attributes: ["typeProduct", "productName", "maKhuon", "productImage"],
                 },
                 { model: box_1.Box, as: "box" },
+                { model: orderImage_1.OrderImage, attributes: ["imageUrl"] },
                 { model: user_1.User, attributes: ["fullName"] },
             ],
             order: [["orderSortValue", "ASC"]],

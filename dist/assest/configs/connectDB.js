@@ -38,7 +38,7 @@ const connectDB = async () => {
     try {
         await sequelize.authenticate();
         // console.log("✅ Kết nối MySQL thành công!");
-        console.log(`✅ Đang chạy ở môi trường ${process.env.NODE_ENV}!`);
+        console.log(`✅ DB đang chạy ở môi trường ${process.env.NODE_ENV}!`);
     }
     catch (error) {
         console.error("❌ Lỗi kết nối MySQL:", error);

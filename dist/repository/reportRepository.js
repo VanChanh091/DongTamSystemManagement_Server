@@ -11,11 +11,8 @@ const planningPaper_1 = require("../models/planning/planningPaper");
 const reportPlanningBox_1 = require("../models/report/reportPlanningBox");
 const reportPlanningPaper_1 = require("../models/report/reportPlanningPaper");
 exports.reportRepository = {
-    reportCount: async (model) => {
-        return await model.count();
-    },
     findReportPaperByMachine: async (machine, pageSize, offset) => {
-        return await reportPlanningPaper_1.ReportPlanningPaper.findAll({
+        return await reportPlanningPaper_1.ReportPlanningPaper.findAndCountAll({
             attributes: { exclude: ["createdAt", "updatedAt"] },
             include: [
                 {
@@ -82,7 +79,7 @@ exports.reportRepository = {
         });
     },
     findAlReportBox: async (machine, pageSize, offset) => {
-        return await reportPlanningBox_1.ReportPlanningBox.findAll({
+        return await reportPlanningBox_1.ReportPlanningBox.findAndCountAll({
             where: { machine: machine },
             attributes: { exclude: ["createdAt", "updatedAt"] },
             include: [
@@ -226,14 +223,7 @@ exports.reportRepository = {
                                     "status",
                                 ],
                             },
-                            include: [
-                                { model: customer_1.Customer, attributes: ["customerName", "companyName"] },
-                                {
-                                    model: box_1.Box,
-                                    as: "box",
-                                    attributes: { exclude: ["createdAt", "updatedAt"] },
-                                },
-                            ],
+                            include: [{ model: customer_1.Customer, attributes: ["customerName", "companyName"] }],
                         },
                     ],
                 },

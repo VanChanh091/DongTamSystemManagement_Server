@@ -5,9 +5,6 @@ const sequelize_1 = require("sequelize");
 const employeeBasicInfo_1 = require("../models/employee/employeeBasicInfo");
 const employeeCompanyInfo_1 = require("../models/employee/employeeCompanyInfo");
 exports.employeeRepository = {
-    employeeCount: async () => {
-        return await employeeBasicInfo_1.EmployeeBasicInfo.count();
-    },
     findEmployeeById: async (employeeId) => {
         return await employeeBasicInfo_1.EmployeeBasicInfo.findOne({
             where: { employeeId: employeeId },
@@ -33,7 +30,7 @@ exports.employeeRepository = {
         });
     },
     findEmployeeByPage: async (page, pageSize) => {
-        return await employeeBasicInfo_1.EmployeeBasicInfo.findAll({
+        return await employeeBasicInfo_1.EmployeeBasicInfo.findAndCountAll({
             attributes: { exclude: ["createdAt", "updatedAt"] },
             include: [
                 {

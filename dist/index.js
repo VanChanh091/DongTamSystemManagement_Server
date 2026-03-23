@@ -18,6 +18,8 @@ require("./models/index");
 const socket_1 = require("./utils/socket/socket");
 const appError_1 = require("./utils/appError");
 const telegramSending_1 = require("./utils/telegram/telegramSending");
+//cron job auto delete image on Cloudinary
+require("./utils/autoDeleteImage");
 const app = (0, express_1.default)();
 const server = http_1.default.createServer(app);
 const io = (0, socket_1.initSocket)(server);
@@ -59,6 +61,7 @@ app.use("/api/employee", index_1.employeeRoutes);
 app.use("/api/warehouse", index_1.warehouseRoutes);
 app.use("/api/qc", index_1.qcRoutes);
 app.use("/api/delivery", index_1.deliveryRoutes);
+app.use("/api/process", index_1.processingRoutes);
 //BADGE
 app.use("/api/badge", index_1.badgeRoutes);
 connectDB_1.sequelize
@@ -98,10 +101,11 @@ app.use((err, req, res, next) => {
         errorCode: "SERVER_ERROR",
     });
 });
-server.listen({ port: Number(process.env.PORT) || 5000, host: "0.0.0.0" }, (err) => {
+server.listen({ port: Number(process.env.PORT) || 5000, host: "0.0.0.0" }, async (err) => {
     if (err) {
         console.log(err);
     }
-    (0, connectDB_1.connectDB)();
+    await (0, connectDB_1.connectDB)();
+    console.log("✅ Cron Job đã được kích hoạt!");
 });
 //# sourceMappingURL=index.js.map

@@ -26,6 +26,7 @@ router.get("/outbound/get-search", authMiddleware_1.default, outboundHistoryCont
 //========================INVENTORY===========================
 router.get("/inventory", authMiddleware_1.default, inventoryController_1.getAllInventory);
 router.post("/inventory", authMiddleware_1.default, inventoryController_1.createNewInventory);
+router.post("/inventory/export", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), inventoryController_1.exportInventory);
 //========================TEST CRASH===========================
 router.get("/test-crash", (req, res) => {
     throw new Error("Test lỗi 500 để bắn Telegram nè! 💣");

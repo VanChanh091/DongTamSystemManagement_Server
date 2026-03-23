@@ -15,6 +15,8 @@ const order_1 = require("../models/order/order");
 const transactionHelper_1 = require("../utils/helper/transactionHelper");
 const orderRepository_1 = require("../repository/orderRepository");
 const cacheKey_1 = require("../utils/helper/cache/cacheKey");
+const orderImage_1 = require("../models/order/orderImage");
+const crud_helper_repository_1 = require("../repository/helper/crud.helper.repository");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { order } = cacheKey_1.CacheKey;
 exports.orderService = {
@@ -159,9 +161,11 @@ exports.orderService = {
     },
     //end get Order for auto complete
     //create order service
-    createOrder: async (user, data) => {
-        const { userId } = user;
-        const { prefix, customerId, productId, box, ...orderData } = data;
+    createOrder: async (req) => {
+        const { userId } = req.user;
+        const { orderData } = req.body;
+        const parsedOrderData = typeof orderData === "string" ? JSON.parse(orderData) : orderData;
+        const { prefix = "DH", customerId, productId, box, imageData, ...restOrderData } = parsedOrderData;
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
                 if (!userId) {
@@ -171,17 +175,29 @@ exports.orderService = {
                 if (!validation.success)
                     throw appError_1.AppError.NotFound(validation.message);
                 //create id + number auto increase
-                const metrics = await (0, orderHelpers_1.calculateOrderMetrics)(orderData);
-                const newOrderId = await (0, orderHelpers_1.generateOrderId)(prefix);
+                const metrics = await (0, orderHelpers_1.calculateOrderMetrics)(restOrderData);
+                const { newOrderId, existingCustomerId } = await (0, orderHelpers_1.generateOrderId)(prefix);
+                if (existingCustomerId && existingCustomerId !== customerId) {
+                    throw appError_1.AppError.Conflict(`Mã đơn hàng: ${newOrderId} đã liên kết với khách hàng ${existingCustomerId}.`, "PREFIX_CUSTOMER_MISMATCH");
+                }
                 //create order
                 const newOrder = await order_1.Order.create({
                     orderId: newOrderId,
                     customerId: customerId,
                     productId: productId,
                     userId: userId,
-                    ...orderData,
+                    ...restOrderData,
                     ...metrics,
                 }, { transaction });
+                //Cập nhật thông tin hình ảnh
+                if (imageData && imageData.imageUrl && imageData.publicId) {
+                    const newImagePayload = {
+                        orderId: newOrderId,
+                        publicId: imageData.publicId,
+                        imageUrl: imageData.imageUrl,
+                    };
+                    await orderImage_1.OrderImage.create(newImagePayload, { transaction });
+                }
                 //create table data
                 if (newOrder.isBox) {
                     try {
@@ -205,17 +221,41 @@ exports.orderService = {
         }
     },
     //update order service
-    updateOrder: async (req, data, orderId) => {
-        const { box, ...orderData } = data;
+    updateOrder: async (req, orderId) => {
+        const { orderData } = req.body;
+        const parsedOrderData = typeof orderData === "string" ? JSON.parse(orderData) : orderData;
+        const { box, imageData, isDeleteImage, ...restOrderData } = parsedOrderData;
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
-                const order = await order_1.Order.findOne({ where: { orderId } });
+                const order = await crud_helper_repository_1.CrudHelper.findOne({ model: order_1.Order, whereCondition: { orderId } });
                 if (!order) {
                     throw appError_1.AppError.NotFound("Order not found");
                 }
-                const mergedData = { ...order.toJSON(), ...orderData };
+                const mergedData = { ...order.toJSON(), ...restOrderData };
+                console.log(mergedData);
                 const metrics = await (0, orderHelpers_1.calculateOrderMetrics)(mergedData);
-                await order.update({ ...orderData, ...metrics }, { transaction });
+                //Cập nhật thông tin hoặc xóa hình ảnh
+                if (isDeleteImage) {
+                    await orderImage_1.OrderImage.destroy({ where: { orderId }, transaction });
+                }
+                else if (imageData && imageData.imageUrl && imageData.publicId) {
+                    const existedImg = await orderImage_1.OrderImage.findOne({
+                        where: { orderId },
+                        transaction,
+                    });
+                    const newImagePayload = {
+                        orderId: orderId,
+                        publicId: imageData.publicId,
+                        imageUrl: imageData.imageUrl,
+                    };
+                    if (existedImg) {
+                        await existedImg.update(newImagePayload, { transaction });
+                    }
+                    else {
+                        await orderImage_1.OrderImage.create(newImagePayload, { transaction });
+                    }
+                }
+                await order.update({ ...restOrderData, ...metrics }, { transaction });
                 if (order.isBox) {
                     await (0, orderHelpers_1.updateChildOrder)(orderId, box_1.Box, box);
                 }

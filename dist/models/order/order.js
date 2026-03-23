@@ -16,8 +16,9 @@ function initOrderModel(sequelize) {
         stop: 5,
     };
     Order.init({
-        orderId: { type: sequelize_1.DataTypes.STRING(14), allowNull: false, primaryKey: true },
+        orderId: { type: sequelize_1.DataTypes.STRING(15), allowNull: false, primaryKey: true },
         dayReceiveOrder: { type: sequelize_1.DataTypes.DATE, allowNull: false },
+        dateRequestShipping: { type: sequelize_1.DataTypes.DATE, allowNull: false },
         flute: { type: sequelize_1.DataTypes.STRING },
         QC_box: { type: sequelize_1.DataTypes.STRING },
         canLan: { type: sequelize_1.DataTypes.STRING },
@@ -44,7 +45,6 @@ function initOrderModel(sequelize) {
         pricePaper: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false },
         discount: { type: sequelize_1.DataTypes.DOUBLE },
         profit: { type: sequelize_1.DataTypes.DOUBLE },
-        dateRequestShipping: { type: sequelize_1.DataTypes.DATE, allowNull: false },
         totalPrice: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false },
         vat: { type: sequelize_1.DataTypes.INTEGER },
         totalPriceVAT: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false },
@@ -57,7 +57,7 @@ function initOrderModel(sequelize) {
             defaultValue: "pending",
         },
         rejectReason: { type: sequelize_1.DataTypes.STRING },
-        orderIdCustomer: { type: sequelize_1.DataTypes.STRING },
+        orderIdCustomer: { type: sequelize_1.DataTypes.STRING }, //PO khach hang cung cap
         //sort
         orderSortValue: { type: sequelize_1.DataTypes.BIGINT, allowNull: false, defaultValue: 0 },
         statusPriority: { type: sequelize_1.DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
@@ -75,15 +75,14 @@ function initOrderModel(sequelize) {
                     order.statusPriority = priorityMap[order.status] || 1;
                 }
                 if (order.changed("orderId") && order.orderId) {
-                    const parts = order.orderId.split("/"); // Ví dụ: [123, 11, 25, D002]
+                    const parts = order.orderId.split("/"); // Ví dụ: [1234, 11, 25, D001]
                     if (parts.length >= 4) {
                         const po = parseInt(parts[0], 10) || 0;
                         const month = parseInt(parts[1], 10) || 0;
                         const year = parseInt(parts[2], 10) || 0;
-                        // Tách số từ hậu tố "D002" -> 002
-                        const suffix = parseInt(parts[3].replace(/\D/g, ""), 10) || 0;
-                        // Công thức: Value = (Year * 10^9) + (Month * 10^7) + (PO * 10^3) + Suffix
-                        order.orderSortValue = year * 1000000000 + month * 10000000 + po * 1000 + suffix;
+                        const suffix = parseInt(parts[3].replace(/\D/g, ""), 10) || 0; // Tách số từ hậu tố "D002" -> 002
+                        // Công thức: Value = (Year * 10^11) + (Month * 10^9) + (PO * 10^4) + Suffix
+                        order.orderSortValue = year * 100000000000 + month * 1000000000 + po * 10000 + suffix;
                     }
                 }
             },

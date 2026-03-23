@@ -9,12 +9,8 @@ import { ReportPlanningBox } from "../models/report/reportPlanningBox";
 import { ReportPlanningPaper } from "../models/report/reportPlanningPaper";
 
 export const reportRepository = {
-  reportCount: async (model: any) => {
-    return await model.count();
-  },
-
   findReportPaperByMachine: async (machine: string, pageSize: number, offset: number) => {
-    return await ReportPlanningPaper.findAll({
+    return await ReportPlanningPaper.findAndCountAll({
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {
@@ -82,7 +78,7 @@ export const reportRepository = {
   },
 
   findAlReportBox: async (machine: string, pageSize: number, offset: number) => {
-    return await ReportPlanningBox.findAll({
+    return await ReportPlanningBox.findAndCountAll({
       where: { machine: machine },
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [

@@ -7,12 +7,12 @@ exports.outboundService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const redisCache_1 = __importDefault(require("../../assest/configs/redisCache"));
-const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
+const order_1 = require("../../models/order/order");
 const appError_1 = require("../../utils/appError");
+const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
 const outboundHistory_1 = require("../../models/warehouse/outboundHistory");
 const warehouseRepository_1 = require("../../repository/warehouseRepository");
 const outboundDetail_1 = require("../../models/warehouse/outboundDetail");
-const order_1 = require("../../models/order/order");
 const planningRepository_1 = require("../../repository/planningRepository");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
 const inventory_1 = require("../../models/warehouse/inventory");
@@ -70,6 +70,35 @@ exports.outboundService = {
         catch (error) {
             if (error instanceof appError_1.AppError)
                 throw error;
+            throw appError_1.AppError.ServerError();
+        }
+    },
+    searchOutboundByField: async ({ field, keyword, page, pageSize, }) => {
+        try {
+            // const fieldMap = {
+            //   orderId: (outbound: OutboundHistory) => outbound.detail.orderId,
+            //   outboundSlipCode: (outbound: OutboundHistory) => outbound.outboundSlipCode,
+            //   dateOutbound: (outbound: OutboundHistory) => outbound.dateOutbound,
+            //   companyName: (outbound: OutboundHistory) =>
+            //     outbound.outboundDetail.Order.Customer.companyName,
+            //   productName: (outbound: OutboundHistory) =>
+            //     outbound.outboundDetail.Order.Product.productName,
+            // } as const;
+            // const key = field as keyof typeof fieldMap;
+            // if (!fieldMap[key]) {
+            //   throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
+            // }
+            // const result = await getOutboundByField({
+            //   keyword: keyword,
+            //   getFieldValue: fieldMap[key],
+            //   page,
+            //   pageSize,
+            //   message: `get all by ${field} from filtered cache`,
+            // });
+            // return result;
+        }
+        catch (error) {
+            console.error(`Failed to get outbound history by ${field}:`, error);
             throw appError_1.AppError.ServerError();
         }
     },
@@ -168,10 +197,10 @@ exports.outboundService = {
                 }
                 // Generate slip code
                 const now = new Date();
-                const slipCode = `XK${now.getDate()}${now.getMonth() + 1}${now
-                    .getFullYear()
-                    .toString()
-                    .slice(-2)}`;
+                const day = now.getDate().toString().padStart(2, "0");
+                const month = (now.getMonth() + 1).toString().padStart(2, "0");
+                const year = now.getFullYear().toString().slice(-2);
+                const slipCode = `XK${year}${month}${day}`;
                 // Tạo outbound
                 const outbound = await planningRepository_1.planningRepository.createData({
                     model: outboundHistory_1.OutboundHistory,
@@ -385,38 +414,9 @@ exports.outboundService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    searchOutboundByField: async ({ field, keyword, page, pageSize, }) => {
-        try {
-            // const fieldMap = {
-            //   orderId: (outbound: OutboundHistory) => outbound.detail.orderId,
-            //   outboundSlipCode: (outbound: OutboundHistory) => outbound.outboundSlipCode,
-            //   dateOutbound: (outbound: OutboundHistory) => outbound.dateOutbound,
-            //   companyName: (outbound: OutboundHistory) =>
-            //     outbound.outboundDetail.Order.Customer.companyName,
-            //   productName: (outbound: OutboundHistory) =>
-            //     outbound.outboundDetail.Order.Product.productName,
-            // } as const;
-            // const key = field as keyof typeof fieldMap;
-            // if (!fieldMap[key]) {
-            //   throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
-            // }
-            // const result = await getOutboundByField({
-            //   keyword: keyword,
-            //   getFieldValue: fieldMap[key],
-            //   page,
-            //   pageSize,
-            //   message: `get all by ${field} from filtered cache`,
-            // });
-            // return result;
-        }
-        catch (error) {
-            console.error(`Failed to get outbound history by ${field}:`, error);
-            throw appError_1.AppError.ServerError();
-        }
-    },
     exportFileOutbound: async (res, outboundId) => {
         try {
-            await (0, exportPDF_1.exportWarehouseSale)(res, outboundId);
+            await (0, exportPDF_1.exportWarehouse)(res, outboundId);
         }
         catch (error) {
             console.error("Error export file outbound:", error);

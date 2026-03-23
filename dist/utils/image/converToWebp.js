@@ -18,14 +18,18 @@ const convertToWebp = async (buffer, quality = 80) => {
     }
 };
 exports.convertToWebp = convertToWebp;
-const uploadImageToCloudinary = (buffer, folder = "products", publicId = "") => new Promise((resolve, reject) => {
+const uploadImageToCloudinary = ({ buffer, folder, publicId, }) => new Promise((resolve, reject) => {
     const uploadStream = connectCloudinary_1.default.uploader.upload_stream({
         folder,
         public_id: publicId,
         resource_type: "image",
     }, (error, result) => {
-        if (result)
-            resolve(result);
+        if (result) {
+            resolve({
+                secure_url: result.secure_url,
+                public_id: result.public_id,
+            });
+        }
         else
             reject(error);
     });

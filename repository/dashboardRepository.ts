@@ -9,10 +9,6 @@ import { User } from "../models/user/user";
 import { Inventory } from "../models/warehouse/inventory";
 
 export const dashboardRepository = {
-  getDbPlanningCount: async () => {
-    return await PlanningPaper.count();
-  },
-
   getAllDbPlanning: async ({
     page = 1,
     pageSize = 20,
@@ -94,7 +90,7 @@ export const dashboardRepository = {
       query.limit = pageSize;
     }
 
-    const rawPapers = await PlanningPaper.findAll(query);
+    const rawPapers = await PlanningPaper.findAndCountAll(query);
 
     return rawPapers;
   },

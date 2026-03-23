@@ -1,7 +1,13 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteOrder = exports.updateOrder = exports.addOrder = exports.getOrderPendingAndReject = exports.getOrdersAcceptPlanning = exports.getOrderDetail = exports.getOrderIdRaw = void 0;
+exports.deleteOrder = exports.updateOrder = exports.addOrder = exports.getOrderPendingAndReject = exports.getOrdersAcceptPlanning = exports.getCloudinarySignature = exports.getOrderDetail = exports.getOrderIdRaw = void 0;
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
 const orderService_1 = require("../../../service/orderService");
+const connectCloudinary_1 = __importDefault(require("../../../assest/configs/connectCloudinary"));
 //===============================ORDER AUTOCOMPLETE=====================================
 const getOrderIdRaw = async (req, res, next) => {
     const { orderId } = req.query;
@@ -25,6 +31,28 @@ const getOrderDetail = async (req, res, next) => {
     }
 };
 exports.getOrderDetail = getOrderDetail;
+//===============================CLOUDINARY IMAGE=====================================
+const getCloudinarySignature = async (req, res) => {
+    const { CLOUDINARY_API_SECRET, CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY } = process.env;
+    // Kiểm tra xem các biến môi trường có tồn tại không
+    if (!CLOUDINARY_API_SECRET || !CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY) {
+        return res.status(500).json({
+            message: "Cloudinary configuration is missing in environment variables",
+        });
+    }
+    const timestamp = Math.round(new Date().getTime() / 1000);
+    const folder = "orders";
+    // Bây giờ TypeScript sẽ biết chắc chắn CLOUDINARY_API_SECRET là string
+    const signature = connectCloudinary_1.default.utils.api_sign_request({ timestamp, folder }, CLOUDINARY_API_SECRET);
+    return res.json({
+        signature,
+        timestamp,
+        cloudName: CLOUDINARY_CLOUD_NAME,
+        apiKey: CLOUDINARY_API_KEY,
+        folder,
+    });
+};
+exports.getCloudinarySignature = getCloudinarySignature;
 //===============================ACCEPT AND PLANNING=====================================
 const getOrdersAcceptPlanning = async (req, res, next) => {
     const { field, keyword, page = 1, pageSize = 20, ownOnly = "false", } = req.query;
@@ -61,7 +89,7 @@ exports.getOrderPendingAndReject = getOrderPendingAndReject;
 //add order
 const addOrder = async (req, res, next) => {
     try {
-        const response = await orderService_1.orderService.createOrder(req.user, req.body);
+        const response = await orderService_1.orderService.createOrder(req);
         return res.status(201).json(response);
     }
     catch (error) {
@@ -73,7 +101,7 @@ exports.addOrder = addOrder;
 const updateOrder = async (req, res, next) => {
     const { orderId } = req.query;
     try {
-        const response = await orderService_1.orderService.updateOrder(req, req.body, orderId);
+        const response = await orderService_1.orderService.updateOrder(req, orderId);
         return res.status(201).json(response);
     }
     catch (error) {

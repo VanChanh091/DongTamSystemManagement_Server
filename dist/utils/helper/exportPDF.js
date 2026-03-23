@@ -3,21 +3,21 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.exportWarehouseSale = exportWarehouseSale;
-const pdfkit_1 = __importDefault(require("pdfkit"));
+exports.exportWarehouse = exportWarehouse;
 const path_1 = __importDefault(require("path"));
-const outboundHistory_1 = require("../../models/warehouse/outboundHistory");
-const order_1 = require("../../models/order/order");
-const customer_1 = require("../../models/customer/customer");
-const product_1 = require("../../models/product/product");
+const pdfkit_1 = __importDefault(require("pdfkit"));
 const appError_1 = require("../appError");
 const user_1 = require("../../models/user/user");
+const order_1 = require("../../models/order/order");
+const product_1 = require("../../models/product/product");
+const customer_1 = require("../../models/customer/customer");
+const outboundHistory_1 = require("../../models/warehouse/outboundHistory");
 const outboundDetail_1 = require("../../models/warehouse/outboundDetail");
 const FONT_REGULAR = path_1.default.join(process.cwd(), "assest/fonts/NotoSerif-Regular.ttf");
 const FONT_BOLD = path_1.default.join(process.cwd(), "assest/fonts/NotoSerif-Bold.ttf");
 const FONT_ITALIC = path_1.default.join(process.cwd(), "assest/fonts/NotoSerif-Italic.ttf");
 const FONT_BOLD_ITALIC = path_1.default.join(process.cwd(), "assest/fonts/NotoSerif-BoldItalic.ttf");
-async function exportWarehouseSale(res, outboundId) {
+async function exportWarehouse(res, outboundId) {
     const outbound = await outboundHistory_1.OutboundHistory.findOne({
         where: { outboundId },
         attributes: { exclude: ["createdAt", "updatedAt", "totalOutboundQty"] },
@@ -219,7 +219,7 @@ function drawItemTable(doc, outbound) {
         const order = item.Order;
         const lengthCode = formatDimension(order.lengthPaperCustomer ?? 0);
         const sizeCode = formatDimension(order.paperSizeCustomer ?? 0);
-        const qcBox = order.QC_box != null ? `(${order.QC_box})` : "";
+        const qcBox = order.QC_box != "" && order.QC_box != null ? `(${order.QC_box})` : "";
         const rowH = drawTableRow({
             doc,
             y: currentY,
@@ -258,22 +258,22 @@ function drawItemTable(doc, outbound) {
     const col1 = leftBlockWidth * 0.4;
     const col2 = leftBlockWidth * 0.1;
     const col3 = leftBlockWidth * 0.3;
-    // 1️⃣ Label Thuế suất
+    // Label Thuế suất
     doc.text("Thuế suất GTGT:", tableLeft + paddingX, currentY + 6, {
         width: col1 - paddingX,
         align: "left",
     });
-    // 2️⃣ Giá trị %
+    // Giá trị %
     doc.text(`${outbound.detail?.[0]?.Order?.vat ?? 0}%`, tableLeft + col1, currentY + 6, {
         width: col2 - paddingX,
         align: "right",
     });
-    // 3️⃣ Label Tiền thuế
+    // Label Tiền thuế
     doc.text("Tiền thuế GTGT:", tableLeft + col1 + col2 + paddingX, currentY + 6, {
         width: col3 - paddingX * 2,
         align: "left",
     });
-    // 4️⃣ Giá trị tiền thuế (cột Thành tiền)
+    // Giá trị tiền thuế (cột Thành tiền)
     doc.text(fmt(outbound.totalPriceVAT ?? 0), amountColX + paddingX, currentY + 6, {
         width: tableRight - amountColX - paddingX * 2,
         align: "right",

@@ -23,7 +23,12 @@ function initEmployeeCompanyInfoModel(sequelize) {
         sequelize,
         tableName: "EmployeeCompanyInfos",
         timestamps: true,
-        indexes: [{ fields: ["employeeId"] }],
+        indexes: [
+            { fields: ["employeeId"] },
+            // find
+            { fields: ["employeeCode"] },
+            { fields: ["status"] },
+        ],
     });
     return EmployeeCompanyInfo;
 }

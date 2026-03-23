@@ -11,9 +11,6 @@ const product_1 = require("../models/product/product");
 const user_1 = require("../models/user/user");
 const inventory_1 = require("../models/warehouse/inventory");
 exports.dashboardRepository = {
-    getDbPlanningCount: async () => {
-        return await planningPaper_1.PlanningPaper.count();
-    },
     getAllDbPlanning: async ({ page = 1, pageSize = 20, whereCondition = {}, paginate = true, }) => {
         const query = {
             where: whereCondition,
@@ -83,7 +80,7 @@ exports.dashboardRepository = {
             query.offset = (page - 1) * pageSize;
             query.limit = pageSize;
         }
-        const rawPapers = await planningPaper_1.PlanningPaper.findAll(query);
+        const rawPapers = await planningPaper_1.PlanningPaper.findAndCountAll(query);
         return rawPapers;
     },
     getDBPlanningDetail: async (planningId) => {

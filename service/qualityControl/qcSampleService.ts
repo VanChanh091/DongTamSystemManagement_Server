@@ -58,7 +58,7 @@ export const qcSampleService = {
         throw AppError.BadRequest("Invalid number of samples", "INVALID_SAMPLE_COUNT");
       }
 
-      // ✅ validate sampleIndex range
+      // validate sampleIndex range
       for (const r of samples) {
         if (r.sampleIndex < 1 || r.sampleIndex > session.totalSample) {
           throw AppError.BadRequest("Invalid sample index", "INVALID_SAMPLE_INDEX");
@@ -85,7 +85,7 @@ export const qcSampleService = {
         sampleIndexSet.add(s.sampleIndex);
       }
 
-      // Lấy criteria REQUIRED
+      // Lấy criteria
       const requiredCriteria = await qcRepository.getRequiredQcCriteria(
         session.processType,
         transaction,

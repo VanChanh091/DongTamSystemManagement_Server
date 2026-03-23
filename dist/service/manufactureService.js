@@ -106,11 +106,15 @@ exports.manufactureService = {
     },
     addReportPaper: async (planningId, data, user) => {
         const { role, permissions: userPermissions } = user;
-        const { qtyProduced, qtyWasteNorm, dayCompleted, ...otherData } = data;
+        const { qtyProduced, qtyWasteNorm, dayCompleted, reportedBy, ...otherData } = data;
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
                 if (!planningId || !qtyProduced || !dayCompleted || !qtyWasteNorm) {
                     throw appError_1.AppError.BadRequest("Missing required fields", "MISSING_PARAMETERS");
+                }
+                const employee = await manufactureRepository_1.manufactureRepo.getEmployeeByCode(reportedBy);
+                if (!employee) {
+                    throw appError_1.AppError.NotFound("employee not found", "EMPLOYEE_NOT_FOUND");
                 }
                 // 1. Tìm kế hoạch hiện tại
                 const planning = await manufactureRepository_1.manufactureRepo.getPapersById(planningId, transaction);
@@ -197,6 +201,7 @@ exports.manufactureService = {
                     qtyProduced,
                     qtyWasteNorm,
                     dayReportValue,
+                    reportedBy: employee.fullName,
                     otherData,
                     transaction,
                 });
@@ -223,9 +228,16 @@ exports.manufactureService = {
     },
     updateReportPaper: async (planningId, updateData, user) => {
         const { role, permissions: userPermissions } = user;
-        const { qtyProduced: newQty, qtyWasteNorm: newWaste, ...otherData } = updateData;
+        const { qtyProduced: newQty, qtyWasteNorm: newWaste, reportedBy, ...otherData } = updateData;
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
+                if (!reportedBy) {
+                    throw appError_1.AppError.BadRequest("Missing employee code", "MISSING_EMPLOYEE_CODE");
+                }
+                const employee = await manufactureRepository_1.manufactureRepo.getEmployeeByCode(reportedBy);
+                if (!employee) {
+                    throw appError_1.AppError.NotFound("employee not found", "EMPLOYEE_NOT_FOUND");
+                }
                 //check report existed
                 const oldReport = await manufactureRepository_1.manufactureRepo.getReportPaperByPlanningId(planningId, transaction);
                 if (!oldReport) {
@@ -257,6 +269,7 @@ exports.manufactureService = {
                     qtyProduced: newQty,
                     qtyWasteNorm: newWaste,
                     lackOfQty: newLackOfQty,
+                    reportedBy: employee.fullName,
                     ...otherData,
                 }, { transaction });
                 // Lấy tất cả các lần báo cáo của planning này để gom lại
@@ -453,11 +466,15 @@ exports.manufactureService = {
         }
     },
     addReportBox: async (planningBoxId, machine, data) => {
-        const { qtyProduced, rpWasteLoss, dayCompleted, shiftManagement } = data;
+        const { qtyProduced, rpWasteLoss, dayCompleted, shiftManagement, reportedBy } = data;
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
                 if (!planningBoxId || !qtyProduced || !dayCompleted || !rpWasteLoss || !shiftManagement) {
                     throw appError_1.AppError.BadRequest("Missing required fields", "MISSING_PARAMETERS");
+                }
+                const employee = await manufactureRepository_1.manufactureRepo.getEmployeeByCode(reportedBy);
+                if (!employee) {
+                    throw appError_1.AppError.NotFound("employee not found", "EMPLOYEE_NOT_FOUND");
                 }
                 // 1. Tìm kế hoạch hiện tại
                 const planning = await manufactureRepository_1.manufactureRepo.getBoxById(planningBoxId, machine, transaction);
@@ -522,6 +539,7 @@ exports.manufactureService = {
                     dayReportValue: new Date(dayReportValue ?? ""),
                     shiftManagementBox: shiftManagement,
                     machine: planning.machine,
+                    reportedBy: employee.fullName,
                     transaction,
                     isBox: true,
                 });
@@ -547,9 +565,16 @@ exports.manufactureService = {
         }
     },
     updateReportBox: async (planningBoxId, machine, updateData) => {
-        const { qtyProduced: newQty, rpWasteLoss: newWaste, shiftManagement } = updateData;
+        const { qtyProduced: newQty, rpWasteLoss: newWaste, shiftManagement, reportedBy } = updateData;
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
+                if (!reportedBy) {
+                    throw appError_1.AppError.BadRequest("Missing employee code", "MISSING_EMPLOYEE_CODE");
+                }
+                const employee = await manufactureRepository_1.manufactureRepo.getEmployeeByCode(reportedBy);
+                if (!employee) {
+                    throw appError_1.AppError.NotFound("employee not found", "EMPLOYEE_NOT_FOUND");
+                }
                 //check report existed
                 const oldReport = await manufactureRepository_1.manufactureRepo.getReportBoxByPlanningBoxId(planningBoxId, machine, transaction);
                 if (!oldReport) {
@@ -576,6 +601,7 @@ exports.manufactureService = {
                     wasteLoss: newWaste,
                     lackOfQty: newLackOfQty,
                     shiftManagement: shiftManagement,
+                    reportedBy: employee.fullName,
                 }, { transaction });
                 // Lấy tất cả các lần báo cáo của planning này
                 const allReports = await reportPlanningBox_1.ReportPlanningBox.findAll({

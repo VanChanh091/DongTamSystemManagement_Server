@@ -84,13 +84,13 @@ export const CacheKey = {
   },
 
   delivery: {
-    register: {
-      page: (page: number) => `register:page:${page}`,
-      lastUpdated: "registerOrder:lastUpdated",
+    estimate: {
+      page: (page: number) => `estimate:page:${page}`,
+      lastUpdated: "estimateOrder:lastUpdated",
     },
     schedule: {
-      date: (date: Date) => `deliverySchedule:date:${date.toISOString()}`,
-      lastUpdated: "schedule:lastUpdated",
+      date: (date: Date) => `schedule:date:${date.toISOString()}`,
+      lastUpdated: "scheduleOrder:lastUpdated",
     },
   },
 

@@ -3,10 +3,6 @@ import { Customer } from "../models/customer/customer";
 
 export const customerRepository = {
   //get all
-  customerCount: async () => {
-    return await Customer.count();
-  },
-
   findAllCustomer: async () => {
     return await Customer.findAll({
       attributes: { exclude: ["createdAt", "updatedAt"] },
@@ -15,7 +11,7 @@ export const customerRepository = {
 
   //get by field
   findCustomerByPage: async (page: number, pageSize: number) => {
-    return await Customer.findAll({
+    return await Customer.findAndCountAll({
       attributes: { exclude: ["updatedAt"] },
       offset: (page - 1) * pageSize,
       limit: pageSize,

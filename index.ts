@@ -26,6 +26,7 @@ import {
   qcRoutes,
   deliveryRoutes,
   badgeRoutes,
+  processingRoutes,
 } from "./routes/index";
 
 //create table
@@ -87,6 +88,7 @@ app.use("/api/employee", employeeRoutes);
 app.use("/api/warehouse", warehouseRoutes);
 app.use("/api/qc", qcRoutes);
 app.use("/api/delivery", deliveryRoutes);
+app.use("/api/process", processingRoutes);
 
 //BADGE
 app.use("/api/badge", badgeRoutes);

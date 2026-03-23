@@ -51,15 +51,18 @@ export const productService = {
         }
       }
 
-      let data, totalPages;
-      const totalProducts = await productRepository.productCount();
+      let data, totalPages, totalProducts;
 
       if (noPagingMode) {
-        totalPages = 1;
         data = await productRepository.findAllProduct();
+        totalProducts = data.length;
+        totalPages = 1;
       } else {
+        const { rows, count } = await productRepository.findProductByPage(page, pageSize);
+
+        data = rows;
+        totalProducts = count;
         totalPages = Math.ceil(totalProducts / pageSize);
-        data = await productRepository.findProductByPage(page, pageSize);
       }
 
       const responseData = {

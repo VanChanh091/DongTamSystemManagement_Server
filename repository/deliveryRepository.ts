@@ -15,7 +15,7 @@ import { DeliveryRequest, statusDelivery } from "../models/delivery/deliveryRequ
 
 export const deliveryRepository = {
   //================================PLANNING ESTIMATE TIME==================================
-  getPlanningEstimateTime: async (dayStart: Date) => {
+  getPlanningEstimateTime: async (dayStart: Date, userId: number) => {
     return await PlanningPaper.findAll({
       where: {
         deliveryPlanned: { [Op.in]: ["none", "pending"] },
@@ -82,7 +82,7 @@ export const deliveryRepository = {
           include: [
             { model: Customer, attributes: ["customerName", "companyName"] },
             { model: Product, attributes: ["typeProduct", "productName"] },
-            { model: User, attributes: ["fullName"] },
+            { model: User, where: { userId }, attributes: ["fullName"] },
             { model: Inventory, attributes: ["qtyInventory"] },
           ],
         },

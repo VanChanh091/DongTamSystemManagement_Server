@@ -1,13 +1,15 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { Inventory } from "../../models/warehouse/inventory";
-import { warehouseRepository } from "../../repository/warehouseRepository";
+import { Response } from "express";
 import { AppError } from "../../utils/appError";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
+import { Inventory } from "../../models/warehouse/inventory";
 import { exportExcelResponse } from "../../utils/helper/excelExporter";
-import { Response } from "express";
+import { warehouseRepository } from "../../repository/warehouseRepository";
 import { inventoryColumns, mappingInventoryRow } from "../../utils/mapping/inventoryRowAndColumn";
+import redisCache from "../../assest/configs/redisCache";
+import { CacheManager } from "../../utils/helper/cache/cacheManager";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inventory } = CacheKey.warehouse;
@@ -24,20 +26,20 @@ export const inventoryService = {
     page: number;
     pageSize: number;
   }) => {
-    // const cacheKey = inbound.page(page);
+    const cacheKey = inventory.page(page);
 
     try {
-      //   const { isChanged } = await CacheManager.check(InboundHistory, "inbound");
-      //   if (isChanged) {
-      //     await CacheManager.clearInbound();
-      //   } else {
-      //     const cachedData = await redisCache.get(cacheKey);
-      //     if (cachedData) {
-      //       if (devEnvironment) console.log("✅ Data inbound from Redis");
-      //       const parsed = JSON.parse(cachedData);
-      //       return { ...parsed, message: `Get all inbound from cache` };
-      //     }
-      //   }
+      const { isChanged } = await CacheManager.check(Inventory, "inventory");
+
+      if (isChanged) {
+        await CacheManager.clear("inventory");
+      } else {
+        const cachedData = await redisCache.get(cacheKey);
+        if (cachedData) {
+          if (devEnvironment) console.log("✅ Data inventory from Redis");
+          return { ...JSON.parse(cachedData), message: `Get all inventory from cache` };
+        }
+      }
 
       const { count, rows } = await warehouseRepository.getInventoryByPage({
         field: field,
@@ -57,11 +59,11 @@ export const inventoryService = {
         totalValueInventory: totals?.totalValueInventory || 0,
       };
 
-      //   await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+      await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
 
       return responseData;
     } catch (error) {
-      console.error("Failed to get paper waiting checked:", error);
+      console.error("Failed to get inventory:", error);
       throw AppError.ServerError();
     }
   },

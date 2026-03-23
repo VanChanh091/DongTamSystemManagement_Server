@@ -3,10 +3,6 @@ import { EmployeeBasicInfo } from "../models/employee/employeeBasicInfo";
 import { EmployeeCompanyInfo } from "../models/employee/employeeCompanyInfo";
 
 export const employeeRepository = {
-  employeeCount: async () => {
-    return await EmployeeBasicInfo.count();
-  },
-
   findEmployeeById: async (employeeId: number) => {
     return await EmployeeBasicInfo.findOne({
       where: { employeeId: employeeId },
@@ -35,7 +31,7 @@ export const employeeRepository = {
   },
 
   findEmployeeByPage: async (page: number, pageSize: number) => {
-    return await EmployeeBasicInfo.findAll({
+    return await EmployeeBasicInfo.findAndCountAll({
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {

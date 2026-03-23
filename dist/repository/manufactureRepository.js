@@ -11,7 +11,21 @@ const planningBoxMachineTime_1 = require("../models/planning/planningBoxMachineT
 const planningBox_1 = require("../models/planning/planningBox");
 const reportPlanningPaper_1 = require("../models/report/reportPlanningPaper");
 const reportPlanningBox_1 = require("../models/report/reportPlanningBox");
+const employeeBasicInfo_1 = require("../models/employee/employeeBasicInfo");
+const employeeCompanyInfo_1 = require("../models/employee/employeeCompanyInfo");
 exports.manufactureRepo = {
+    //====================================HELPER=======================================
+    getEmployeeByCode: async (reportedBy) => {
+        return await employeeBasicInfo_1.EmployeeBasicInfo.findOne({
+            attributes: ["fullName"],
+            include: {
+                model: employeeCompanyInfo_1.EmployeeCompanyInfo,
+                as: "companyInfo",
+                where: { employeeCode: reportedBy },
+                attributes: ["employeeCode"],
+            },
+        });
+    },
     //====================================PAPER========================================
     getManufacturePaper: async (machine) => {
         return await planningPaper_1.PlanningPaper.findAll({

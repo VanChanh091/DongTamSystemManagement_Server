@@ -17,6 +17,7 @@ export const getPlanningEstimateTime = async (req: Request, res: Response, next:
       pageSize: Number(pageSize),
       dayStart: new Date(dayStart),
       estimateTime,
+      userId: req.user.userId,
     });
     return res.status(200).json(response);
   } catch (error) {

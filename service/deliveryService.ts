@@ -1,20 +1,24 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+import { Op } from "sequelize";
 import { Response } from "express";
 import { AppError } from "../utils/appError";
-import { deliveryRepository } from "../repository/deliveryRepository";
-import { runInTransaction } from "../utils/helper/transactionHelper";
+import { DeliveryPlan } from "../models/delivery/deliveryPlan";
+import { DeliveryItem } from "../models/delivery/deliveryItem";
 import { PlanningPaper } from "../models/planning/planningPaper";
+import { DeliveryRequest } from "../models/delivery/deliveryRequest";
+import { runInTransaction } from "../utils/helper/transactionHelper";
+import { deliveryRepository } from "../repository/deliveryRepository";
+import { calculateVolume } from "../utils/helper/modelHelper/orderHelpers";
 import { exportDeliveryExcelResponse } from "../utils/helper/excelExporter";
 import { deliveryColumns, mappingDeliveryRow } from "../utils/mapping/deliveryRowAndComlumn";
-import { calculateVolume } from "../utils/helper/modelHelper/orderHelpers";
-import { DeliveryRequest } from "../models/delivery/deliveryRequest";
-import { Op } from "sequelize";
-import { DeliveryItem } from "../models/delivery/deliveryItem";
-import { DeliveryPlan } from "../models/delivery/deliveryPlan";
+import { CacheKey } from "../utils/helper/cache/cacheKey";
+import { CacheManager } from "../utils/helper/cache/cacheManager";
+import redisCache from "../assest/configs/redisCache";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
+const { estimate, schedule } = CacheKey.delivery;
 
 export const deliveryService = {
   //================================PLANNING ESTIMATE TIME==================================
@@ -23,13 +27,29 @@ export const deliveryService = {
     pageSize = 20,
     dayStart,
     estimateTime,
+    userId,
   }: {
     page?: number;
     pageSize?: number;
     dayStart: Date;
     estimateTime: string;
+    userId: number;
   }) => {
+    const cacheKey = estimate.page(page);
+
     try {
+      const { isChanged } = await CacheManager.check(PlanningPaper, "estimate");
+
+      if (isChanged) {
+        await CacheManager.clear("estimate");
+      } else {
+        const cachedData = await redisCache.get(cacheKey);
+        if (cachedData) {
+          if (devEnvironment) console.log("✅ get planning estimate time from cache");
+          return { ...JSON.parse(cachedData), message: "get all planning estimate from cache" };
+        }
+      }
+
       const [endHour, endMinute] = estimateTime.split(":").map(Number);
 
       if (
@@ -47,7 +67,7 @@ export const deliveryService = {
       const [estH, estM] = estimateTime.split(":").map(Number);
       const estimateMinutes = estH * 60 + estM;
 
-      const paperPlannings = await deliveryRepository.getPlanningEstimateTime(dayStart);
+      const paperPlannings = await deliveryRepository.getPlanningEstimateTime(dayStart, userId);
 
       //filter
       const filtered = paperPlannings.filter((paper) => {
@@ -110,6 +130,8 @@ export const deliveryService = {
         totalPages,
         currentPage: page,
       };
+
+      await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
 
       return responseData;
     } catch (error) {
@@ -338,8 +360,25 @@ export const deliveryService = {
 
   //=================================SCHEDULE DELIVERY=====================================
   getAllScheduleDelivery: async (deliveryDate: Date) => {
+    const cacheKey = schedule.date(deliveryDate);
+
     try {
+      const { isChanged } = await CacheManager.check(DeliveryPlan, "schedule");
+
+      if (isChanged) {
+        await CacheManager.clear("schedule");
+      } else {
+        const cachedData = await redisCache.get(cacheKey);
+        if (cachedData) {
+          if (devEnvironment) console.log("✅ get schedule delivery from cache");
+          return { message: "get all schedule delivery from cache", data: JSON.parse(cachedData) };
+        }
+      }
+
       const finalData = await deliveryRepository.getAllDeliveryPlanByDate(deliveryDate, "planned");
+
+      //save
+      await redisCache.set(cacheKey, JSON.stringify(finalData), "EX", 3600);
 
       return { message: "get schedule delivery successfully", data: finalData };
     } catch (error) {

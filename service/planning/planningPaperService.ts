@@ -90,8 +90,8 @@ export const planningPaperService = {
         return false;
       });
 
-      const withSort = validData.filter((item) => item.sortPlanning !== null);
-      const noSort = validData.filter((item) => item.sortPlanning === null);
+      const withSort = validData.filter((item: any) => item.sortPlanning !== null);
+      const noSort = validData.filter((item: any) => item.sortPlanning === null);
 
       // Sắp xếp đơn có sortPlanning theo thứ tự được lưu
       withSort.sort((a, b) => (a.sortPlanning ?? 0) - (b.sortPlanning ?? 0));

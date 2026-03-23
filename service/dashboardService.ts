@@ -38,19 +38,17 @@ export const dashboardService = {
         }
       }
 
-      const totalPlannings = await dashboardRepository.getDbPlanningCount();
-      const totalPages = Math.ceil(totalPlannings / pageSize);
-
-      const data = await dashboardRepository.getAllDbPlanning({
+      const { rows, count } = await dashboardRepository.getAllDbPlanning({
         page,
         pageSize,
         whereCondition: { status },
       });
+      const totalPages = Math.ceil(count / pageSize);
 
       const responseData = {
         message: "get all data paper from db",
-        data,
-        totalPlannings,
+        data: rows,
+        totalPlannings: count,
         totalPages,
         currentPage: page,
       };

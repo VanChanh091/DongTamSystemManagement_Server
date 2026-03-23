@@ -48,15 +48,18 @@ export const employeeService = {
         }
       }
 
-      let data, totalPages;
-      const totalEmployees = await employeeRepository.employeeCount();
+      let data, totalPages, totalEmployees;
 
       if (noPagingMode) {
-        totalPages = 1;
         data = await employeeRepository.findAllEmployee();
+        totalEmployees = data.length;
+        totalPages = 1;
       } else {
+        const { rows, count } = await employeeRepository.findEmployeeByPage(page, pageSize);
+
+        data = rows;
+        totalEmployees = count;
         totalPages = Math.ceil(totalEmployees / pageSize);
-        data = await employeeRepository.findEmployeeByPage(page, pageSize);
       }
 
       const responseData = {

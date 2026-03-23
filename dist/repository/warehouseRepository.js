@@ -15,6 +15,7 @@ const outboundDetail_1 = require("../models/warehouse/outboundDetail");
 const sequelize_1 = require("sequelize");
 const user_1 = require("../models/user/user");
 const inventory_1 = require("../models/warehouse/inventory");
+const qcSession_1 = require("../models/qualityControl/qcSession");
 exports.warehouseRepository = {
     //====================================WAITING CHECK========================================
     //paper
@@ -124,9 +125,6 @@ exports.warehouseRepository = {
         });
     },
     //====================================INBOUND HISTORY========================================
-    inboundHistoryCount: async () => {
-        return await inboundHistory_1.InboundHistory.count();
-    },
     getInboundSumByPlanning: async (key, ids) => {
         if (!ids.length)
             return [];
@@ -166,6 +164,7 @@ exports.warehouseRepository = {
                         { model: product_1.Product, attributes: ["typeProduct", "productName"] },
                     ],
                 },
+                { model: qcSession_1.QcSession, attributes: ["checkedBy"] },
             ],
             order: [["dateInbound", "DESC"]],
         };
@@ -173,7 +172,7 @@ exports.warehouseRepository = {
             query.offset = (page - 1) * pageSize;
             query.limit = pageSize;
         }
-        return await inboundHistory_1.InboundHistory.findAll(query);
+        return await inboundHistory_1.InboundHistory.findAndCountAll(query);
     },
     //====================================OUTBOUND HISTORY========================================
     outboundHistoryCount: async () => {
@@ -213,7 +212,16 @@ exports.warehouseRepository = {
             include: [
                 {
                     model: order_1.Order,
-                    attributes: ["dayReceiveOrder", "flute", "QC_box", "quantityCustomer", "dvt", "discount"],
+                    attributes: [
+                        "dayReceiveOrder",
+                        "flute",
+                        "QC_box",
+                        "lengthPaperCustomer",
+                        "paperSizeCustomer",
+                        "quantityCustomer",
+                        "dvt",
+                        "discount",
+                    ],
                     include: [
                         { model: customer_1.Customer, attributes: ["customerName", "companyName"] },
                         { model: product_1.Product, attributes: ["typeProduct", "productName"] },
@@ -289,11 +297,19 @@ exports.warehouseRepository = {
         });
     },
     //====================================INVENTORY========================================
-    inventoryCount: async () => {
-        return await inventory_1.Inventory.count();
-    },
-    getInventoryByPage: async (page, pageSize) => {
-        return await inventory_1.Inventory.findAll({
+    getInventoryByPage: async ({ field, keyword, page, pageSize, }) => {
+        const whereClause = { qtyInventory: { [sequelize_1.Op.gt]: 0 } };
+        if (field && keyword) {
+            const searchCondition = { [sequelize_1.Op.like]: `%${keyword}%` };
+            if (field === "customerName") {
+                whereClause["$Order.Customer.customerName$"] = searchCondition;
+            }
+            else if (field === "orderId") {
+                whereClause["orderId"] = searchCondition;
+            }
+        }
+        const options = {
+            where: whereClause,
             attributes: { exclude: ["createdAt", "updatedAt"] },
             include: [
                 {
@@ -320,17 +336,22 @@ exports.warehouseRepository = {
                         "vat",
                         "totalPriceVAT",
                     ],
+                    include: [
+                        { model: customer_1.Customer, attributes: ["customerName"] },
+                        { model: product_1.Product, attributes: ["typeProduct", "productName"] },
+                    ],
                 },
             ],
-            offset: (page - 1) * pageSize,
-            limit: pageSize,
-        });
+        };
+        if (page !== undefined && pageSize !== undefined) {
+            options.offset = (page - 1) * pageSize;
+            options.limit = pageSize;
+        }
+        return await inventory_1.Inventory.findAndCountAll(options);
     },
     inventoryTotals: async () => {
         const result = await inventory_1.Inventory.findAll({
-            attributes: [
-                [sequelize_1.Sequelize.fn("SUM", sequelize_1.Sequelize.col("valueInventory")), "totalValueInventory"],
-            ],
+            attributes: [[sequelize_1.Sequelize.fn("SUM", sequelize_1.Sequelize.col("valueInventory")), "totalValueInventory"]],
             raw: true,
         });
         return result[0];

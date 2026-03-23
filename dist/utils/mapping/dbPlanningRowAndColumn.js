@@ -210,15 +210,25 @@ const mappingDbPlanningRow = (item, index) => {
 };
 exports.mappingDbPlanningRow = mappingDbPlanningRow;
 const formatDateTime = (value) => {
-    if (!value)
+    if (!value || value === "")
         return "";
-    // Đọc chuỗi gốc, không convert timezone
-    const [datePart, timePart] = value.split("T");
-    if (!datePart || !timePart)
-        return "";
-    const [year, month, day] = datePart.split("-");
-    const [hms] = timePart.split(".");
-    return `${day}/${month}/${year} ${hms.slice(0, 8)}`;
+    try {
+        // Nếu value là Date object, chuyển nó về chuỗi ISO để split
+        // Nếu value là String, new Date(value).toISOString() vẫn hoạt động tốt
+        const dateObj = new Date(value);
+        // Kiểm tra xem date có hợp lệ không
+        if (isNaN(dateObj.getTime()))
+            return "";
+        const isoString = dateObj.toISOString();
+        const [datePart, timePart] = isoString.split("T"); // Luôn ra định dạng YYYY-MM-DDTHH:mm:ss.sssZ
+        const [year, month, day] = datePart.split("-");
+        const [hms] = timePart.split(".");
+        return `${day}/${month}/${year} ${hms.slice(0, 8)}`;
+    }
+    catch (error) {
+        console.error(`Error formatting date time: ${error}`);
+        return String(value);
+    }
 };
 const formatTime = (value) => {
     if (!value)

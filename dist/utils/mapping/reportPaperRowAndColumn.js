@@ -36,8 +36,8 @@ exports.reportPaperColumns = [
     { header: "Làm Thùng?", key: "hasMadeBox" },
 ];
 const mapReportPaperRow = (item, index) => {
-    const orderCell = item.Planning.Order || {};
-    const planningCell = item.Planning || {};
+    const planningCell = item.PlanningPaper || {};
+    const orderCell = planningCell.Order || {};
     return {
         index: index + 1,
         orderId: orderCell.orderId,

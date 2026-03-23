@@ -40,15 +40,17 @@ exports.productService = {
                     return { ...parsed, message: `Get all products from cache` };
                 }
             }
-            let data, totalPages;
-            const totalProducts = await productRepository_1.productRepository.productCount();
+            let data, totalPages, totalProducts;
             if (noPagingMode) {
-                totalPages = 1;
                 data = await productRepository_1.productRepository.findAllProduct();
+                totalProducts = data.length;
+                totalPages = 1;
             }
             else {
+                const { rows, count } = await productRepository_1.productRepository.findProductByPage(page, pageSize);
+                data = rows;
+                totalProducts = count;
                 totalPages = Math.ceil(totalProducts / pageSize);
-                data = await productRepository_1.productRepository.findProductByPage(page, pageSize);
             }
             const responseData = {
                 message: "get all products successfully",
@@ -112,7 +114,11 @@ exports.productService = {
                 const newProductId = `${prefix}${String(nextId).padStart(4, "0")}`;
                 if (req.file) {
                     const webpBuffer = await (0, converToWebp_1.convertToWebp)(req.file.buffer);
-                    const result = await (0, converToWebp_1.uploadImageToCloudinary)(webpBuffer, "products", newProductId.replace(/\s+/g, "_"));
+                    const result = await (0, converToWebp_1.uploadImageToCloudinary)({
+                        buffer: webpBuffer,
+                        folder: "products",
+                        publicId: newProductId.replace(/\s+/g, "_"),
+                    });
                     parsedProduct.productImage = result.secure_url;
                 }
                 const newProduct = await productRepository_1.productRepository.createProduct({ productId: newProductId, productSeq: nextId, ...parsedProduct }, transaction);
@@ -137,7 +143,11 @@ exports.productService = {
                 if (req.file) {
                     if (req.file) {
                         const webpBuffer = await (0, converToWebp_1.convertToWebp)(req.file.buffer);
-                        const result = await (0, converToWebp_1.uploadImageToCloudinary)(webpBuffer, "products", producId);
+                        const result = await (0, converToWebp_1.uploadImageToCloudinary)({
+                            buffer: webpBuffer,
+                            folder: "products",
+                            publicId: producId,
+                        });
                         productData.productImage = result.secure_url;
                     }
                 }

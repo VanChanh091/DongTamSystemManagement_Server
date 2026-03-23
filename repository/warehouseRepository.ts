@@ -14,6 +14,7 @@ import { User } from "../models/user/user";
 import { Inventory } from "../models/warehouse/inventory";
 import { InboundSumByPlanning } from "../interface/types";
 import { get } from "axios";
+import { QcSession } from "../models/qualityControl/qcSession";
 
 export const warehouseRepository = {
   //====================================WAITING CHECK========================================
@@ -129,10 +130,6 @@ export const warehouseRepository = {
 
   //====================================INBOUND HISTORY========================================
 
-  inboundHistoryCount: async () => {
-    return await InboundHistory.count();
-  },
-
   getInboundSumByPlanning: async (
     key: "planningId" | "planningBoxId",
     ids: number[],
@@ -185,6 +182,7 @@ export const warehouseRepository = {
             { model: Product, attributes: ["typeProduct", "productName"] },
           ],
         },
+        { model: QcSession, attributes: ["checkedBy"] },
       ],
       order: [["dateInbound", "DESC"]],
     };
@@ -194,7 +192,7 @@ export const warehouseRepository = {
       query.limit = pageSize;
     }
 
-    return await InboundHistory.findAll(query);
+    return await InboundHistory.findAndCountAll(query);
   },
 
   //====================================OUTBOUND HISTORY========================================

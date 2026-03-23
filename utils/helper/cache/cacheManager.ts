@@ -3,7 +3,7 @@ dotenv.config();
 
 import redisCache from "../../../assest/configs/redisCache";
 import { CacheKey } from "./cacheKey";
-import { checkLastChange } from "../checkLastChangeHelper";
+import { checkLastChange } from "./checkLastChangeHelper";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 
@@ -47,8 +47,8 @@ const CACHE_CONFIG = {
   inventory: ["inventory:"],
 
   //delivery
-  register: ["register:page:"],
-  schedule: ["deliverySchedule:"],
+  estimate: ["estimate:"],
+  schedule: ["schedule:"],
 };
 
 export const CacheManager = {
@@ -136,7 +136,7 @@ export const CacheManager = {
       inventory: CacheKey.warehouse.inventory.lastUpdated,
 
       //delivery
-      registerOrder: CacheKey.delivery.register.lastUpdated,
+      estimate: CacheKey.delivery.estimate.lastUpdated,
       schedule: CacheKey.delivery.schedule.lastUpdated,
     };
 

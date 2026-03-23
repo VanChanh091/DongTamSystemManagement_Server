@@ -3,10 +3,6 @@ import { Product } from "../models/product/product";
 
 export const productRepository = {
   //get all
-  productCount: async () => {
-    return await Product.count();
-  },
-
   findAllProduct: async () => {
     return await Product.findAll({
       attributes: { exclude: ["createdAt", "updatedAt"] },
@@ -18,7 +14,7 @@ export const productRepository = {
   },
 
   findProductByPage: async (page: number, pageSize: number) => {
-    return await Product.findAll({
+    return await Product.findAndCountAll({
       attributes: { exclude: ["createdAt", "updatedAt"] },
       offset: (page - 1) * pageSize,
       limit: pageSize,

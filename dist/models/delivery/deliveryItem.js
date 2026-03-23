@@ -10,8 +10,6 @@ exports.DeliveryItem = DeliveryItem;
 function initDeliveryItemModel(sequelize) {
     DeliveryItem.init({
         deliveryItemId: { type: sequelize_1.DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-        targetType: { type: sequelize_1.DataTypes.STRING, allowNull: false },
-        targetId: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
         sequence: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         note: { type: sequelize_1.DataTypes.STRING },
         status: {
@@ -21,6 +19,7 @@ function initDeliveryItemModel(sequelize) {
         },
         //FK
         deliveryId: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
+        requestId: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
         vehicleId: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
     }, {
         sequelize,
@@ -29,6 +28,7 @@ function initDeliveryItemModel(sequelize) {
         indexes: [
             //FK
             { fields: ["deliveryId"] },
+            { fields: ["requestId"] },
             { fields: ["vehicleId"] },
             //indexes
             { fields: ["deliveryId", "status"] },

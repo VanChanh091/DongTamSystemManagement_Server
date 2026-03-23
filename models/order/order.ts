@@ -180,6 +180,7 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
     {
       orderId: { type: DataTypes.STRING(15), allowNull: false, primaryKey: true },
       dayReceiveOrder: { type: DataTypes.DATE, allowNull: false },
+      dateRequestShipping: { type: DataTypes.DATE, allowNull: false },
       flute: { type: DataTypes.STRING },
       QC_box: { type: DataTypes.STRING },
       canLan: { type: DataTypes.STRING },
@@ -206,7 +207,6 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
       pricePaper: { type: DataTypes.DOUBLE, allowNull: false },
       discount: { type: DataTypes.DOUBLE },
       profit: { type: DataTypes.DOUBLE },
-      dateRequestShipping: { type: DataTypes.DATE, allowNull: false },
       totalPrice: { type: DataTypes.DOUBLE, allowNull: false },
       vat: { type: DataTypes.INTEGER },
       totalPriceVAT: { type: DataTypes.DOUBLE, allowNull: false },
@@ -219,7 +219,7 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
         defaultValue: "pending",
       },
       rejectReason: { type: DataTypes.STRING },
-      orderIdCustomer: { type: DataTypes.STRING },
+      orderIdCustomer: { type: DataTypes.STRING }, //PO khach hang cung cap
 
       //sort
       orderSortValue: { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 },

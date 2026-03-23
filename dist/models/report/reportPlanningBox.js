@@ -25,6 +25,7 @@ function initReportPlanningBoxModel(sequelize) {
         wasteLoss: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false },
         shiftManagement: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         machine: { type: sequelize_1.DataTypes.STRING, allowNull: false },
+        reportedBy: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         //FK
         planningBoxId: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
     }, {

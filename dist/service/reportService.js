@@ -18,6 +18,7 @@ const reportPaperRowAndColumn_1 = require("../utils/mapping/reportPaperRowAndCol
 const reportBoxRowAndColumn_1 = require("../utils/mapping/reportBoxRowAndColumn");
 const redisCache_1 = __importDefault(require("../assest/configs/redisCache"));
 const cacheKey_1 = require("../utils/helper/cache/cacheKey");
+const normalizeVN_1 = require("../utils/helper/normalizeVN");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper, box } = cacheKey_1.CacheKey.report;
 exports.reportService = {
@@ -38,14 +39,13 @@ exports.reportService = {
                     return { ...parsed, message: "Get all report planning paper from cache" };
                 }
             }
-            const totalOrders = await reportRepository_1.reportRepository.reportCount(reportPlanningPaper_1.ReportPlanningPaper);
-            const totalPages = Math.ceil(totalOrders / pageSize);
             const offset = (page - 1) * pageSize;
-            const data = await reportRepository_1.reportRepository.findReportPaperByMachine(machine, pageSize, offset);
+            const { rows, count } = await reportRepository_1.reportRepository.findReportPaperByMachine(machine, pageSize, offset);
+            const totalPages = Math.ceil(count / pageSize);
             const responseData = {
                 message: "get all report planning paper successfully",
-                data,
-                totalOrders,
+                data: rows,
+                totalOrders: count,
                 totalPages,
                 currentPage: page,
             };
@@ -62,10 +62,10 @@ exports.reportService = {
     getReportPaperByField: async (field, keyword, machine, page, pageSize) => {
         try {
             const fieldMap = {
-                customerName: (report) => report?.Planning?.Order?.Customer?.customerName,
+                customerName: (report) => report?.PlanningPaper?.Order?.Customer?.customerName,
                 dayReported: (report) => report?.dayReport,
                 shiftManagement: (report) => report?.shiftManagement,
-                orderId: (report) => report?.Planning?.Order?.orderId,
+                orderId: (report) => report?.PlanningPaper?.Order?.orderId,
             };
             const key = field;
             if (!fieldMap[key]) {
@@ -105,14 +105,13 @@ exports.reportService = {
                     return { ...parsed, message: "Get all report planning box from cache" };
                 }
             }
-            const totalOrders = await reportRepository_1.reportRepository.reportCount(reportPlanningBox_1.ReportPlanningBox);
-            const totalPages = Math.ceil(totalOrders / pageSize);
             const offset = (page - 1) * pageSize;
-            const data = await reportRepository_1.reportRepository.findAlReportBox(machine, pageSize, offset);
+            const { rows, count } = await reportRepository_1.reportRepository.findAlReportBox(machine, pageSize, offset);
+            const totalPages = Math.ceil(count / pageSize);
             const responseData = {
                 message: "get all report planning paper successfully",
-                data,
-                totalOrders,
+                data: rows,
+                totalOrders: count,
                 totalPages,
                 currentPage: page,
             };
@@ -172,10 +171,11 @@ exports.reportService = {
                 whereCondition.dayReport = { [sequelize_1.Op.between]: [start, end] };
             }
             const data = await reportRepository_1.reportRepository.exportReportPaper(whereCondition, machine);
+            const safeMachineName = machine.replace(/\s+/g, "-");
             await (0, excelExporter_1.exportExcelResponse)(res, {
                 data: data,
                 sheetName: "Báo cáo sản xuất giấy tấm",
-                fileName: `report_paper_${machine}`,
+                fileName: `bao-cao-${(0, normalizeVN_1.normalizeVN)(safeMachineName)}`,
                 columns: reportPaperRowAndColumn_1.reportPaperColumns,
                 rows: reportPaperRowAndColumn_1.mapReportPaperRow,
             });
@@ -189,7 +189,7 @@ exports.reportService = {
     },
     exportReportBox: async (res, fromDate, toDate, reportBoxId, machine) => {
         try {
-            let whereCondition = {};
+            let whereCondition = { machine: machine };
             if (reportBoxId && reportBoxId.length > 0) {
                 whereCondition.reportBoxId = reportBoxId;
             }
@@ -201,10 +201,11 @@ exports.reportService = {
                 whereCondition.dayReport = { [sequelize_1.Op.between]: [start, end] };
             }
             const data = await reportRepository_1.reportRepository.exportReportBox(whereCondition, machine);
+            const safeMachineName = machine.replace(/\s+/g, "-");
             await (0, excelExporter_1.exportExcelResponse)(res, {
                 data: data,
                 sheetName: "Báo cáo sản xuất thùng",
-                fileName: `report_box_${machine}`,
+                fileName: `bao-cao-${(0, normalizeVN_1.normalizeVN)(safeMachineName)}`,
                 columns: reportBoxRowAndColumn_1.reportBoxColumns,
                 rows: reportBoxRowAndColumn_1.mapReportBoxRow,
             });

@@ -5,9 +5,6 @@ const sequelize_1 = require("sequelize");
 const customer_1 = require("../models/customer/customer");
 exports.customerRepository = {
     //get all
-    customerCount: async () => {
-        return await customer_1.Customer.count();
-    },
     findAllCustomer: async () => {
         return await customer_1.Customer.findAll({
             attributes: { exclude: ["createdAt", "updatedAt"] },
@@ -15,7 +12,7 @@ exports.customerRepository = {
     },
     //get by field
     findCustomerByPage: async (page, pageSize) => {
-        return await customer_1.Customer.findAll({
+        return await customer_1.Customer.findAndCountAll({
             attributes: { exclude: ["updatedAt"] },
             offset: (page - 1) * pageSize,
             limit: pageSize,

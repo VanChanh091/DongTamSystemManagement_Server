@@ -44,7 +44,7 @@ exports.qcSampleService = {
             if (samples.length !== session.totalSample) {
                 throw appError_1.AppError.BadRequest("Invalid number of samples", "INVALID_SAMPLE_COUNT");
             }
-            // ✅ validate sampleIndex range
+            // validate sampleIndex range
             for (const r of samples) {
                 if (r.sampleIndex < 1 || r.sampleIndex > session.totalSample) {
                     throw appError_1.AppError.BadRequest("Invalid sample index", "INVALID_SAMPLE_INDEX");
@@ -61,7 +61,7 @@ exports.qcSampleService = {
                 }
                 sampleIndexSet.add(s.sampleIndex);
             }
-            // Lấy criteria REQUIRED
+            // Lấy criteria
             const requiredCriteria = await qcRepository_1.qcRepository.getRequiredQcCriteria(session.processType, transaction);
             const requiredCriteriaCode = requiredCriteria.map((c) => String(c.criteriaCode));
             // Validate checklist + build rows

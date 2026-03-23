@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.exportScheduleDelivery = exports.cancelOrCompleteDeliveryPlan = exports.getAllScheduleDelivery = exports.confirmForDeliveryPlanning = exports.createDeliveryPlan = exports.getPendingDelivery = exports.confirmReadyDeliveryPlanning = exports.getPlanningEstimateTime = void 0;
+exports.exportScheduleDelivery = exports.cancelOrCompleteDeliveryPlan = exports.getAllScheduleDelivery = exports.confirmForDeliveryPlanning = exports.createDeliveryPlan = exports.getPlanningRequest = exports.registerQtyDelivery = exports.getPlanningEstimateTime = void 0;
 const deliveryService_1 = require("../../../service/deliveryService");
 //=================================PLANNING ESTIMATE TIME=====================================
 const getPlanningEstimateTime = async (req, res, next) => {
@@ -11,20 +11,6 @@ const getPlanningEstimateTime = async (req, res, next) => {
             pageSize: Number(pageSize),
             dayStart: new Date(dayStart),
             estimateTime,
-        });
-        return res.status(200).json(response);
-    }
-    catch (error) {
-        next(error);
-    }
-};
-exports.getPlanningEstimateTime = getPlanningEstimateTime;
-const confirmReadyDeliveryPlanning = async (req, res, next) => {
-    const { planningIds } = req.query;
-    try {
-        const ids = Array.isArray(planningIds) ? planningIds : planningIds ? [planningIds] : [];
-        const response = await deliveryService_1.deliveryService.confirmReadyDeliveryPlanning({
-            planningIds: ids.map((id) => Number(id)),
             userId: req.user.userId,
         });
         return res.status(200).json(response);
@@ -33,9 +19,24 @@ const confirmReadyDeliveryPlanning = async (req, res, next) => {
         next(error);
     }
 };
-exports.confirmReadyDeliveryPlanning = confirmReadyDeliveryPlanning;
-//=================================PLANNING DELIVERY=====================================
-const getPendingDelivery = async (req, res, next) => {
+exports.getPlanningEstimateTime = getPlanningEstimateTime;
+const registerQtyDelivery = async (req, res, next) => {
+    const { planningId, qtyRegistered } = req.body;
+    try {
+        const response = await deliveryService_1.deliveryService.registerQtyDelivery({
+            planningId: Number(planningId),
+            qtyRegistered: Number(qtyRegistered),
+            userId: req.user.userId,
+        });
+        return res.status(200).json(response);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.registerQtyDelivery = registerQtyDelivery;
+//=================================DELIVERY PLANNING=====================================
+const getPlanningRequest = async (req, res, next) => {
     const { deliveryDate } = req.query;
     try {
         let response;
@@ -43,7 +44,7 @@ const getPendingDelivery = async (req, res, next) => {
             response = await deliveryService_1.deliveryService.getDeliveryPlanDetailForEdit(new Date(deliveryDate));
         }
         else {
-            response = await deliveryService_1.deliveryService.getPlanningPendingDelivery();
+            response = await deliveryService_1.deliveryService.getDeliveryRequest();
         }
         return res.status(200).json(response);
     }
@@ -51,7 +52,7 @@ const getPendingDelivery = async (req, res, next) => {
         next(error);
     }
 };
-exports.getPendingDelivery = getPendingDelivery;
+exports.getPlanningRequest = getPlanningRequest;
 const createDeliveryPlan = async (req, res, next) => {
     const { deliveryDate, items } = req.body;
     try {

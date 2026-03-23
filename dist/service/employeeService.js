@@ -38,15 +38,17 @@ exports.employeeService = {
                     return { ...parsed, message: `Get all employees from cache` };
                 }
             }
-            let data, totalPages;
-            const totalEmployees = await employeeRepository_1.employeeRepository.employeeCount();
+            let data, totalPages, totalEmployees;
             if (noPagingMode) {
-                totalPages = 1;
                 data = await employeeRepository_1.employeeRepository.findAllEmployee();
+                totalEmployees = data.length;
+                totalPages = 1;
             }
             else {
+                const { rows, count } = await employeeRepository_1.employeeRepository.findEmployeeByPage(page, pageSize);
+                data = rows;
+                totalEmployees = count;
                 totalPages = Math.ceil(totalEmployees / pageSize);
-                data = await employeeRepository_1.employeeRepository.findEmployeeByPage(page, pageSize);
             }
             const responseData = {
                 message: "Get all employees successfully",
