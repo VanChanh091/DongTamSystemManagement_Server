@@ -3,7 +3,13 @@ import { DeliveryPlan } from "./deliveryPlan";
 import { Vehicle } from "../admin/vehicle";
 import { DeliveryRequest } from "./deliveryRequest";
 
-export type statusDeliveryItem = "none" | "planned" | "cancelled" | "completed";
+export type statusDeliveryItem =
+  | "none"
+  | "planned"
+  | "requested"
+  | "prepared"
+  | "cancelled"
+  | "completed";
 
 //định nghĩa trường trong bảng
 interface DeliveryItemAttributes {
@@ -57,7 +63,7 @@ export function initDeliveryItemModel(sequelize: Sequelize): typeof DeliveryItem
       sequence: { type: DataTypes.STRING, allowNull: false },
       note: { type: DataTypes.STRING },
       status: {
-        type: DataTypes.ENUM("none", "planned", "cancelled", "completed"),
+        type: DataTypes.ENUM("none", "planned", "requested", "prepared", "cancelled", "completed"),
         allowNull: false,
         defaultValue: "none",
       },

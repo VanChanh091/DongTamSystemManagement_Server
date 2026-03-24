@@ -3,6 +3,8 @@ import { Order } from "../../models/order/order";
 import { PlanningPaper } from "../../models/planning/planningPaper";
 import { AppError } from "../../utils/appError";
 import { PlanningBox } from "../../models/planning/planningBox";
+import { DeliveryRequest } from "../../models/delivery/deliveryRequest";
+import { DeliveryItem } from "../../models/delivery/deliveryItem";
 
 export const badgeService = {
   //pending order (admin)
@@ -13,7 +15,6 @@ export const badgeService = {
       return { message: "Count order pending successfully", data: count };
     } catch (error) {
       console.error(`Count order pending failed:`, error);
-      if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
   },
@@ -26,7 +27,6 @@ export const badgeService = {
       return { message: "Count order rejected successfully", data: count };
     } catch (error) {
       console.error(`Count order rejected failed:`, error);
-      if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
   },
@@ -38,7 +38,6 @@ export const badgeService = {
       return { message: "Count order pending planning successfully", data: count };
     } catch (error) {
       console.error(`Count order pending planning failed:`, error);
-      if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
   },
@@ -50,7 +49,6 @@ export const badgeService = {
       return { message: "Count planning stop successfully", data: count };
     } catch (error) {
       console.error(`Count planning stop failed:`, error);
-      if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
   },
@@ -65,7 +63,6 @@ export const badgeService = {
       return { message: "Count waiting check paper successfully", data: count };
     } catch (error) {
       console.error(`Count waiting check paper failed:`, error);
-      if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
   },
@@ -79,7 +76,28 @@ export const badgeService = {
       return { message: "Count waiting check box successfully", data: count };
     } catch (error) {
       console.error(`Count waiting check box failed:`, error);
-      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  //delivery request
+  countDeliveryRequest: async () => {
+    try {
+      const count = await DeliveryRequest.count({ where: { status: "requested" } });
+      return { message: "Count delivery request successfully", data: count };
+    } catch (error) {
+      console.error(`Count delivery request failed:`, error);
+      throw AppError.ServerError();
+    }
+  },
+
+  //prepare goods
+  countRequestPrepareGoods: async () => {
+    try {
+      const count = await DeliveryItem.count({ where: { status: "requested" } });
+      return { message: "Count prepare goods successfully", data: count };
+    } catch (error) {
+      console.error(`Count prepare goods failed:`, error);
       throw AppError.ServerError();
     }
   },

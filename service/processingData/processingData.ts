@@ -160,7 +160,7 @@ export const parseOrderData = (buffer: any) => {
 };
 
 export const parseCustomerData = (buffer: any) => {
-  const workbook = xlsx.read(buffer, { type: "buffer" });
+  const workbook = xlsx.read(buffer, { type: "buffer", cellDates: true });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rawData = xlsx.utils.sheet_to_json(sheet, { defval: null });
 
@@ -190,12 +190,12 @@ export const parseCustomerData = (buffer: any) => {
 };
 
 export const parseProductData = (buffer: any) => {
-  const workbook = xlsx.read(buffer, { type: "buffer" });
+  const workbook = xlsx.read(buffer, { type: "buffer", cellDates: true });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rawData = xlsx.utils.sheet_to_json(sheet, { defval: null });
 
   console.log(rawData[0]);
-
+  ``;
   return rawData.map((row: any, index: number) => {
     return {
       productId: row["Mã Sản Phẩm"],

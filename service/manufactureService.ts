@@ -8,7 +8,7 @@ import { AppError } from "../utils/appError";
 import { PlanningPaper } from "../models/planning/planningPaper";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
-import { machineLabels } from "../assest/configs/machineLabels";
+import { machineLabels } from "../assest/configs/labelFields";
 import { planningRepository } from "../repository/planningRepository";
 import { PlanningBox } from "../models/planning/planningBox";
 import { Order } from "../models/order/order";

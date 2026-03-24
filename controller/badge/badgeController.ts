@@ -65,3 +65,23 @@ export const countWaitingCheck = async (req: Request, res: Response, next: NextF
     next(error);
   }
 };
+
+//delivery request
+export const countDeliveryRequest = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const response = await badgeService.countDeliveryRequest();
+    return res.status(201).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+//prepare goods
+export const countRequestPrepareGoods = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const response = await badgeService.countRequestPrepareGoods();
+    return res.status(201).json(response);
+  } catch (error) {
+    next(error);
+  }
+};

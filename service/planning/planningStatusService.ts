@@ -9,7 +9,7 @@ import { PlanningPaper, planningPaperStatus } from "../../models/planning/planni
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
 import redisCache from "../../assest/configs/redisCache";
 import { planningRepository } from "../../repository/planningRepository";
-import { machineMap } from "../../assest/configs/machineLabels";
+import { machineMap } from "../../assest/configs/labelFields";
 import { Order } from "../../models/order/order";
 import { WasteNormPaper } from "../../models/admin/wasteNormPaper";
 import { WaveCrestCoefficient } from "../../models/admin/waveCrestCoefficient";

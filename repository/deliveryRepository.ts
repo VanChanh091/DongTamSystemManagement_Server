@@ -363,11 +363,24 @@ export const deliveryRepository = {
 
   //=================================SCHEDULE DELIVERY=====================================
 
-  getAllDeliveryPlanByDate: async (deliveryDate: Date, status?: string) => {
+  getAllDeliveryPlanByDate: async ({
+    deliveryDate,
+    status,
+    itemStatus,
+  }: {
+    deliveryDate: Date;
+    status?: string;
+    itemStatus?: string;
+  }) => {
     const whereCondition: any = { deliveryDate: new Date(deliveryDate) };
 
     if (status) {
       whereCondition.status = status;
+    }
+
+    const itemWhereCondition: any = {};
+    if (itemStatus) {
+      itemWhereCondition.status = itemStatus;
     }
 
     return await DeliveryPlan.findAll({
@@ -376,6 +389,7 @@ export const deliveryRepository = {
       include: [
         {
           model: DeliveryItem,
+          where: Object.keys(itemWhereCondition).length > 0 ? itemWhereCondition : undefined,
           attributes: { exclude: ["createdAt", "updatedAt"] },
           include: [
             {
@@ -410,7 +424,6 @@ export const deliveryRepository = {
                       include: [
                         { model: Customer, attributes: ["customerName", "companyName"] },
                         { model: Product, attributes: ["typeProduct", "productName"] },
-                        { model: Inventory, attributes: ["qtyInventory"] },
                       ],
                     },
                   ],

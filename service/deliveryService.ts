@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { Op } from "sequelize";
-import { Response } from "express";
+import { Request, Response } from "express";
 import { AppError } from "../utils/appError";
 import { DeliveryPlan } from "../models/delivery/deliveryPlan";
 import { DeliveryItem } from "../models/delivery/deliveryItem";
@@ -363,7 +363,7 @@ export const deliveryService = {
     const cacheKey = schedule.date(deliveryDate);
 
     try {
-      const { isChanged } = await CacheManager.check(DeliveryPlan, "schedule");
+      const { isChanged } = await CacheManager.check(DeliveryItem, "schedule");
 
       if (isChanged) {
         await CacheManager.clear("schedule");
@@ -375,7 +375,10 @@ export const deliveryService = {
         }
       }
 
-      const finalData = await deliveryRepository.getAllDeliveryPlanByDate(deliveryDate, "planned");
+      const finalData = await deliveryRepository.getAllDeliveryPlanByDate({
+        deliveryDate,
+        status: "planned",
+      });
 
       //save
       await redisCache.set(cacheKey, JSON.stringify(finalData), "EX", 3600);
@@ -466,7 +469,7 @@ export const deliveryService = {
 
   exportScheduleDelivery: async (res: Response, deliveryDate: Date) => {
     try {
-      const data = await deliveryRepository.getAllDeliveryPlanByDate(deliveryDate);
+      const data = await deliveryRepository.getAllDeliveryPlanByDate({ deliveryDate });
 
       await exportDeliveryExcelResponse(res, {
         data: data,
@@ -477,6 +480,85 @@ export const deliveryService = {
       });
     } catch (error) {
       console.error("❌ Export Excel error:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  //=================================PREPARE GOODS=====================================
+  getRequestPrepareGoods: async (deliveryDate: Date) => {
+    try {
+      const finalData = await deliveryRepository.getAllDeliveryPlanByDate({
+        deliveryDate,
+        itemStatus: "requested",
+      });
+
+      return { message: "get schedule delivery successfully", data: finalData };
+    } catch (error) {
+      console.error("❌ Get request prepare goods failed:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  requestOrPrepareGoods: async (deliveryItemId: number, isRequest: string) => {
+    try {
+      return await runInTransaction(async (transaction) => {
+        const item = await DeliveryItem.findByPk(deliveryItemId, { transaction });
+        if (!item) {
+          throw AppError.BadRequest("item not found", "ITEM_NOT_FOUND");
+        }
+
+        // CHỨC NĂNG 1: Gửi yêu cầu (Chuyển từ planned -> requested)
+        if (isRequest === "true") {
+          if (item.status === "planned") {
+            await item.update({ status: "requested" }, { transaction });
+
+            return { message: "Gửi yêu cầu xuất hàng thành công" };
+          }
+
+          if (item.status === "requested") {
+            throw AppError.BadRequest("Đơn này đã được yêu cầu rồi", "ALREADY_REQUESTED");
+          }
+
+          throw AppError.BadRequest(
+            "Trạng thái hiện tại không thể thực hiện yêu cầu",
+            "INVALID_STATUS",
+          );
+        }
+
+        // CHỨC NĂNG 2: Chuẩn bị hàng (Chuyển từ requested -> prepared)
+        else {
+          if (item.status === "requested") {
+            await item.update({ status: "prepared" }, { transaction });
+            return { message: "Xác nhận chuẩn bị hàng xong" };
+          }
+
+          // Chặn nếu đơn chưa ở trạng thái requested
+          throw AppError.BadRequest(
+            "Chỉ có thể chuẩn bị hàng cho đơn đã được 'Yêu cầu'",
+            "NOT_REQUESTED_YET",
+          );
+        }
+      });
+    } catch (error) {
+      console.error("❌ request prepare goods failed:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  //=================================SOCKET=====================================
+  notifyRequestPrepareGoods: async (req: Request) => {
+    try {
+      const item: any = { message: "Có đơn hàng mới cần chuẩn bị hàng" };
+
+      //bắt buộc có event để socket.on bên client có thể nhận, nếu không có event sẽ không nhận được data
+      req.io?.to("prepare-goods").emit("prepare-goods-event", item);
+
+      return { message: "Đã gửi yêu cầu chuẩn bị hàng" };
+    } catch (error) {
+      console.error("❌Lỗi khi gửi socket:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }

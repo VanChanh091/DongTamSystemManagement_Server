@@ -105,7 +105,7 @@ export const updateIndex_TimeRunning = async (req: Request, res: Response, next:
   }
 };
 
-//update index & time running
+//socket
 export const notifyUpdatePlanning = async (req: Request, res: Response, next: NextFunction) => {
   const { machine, keyName, isPlan } = req.body as {
     machine: string;

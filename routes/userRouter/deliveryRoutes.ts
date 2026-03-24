@@ -9,7 +9,10 @@ import {
   getAllScheduleDelivery,
   getPlanningEstimateTime,
   getPlanningRequest,
+  getRequestPrepareGoods,
+  notifyPrepareGoods,
   registerQtyDelivery,
+  requestOrPrepareGoods,
 } from "../../controller/user/delivery/deliveryController";
 
 const router = Router();
@@ -49,6 +52,19 @@ router.post(
   authenticate,
   authorizeAnyPermission(["plan", "delivery"]),
   exportScheduleDelivery,
+);
+
+//=================================PREPARE GOODS=====================================
+
+router.get("/prepare", authenticate, getRequestPrepareGoods);
+router.put("/prepare", authenticate, requestOrPrepareGoods);
+
+//socket
+router.post(
+  "/notify-delivery",
+  authenticate,
+  authorizeAnyPermission(["delivery"]),
+  notifyPrepareGoods,
 );
 
 export default router;

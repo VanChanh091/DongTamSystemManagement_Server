@@ -1,4 +1,4 @@
-import { MACHINE_FIELD_MAP } from "../../assest/configs/machineLabels";
+import { MACHINE_FIELD_MAP } from "../../assest/configs/labelFields";
 import { ReportPlanningBox } from "../../models/report/reportPlanningBox";
 import { formatterStructureOrder } from "../helper/modelHelper/orderHelpers";
 import ExcelJS from "exceljs";
@@ -46,7 +46,7 @@ const getMachineQty = (
     boxTimes?: Array<{ machine: string; qtyProduced?: number | null }>;
     allBoxTimes?: Array<{ machine: string; qtyProduced?: number | null }>;
   },
-  item: { qtyProduced?: number | null }
+  item: { qtyProduced?: number | null },
 ) => {
   let qty = null;
 

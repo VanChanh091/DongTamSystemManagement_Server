@@ -4,7 +4,7 @@ dotenv.config();
 import bcrypt from "bcrypt";
 import cloudinary from "../../assest/configs/connectCloudinary";
 import { Request } from "express";
-import { validPermissions } from "../../assest/configs/machineLabels";
+import { validPermissions } from "../../assest/configs/labelFields";
 import { Order, OrderStatus } from "../../models/order/order";
 import { userRole } from "../../models/user/user";
 import { adminRepository } from "../../repository/adminRepository";
@@ -170,13 +170,14 @@ export const adminService = {
         order.set({ status: newStatus, rejectReason: rejectReason || "" });
       } else {
         //calculate debt limit of customer
-        // if (newDebt > customer.debtLimit) {
-        //   return res.status(400).json({ message: "Debt limit exceeded" });
+        // if (req.user.role !== "admin") {
+        //   if (newDebt > customer.debtLimit!) {
+        //     throw AppError.BadRequest("Debt limit exceeded", "DEBT_LIMIT_EXCEEDED");
+        //   }
         // }
         // await customer.update({ debtCurrent: newDebt });
 
         //check type product
-
         order.set({
           status: order.Product.typeProduct == "Phí Khác" ? "planning" : newStatus,
           rejectReason: null,

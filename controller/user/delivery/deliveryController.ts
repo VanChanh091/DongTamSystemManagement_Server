@@ -117,12 +117,14 @@ export const cancelOrCompleteDeliveryPlan = async (
     itemIds: number[];
     action: "complete" | "cancel";
   };
+
   try {
     const response = await deliveryService.cancelOrCompleteDeliveryPlan({
       deliveryId: Number(deliveryId),
       itemIds,
       action,
     });
+
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -135,6 +137,43 @@ export const exportScheduleDelivery = async (req: Request, res: Response, next: 
 
   try {
     await deliveryService.exportScheduleDelivery(res, new Date(deliveryDate));
+  } catch (error) {
+    next(error);
+  }
+};
+
+//=================================PREPARE GOODS=====================================
+export const getRequestPrepareGoods = async (req: Request, res: Response, next: NextFunction) => {
+  const { deliveryDate } = req.query as { deliveryDate: string };
+
+  try {
+    const response = await deliveryService.getRequestPrepareGoods(new Date(deliveryDate));
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const requestOrPrepareGoods = async (req: Request, res: Response, next: NextFunction) => {
+  const { deliveryItemId, isRequest } = req.query as {
+    deliveryItemId: string;
+    isRequest: string;
+  };
+
+  try {
+    const response = await deliveryService.requestOrPrepareGoods(Number(deliveryItemId), isRequest);
+
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+//socket
+export const notifyPrepareGoods = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const response = await deliveryService.notifyRequestPrepareGoods(req);
+    return res.status(201).json(response);
   } catch (error) {
     next(error);
   }
