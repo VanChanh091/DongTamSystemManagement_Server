@@ -22,6 +22,20 @@ const getDebugInfo = (str: string) => {
   };
 };
 
+// Helper để tính toán sort value
+const calculateOrderSortValue = (orderId: string) => {
+  if (!orderId) return 0;
+  const parts = orderId.split("/");
+  if (parts.length >= 4) {
+    const po = parseInt(parts[0], 10) || 0;
+    const month = parseInt(parts[1], 10) || 0;
+    const year = parseInt(parts[2], 10) || 0;
+    const suffix = parseInt(parts[3].replace(/\D/g, ""), 10) || 0;
+    return year * 100000000000 + month * 1000000000 + po * 10000 + suffix;
+  }
+  return 0;
+};
+
 export const bulkImportOrdersController = async (
   req: Request,
   res: Response,
@@ -116,6 +130,8 @@ export const bulkImportOrdersController = async (
         productId: product.productId,
         userId: userId,
         status: "planning",
+        statusPriority: 4,
+        orderSortValue: calculateOrderSortValue(item.orderId),
       });
 
       validInventories.push({

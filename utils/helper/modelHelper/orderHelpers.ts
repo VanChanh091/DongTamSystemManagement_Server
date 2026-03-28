@@ -213,75 +213,6 @@ export const cachedStatus = async (
   return data.length > 0 ? data : null;
 };
 
-export const filterOrdersFromCache = async ({
-  userId,
-  role,
-  keyword,
-  getFieldValue,
-  page,
-  pageSize,
-  cacheKeyPrefix = "orders:default",
-  message,
-}: {
-  userId: number;
-  role: string;
-  keyword?: string;
-  getFieldValue: (item: any) => any;
-  page?: number | string;
-  pageSize?: number | string;
-  cacheKeyPrefix?: string;
-  message?: string;
-}) => {
-  const currentPage = Number(page);
-  const currentPageSize = Number(pageSize);
-  const lowerKeyword = keyword?.toLowerCase?.() || "";
-
-  // Dùng prefix để tạo key cache
-  const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
-  const allDataCacheKey = `${cacheKeyPrefix}:${keyRole}`; //orders:accept_planning:all
-
-  // Lấy cache
-  let allOrders = await redisCache.get(allDataCacheKey);
-  let sourceMessage = "";
-
-  if (!allOrders) {
-    let whereCondition: any = { status: { [Op.in]: ["accept", "planning"] } };
-
-    if (role !== "admin" && role !== "manager") {
-      whereCondition.userId = userId;
-    }
-
-    allOrders = await orderRepository.findAllFilter(whereCondition);
-
-    await redisCache.set(allDataCacheKey, JSON.stringify(allOrders), "EX", 900);
-    sourceMessage = "Get all orders from DB";
-  } else {
-    allOrders = JSON.parse(allOrders);
-    sourceMessage = message ?? "Get all orders from cache";
-  }
-
-  // Lọc data
-  const filteredOrders = allOrders.filter((order: Record<string, any>) => {
-    const fieldValue = getFieldValue(order);
-    return fieldValue != null
-      ? normalizeVN(String(fieldValue).toLowerCase()).includes(normalizeVN(lowerKeyword))
-      : false;
-  });
-
-  const totalOrders = filteredOrders.length;
-  const totalPages = Math.ceil(totalOrders / currentPageSize);
-  const offset = (currentPage - 1) * currentPageSize;
-  const paginatedOrders = filteredOrders.slice(offset, offset + currentPageSize);
-
-  return {
-    message: sourceMessage,
-    data: paginatedOrders,
-    totalOrders,
-    totalPages,
-    currentPage,
-  };
-};
-
 export function formatterStructureOrder(cell: Record<string, any>) {
   const parts = [
     cell.dayReplace || cell.day,
@@ -327,13 +258,13 @@ export const getOrderByStatus = async ({
     whereCondition.userId = userId;
   }
 
-  const queryOptions = orderRepository.buildQueryOptions(whereCondition, statusList);
+  const queryOptions = orderRepository.buildQueryOptions(whereCondition);
 
   if (isPaging) {
     queryOptions.offset = (page - 1) * pageSize;
     queryOptions.limit = pageSize;
 
-    const { count, rows } = await orderRepository.findAndCountAll(queryOptions);
+    const { count, rows } = await Order.findAndCountAll(queryOptions);
 
     return {
       data: rows,
@@ -343,6 +274,6 @@ export const getOrderByStatus = async ({
     };
   }
 
-  const rows = await orderRepository.findAll(queryOptions);
+  const rows = await Order.findAll(queryOptions);
   return { data: rows };
 };

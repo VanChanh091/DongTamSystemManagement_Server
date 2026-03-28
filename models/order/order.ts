@@ -51,6 +51,8 @@ interface OrderAttributes {
   rejectReason?: string | null;
   orderIdCustomer?: string | null;
 
+  orderSortValue: number;
+
   createdAt?: Date;
   updatedAt?: Date;
 
@@ -101,6 +103,7 @@ export type OrderCreationAttributes = Optional<
   | "status"
   | "statusPriority"
   | "orderIdCustomer"
+  | "orderSortValue"
   | "createdAt"
   | "updatedAt"
 >;
@@ -130,7 +133,9 @@ export class Order
   declare volume: number;
   declare isBox: boolean;
   declare status: OrderStatus;
+
   declare statusPriority: number;
+  declare orderSortValue: number;
 
   declare flute?: string | null;
   declare QC_box?: string | null;

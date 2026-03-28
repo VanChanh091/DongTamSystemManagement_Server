@@ -11,6 +11,8 @@ import { adminRepository } from "../../repository/adminRepository";
 import { AppError } from "../../utils/appError";
 import { getCloudinaryPublicId } from "../../utils/image/converToWebp";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
+import { orderRepository } from "../../repository/orderRepository";
+import { MEILI_INDEX, meiliService } from "../meiliService";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 
@@ -154,71 +156,80 @@ export const adminService = {
     rejectReason: string,
   ) => {
     try {
-      if (!["accept", "reject"].includes(newStatus)) {
-        throw AppError.BadRequest("Invalid status", "INVALID_STATUS");
-      }
-
-      const order = await adminRepository.findByOrderId(orderId);
-      if (!order) {
-        throw AppError.NotFound("Order not found", "ORDER_NOT_FOUND");
-      }
-
-      // const customer = order.Customer;
-      // const newDebt = Number(customer.debtCurrent || 0) + Number(order.totalPrice || 0);
-
-      if (newStatus === "reject") {
-        order.set({ status: newStatus, rejectReason: rejectReason || "" });
-      } else {
-        //calculate debt limit of customer
-        // if (req.user.role !== "admin") {
-        //   if (newDebt > customer.debtLimit!) {
-        //     throw AppError.BadRequest("Debt limit exceeded", "DEBT_LIMIT_EXCEEDED");
-        //   }
-        // }
-        // await customer.update({ debtCurrent: newDebt });
-
-        //check type product
-        order.set({
-          status: order.Product.typeProduct == "Phí Khác" ? "planning" : newStatus,
-          rejectReason: null,
-        });
-      }
-
-      await order.save();
-
-      //socket
-      const ownerId = order.userId;
-      const badgeCount = await Order.count({ where: { status: "reject", userId: ownerId } });
-
-      const roomName = `reject-order-${ownerId}`;
-      const sockets = await req.io?.in(roomName).fetchSockets();
-
-      // console.log(`-----------------------------------`);
-      // console.log(`📡 Event: updateBadgeCount`);
-      // console.log(`🏠 Room Target: ${roomName}`);
-      // console.log(`👥 Active sockets: ${sockets?.length ?? 0}`);
-      // console.log(`-----------------------------------`);
-
-      const hasSocket = sockets && sockets.length > 0;
-      if (!hasSocket) {
-        if (devEnvironment) {
-          console.log(`⚠️ No one is in room ${roomName}, skip emitting.`);
+      return await runInTransaction(async (transaction) => {
+        if (!["accept", "reject"].includes(newStatus)) {
+          throw AppError.BadRequest("Invalid status", "INVALID_STATUS");
         }
-        return { message: "Order status updated successfully, no active socket to notify" };
-      }
 
-      req.io?.to(roomName).emit("updateBadgeCount", {
-        type: "REJECTED_ORDER",
-        count: badgeCount,
+        const order = await adminRepository.findByOrderId(orderId);
+        if (!order) {
+          throw AppError.NotFound("Order not found", "ORDER_NOT_FOUND");
+        }
+
+        // const customer = order.Customer;
+        // const newDebt = Number(customer.debtCurrent || 0) + Number(order.totalPrice || 0);
+
+        if (newStatus === "reject") {
+          order.set({ status: newStatus, rejectReason: rejectReason || "" });
+        } else {
+          //calculate debt limit of customer
+          // if (req.user.role !== "admin") {
+          //   if (newDebt > customer.debtLimit!) {
+          //     throw AppError.BadRequest("Debt limit exceeded", "DEBT_LIMIT_EXCEEDED");
+          //   }
+          // }
+          // await customer.update({ debtCurrent: newDebt });
+
+          //check type product
+          order.set({
+            status: order.Product.typeProduct == "Phí Khác" ? "planning" : newStatus,
+            rejectReason: null,
+          });
+        }
+
+        await order.save();
+
+        //socket
+        const ownerId = order.userId;
+        const badgeCount = await Order.count({ where: { status: "reject", userId: ownerId } });
+
+        const roomName = `reject-order-${ownerId}`;
+        const sockets = await req.io?.in(roomName).fetchSockets();
+
+        // console.log(`-----------------------------------`);
+        // console.log(`📡 Event: updateBadgeCount`);
+        // console.log(`🏠 Room Target: ${roomName}`);
+        // console.log(`👥 Active sockets: ${sockets?.length ?? 0}`);
+        // console.log(`-----------------------------------`);
+
+        const hasSocket = sockets && sockets.length > 0;
+        if (!hasSocket) {
+          if (devEnvironment) {
+            console.log(`⚠️ No one is in room ${roomName}, skip emitting.`);
+          }
+          return { message: "Order status updated successfully, no active socket to notify" };
+        }
+
+        req.io?.to(roomName).emit("updateBadgeCount", {
+          type: "REJECTED_ORDER",
+          count: badgeCount,
+        });
+
+        // //update meilisearch
+        // const orderUpdated = await orderRepository.findOrderForMeili(orderId, transaction);
+
+        // if (orderUpdated) {
+        //   meiliService.syncMeiliData(MEILI_INDEX.ORDERS, orderUpdated.toJSON());
+        // }
+
+        return {
+          message: "Order status updated successfully",
+          notification: {
+            recipientId: ownerId,
+            badgeCount,
+          },
+        };
       });
-
-      return {
-        message: "Order status updated successfully",
-        notification: {
-          recipientId: ownerId,
-          badgeCount,
-        },
-      };
     } catch (error) {
       console.error("failed to update order", error);
       if (error instanceof AppError) throw error;

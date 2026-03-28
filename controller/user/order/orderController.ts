@@ -78,13 +78,13 @@ export const getOrdersAcceptPlanning = async (req: Request, res: Response, next:
 
     // 1. Nhánh tìm kiếm theo field
     if (field && keyword) {
-      response = await orderService.getOrderByField(
+      response = await orderService.getOrderByField({
         field,
         keyword,
-        Number(page),
-        Number(pageSize),
-        req.user,
-      );
+        page: Number(page),
+        pageSize: Number(pageSize),
+        user: req.user,
+      });
     }
     // 2. Nhánh lấy tất cả
     else {

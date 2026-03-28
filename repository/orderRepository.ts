@@ -8,7 +8,7 @@ import { FluteRatio } from "../models/admin/fluteRatio";
 import { OrderImage } from "../models/order/orderImage";
 
 export const orderRepository = {
-  buildQueryOptions: (whereCondition: any = {}, statusList: string[]): FindOptions => {
+  buildQueryOptions: (whereCondition: any = {}): FindOptions => {
     return {
       where: whereCondition,
       attributes: { exclude: ["createdAt", "updatedAt"] },
@@ -28,36 +28,6 @@ export const orderRepository = {
         ["orderSortValue", "ASC"],
       ],
     };
-  },
-
-  findAndCountAll: (queryOptions: any) => {
-    return Order.findAndCountAll(queryOptions);
-  },
-
-  findAll: (queryOptions: any) => {
-    return Order.findAll(queryOptions);
-  },
-
-  findAllFilter: async (whereCondition: any = {}) => {
-    return await Order.findAll({
-      where: whereCondition,
-      include: [
-        { model: Customer, attributes: ["customerName", "companyName"] },
-        {
-          model: Product,
-          attributes: ["typeProduct", "productName", "maKhuon"],
-        },
-        {
-          model: Box,
-          as: "box",
-          attributes: {
-            exclude: ["boxId", "createdAt", "updatedAt", "orderId"],
-          },
-        },
-        { model: User, attributes: ["fullName"] },
-      ],
-      order: [["createdAt", "DESC"]],
-    });
   },
 
   findOneFluteRatio: async (flute: string, transaction?: Transaction) => {
@@ -109,6 +79,31 @@ export const orderRepository = {
           },
         },
       ],
+    });
+  },
+
+  //meilisearch
+  findOrderForMeili: async (orderId: string, transaction: Transaction) => {
+    return await Order.findByPk(orderId, {
+      attributes: [
+        "orderId",
+        "flute",
+        "QC_box",
+        "price",
+        "lengthPaperCustomer",
+        "lengthPaperManufacture",
+        "paperSizeCustomer",
+        "paperSizeManufacture",
+        "quantityCustomer",
+        "quantityManufacture",
+        "status",
+        "orderSortValue",
+      ],
+      include: [
+        { model: Customer, attributes: ["customerName"] },
+        { model: Product, attributes: ["productName"] },
+      ],
+      transaction,
     });
   },
 };

@@ -83,4 +83,12 @@ export const customerRepository = {
   updateCustomer: async (customer: Customer, customerData: any, transaction?: Transaction) => {
     return await customer.update(customerData, { transaction });
   },
+
+  //find customer for meilisearch
+  findCustomerForMeili: async (customerId: string, transaction: Transaction) => {
+    return await Customer.findByPk(customerId, {
+      attributes: ["customerId", "customerName", "companyName", "cskh", "phone", "customerSeq"],
+      transaction,
+    });
+  },
 };

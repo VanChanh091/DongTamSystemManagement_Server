@@ -5,7 +5,6 @@ import {
   cachedStatus,
   calculateOrderMetrics,
   createDataTable,
-  filterOrdersFromCache,
   generateOrderId,
   getOrderByStatus,
   updateChildTable,
@@ -23,6 +22,8 @@ import { Request } from "express";
 import { OrderImage } from "../models/order/orderImage";
 import { CrudHelper } from "../repository/helper/crud.helper.repository";
 import { meiliClient } from "../assest/configs/connect/melisearch.config";
+import { MEILI_INDEX, meiliService } from "./meiliService";
+import { Op } from "sequelize";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { order } = CacheKey;
@@ -116,46 +117,68 @@ export const orderService = {
     }
   },
 
-  getOrderByField: async (
-    field: string,
-    keyword: string,
-    page: number,
-    pageSize: number,
-    user: any,
-  ) => {
+  getOrderByField: async ({
+    field,
+    keyword,
+    page,
+    pageSize,
+    user,
+  }: {
+    field: string;
+    keyword: string;
+    page: number;
+    pageSize: number;
+    user: any;
+  }) => {
     const { userId, role } = user;
 
     try {
       const index = meiliClient.index("orders");
 
-      const fieldMap = {
-        orderId: (order: Order) => order.orderId,
-        customerName: (order: Order) => order?.Customer?.customerName,
-        productName: (order: Order) => order?.Product?.productName,
-        qcBox: (order: Order) => order?.QC_box,
-        price: (order: Order) => order?.price,
-      } as const;
-
-      const key = field as keyof typeof fieldMap;
-
-      if (!fieldMap[key]) {
-        throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
+      // Phân quyền và Trạng thái
+      let filters = ["status IN [accept, planning]"];
+      if (role !== "admin" && role !== "manager") {
+        filters.push(`userId = ${userId}`);
       }
 
-      const result = await filterOrdersFromCache({
-        userId,
-        role,
-        keyword,
-        getFieldValue: fieldMap[key],
-        page,
-        pageSize,
-        cacheKeyPrefix: order.searchAcceptPlanning,
-        message: `Get orders by ${field} from filtered cache`,
+      // Tìm kiếm trên Meilisearch để lấy orderId
+      const searchResult = await index.search(keyword, {
+        filter: filters.join(" AND "),
+        attributesToSearchOn: [field],
+        attributesToRetrieve: ["orderId"], // Chỉ lấy orderId
+        page: Number(page) || 1,
+        hitsPerPage: Number(pageSize) || 25,
       });
 
-      return result;
+      const orderIds = searchResult.hits.map((hit: any) => hit.orderId);
+      if (orderIds.length === 0) {
+        return {
+          message: "No orders found",
+          data: [],
+          totalOrders: 0,
+          totalPages: 1,
+          currentPage: page,
+        };
+      }
+
+      // Truy vấn DB để lấy data dựa trên orderIds
+      const query = orderRepository.buildQueryOptions({ orderId: { [Op.in]: orderIds } });
+      const fullOrders = await Order.findAll(query);
+
+      // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
+      const finalData = orderIds
+        .map((id) => fullOrders.find((order) => order.orderId === id))
+        .filter(Boolean);
+
+      return {
+        message: "Get orders from Meilisearch & DB successfully",
+        data: finalData,
+        totalOrders: searchResult.totalHits,
+        totalPages: searchResult.totalPages,
+        currentPage: page,
+      };
     } catch (error) {
-      console.error(`Failed to get orders by ${field}:`, error);
+      console.error(`❌ Failed to get orders by ${field}:`, error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
@@ -268,6 +291,13 @@ export const orderService = {
           }
         }
 
+        //create meilisearch
+        const orderCreated = await orderRepository.findOrderForMeili(newOrderId, transaction);
+
+        if (orderCreated) {
+          meiliService.syncMeiliData(MEILI_INDEX.ORDERS, orderCreated.toJSON());
+        }
+
         return { order: newOrder, orderId: newOrderId };
       });
     } catch (error) {
@@ -341,6 +371,13 @@ export const orderService = {
           count: badgeCount,
         });
 
+        //update meilisearch
+        const orderUpdated = await orderRepository.findOrderForMeili(orderId, transaction);
+
+        if (orderUpdated) {
+          meiliService.syncMeiliData(MEILI_INDEX.ORDERS, orderUpdated.toJSON());
+        }
+
         return { message: "Order updated successfully", data: order };
       });
     } catch (error) {
@@ -354,10 +391,18 @@ export const orderService = {
   deleteOrder: async (orderId: string) => {
     try {
       return await runInTransaction(async (transaction) => {
-        const deleted = await Order.destroy({ where: { orderId }, transaction });
-        if (deleted === 0) {
+        const order = await Order.findOne({ where: { orderId }, transaction });
+        if (!order) {
           throw AppError.NotFound("Order không tồn tại");
         }
+
+        //save value before delete for meilisearch
+        const orderValue = order.orderSortValue;
+
+        await order.destroy({ transaction });
+
+        //delete meilisearch
+        meiliService.deleteMeiliData(MEILI_INDEX.ORDERS, orderValue);
 
         return { message: "Order deleted successfully" };
       });

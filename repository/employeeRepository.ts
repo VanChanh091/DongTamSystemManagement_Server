@@ -64,6 +64,21 @@ export const employeeRepository = {
     return await EmployeeBasicInfo.findAndCountAll(query);
   },
 
+  getEmployeeByField: async (whereCondition: any) => {
+    return await EmployeeBasicInfo.findAll({
+      where: whereCondition,
+      attributes: { exclude: ["createdAt", "updatedAt"] },
+      include: [
+        {
+          model: EmployeeCompanyInfo,
+          as: "companyInfo",
+          attributes: { exclude: ["createdAt", "updatedAt"] },
+        },
+      ],
+      order: [["employeeId", "ASC"]],
+    });
+  },
+
   findEmployeeByPosition: async () => {
     return await EmployeeBasicInfo.findAll({
       attributes: ["employeeId", "fullName"],
@@ -95,5 +110,20 @@ export const employeeRepository = {
 
   deleteEmployee: async (employee: any, transaction?: any) => {
     return await employee.destroy(transaction);
+  },
+
+  //find customer for meilisearch
+  findEmployeeForMeili: async (employeeId: number, transaction: Transaction) => {
+    return await EmployeeBasicInfo.findByPk(employeeId, {
+      attributes: ["employeeId", "fullName", "phoneNumber"],
+      include: [
+        {
+          model: EmployeeCompanyInfo,
+          as: "companyInfo",
+          attributes: ["employeeCode", "status"],
+        },
+      ],
+      transaction,
+    });
   },
 };

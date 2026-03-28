@@ -97,15 +97,35 @@ export const employeeService = {
 
       const searchResult = await index.search(keyword, {
         attributesToSearchOn: [field],
-
-        // Phân trang
+        attributesToRetrieve: ["employeeId"],
         page: Number(page) || 1,
         hitsPerPage: Number(pageSize) || 25,
       });
 
+      const employeeIds = searchResult.hits.map((hit: any) => hit.employeeId);
+      if (employeeIds.length === 0) {
+        return {
+          message: "No employees found",
+          data: [],
+          totalEmployees: 0,
+          totalPages: 1,
+          currentPage: page,
+        };
+      }
+
+      //query db
+      const fullEmployees = await employeeRepository.getEmployeeByField({
+        employeeId: { [Op.in]: employeeIds },
+      });
+
+      // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
+      const finalData = employeeIds
+        .map((id) => fullEmployees.find((employee) => employee.employeeId === id))
+        .filter(Boolean);
+
       return {
-        message: "Get employees from Meilisearch",
-        data: searchResult.hits,
+        message: "Get employees from Meilisearch & DB successfully",
+        data: finalData,
         totalEmployees: searchResult.totalHits,
         totalPages: searchResult.totalPages,
         currentPage: searchResult.page,
@@ -168,7 +188,10 @@ export const employeeService = {
         });
 
         //create meilisearch
-        const createdEmployee = await employeeRepository.findEmployeeByPK(employeeId, transaction);
+        const createdEmployee = await employeeRepository.findEmployeeForMeili(
+          employeeId,
+          transaction,
+        );
 
         if (createdEmployee) {
           meiliService.syncMeiliData(MEILI_INDEX.EMPLOYEES, createdEmployee.toJSON());
@@ -207,7 +230,7 @@ export const employeeService = {
         });
 
         //update meilisearch
-        const updatedEmployee = await employeeRepository.findEmployeeByPK(
+        const updatedEmployee = await employeeRepository.findEmployeeForMeili(
           result.employeeId,
           transaction,
         );

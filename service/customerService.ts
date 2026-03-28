@@ -93,15 +93,35 @@ export const customerService = {
 
       const searchResult = await index.search(keyword, {
         attributesToSearchOn: [field],
-
-        // Phân trang
+        attributesToRetrieve: ["customerId"],
         page: Number(page) || 1,
-        hitsPerPage: Number(pageSize) || 25,
+        hitsPerPage: Number(pageSize) || 25, //pageSize
       });
 
+      const customerIds = searchResult.hits.map((hit: any) => hit.customerId);
+      if (customerIds.length === 0) {
+        return {
+          message: "No customers found",
+          data: [],
+          totalCustomers: 0,
+          totalPages: 0,
+          currentPage: page,
+        };
+      }
+
+      //query db
+      const { rows } = await customerRepository.findCustomerByPage({
+        whereCondition: { customerId: { [Op.in]: customerIds } },
+      });
+
+      // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
+      const finalData = customerIds
+        .map((id) => rows.find((customer) => customer.customerId === id))
+        .filter(Boolean);
+
       return {
-        message: "Get customers from Meilisearch",
-        data: searchResult.hits,
+        message: "Get customers from Meilisearch & DB successfully",
+        data: finalData,
         totalCustomers: searchResult.totalHits,
         totalPages: searchResult.totalPages,
         currentPage: searchResult.page,
@@ -162,10 +182,10 @@ export const customerService = {
         });
 
         //create meilisearch
-        const customerCreated = await customerRepository.findCustomerByPk({
-          customerId: newCustomerId,
-          options: { transaction, includePayment: true },
-        });
+        const customerCreated = await customerRepository.findCustomerForMeili(
+          newCustomerId,
+          transaction,
+        );
 
         if (customerCreated) {
           meiliService.syncMeiliData(MEILI_INDEX.CUSTOMERS, customerCreated.toJSON());
@@ -203,10 +223,10 @@ export const customerService = {
         });
 
         //update meilisearch
-        const customerUpdated = await customerRepository.findCustomerByPk({
+        const customerUpdated = await customerRepository.findCustomerForMeili(
           customerId,
-          options: { transaction, includePayment: true },
-        });
+          transaction,
+        );
 
         if (customerUpdated) {
           meiliService.syncMeiliData(MEILI_INDEX.CUSTOMERS, customerUpdated.toJSON());

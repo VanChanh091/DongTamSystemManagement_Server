@@ -27,6 +27,7 @@ export const employeesSettings: Settings = {
 export const ordersSettings: Settings = {
   searchableAttributes: ["orderId", "customerName", "productName", "QC_box", "price"],
   sortableAttributes: ["orderSortValue"],
+  filterableAttributes: ["status", "userId"],
   rankingRules: rule,
 };
 

@@ -1,7 +1,5 @@
 import { AppError } from "../../../../utils/appError";
 import { meiliClient } from "../../connect/melisearch.config";
-import { customerRepository } from "../../../../repository/customerRepository";
-import { employeeRepository } from "../../../../repository/employeeRepository";
 import { productRepository } from "../../../../repository/productRepository";
 import { Order } from "../../../../models/order/order";
 import { Product } from "../../../../models/product/product";
@@ -14,15 +12,25 @@ import { OutboundDetail } from "../../../../models/warehouse/outboundDetail";
 import { Inventory } from "../../../../models/warehouse/inventory";
 import { ReportPlanningPaper } from "../../../../models/report/reportPlanningPaper";
 import { ReportPlanningBox } from "../../../../models/report/reportPlanningBox";
+import { meiliTransformer } from "../meiliTransformer";
+import { EmployeeBasicInfo } from "../../../../models/employee/employeeBasicInfo";
+import { EmployeeCompanyInfo } from "../../../../models/employee/employeeCompanyInfo";
 
 interface SyncMeiliData {
   data: any[];
   indexName: string;
   primaryKey: string;
   displayName: string;
+  isDeleteAll?: boolean;
 }
 
-const syncMeiliData = async ({ indexName, primaryKey, data, displayName }: SyncMeiliData) => {
+const syncMeiliData = async ({
+  indexName,
+  primaryKey,
+  data,
+  displayName,
+  isDeleteAll,
+}: SyncMeiliData) => {
   try {
     if (!data || data.length === 0) {
       throw AppError.NotFound(
@@ -32,14 +40,19 @@ const syncMeiliData = async ({ indexName, primaryKey, data, displayName }: SyncM
     }
 
     const index = meiliClient.index(indexName);
-    // const task = await index.deleteAllDocuments();
+
+    let task;
+    if (isDeleteAll) {
+      task = await index.deleteAllDocuments();
+    } else {
+      task = await index.addDocuments(data, { primaryKey });
+    }
 
     // Khai customerId là primary key
-    const task = await index.addDocuments(data, { primaryKey });
 
     console.log(`🚀 Đang đồng bộ ${data.length} ${displayName}... TaskID: ${task.taskUid}`);
 
-    return task;
+    return task.taskUid;
   } catch (error) {
     console.error("❌ Lỗi đồng bộ Meilisearch:", error);
     if (error instanceof AppError) throw error;
@@ -49,13 +62,17 @@ const syncMeiliData = async ({ indexName, primaryKey, data, displayName }: SyncM
 
 //sync customer
 export const syncCustomerToMeili = async () => {
-  const { rows } = await customerRepository.findCustomerByPage({});
+  const customers = await Customer.findAll({
+    attributes: ["customerId", "customerName", "companyName", "cskh", "phone", "customerSeq"],
+    order: [["customerSeq", "ASC"]],
+  });
 
   return syncMeiliData({
-    data: rows,
+    data: customers,
     indexName: "customers",
     displayName: "customers",
     primaryKey: "customerId",
+    // isDeleteAll: true,
   });
 };
 
@@ -73,33 +90,51 @@ export const syncProductToMeili = async () => {
 
 //sync employee
 export const syncEmployeeToMeili = async () => {
-  const { rows } = await employeeRepository.findEmployeeByPage({});
+  const employees = await EmployeeBasicInfo.findAll({
+    attributes: ["employeeId", "fullName", "phoneNumber"],
+    include: [
+      {
+        model: EmployeeCompanyInfo,
+        as: "companyInfo",
+        attributes: ["employeeCode", "status"],
+      },
+    ],
+    order: [["employeeId", "ASC"]],
+  });
+
+  const flattenData = employees.map(meiliTransformer.employee);
 
   return syncMeiliData({
-    data: rows,
+    data: flattenData,
     indexName: "employees",
     displayName: "employees",
     primaryKey: "employeeId",
+    // isDeleteAll: true,
   });
 };
 
 //sync order
 export const syncOrderToMeili = async () => {
   const orders = await Order.findAll({
-    where: {},
-    attributes: ["orderId"],
-    include: [{ model: Customer }, { model: Product }],
+    attributes: ["orderId", "flute", "QC_box", "price", "status", "userId", "orderSortValue"],
+    include: [
+      { model: Customer, attributes: ["customerName"] },
+      { model: Product, attributes: ["productName"] },
+    ],
   });
 
+  const flattenData = orders.map(meiliTransformer.order);
+
   return syncMeiliData({
-    data: orders,
+    data: flattenData,
     indexName: "orders",
     displayName: "orders",
-    primaryKey: "orderId",
+    primaryKey: "orderSortValue",
+    // isDeleteAll: true,
   });
 };
 
-//sync planning
+//sync planning waiting
 export const syncPlanningPaperToMeili = async () => {
   const papers = await PlanningPaper.findAll({
     where: {},
@@ -115,6 +150,7 @@ export const syncPlanningPaperToMeili = async () => {
   });
 };
 
+// waiting
 export const syncPlanningBoxToMeili = async () => {
   const boxes = await PlanningBox.findAll({
     where: {},
@@ -130,7 +166,7 @@ export const syncPlanningBoxToMeili = async () => {
   });
 };
 
-//sync inbound & outbound
+//sync inbound & outbound waiting
 export const syncInboundToMeili = async () => {
   const inbounds = await InboundHistory.findAll({
     where: {},
@@ -146,6 +182,7 @@ export const syncInboundToMeili = async () => {
   });
 };
 
+// waiting
 export const syncOutboundToMeili = async () => {
   const outbounds = await OutboundHistory.findAll({
     where: {},
@@ -161,7 +198,7 @@ export const syncOutboundToMeili = async () => {
   });
 };
 
-//sync inventory
+//sync inventory waiting
 export const syncInventoryToMeili = async () => {
   const inventories = await Inventory.findAll({
     where: {},
@@ -177,7 +214,7 @@ export const syncInventoryToMeili = async () => {
   });
 };
 
-//sync report
+//sync report waiting
 export const syncReportPaperToMeili = async () => {
   const papers = await ReportPlanningPaper.findAll({
     where: {},
@@ -193,6 +230,7 @@ export const syncReportPaperToMeili = async () => {
   });
 };
 
+// waiting
 export const syncReportBoxToMeili = async () => {
   const boxes = await ReportPlanningBox.findAll({
     where: {},
@@ -208,7 +246,7 @@ export const syncReportBoxToMeili = async () => {
   });
 };
 
-//sync dashboard
+//sync dashboard waiting
 export const syncDashboardToMeili = async () => {
   const dashboard = await PlanningPaper.findAll({
     where: {},
