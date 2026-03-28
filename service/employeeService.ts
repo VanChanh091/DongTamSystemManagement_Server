@@ -7,13 +7,15 @@ import { CacheManager } from "../utils/helper/cache/cacheManager";
 import { AppError } from "../utils/appError";
 import { EmployeeBasicInfo } from "../models/employee/employeeBasicInfo";
 import { employeeRepository } from "../repository/employeeRepository";
-import { filterDataFromCache } from "../utils/helper/modelHelper/orderHelpers";
+import { createDataTable, updateChildTable } from "../utils/helper/modelHelper/orderHelpers";
 import { EmployeeCompanyInfo } from "../models/employee/employeeCompanyInfo";
 import { exportExcelResponse } from "../utils/helper/excelExporter";
 import { employeeColumns, mappingEmployeeRow } from "../utils/mapping/employeeRowAndColumn";
 import { runInTransaction } from "../utils/helper/transactionHelper";
-import redisCache from "../assest/configs/redisCache";
+import redisCache from "../assest/configs/connect/redis.config";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
+import { meiliClient } from "../assest/configs/connect/melisearch.config";
+import { MEILI_INDEX, meiliService } from "./meiliService";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { employee } = CacheKey;
@@ -55,7 +57,7 @@ export const employeeService = {
         totalEmployees = data.length;
         totalPages = 1;
       } else {
-        const { rows, count } = await employeeRepository.findEmployeeByPage(page, pageSize);
+        const { rows, count } = await employeeRepository.findEmployeeByPage({ page, pageSize });
 
         data = rows;
         totalEmployees = count;
@@ -91,33 +93,23 @@ export const employeeService = {
     pageSize: number;
   }) => {
     try {
-      const fieldMap = {
-        employeeId: (employee: EmployeeBasicInfo) => employee.employeeId,
-        fullName: (employee: EmployeeBasicInfo) => employee.fullName,
-        phoneNumber: (employee: EmployeeBasicInfo) => employee.phoneNumber,
-        employeeCode: (employee: EmployeeBasicInfo) => employee.companyInfo?.employeeCode,
-        status: (employee: EmployeeBasicInfo) => employee.companyInfo.status,
-      } as const;
+      const index = meiliClient.index("employees");
 
-      const key = field as keyof typeof fieldMap;
-      if (!fieldMap[key]) {
-        throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
-      }
+      const searchResult = await index.search(keyword, {
+        attributesToSearchOn: [field],
 
-      const result = await filterDataFromCache({
-        model: EmployeeBasicInfo,
-        cacheKey: employee.search,
-        keyword: keyword,
-        getFieldValue: fieldMap[key],
-        page,
-        pageSize,
-        message: `get all by ${field} from filtered cache`,
-        fetchFunction: async () => {
-          return await employeeRepository.findAllEmployee();
-        },
+        // Phân trang
+        page: Number(page) || 1,
+        hitsPerPage: Number(pageSize) || 25,
       });
 
-      return result;
+      return {
+        message: "Get employees from Meilisearch",
+        data: searchResult.hits,
+        totalEmployees: searchResult.totalHits,
+        totalPages: searchResult.totalPages,
+        currentPage: searchResult.page,
+      };
     } catch (error) {
       console.error(`Failed to get employees by ${field}:`, error);
       if (error instanceof AppError) throw error;
@@ -167,11 +159,20 @@ export const employeeService = {
           transaction,
         );
 
-        await employeeRepository.createEmployee(
-          EmployeeCompanyInfo,
-          { ...companyInfo, employeeId: newBasicInfo.employeeId, employeeCode: nextCode },
+        const employeeId = newBasicInfo.employeeId;
+
+        await createDataTable({
+          model: EmployeeCompanyInfo,
+          data: { ...companyInfo, employeeId: employeeId, employeeCode: nextCode },
           transaction,
-        );
+        });
+
+        //create meilisearch
+        const createdEmployee = await employeeRepository.findEmployeeByPK(employeeId, transaction);
+
+        if (createdEmployee) {
+          meiliService.syncMeiliData(MEILI_INDEX.EMPLOYEES, createdEmployee.toJSON());
+        }
 
         return { message: "create new employee successfully" };
       });
@@ -184,34 +185,41 @@ export const employeeService = {
 
   updateEmployee: async (employeeId: number, data: any) => {
     const { companyInfo, ...basicInfo } = data;
+
     try {
       return await runInTransaction(async (transaction) => {
-        console.log(data);
-
-        const employee = await employeeRepository.findEmployeeByPk(employeeId, transaction);
-        if (!employee) {
+        const result = await employeeRepository.findEmployeeByPk(employeeId, transaction);
+        if (!result) {
           throw AppError.NotFound("Employee not found", "EMPLOYEE_NOT_FOUND");
         }
 
+        //update basic info
         if (basicInfo) {
-          await employeeRepository.updateEmployee(employee, basicInfo, transaction);
+          await employeeRepository.updateEmployee(result, basicInfo, transaction);
         }
 
-        if (companyInfo && employee.companyInfo) {
-          await employeeRepository.updateEmployee(employee.companyInfo, companyInfo, transaction);
-        } else if (companyInfo) {
-          await employeeRepository.createEmployee(
-            EmployeeCompanyInfo,
-            { employeeId: employee.employeeId, ...companyInfo },
-            transaction,
-          );
-        }
+        //update company info if existed
+        await updateChildTable({
+          model: EmployeeCompanyInfo,
+          where: { employeeId: result.employeeId },
+          data: { employeeId: result.employeeId, ...companyInfo },
+          transaction,
+        });
 
-        const updatedEmployee = await employeeRepository.findEmployeeById(employeeId);
+        //update meilisearch
+        const updatedEmployee = await employeeRepository.findEmployeeByPK(
+          result.employeeId,
+          transaction,
+        );
+
+        if (updatedEmployee) {
+          meiliService.syncMeiliData(MEILI_INDEX.EMPLOYEES, updatedEmployee.toJSON());
+        }
 
         return { message: "Cập nhật nhân viên thành công", data: updatedEmployee };
       });
     } catch (error) {
+      console.error("updated employees failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
@@ -220,13 +228,16 @@ export const employeeService = {
   deleteEmployee: async (employeeId: number) => {
     try {
       return await runInTransaction(async (transaction) => {
-        const employee = await employeeRepository.findEmployeeByPk(employeeId);
+        const employee = await employeeRepository.findEmployeeByPk(employeeId, transaction);
         if (!employee) {
           throw AppError.NotFound("Employee not found", "EMPLOYEE_NOT_FOUND");
         }
 
         // Xóa bản ghi chính
         await employee.destroy({ transaction });
+
+        //delete record in meilisearch
+        meiliService.deleteMeiliData(MEILI_INDEX.EMPLOYEES, employeeId);
 
         return { message: "delete employee successfully" };
       });
@@ -243,8 +254,7 @@ export const employeeService = {
       if (all === "true") {
         // no filtering; fetch all employees
       } else if (status) {
-        const normalizedStatus = status.toLowerCase().trim();
-        whereCondition["$companyInfo.status$"] = normalizedStatus;
+        whereCondition["$companyInfo.status$"] = status.toLowerCase().trim();
       } else if (joinDate) {
         const start = new Date(joinDate);
         start.setHours(0, 0, 0, 0);
@@ -255,10 +265,10 @@ export const employeeService = {
         whereCondition["$companyInfo.joinDate$"] = { [Op.between]: [start, end] };
       }
 
-      const data = await employeeRepository.findAllEmployee();
+      const { rows } = await employeeRepository.findEmployeeByPage({ whereCondition });
 
       await exportExcelResponse(res, {
-        data: data,
+        data: rows,
         sheetName: "Danh sách nhân viên",
         fileName: "employee",
         columns: employeeColumns,

@@ -1,8 +1,8 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import redisCache from "../assest/configs/redisCache";
 import { Op } from "sequelize";
+import redisCache from "../assest/configs/connect/redis.config";
 import { Request, Response } from "express";
 import { Order } from "../models/order/order";
 import { Product } from "../models/product/product";
@@ -10,16 +10,17 @@ import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { productRepository } from "../repository/productRepository";
 import { AppError } from "../utils/appError";
 import { CacheManager } from "../utils/helper/cache/cacheManager";
-import { filterDataFromCache } from "../utils/helper/modelHelper/orderHelpers";
 import {
   convertToWebp,
   getCloudinaryPublicId,
   uploadImageToCloudinary,
 } from "../utils/image/converToWebp";
-import cloudinary from "../assest/configs/connectCloudinary";
+import cloudinary from "../assest/configs/connect/cloudinary.config";
 import { exportExcelResponse } from "../utils/helper/excelExporter";
 import { mappingProductRow, productColumns } from "../utils/mapping/productRowAndColumn";
 import { runInTransaction } from "../utils/helper/transactionHelper";
+import { meiliClient } from "../assest/configs/connect/melisearch.config";
+import { MEILI_INDEX, meiliService } from "./meiliService";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { product } = CacheKey;
@@ -58,7 +59,7 @@ export const productService = {
         totalProducts = data.length;
         totalPages = 1;
       } else {
-        const { rows, count } = await productRepository.findProductByPage(page, pageSize);
+        const { rows, count } = await productRepository.findProductByPage({ page, pageSize });
 
         data = rows;
         totalProducts = count;
@@ -94,27 +95,23 @@ export const productService = {
     pageSize: number;
   }) => {
     try {
-      const fieldMap = {
-        productId: (product: Product) => product.productId,
-        productName: (product: Product) => product?.productName,
-      } as const;
+      const index = meiliClient.index("products");
 
-      const key = field as keyof typeof fieldMap;
+      const searchResult = await index.search(keyword, {
+        attributesToSearchOn: [field],
 
-      if (!key || !fieldMap[key]) {
-        throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
-      }
-      const result = await filterDataFromCache({
-        model: Product,
-        cacheKey: product.search,
-        keyword: keyword,
-        getFieldValue: fieldMap[key],
-        page,
-        pageSize,
-        message: `get all by ${field} from filtered cache`,
+        // Phân trang
+        page: Number(page) || 1,
+        hitsPerPage: Number(pageSize) || 25,
       });
 
-      return result;
+      return {
+        message: "Get products from Meilisearch",
+        data: searchResult.hits,
+        totalProducts: searchResult.totalHits,
+        totalPages: searchResult.totalPages,
+        currentPage: searchResult.page,
+      };
     } catch (error) {
       console.error(`❌ Failed to get product by ${field}:`, error);
       if (error instanceof AppError) throw error;
@@ -163,6 +160,13 @@ export const productService = {
           transaction,
         );
 
+        //create meilisearch
+        const productCreated = await productRepository.findProductByPk(newProductId, transaction);
+
+        if (productCreated) {
+          meiliService.syncMeiliData(MEILI_INDEX.PRODUCTS, productCreated.toJSON());
+        }
+
         return { message: "Product created successfully", data: newProduct };
       });
     } catch (error) {
@@ -175,7 +179,7 @@ export const productService = {
   updatedProduct: async (req: Request, producId: string, productData: any) => {
     try {
       return await runInTransaction(async (transaction) => {
-        const existingProduct = await productRepository.findProductByPk(producId);
+        const existingProduct = await productRepository.findProductByPk(producId, transaction);
         if (!existingProduct) {
           throw AppError.NotFound("Product not found", "PRODUCT_NOT_FOUND");
         }
@@ -199,6 +203,13 @@ export const productService = {
           transaction,
         );
 
+        //update meilisearch
+        const productUpdated = await productRepository.findProductByPk(producId, transaction);
+
+        if (productUpdated) {
+          meiliService.syncMeiliData(MEILI_INDEX.PRODUCTS, productUpdated.toJSON());
+        }
+
         return { message: "Product updated successfully", data: result };
       });
     } catch (error) {
@@ -211,7 +222,7 @@ export const productService = {
   deletedProduct: async (productId: string, role: string) => {
     try {
       return await runInTransaction(async (transaction) => {
-        const product = await productRepository.findProductByPk(productId);
+        const product = await productRepository.findProductByPk(productId, transaction);
         if (!product) {
           throw AppError.NotFound("Product not found", "PRODUCT_NOT_FOUND");
         }
@@ -227,15 +238,17 @@ export const productService = {
         }
 
         const imageName = product.productImage;
-
-        await product.destroy();
-
         if (imageName && imageName.includes("cloudinary.com")) {
           const publicId = getCloudinaryPublicId(imageName);
           if (publicId) {
             await cloudinary.uploader.destroy(publicId);
           }
         }
+
+        await product.destroy();
+
+        //delete record in meilisearch
+        meiliService.deleteMeiliData(MEILI_INDEX.PRODUCTS, productId);
 
         return { message: "Product deleted successfully" };
       });
@@ -259,10 +272,10 @@ export const productService = {
         whereCondition.typeProduct = typeProduct;
       }
 
-      const data = await productRepository.exportExcelProducts(whereCondition);
+      const { rows } = await productRepository.findProductByPage({ whereCondition });
 
       await exportExcelResponse(res, {
-        data: data,
+        data: rows,
         sheetName: "Danh sách sản phẩm",
         fileName: "product",
         columns: productColumns,

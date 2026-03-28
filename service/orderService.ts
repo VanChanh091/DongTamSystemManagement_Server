@@ -8,11 +8,11 @@ import {
   filterOrdersFromCache,
   generateOrderId,
   getOrderByStatus,
-  updateChildOrder,
+  updateChildTable,
   validateCustomerAndProduct,
 } from "../utils/helper/modelHelper/orderHelpers";
 import { AppError } from "../utils/appError";
-import redisCache from "../assest/configs/redisCache";
+import redisCache from "../assest/configs/connect/redis.config";
 import { CacheManager } from "../utils/helper/cache/cacheManager";
 import { Box } from "../models/order/box";
 import { Order } from "../models/order/order";
@@ -22,6 +22,7 @@ import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { Request } from "express";
 import { OrderImage } from "../models/order/orderImage";
 import { CrudHelper } from "../repository/helper/crud.helper.repository";
+import { meiliClient } from "../assest/configs/connect/melisearch.config";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { order } = CacheKey;
@@ -125,6 +126,8 @@ export const orderService = {
     const { userId, role } = user;
 
     try {
+      const index = meiliClient.index("orders");
+
       const fieldMap = {
         orderId: (order: Order) => order.orderId,
         customerName: (order: Order) => order?.Customer?.customerName,
@@ -253,7 +256,11 @@ export const orderService = {
         //create table data
         if (newOrder.isBox) {
           try {
-            await createDataTable(newOrderId, Box, box, transaction);
+            await createDataTable({
+              model: Box,
+              data: { orderId: newOrderId, ...box },
+              transaction,
+            });
           } catch (error) {
             console.error("Error creating related data:", error);
             if (error instanceof AppError) throw error;
@@ -285,8 +292,6 @@ export const orderService = {
 
         const mergedData = { ...order.toJSON(), ...restOrderData };
 
-        console.log(mergedData);
-
         const metrics = await calculateOrderMetrics(mergedData);
 
         //Cập nhật thông tin hoặc xóa hình ảnh
@@ -314,7 +319,12 @@ export const orderService = {
         await order.update({ ...restOrderData, ...metrics }, { transaction });
 
         if (order.isBox) {
-          await updateChildOrder(orderId, Box, box);
+          await updateChildTable({
+            model: Box,
+            where: { orderId },
+            data: { orderId, ...box },
+            transaction,
+          });
         } else {
           await Box.destroy({ where: { orderId } });
         }

@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import redisCache from "../../assest/configs/redisCache";
+import redisCache from "../../assest/configs/connect/redis.config";
 import { AppError } from "../../utils/appError";
 import { InboundHistory } from "../../models/warehouse/inboundHistory";
 import { warehouseRepository } from "../../repository/warehouseRepository";

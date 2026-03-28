@@ -16,7 +16,7 @@ import { calculateTimeRunning, updateSortPlanning } from "./helper/timeRunningPa
 import { getPlanningByField } from "../../utils/helper/modelHelper/planningHelper";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
-import redisCache from "../../assest/configs/redisCache";
+import redisCache from "../../assest/configs/connect/redis.config";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper } = CacheKey.planning;

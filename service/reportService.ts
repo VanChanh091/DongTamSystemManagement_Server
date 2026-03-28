@@ -12,7 +12,7 @@ import { ReportPlanningBox } from "../models/report/reportPlanningBox";
 import { exportExcelResponse } from "../utils/helper/excelExporter";
 import { mapReportPaperRow, reportPaperColumns } from "../utils/mapping/reportPaperRowAndColumn";
 import { mapReportBoxRow, reportBoxColumns } from "../utils/mapping/reportBoxRowAndColumn";
-import redisCache from "../assest/configs/redisCache";
+import redisCache from "../assest/configs/connect/redis.config";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { normalizeVN } from "../utils/helper/normalizeVN";
 
@@ -73,11 +73,11 @@ export const reportService = {
   ) => {
     try {
       const fieldMap = {
+        orderId: (report: ReportPlanningPaper) => report?.PlanningPaper?.Order?.orderId,
         customerName: (report: ReportPlanningPaper) =>
           report?.PlanningPaper?.Order?.Customer?.customerName,
         dayReported: (report: ReportPlanningPaper) => report?.dayReport,
         shiftManagement: (report: ReportPlanningPaper) => report?.shiftManagement,
-        orderId: (report: ReportPlanningPaper) => report?.PlanningPaper?.Order?.orderId,
       } as const;
 
       const key = field as keyof typeof fieldMap;
@@ -151,12 +151,12 @@ export const reportService = {
   ) => {
     try {
       const fieldMap = {
+        orderId: (report: ReportPlanningBox) => report?.PlanningBox?.Order?.orderId,
         customerName: (report: ReportPlanningBox) =>
           report?.PlanningBox?.Order?.Customer?.customerName,
         dayReported: (report: ReportPlanningBox) => report?.dayReport,
         QcBox: (report: ReportPlanningBox) => report?.PlanningBox?.Order?.QC_box,
         shiftManagement: (report: ReportPlanningBox) => report?.shiftManagement,
-        orderId: (report: ReportPlanningBox) => report?.PlanningBox?.Order?.orderId,
       } as const;
 
       const key = field as keyof typeof fieldMap;

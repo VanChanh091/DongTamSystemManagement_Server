@@ -11,6 +11,7 @@ export interface FilterDataFromCacheProps<T> {
   fetchFunction?: () => Promise<T[]>;
   whereCondition?: any;
   isBox?: boolean;
+  include?: any;
 }
 
 export interface BreakTime {

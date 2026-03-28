@@ -15,7 +15,7 @@ import { exportDeliveryExcelResponse } from "../utils/helper/excelExporter";
 import { deliveryColumns, mappingDeliveryRow } from "../utils/mapping/deliveryRowAndComlumn";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { CacheManager } from "../utils/helper/cache/cacheManager";
-import redisCache from "../assest/configs/redisCache";
+import redisCache from "../assest/configs/connect/redis.config";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { estimate, schedule } = CacheKey.delivery;

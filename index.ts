@@ -6,7 +6,7 @@ import cors from "cors";
 import http from "http";
 import path from "path";
 
-import { connectDB, sequelize } from "./assest/configs/connectDB";
+import { connectDB, sequelize } from "./assest/configs/connect/database.config";
 import authenticate from "./middlewares/authMiddleware";
 
 //routes
@@ -27,6 +27,7 @@ import {
   deliveryRoutes,
   badgeRoutes,
   processingRoutes,
+  meilisearchRoutes,
 } from "./routes/index";
 
 //create table
@@ -37,6 +38,8 @@ import { cleanStackTrace, sendTelegramAlert } from "./utils/telegram/telegramSen
 
 //cron job auto delete image on Cloudinary
 import "./utils/autoDeleteImage";
+import { connectMeilisearch } from "./assest/configs/connect/melisearch.config";
+import { setupMeilisearch } from "./assest/configs/meilisearch/configs";
 
 const app = express();
 
@@ -89,6 +92,9 @@ app.use("/api/warehouse", warehouseRoutes);
 app.use("/api/qc", qcRoutes);
 app.use("/api/delivery", deliveryRoutes);
 app.use("/api/process", processingRoutes);
+
+//sync meilisearch
+app.use("/api/meilisearch", meilisearchRoutes);
 
 //BADGE
 app.use("/api/badge", badgeRoutes);
@@ -143,5 +149,10 @@ server.listen({ port: Number(process.env.PORT) || 5000, host: "0.0.0.0" }, async
     console.log(err);
   }
   await connectDB();
+
+  //setup meilisearch
+  await connectMeilisearch();
+  // await setupMeilisearch();
+
   console.log("✅ Cron Job đã được kích hoạt!");
 });

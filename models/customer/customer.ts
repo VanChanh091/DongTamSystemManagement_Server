@@ -1,4 +1,6 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
+import { CustomerPayment } from "./customerPayment";
+import { meiliClient } from "../../assest/configs/connect/melisearch.config";
 
 //định nghĩa trường trong bảng
 interface CustomerAttributes {
@@ -16,9 +18,6 @@ interface CustomerAttributes {
   phone?: string | null;
   contactPerson?: string | null;
   dayCreated?: Date | null;
-  debtCurrent?: number | null;
-  debtLimit?: number | null;
-  timePayment?: Date | null;
   rateCustomer?: string | null;
 
   createdAt?: Date;
@@ -33,9 +32,6 @@ export type CustomerCreationAttributes = Optional<
   | "phone"
   | "contactPerson"
   | "dayCreated"
-  | "debtCurrent"
-  | "debtLimit"
-  | "timePayment"
   | "rateCustomer"
   | "createdAt"
   | "updatedAt"
@@ -56,13 +52,14 @@ export class Customer
   declare phone?: string | null;
   declare contactPerson?: string | null;
   declare dayCreated?: Date | null;
-  declare debtCurrent?: number | null;
-  declare debtLimit?: number | null;
-  declare timePayment?: Date | null;
   declare rateCustomer?: string | null;
   declare customerSource: string;
   declare cskh: string;
   declare customerSeq: number;
+
+  //association
+  declare payment?: CustomerPayment;
+
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
 }
@@ -84,9 +81,6 @@ export function initCustomerModel(sequelize: Sequelize): typeof Customer {
       phone: { type: DataTypes.STRING },
       contactPerson: { type: DataTypes.STRING },
       dayCreated: { type: DataTypes.DATE },
-      debtCurrent: { type: DataTypes.DOUBLE },
-      debtLimit: { type: DataTypes.DOUBLE },
-      timePayment: { type: DataTypes.DATE },
       rateCustomer: { type: DataTypes.STRING },
       customerSource: { type: DataTypes.STRING, allowNull: false },
       cskh: { type: DataTypes.STRING, allowNull: false },

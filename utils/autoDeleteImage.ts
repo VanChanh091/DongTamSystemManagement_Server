@@ -5,7 +5,7 @@ import cron from "node-cron";
 import { AppError } from "./appError";
 import { OrderImage } from "../models/order/orderImage";
 import { Op } from "sequelize";
-import cloudinary from "../assest/configs/connectCloudinary";
+import cloudinary from "../assest/configs/connect/cloudinary.config";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 

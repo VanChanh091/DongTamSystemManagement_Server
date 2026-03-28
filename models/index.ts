@@ -1,4 +1,4 @@
-import { sequelize } from "../assest/configs/connectDB";
+import { sequelize } from "../assest/configs/connect/database.config";
 import { initFluteRatioCoefficientModel } from "./admin/fluteRatio";
 import { initMachineBoxModel } from "./admin/machineBox";
 import { initMachinePaperModel } from "./admin/machinePaper";
@@ -7,6 +7,7 @@ import { initWasteNormBoxModel } from "./admin/wasteNormBox";
 import { initWasteNormPaperModel } from "./admin/wasteNormPaper";
 import { initWaveCrestCoefficientModel } from "./admin/waveCrestCoefficient";
 import { initCustomerModel } from "./customer/customer";
+import { initCustomerPaymentModel } from "./customer/customerPayment";
 import { initDeliveryItemModel } from "./delivery/deliveryItem";
 import { initDeliveryPlanModel } from "./delivery/deliveryPlan";
 import { initDeliveryRequestModel } from "./delivery/deliveryRequest";
@@ -33,8 +34,11 @@ import { initOutboundHistoryModel } from "./warehouse/outboundHistory";
 
 //other
 const User = initUserModel(sequelize);
-const Customer = initCustomerModel(sequelize);
 const Product = initProductModel(sequelize);
+
+//customer
+const Customer = initCustomerModel(sequelize);
+const CustomerPayment = initCustomerPaymentModel(sequelize);
 
 //order
 const Order = initOrderModel(sequelize);
@@ -84,8 +88,11 @@ const DeliveryItem = initDeliveryItemModel(sequelize);
 
 const models = {
   User,
-  Customer,
   Product,
+
+  //Customer
+  Customer,
+  CustomerPayment,
 
   //order
   Order,
@@ -133,6 +140,9 @@ const models = {
 };
 
 //===============================CUSTOMER=================================
+Customer.hasOne(CustomerPayment, { foreignKey: "customerId", as: "payment", onDelete: "CASCADE" });
+CustomerPayment.belongsTo(Customer, { foreignKey: "customerId" });
+
 //1 customer have many orders and 1 order belongs to 1 customer
 Customer.hasMany(Order, { foreignKey: "customerId", onDelete: "CASCADE" });
 Order.belongsTo(Customer, { foreignKey: "customerId" });

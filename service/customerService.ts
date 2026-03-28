@@ -1,19 +1,22 @@
+import redisCache from "../assest/configs/connect/redis.config";
 import dotenv from "dotenv";
 dotenv.config();
 
 import { Op } from "sequelize";
-import redisCache from "../assest/configs/redisCache";
-import { Customer } from "../models/customer/customer";
-import { customerRepository } from "../repository/customerRepository";
+import { Response } from "express";
 import { AppError } from "../utils/appError";
+import { Order } from "../models/order/order";
+import { Customer } from "../models/customer/customer";
+import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { CacheManager } from "../utils/helper/cache/cacheManager";
 import { exportExcelResponse } from "../utils/helper/excelExporter";
-import { filterDataFromCache } from "../utils/helper/modelHelper/orderHelpers";
-import { customerColumns, mappingCustomerRow } from "../utils/mapping/customerRowAndColumn";
-import { Response } from "express";
+import { CustomerPayment } from "../models/customer/customerPayment";
 import { runInTransaction } from "../utils/helper/transactionHelper";
-import { Order } from "../models/order/order";
-import { CacheKey } from "../utils/helper/cache/cacheKey";
+import { customerRepository } from "../repository/customerRepository";
+import { meiliClient } from "../assest/configs/connect/melisearch.config";
+import { customerColumns, mappingCustomerRow } from "../utils/mapping/customerRowAndColumn";
+import { createDataTable, updateChildTable } from "../utils/helper/modelHelper/orderHelpers";
+import { MEILI_INDEX, meiliService } from "./meiliService";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { customer } = CacheKey;
@@ -50,7 +53,7 @@ export const customerService = {
         totalCustomers = data.length;
         totalPages = 1;
       } else {
-        const { rows, count } = await customerRepository.findCustomerByPage(page, pageSize);
+        const { rows, count } = await customerRepository.findCustomerByPage({ page, pageSize });
 
         data = rows;
         totalCustomers = count;
@@ -86,30 +89,23 @@ export const customerService = {
     pageSize: number;
   }) => {
     try {
-      const fieldMap = {
-        customerId: (customer: Customer) => customer.customerId,
-        customerName: (customer: Customer) => customer.customerName,
-        cskh: (customer: Customer) => customer.cskh,
-        phone: (customer: Customer) => customer.phone,
-      } as const;
+      const index = meiliClient.index("customers");
 
-      const key = field as keyof typeof fieldMap;
+      const searchResult = await index.search(keyword, {
+        attributesToSearchOn: [field],
 
-      if (!key || !fieldMap[key]) {
-        throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
-      }
-
-      const result = await filterDataFromCache({
-        model: Customer,
-        cacheKey: customer.search,
-        keyword: keyword,
-        getFieldValue: fieldMap[key],
-        page,
-        pageSize,
-        message: `get all by ${field} from filtered cache`,
+        // Phân trang
+        page: Number(page) || 1,
+        hitsPerPage: Number(pageSize) || 25,
       });
 
-      return result;
+      return {
+        message: "Get customers from Meilisearch",
+        data: searchResult.hits,
+        totalCustomers: searchResult.totalHits,
+        totalPages: searchResult.totalPages,
+        currentPage: searchResult.page,
+      };
     } catch (error) {
       console.error(`Failed to get customers by ${field}`, error);
       if (error instanceof AppError) throw error;
@@ -118,7 +114,7 @@ export const customerService = {
   },
 
   createCustomer: async (data: any) => {
-    const { prefix = "CUSTOM", ...customerData } = data;
+    const { prefix = "CUSTOM", payment, ...customerData } = data;
 
     try {
       return await runInTransaction(async (transaction) => {
@@ -158,6 +154,23 @@ export const customerService = {
           transaction,
         );
 
+        //create customer payment
+        await createDataTable({
+          model: CustomerPayment,
+          data: { customerId: newCustomerId, ...payment },
+          transaction,
+        });
+
+        //create meilisearch
+        const customerCreated = await customerRepository.findCustomerByPk({
+          customerId: newCustomerId,
+          options: { transaction, includePayment: true },
+        });
+
+        if (customerCreated) {
+          meiliService.syncMeiliData(MEILI_INDEX.CUSTOMERS, customerCreated.toJSON());
+        }
+
         return { message: "Customer created successfully", data: newCustomer };
       });
     } catch (error) {
@@ -168,16 +181,38 @@ export const customerService = {
   },
 
   updateCustomer: async (customerId: string, customerData: any) => {
+    const { payment, ...restCustomerData } = customerData;
+
     try {
       return await runInTransaction(async (transaction) => {
-        const customer = await customerRepository.findByCustomerId(customerId, transaction);
+        const customer = await customerRepository.findCustomerByPk({
+          customerId,
+          options: { transaction },
+        });
         if (!customer) {
           throw AppError.NotFound("Customer not found", "CUSTOMER_NOT_FOUND");
         }
 
-        const result = await customerRepository.updateCustomer(customer, customerData, transaction);
+        await customerRepository.updateCustomer(customer, restCustomerData, transaction);
 
-        return { message: "Customer updated successfully", data: result };
+        await updateChildTable({
+          model: CustomerPayment,
+          where: { customerId },
+          data: { customerId, ...payment },
+          transaction,
+        });
+
+        //update meilisearch
+        const customerUpdated = await customerRepository.findCustomerByPk({
+          customerId,
+          options: { transaction, includePayment: true },
+        });
+
+        if (customerUpdated) {
+          meiliService.syncMeiliData(MEILI_INDEX.CUSTOMERS, customerUpdated.toJSON());
+        }
+
+        return { message: "Customer updated successfully", data: customerUpdated };
       });
     } catch (error) {
       console.error("❌ Update customer failed:", error);
@@ -198,7 +233,6 @@ export const customerService = {
         }
 
         const orderCount = await Order.count({ where: { customerId }, transaction });
-
         if (orderCount > 0) {
           if (role != "admin") {
             throw AppError.Conflict(
@@ -208,7 +242,10 @@ export const customerService = {
           }
         }
 
-        await customerRepository.deleteCustomer(customerId, transaction);
+        await customer.destroy({ transaction });
+
+        //delete record in meilisearch
+        meiliService.deleteMeiliData(MEILI_INDEX.CUSTOMERS, customerId);
 
         return { message: "Customer deleted successfully" };
       });
@@ -234,10 +271,10 @@ export const customerService = {
         whereCondition.timePayment = { [Op.between]: [start, end] };
       }
 
-      const data = await customerRepository.findAllForExport(whereCondition);
+      const { rows } = await customerRepository.findCustomerByPage({ whereCondition });
 
       await exportExcelResponse(res, {
-        data: data,
+        data: rows,
         sheetName: "Danh sách khách hàng",
         fileName: "customer",
         columns: customerColumns,

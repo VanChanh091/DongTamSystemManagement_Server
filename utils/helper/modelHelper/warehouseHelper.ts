@@ -1,4 +1,4 @@
-import redisCache from "../../../assest/configs/redisCache";
+import redisCache from "../../../assest/configs/connect/redis.config";
 import { warehouseRepository } from "../../../repository/warehouseRepository";
 import { AppError } from "../../appError";
 import { CacheKey } from "../cache/cacheKey";

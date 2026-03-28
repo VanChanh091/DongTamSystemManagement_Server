@@ -3,7 +3,7 @@ dotenv.config();
 
 import { NextFunction, Request, Response } from "express";
 import { orderService } from "../../../service/orderService";
-import cloudinary from "../../../assest/configs/connectCloudinary";
+import cloudinary from "../../../assest/configs/connect/cloudinary.config";
 
 //===============================ORDER AUTOCOMPLETE=====================================
 

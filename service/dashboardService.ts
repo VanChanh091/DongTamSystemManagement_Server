@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import redisCache from "../assest/configs/redisCache";
+import redisCache from "../assest/configs/connect/redis.config";
 import { Op } from "sequelize";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { dashboardRepository } from "../repository/dashboardRepository";
@@ -119,7 +119,6 @@ export const dashboardService = {
     try {
       const fieldMap = {
         orderId: (paper: PlanningPaper) => paper.orderId,
-        ghepKho: (paper: PlanningPaper) => paper.ghepKho,
         machine: (paper: PlanningPaper) => paper.chooseMachine,
         customerName: (paper: PlanningPaper) => paper.Order.Customer.customerName,
         companyName: (paper: PlanningPaper) => paper.Order.Customer.companyName,

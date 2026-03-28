@@ -3,7 +3,7 @@ dotenv.config();
 
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { planningRepository } from "../../repository/planningRepository";
-import redisCache from "../../assest/configs/redisCache";
+import redisCache from "../../assest/configs/connect/redis.config";
 import { AppError } from "../../utils/appError";
 import { PlanningBox } from "../../models/planning/planningBox";
 import { PlanningBoxTime, statusBoxType } from "../../models/planning/planningBoxMachineTime";
@@ -168,8 +168,6 @@ export const planningBoxService = {
   },
 
   getPlanningBoxByField: async (machine: string, field: string, keyword: string) => {
-    console.log(`machine ${machine} - field: ${field} - keyword: ${keyword}`);
-
     try {
       const fieldMap = {
         orderId: (paper: PlanningBox) => paper.orderId,

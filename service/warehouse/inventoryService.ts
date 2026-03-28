@@ -8,7 +8,7 @@ import { Inventory } from "../../models/warehouse/inventory";
 import { exportExcelResponse } from "../../utils/helper/excelExporter";
 import { warehouseRepository } from "../../repository/warehouseRepository";
 import { inventoryColumns, mappingInventoryRow } from "../../utils/mapping/inventoryRowAndColumn";
-import redisCache from "../../assest/configs/redisCache";
+import redisCache from "../../assest/configs/connect/redis.config";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 
 const devEnvironment = process.env.NODE_ENV !== "production";

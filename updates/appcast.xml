@@ -5,13 +5,9 @@
         <item>
             <title>Version 3.9.5</title>
             <sparkle:version>3.9.5</sparkle:version> 
-            <description>Mở rộng chức năng cho phần đơn hàng: Có thể thêm ảnh và tiến trình xử lí 
-            Thêm mục nhập mã nhân viên khi báo cáo số lượng
-            Thay đổi cách thức đăng ký giao hàng
-            Có thể xuất kho tại tồn kho và lịch giao hàng
-            Bio đơn hàng có thể nhập từ 3-4 số
-            Fix lại các lỗi search và xuất excel
-            Thêm phần nhắc lưu cho trang xếp xe
+            <description>Thêm hiển thị số lượng cho đơn chờ xếp giao và lệnh xuất kho 
+            Thêm thông báo khi có lệnh yêu cầu xuất kho mới
+            Tách bảng khách hàng thành 2 phần: thông tin khách hàng và thanh toán
             </description>
             <pubDate>Thu, 19 March 2026</pubDate>
             <enclosure url="dongtam.exe" 

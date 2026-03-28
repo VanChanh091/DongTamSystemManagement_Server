@@ -1,4 +1,4 @@
-import redisCache from "../assest/configs/redisCache";
+import redisCache from "../assest/configs/connect/redis.config";
 import { RedisUserData } from "../interface/types";
 import generateToken from "../middlewares/jwtHelper";
 import { authRepository } from "../repository/authRepository";
@@ -11,7 +11,7 @@ const handleSendEmail = async (email: string, otp: number) => {
     await sendEmail(
       email,
       "Mã xác thực đăng ký tài khoản",
-      `Vui lòng không chia sẻ mã OTP với bất kì ai. Mã OTP của bạn là: ${otp}. Mã OTP có hiệu lực trong 10 phút.`
+      `Vui lòng không chia sẻ mã OTP với bất kì ai. Mã OTP của bạn là: ${otp}. Mã OTP có hiệu lực trong 10 phút.`,
     );
   } catch (error) {
     console.log(error);

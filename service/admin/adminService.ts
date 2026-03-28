@@ -2,9 +2,9 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import bcrypt from "bcrypt";
-import cloudinary from "../../assest/configs/connectCloudinary";
+import cloudinary from "../../assest/configs/connect/cloudinary.config";
 import { Request } from "express";
-import { validPermissions } from "../../assest/configs/labelFields";
+import { validPermissions } from "../../assest/labelFields";
 import { Order, OrderStatus } from "../../models/order/order";
 import { userRole } from "../../models/user/user";
 import { adminRepository } from "../../repository/adminRepository";

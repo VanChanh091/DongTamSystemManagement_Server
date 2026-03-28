@@ -1,6 +1,6 @@
 import sharp from "sharp";
 import streamifier from "streamifier";
-import cloudinary from "../../assest/configs/connectCloudinary";
+import cloudinary from "../../assest/configs/connect/cloudinary.config";
 import { AppError } from "../appError";
 
 export const convertToWebp = async (buffer: Buffer, quality: number = 80) => {

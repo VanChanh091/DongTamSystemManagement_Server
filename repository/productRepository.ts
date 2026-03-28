@@ -1,4 +1,4 @@
-import { Sequelize, Transaction } from "sequelize";
+import { Transaction } from "sequelize";
 import { Product } from "../models/product/product";
 
 export const productRepository = {
@@ -9,17 +9,34 @@ export const productRepository = {
     });
   },
 
-  findProductByPk: async (producId: string) => {
-    return await Product.findByPk(producId);
+  findProductByPk: async (producId: string, transaction: Transaction) => {
+    return await Product.findByPk(producId, {
+      attributes: { exclude: ["createdAt", "updatedAt"] },
+      transaction,
+    });
   },
 
-  findProductByPage: async (page: number, pageSize: number) => {
-    return await Product.findAndCountAll({
+  findProductByPage: async ({
+    page,
+    pageSize,
+    whereCondition = {},
+  }: {
+    page?: number;
+    pageSize?: number;
+    whereCondition?: any;
+  }) => {
+    const query: any = {
+      where: whereCondition,
       attributes: { exclude: ["createdAt", "updatedAt"] },
-      offset: (page - 1) * pageSize,
-      limit: pageSize,
       order: [["productSeq", "ASC"]],
-    });
+    };
+
+    if (page && pageSize) {
+      query.offset = (page - 1) * pageSize;
+      query.limit = pageSize;
+    }
+
+    return await Product.findAndCountAll(query);
   },
 
   //create
@@ -30,14 +47,5 @@ export const productRepository = {
   //update
   updateProduct: async (product: any, productData: any, transaction?: Transaction) => {
     return await product.update(productData, { transaction });
-  },
-
-  //export
-  exportExcelProducts: async (whereCondition: any = {}) => {
-    return await Product.findAll({
-      where: whereCondition,
-      attributes: { exclude: ["createdAt", "updatedAt"] },
-      order: [["productSeq", "ASC"]],
-    });
   },
 };

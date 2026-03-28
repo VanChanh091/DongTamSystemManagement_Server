@@ -71,10 +71,9 @@ export const createCustomer = async (req: Request, res: Response, next: NextFunc
 // update
 export const updateCustomer = async (req: Request, res: Response, next: NextFunction) => {
   const { customerId } = req.query as { customerId: string };
-  const { ...customerData } = req.body;
 
   try {
-    const response = await customerService.updateCustomer(customerId, customerData);
+    const response = await customerService.updateCustomer(customerId, req.body);
     return res.status(201).json(response);
   } catch (error) {
     next(error);

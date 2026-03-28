@@ -2,11 +2,9 @@ import { Op, Transaction } from "sequelize";
 import { Customer } from "../../../models/customer/customer";
 import { Product } from "../../../models/product/product";
 import { Order } from "../../../models/order/order";
-import redisCache from "../../../assest/configs/redisCache";
-import { FilterDataFromCacheProps } from "../../../interface/types";
+import redisCache from "../../../assest/configs/connect/redis.config";
 import { orderRepository } from "../../../repository/orderRepository";
 import { normalizeVN } from "../normalizeVN";
-import { number } from "yargs";
 
 export const validateCustomerAndProduct = async (customerId: string, productId: string) => {
   const customer = await Customer.findOne({ where: { customerId } });
@@ -111,8 +109,6 @@ export const calculateOrderMetrics = async (data: any) => {
     quantity: qty,
   });
 
-  console.log(`volume: ${volume}`);
-
   const responseData = {
     flute,
     acreage,
@@ -145,15 +141,18 @@ export const calculateVolume = async ({
   return volumeRaw;
 };
 
-export const createDataTable = async (
-  id: string,
-  model: any,
-  data: Record<string, any>,
-  transaction?: Transaction,
-) => {
+export const createDataTable = async ({
+  model,
+  data,
+  transaction,
+}: {
+  model: any;
+  data: Record<string, any>;
+  transaction?: Transaction;
+}) => {
   try {
     if (data) {
-      await model.create({ orderId: id, ...data }, { transaction });
+      await model.create(data, { transaction });
     }
   } catch (error) {
     console.error(`Create table ${model} error:`, error);
@@ -161,15 +160,26 @@ export const createDataTable = async (
   }
 };
 
-export const updateChildOrder = async (id: string, model: any, data: Record<string, any>) => {
+export const updateChildTable = async ({
+  model,
+  data,
+  where,
+  transaction,
+}: {
+  model: any;
+  data: Record<string, any>;
+  where: Record<string, any>;
+  transaction?: Transaction;
+}) => {
   try {
-    if (data) {
-      const existingData = await model.findOne({ where: { orderId: id } });
-      if (existingData) {
-        await model.update(data, { where: { orderId: id } });
-      } else {
-        await model.create({ orderId: id, ...data });
-      }
+    if (!data || Object.keys(data).length === 0) return;
+
+    const existingRecord = await model.findOne({ where, transaction });
+
+    if (existingRecord) {
+      return await model.update(data, { where, transaction });
+    } else {
+      return await model.create({ ...where, ...data }, { transaction });
     }
   } catch (error) {
     console.error(`Create table ${model} error:`, error);
@@ -270,60 +280,6 @@ export const filterOrdersFromCache = async ({
     totalPages,
     currentPage,
   };
-};
-
-export const filterDataFromCache = async <T>({
-  model,
-  cacheKey,
-  keyword,
-  getFieldValue,
-  page,
-  pageSize,
-  message,
-  fetchFunction,
-}: FilterDataFromCacheProps<T>) => {
-  const currentPage = Number(page) || 1;
-  const currentPageSize = Number(pageSize) || 20;
-  const lowerKeyword = keyword?.toLowerCase?.() || "";
-
-  try {
-    let allData = await redisCache.get(cacheKey);
-    let sourceMessage = "";
-
-    if (!allData) {
-      allData = fetchFunction ? await fetchFunction() : await model.findAll();
-      await redisCache.set(cacheKey, JSON.stringify(allData), "EX", 900);
-      sourceMessage = `Get ${cacheKey} from DB`;
-    } else {
-      allData = JSON.parse(allData);
-      sourceMessage = message || `Get ${cacheKey} from cache`;
-    }
-
-    // Lọc dữ liệu
-    const filteredData = allData.filter((item: any) => {
-      const fieldValue = getFieldValue(item);
-      return fieldValue != null
-        ? normalizeVN(String(fieldValue).toLowerCase()).includes(normalizeVN(lowerKeyword))
-        : false;
-    });
-
-    // Phân trang
-    const totalCustomers = filteredData.length;
-    const totalPages = Math.ceil(totalCustomers / currentPageSize);
-    const offset = (currentPage - 1) * currentPageSize;
-    const paginatedData = filteredData.slice(offset, offset + currentPageSize);
-
-    return {
-      message: sourceMessage,
-      data: paginatedData,
-      totalCustomers,
-      totalPages,
-      currentPage,
-    };
-  } catch (error) {
-    console.error(error);
-    throw new Error("Lỗi server");
-  }
 };
 
 export function formatterStructureOrder(cell: Record<string, any>) {

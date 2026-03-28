@@ -14,6 +14,7 @@ import qcRoutes from "./userRouter/qualityControlRoutes";
 import deliveryRoutes from "./userRouter/deliveryRoutes";
 import badgeRoutes from "./badgeRouter/badgeRoutes";
 import processingRoutes from "./userRouter/processingRoutes";
+import meilisearchRoutes from "./meilisearchRouter/meilisearchRoutes";
 
 export {
   customerRoutes,
@@ -34,4 +35,7 @@ export {
 
   //process
   processingRoutes,
+
+  //meilisearch
+  meilisearchRoutes,
 };

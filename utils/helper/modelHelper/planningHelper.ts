@@ -3,7 +3,7 @@ import { Order } from "../../../models/order/order";
 import { Customer } from "../../../models/customer/customer";
 import { PlanningBox } from "../../../models/planning/planningBox";
 import { CacheManager } from "../cache/cacheManager";
-import redisCache from "../../../assest/configs/redisCache";
+import redisCache from "../../../assest/configs/connect/redis.config";
 import { Request, Response } from "express";
 import { BreakTime, FilterDataFromCacheProps } from "../../../interface/types";
 import { AppError } from "../../appError";

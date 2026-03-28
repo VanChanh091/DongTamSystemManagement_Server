@@ -1,20 +1,24 @@
-import { col, fn, Op, Sequelize, where } from "sequelize";
+import { col, fn, Op, Transaction, where } from "sequelize";
 import { EmployeeBasicInfo } from "../models/employee/employeeBasicInfo";
 import { EmployeeCompanyInfo } from "../models/employee/employeeCompanyInfo";
 
 export const employeeRepository = {
-  findEmployeeById: async (employeeId: number) => {
-    return await EmployeeBasicInfo.findOne({
-      where: { employeeId: employeeId },
-      include: [{ model: EmployeeCompanyInfo, as: "companyInfo" }],
+  findEmployeeByPK: async (employeeId: number, transaction: Transaction) => {
+    return await EmployeeBasicInfo.findByPk(employeeId, {
+      attributes: { exclude: ["createdAt", "updatedAt"] },
+      include: [
+        {
+          model: EmployeeCompanyInfo,
+          as: "companyInfo",
+          attributes: { exclude: ["createdAt", "updatedAt"] },
+        },
+      ],
+      transaction,
     });
   },
 
-  findEmployeeByPk: async (employeeId: number, transaction?: any) => {
-    return await EmployeeBasicInfo.findByPk(employeeId, {
-      include: [{ model: EmployeeCompanyInfo, as: "companyInfo" }],
-      transaction,
-    });
+  findEmployeeByPk: async (employeeId: number, transaction: Transaction) => {
+    return await EmployeeBasicInfo.findByPk(employeeId, { transaction });
   },
 
   findAllEmployee: async () => {
@@ -30,20 +34,34 @@ export const employeeRepository = {
     });
   },
 
-  findEmployeeByPage: async (page: number, pageSize: number) => {
-    return await EmployeeBasicInfo.findAndCountAll({
+  findEmployeeByPage: async ({
+    page,
+    pageSize,
+    whereCondition = {},
+  }: {
+    page?: number;
+    pageSize?: number;
+    whereCondition?: any;
+  }) => {
+    const query: any = {
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {
           model: EmployeeCompanyInfo,
+          where: whereCondition,
           as: "companyInfo",
           attributes: { exclude: ["createdAt", "updatedAt"] },
         },
       ],
-      offset: (page - 1) * pageSize,
-      limit: pageSize,
       order: [["employeeId", "ASC"]],
-    });
+    };
+
+    if (page && pageSize) {
+      query.offset = (page - 1) * pageSize;
+      query.limit = pageSize;
+    }
+
+    return await EmployeeBasicInfo.findAndCountAll(query);
   },
 
   findEmployeeByPosition: async () => {
@@ -77,19 +95,5 @@ export const employeeRepository = {
 
   deleteEmployee: async (employee: any, transaction?: any) => {
     return await employee.destroy(transaction);
-  },
-
-  exportExcelEmpl: async (whereCondition: any = {}) => {
-    return await EmployeeBasicInfo.findAll({
-      attributes: { exclude: ["createdAt", "updatedAt"] },
-      include: [
-        {
-          model: EmployeeCompanyInfo,
-          where: whereCondition,
-          as: "companyInfo",
-          attributes: { exclude: ["createdAt", "updatedAt"] },
-        },
-      ],
-    });
   },
 };

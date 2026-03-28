@@ -1,22 +1,44 @@
-import { Op, Sequelize, Transaction } from "sequelize";
+import { Op, Transaction } from "sequelize";
 import { Customer } from "../models/customer/customer";
+import { CustomerPayment } from "../models/customer/customerPayment";
 
 export const customerRepository = {
   //get all
   findAllCustomer: async () => {
     return await Customer.findAll({
-      attributes: { exclude: ["createdAt", "updatedAt"] },
+      attributes: ["customerId", "customerName", "companyName"],
     });
   },
 
   //get by field
-  findCustomerByPage: async (page: number, pageSize: number) => {
-    return await Customer.findAndCountAll({
+  findCustomerByPage: async ({
+    page,
+    pageSize,
+    whereCondition = {},
+  }: {
+    page?: number;
+    pageSize?: number;
+    whereCondition?: any;
+  }) => {
+    const query: any = {
+      where: whereCondition,
       attributes: { exclude: ["updatedAt"] },
-      offset: (page - 1) * pageSize,
-      limit: pageSize,
+      include: [
+        {
+          model: CustomerPayment,
+          as: "payment",
+          attributes: { exclude: ["createdAt", "updatedAt"] },
+        },
+      ],
       order: [["customerSeq", "ASC"]],
-    });
+    };
+
+    if (page && pageSize) {
+      query.offset = (page - 1) * pageSize;
+      query.limit = pageSize;
+    }
+
+    return await Customer.findAndCountAll(query);
   },
 
   findByIdOrMst: async (sanitizedPrefix: string, mst: string, transaction?: Transaction) => {
@@ -35,28 +57,30 @@ export const customerRepository = {
   },
 
   //update
-  findByCustomerId: async (customerId: string, transaction?: Transaction) => {
-    return await Customer.findOne({ where: { customerId }, transaction });
+  findCustomerByPk: async ({
+    customerId,
+    options = {},
+  }: {
+    customerId: string;
+    options: { transaction?: Transaction; includePayment?: boolean };
+  }) => {
+    const includePayment = options.includePayment
+      ? [
+          {
+            model: CustomerPayment,
+            as: "payment",
+            attributes: { exclude: ["createdAt", "updatedAt"] },
+          },
+        ]
+      : [];
+    return await Customer.findByPk(customerId, {
+      attributes: { exclude: ["updatedAt"] },
+      include: includePayment,
+      transaction: options.transaction,
+    });
   },
 
-  updateCustomer: async (customer: any, customerData: any, transaction?: Transaction) => {
+  updateCustomer: async (customer: Customer, customerData: any, transaction?: Transaction) => {
     return await customer.update(customerData, { transaction });
-  },
-
-  //delete
-  deleteCustomer: async (customerId: string, transaction?: Transaction) => {
-    return await Customer.destroy({
-      where: { customerId },
-      transaction,
-    });
-  },
-
-  //export
-  findAllForExport: async (whereCondition: any = {}) => {
-    return await Customer.findAll({
-      where: whereCondition,
-      attributes: { exclude: ["createdAt", "updatedAt"] },
-      order: [["customerSeq", "ASC"]],
-    });
   },
 };
