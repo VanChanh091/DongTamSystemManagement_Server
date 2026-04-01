@@ -2,9 +2,7 @@ import { Op, Transaction } from "sequelize";
 import { Customer } from "../../../models/customer/customer";
 import { Product } from "../../../models/product/product";
 import { Order } from "../../../models/order/order";
-import redisCache from "../../../assest/configs/connect/redis.config";
 import { orderRepository } from "../../../repository/orderRepository";
-import { normalizeVN } from "../normalizeVN";
 
 export const validateCustomerAndProduct = async (customerId: string, productId: string) => {
   const customer = await Customer.findOne({ where: { customerId } });

@@ -9,16 +9,23 @@ exports.productRepository = {
             attributes: { exclude: ["createdAt", "updatedAt"] },
         });
     },
-    findProductByPk: async (producId) => {
-        return await product_1.Product.findByPk(producId);
-    },
-    findProductByPage: async (page, pageSize) => {
-        return await product_1.Product.findAndCountAll({
+    findProductByPk: async (producId, transaction) => {
+        return await product_1.Product.findByPk(producId, {
             attributes: { exclude: ["createdAt", "updatedAt"] },
-            offset: (page - 1) * pageSize,
-            limit: pageSize,
-            order: [["productSeq", "ASC"]],
+            transaction,
         });
+    },
+    findProductByPage: async ({ page, pageSize, whereCondition = {}, }) => {
+        const query = {
+            where: whereCondition,
+            attributes: { exclude: ["createdAt", "updatedAt"] },
+            order: [["productSeq", "ASC"]],
+        };
+        if (page && pageSize) {
+            query.offset = (page - 1) * pageSize;
+            query.limit = pageSize;
+        }
+        return await product_1.Product.findAndCountAll(query);
     },
     //create
     createProduct: async (data, transaction) => {
@@ -27,14 +34,6 @@ exports.productRepository = {
     //update
     updateProduct: async (product, productData, transaction) => {
         return await product.update(productData, { transaction });
-    },
-    //export
-    exportExcelProducts: async (whereCondition = {}) => {
-        return await product_1.Product.findAll({
-            where: whereCondition,
-            attributes: { exclude: ["createdAt", "updatedAt"] },
-            order: [["productSeq", "ASC"]],
-        });
     },
 };
 //# sourceMappingURL=productRepository.js.map

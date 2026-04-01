@@ -93,6 +93,11 @@ export const employeeService = {
     pageSize: number;
   }) => {
     try {
+      const validFields = ["fullName", "phoneNumber", "employeeCode", "status"];
+      if (!validFields.includes(field)) {
+        throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
+      }
+
       const index = meiliClient.index("employees");
 
       const searchResult = await index.search(keyword, {

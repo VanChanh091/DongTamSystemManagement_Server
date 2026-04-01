@@ -18,7 +18,7 @@ const parseOrderData = (buffer) => {
     const workbook = xlsx_1.default.read(buffer, { type: "buffer", cellDates: true });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rawData = xlsx_1.default.utils.sheet_to_json(sheet, { defval: null });
-    console.log(rawData);
+    console.log(rawData[0]);
     // Nó sẽ xóa \n và trim khoảng trắng để "Số \nĐơn Hàng" thành "Số Đơn Hàng"
     const cleanData = rawData.map((row) => {
         const newRow = {};
@@ -84,7 +84,13 @@ const parseOrderData = (buffer) => {
             }
         }
         const formattedDaoXa = toTitleCase(row["Tề Biên"]);
+        const formattedDVT = toTitleCase(row["dvt"]);
         const rawDoanhSo = parseFloat(row["Doanh Số"]) || 0;
+        const quantityCustomer = parseInt(row["Số Lượng ĐH"]) || 0;
+        const totalQtyInbound = Math.round(parseFloat(row["Số Lượng Sản Xuất carton"]) || 0);
+        // Áp dụng công thức của bạn
+        const diffValue = totalQtyInbound - quantityCustomer;
+        const calculatedStatus = diffValue > 0 ? "planning" : "accept";
         return {
             orderId: row["Số Đơn Hàng"],
             dayReceiveOrder: row["Ngày nhận đơn"],
@@ -101,8 +107,8 @@ const parseOrderData = (buffer) => {
             songB: structure.songB,
             songC: structure.songC,
             songE2: "",
-            dvt: "Tấm",
             vat: vatValue,
+            dvt: formattedDVT,
             lengthPaperCustomer: parseFloat(row["Cắt"]),
             lengthPaperManufacture: parseFloat(row["Cắt"]),
             paperSizeCustomer: parseFloat(row["khỗ"]),
@@ -118,20 +124,12 @@ const parseOrderData = (buffer) => {
             volume: 0,
             instructSpecial: row["Hướng dẫn đặc biệt"],
             isBox: !!qcBox,
-            status: "planning",
+            status: calculatedStatus,
             rejectReason: "",
             orderIdCustomer: "",
-            // // Các trường Boolean (Xã, In, Cắt khe...)
-            // // Nếu cell có dữ liệu (không null/undefined/NaN) -> true
-            // canLan: row["XÃ"] ? true : false,
-            // // Giả sử mapping các cột tương ứng vào model
-            // isIn: row["IN"] ? true : false,
-            // isCatKhe: row["CẮT KHE"] ? true : false,
-            // isBe: row["BẾ"] ? true : false,
-            // isDan: row["DÁN"] ? true : false,
-            // isGhim: row["ĐÓNG GHIM"] ? true : false,
             // Dữ liệu thô để bạn dùng đối chiếu ID trong DB
             _rawCustomerName: row["Mã Khách Hàng"],
+            _rawCompanyName: row["Khách Hàng"],
             _rawProductName: row["Tên Sản Phẩm"],
             inventoryFields: {
                 totalQtyInbound: Math.round(parseFloat(row["Số Lượng Sản Xuất carton"]) || 0),
@@ -144,7 +142,7 @@ const parseOrderData = (buffer) => {
 };
 exports.parseOrderData = parseOrderData;
 const parseCustomerData = (buffer) => {
-    const workbook = xlsx_1.default.read(buffer, { type: "buffer" });
+    const workbook = xlsx_1.default.read(buffer, { type: "buffer", cellDates: true });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rawData = xlsx_1.default.utils.sheet_to_json(sheet, { defval: null });
     console.log(rawData[0]);
@@ -160,22 +158,27 @@ const parseCustomerData = (buffer) => {
             phone: row["Số Điện Thoại"],
             contactPerson: row["Người Liên Hệ"],
             dayCreated: row["Ngày Tạo"],
-            debtCurrent: row["Công Nợ Hiện Tại"],
-            debtLimit: row["Hạn Mức Công Nợ"],
-            timePayment: row["Hạn Thanh Toán"],
             rateCustomer: row["Đánh Giá"],
             customerSource: "",
             cskh: row["CSKH"],
             customerSeq: index + 1,
+            payments: {
+                debtCurrent: row["Công Nợ Hiện Tại"],
+                debtLimit: row["Hạn Mức Công Nợ"],
+                timePayment: row["Hạn Thanh Toán"],
+                paymentType: "monthly",
+                closingDate: 1,
+            },
         };
     });
 };
 exports.parseCustomerData = parseCustomerData;
 const parseProductData = (buffer) => {
-    const workbook = xlsx_1.default.read(buffer, { type: "buffer" });
+    const workbook = xlsx_1.default.read(buffer, { type: "buffer", cellDates: true });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rawData = xlsx_1.default.utils.sheet_to_json(sheet, { defval: null });
     console.log(rawData[0]);
+    ``;
     return rawData.map((row, index) => {
         return {
             productId: row["Mã Sản Phẩm"],

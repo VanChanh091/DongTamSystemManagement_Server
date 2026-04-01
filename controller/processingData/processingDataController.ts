@@ -9,6 +9,9 @@ import { Product } from "../../models/product/product";
 import { Order } from "../../models/order/order";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { Inventory } from "../../models/warehouse/inventory";
+import { CustomerPayment } from "../../models/customer/customerPayment";
+import { User } from "../../models/user/user";
+import { AppError } from "../../utils/appError";
 
 const getDebugInfo = (str: string) => {
   const s = str || "";
@@ -42,12 +45,12 @@ export const bulkImportOrdersController = async (
   next: NextFunction,
 ) => {
   try {
-    const { userId } = req.user;
     const ordersFromExcel = parseOrderData(req.file!.buffer);
 
-    const [customers, products] = await Promise.all([
-      Customer.findAll({ attributes: ["customerId", "customerName", "cskh"] }),
+    const [customers, products, users] = await Promise.all([
+      Customer.findAll({ attributes: ["customerId", "customerName", "companyName", "cskh"] }),
       Product.findAll({ attributes: ["productId", "productName"] }),
+      User.findAll({ attributes: ["userId", "fullName"] }), // Lấy danh sách user để map
     ]);
 
     const validOrders: any[] = [];
@@ -124,13 +127,53 @@ export const bulkImportOrdersController = async (
         continue;
       }
 
+      // --- LOGIC MỚI: TÌM USERID DỰA TRÊN CSKH ---
+      let targetUserId = null;
+      const rawCskh = (customer.cskh || "").toString().toLowerCase().trim();
+
+      const cleanString = (str: string) =>
+        (str || "").toString().trim().toLowerCase().normalize("NFC");
+
+      const specialCskhMap: Record<string, string> = {
+        "công ty": "huỳnh thị thuận",
+        nhân: "trương dương mỹ chi",
+      };
+
+      if (rawCskh) {
+        const normCskh = cleanString(rawCskh);
+        const searchName = normCskh.replace(/^(ms|mr|mrs|anh|chị|em|dì|cô|chú)\s+/g, "").trim();
+
+        let userMatched = null;
+
+        // Trường hợp từ khóa đặc biệt: "công ty" hoặc "nhân"
+        if (specialCskhMap[searchName]) {
+          const fullNameToFind = specialCskhMap[searchName];
+          userMatched = users.find((u) => cleanString(u.fullName).includes(fullNameToFind));
+        } else {
+          userMatched = users.find((u) => cleanString(u.fullName).includes(searchName));
+        }
+
+        if (!userMatched) {
+          throw AppError.BadRequest(
+            `Không tìm thấy nhân viên phù hợp trong hệ thống cho CSKH: "${rawCskh}"`,
+            "USER_CSKH_NOT_FOUND",
+          );
+        }
+
+        targetUserId = userMatched.userId;
+      }
+
+      // Nếu không tìm thấy User phù hợp, có thể fallback về userId của người đang login
+      // hoặc báo lỗi tùy bạn. Ở đây tôi để mặc định là userId người login nếu không tìm thấy.
+      const finalUserId = targetUserId || req.user.userId;
+
       validOrders.push({
         ...item,
         customerId: customer.customerId,
         productId: product.productId,
-        userId: userId,
-        status: "planning",
-        statusPriority: 4,
+        userId: finalUserId,
+        status: item.status,
+        statusPriority: item.status === "planning" ? 4 : 2,
         orderSortValue: calculateOrderSortValue(item.orderId),
       });
 
@@ -165,17 +208,21 @@ export const bulkImportCustomers = async (req: Request, res: Response, next: Nex
   try {
     const customersFromExcel = parseCustomerData(req.file!.buffer);
 
-    const validOrders: any[] = [];
+    const validCustomers: any[] = [];
+    const validPayments: any[] = [];
     const logs = { success: 0, failed: 0, errors: [] as string[] };
 
     for (const item of customersFromExcel) {
-      validOrders.push({ ...item });
+      validCustomers.push({ ...item });
+      validPayments.push({ ...item.payments, customerId: item.customerId });
+
       logs.success++;
     }
 
-    if (validOrders.length > 0) {
+    if (validCustomers.length > 0) {
       await runInTransaction(async (transaction) => {
-        await Customer.bulkCreate(validOrders, { transaction });
+        await Customer.bulkCreate(validCustomers, { transaction });
+        await CustomerPayment.bulkCreate(validPayments, { transaction });
       });
     }
 

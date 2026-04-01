@@ -93,11 +93,6 @@ export function initCustomerModel(sequelize: Sequelize): typeof Customer {
       indexes: [
         //get
         { fields: ["customerSeq"] },
-
-        //search
-        { fields: ["customerName"] },
-        { fields: ["phone"] },
-        { fields: ["cskh"] },
       ],
     },
   );

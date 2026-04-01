@@ -8,7 +8,7 @@ import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { OutboundHistory } from "../../models/warehouse/outboundHistory";
 import { warehouseRepository } from "../../repository/warehouseRepository";
 import { OutboundDetail } from "../../models/warehouse/outboundDetail";
-import { planningRepository } from "../../repository/planningRepository";
+import { planningHelper } from "../../repository/planning/planningHelper";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { Inventory } from "../../models/warehouse/inventory";
 import { exportWarehouse } from "../../utils/helper/exportPDF";
@@ -253,7 +253,7 @@ export const outboundService = {
         const slipCode = `XK${year}${month}${day}`;
 
         // Tạo outbound
-        const outbound = await planningRepository.createData({
+        const outbound = await planningHelper.createData({
           model: OutboundHistory,
           data: {
             dateOutbound: now,
@@ -268,7 +268,7 @@ export const outboundService = {
 
         // Tạo outbound detail
         for (const item of preparedDetails) {
-          await planningRepository.createData({
+          await planningHelper.createData({
             model: OutboundDetail,
             data: {
               outboundId: outbound.outboundId,

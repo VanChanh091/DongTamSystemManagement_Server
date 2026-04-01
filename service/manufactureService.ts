@@ -2,14 +2,14 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import redisCache from "../assest/configs/connect/redis.config";
-import { Op } from "sequelize";
+import { Op, Transaction } from "sequelize";
 import { CacheManager } from "../utils/helper/cache/cacheManager";
 import { AppError } from "../utils/appError";
 import { PlanningPaper } from "../models/planning/planningPaper";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
 import { machineLabels } from "../assest/labelFields";
-import { planningRepository } from "../repository/planningRepository";
+import { planningHelper } from "../repository/planning/planningHelper";
 import { PlanningBox } from "../models/planning/planningBox";
 import { Order } from "../models/order/order";
 import { ReportPlanningPaper } from "../models/report/reportPlanningPaper";
@@ -22,6 +22,10 @@ import { planningPaperService } from "./planning/planningPaperService";
 import { Request } from "express";
 import { aggregateReportFields } from "../utils/helper/modelHelper/manufactureHelper";
 import { manufactureRepo } from "../repository/manufactureRepository";
+import { MEILI_INDEX, meiliService } from "./meiliService";
+import { reportRepository } from "../repository/reportRepository";
+import { meiliTransformer } from "../assest/configs/meilisearch/meiliTransformer";
+import { planningBoxRepository } from "../repository/planning/planningBoxRepository";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper, box } = CacheKey.manufacture;
@@ -171,7 +175,7 @@ export const manufactureService = {
         let overflow, dayReportValue;
 
         if (planning.hasOverFlow) {
-          overflow = await planningRepository.getModelById({
+          overflow = await planningHelper.getModelById({
             model: timeOverflowPlanning,
             where: { planningId },
             options: { transaction, lock: transaction?.LOCK.UPDATE },
@@ -198,7 +202,7 @@ export const manufactureService = {
           otherData.shiftManagement,
         );
 
-        await planningRepository.updateDataModel({
+        await planningHelper.updateDataModel({
           model: planning,
           data: {
             qtyProduced: newQtyProduced,
@@ -213,7 +217,7 @@ export const manufactureService = {
 
         //update qty for planning box
         if (planning.hasBox) {
-          const planningBox = await planningRepository.getModelById({
+          const planningBox = await planningHelper.getModelById({
             model: PlanningBox,
             where: { orderId: planning.orderId, planningId: planning.planningId },
             options: { transaction, lock: transaction?.LOCK.UPDATE },
@@ -232,7 +236,7 @@ export const manufactureService = {
         const quantityCustomer = planning.Order?.quantityCustomer || 0;
 
         if (totalQtyProduced >= quantityCustomer) {
-          await planningRepository.updateDataModel({
+          await planningHelper.updateDataModel({
             model: Order,
             data: { status: "planning" },
             options: { where: { orderId: planning.orderId }, transaction },
@@ -240,7 +244,7 @@ export const manufactureService = {
         }
 
         //3. tạo report theo số lần báo cáo
-        await createReportPlanning({
+        const reportCreated = await createReportPlanning({
           planning: planning.toJSON(),
           model: ReportPlanningPaper,
           qtyProduced,
@@ -253,6 +257,21 @@ export const manufactureService = {
 
         //chuyển sang trang chờ kiểm
         await planning.update({ statusRequest: "requested" }, { transaction });
+
+        //==========================MEILISEARCH=================================
+        const reportId = reportCreated.report.reportPaperId;
+
+        meiliService.syncMeiliData(MEILI_INDEX.PLANNING_PAPERS, {
+          planningId: planning.planningId,
+          status: planning.status,
+        });
+
+        const addReportData = await reportRepository.syncReportPaperForMeili(reportId, transaction);
+
+        if (addReportData) {
+          const flattenedReport = meiliTransformer.reportPaper(addReportData);
+          meiliService.syncMeiliData(MEILI_INDEX.REPORT_PAPERS, flattenedReport);
+        }
 
         return {
           message: "Add Report Production successfully",
@@ -320,7 +339,7 @@ export const manufactureService = {
         const newLackOfQty = planning.runningPlan - totalQtyProduced;
 
         //update report paper
-        await oldReport.update(
+        const reportUpdated = await oldReport.update(
           {
             qtyProduced: newQty,
             qtyWasteNorm: newWaste,
@@ -344,7 +363,7 @@ export const manufactureService = {
         const { combinedShiftProduction, combinedShiftManagement } =
           aggregateReportFields(allReports);
 
-        await planning.update(
+        const planningUpdated = await planning.update(
           {
             qtyProduced: totalQtyProduced,
             qtyWasteNorm: totalQtyWaste,
@@ -375,17 +394,53 @@ export const manufactureService = {
         const quantityCustomer = planning.Order?.quantityCustomer || 0;
 
         if (totalOrderQty >= quantityCustomer) {
-          await planningRepository.updateDataModel({
+          await planningHelper.updateDataModel({
             model: Order,
             data: { status: "planning" },
             options: { where: { orderId: planning.orderId }, transaction },
           });
         }
 
+        //==========================MEILISEARCH=================================
+
+        const reportId = reportUpdated.reportPaperId;
+
+        meiliService.syncMeiliData(MEILI_INDEX.PLANNING_PAPERS, {
+          planningId: planningUpdated.planningId,
+          status: planningUpdated.status,
+        });
+
+        const addReportData = await reportRepository.syncReportPaperForMeili(reportId, transaction);
+
+        if (addReportData) {
+          const flattenedReport = meiliTransformer.reportPaper(addReportData);
+          meiliService.syncMeiliData(MEILI_INDEX.REPORT_PAPERS, flattenedReport);
+        }
+
         return { message: "Update Report successfully", data: oldReport };
       });
     } catch (error) {
       console.error("Error update Report paper:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  syncPaperForMeili: async (reportId: number, planningUpdated: any, transaction: Transaction) => {
+    try {
+      meiliService.syncMeiliData(MEILI_INDEX.PLANNING_PAPERS, {
+        planningId: planningUpdated.planningId,
+        status: planningUpdated.status,
+      });
+
+      const addReportData = await reportRepository.syncReportPaperForMeili(reportId, transaction);
+
+      if (addReportData) {
+        const flattenedReport = meiliTransformer.reportPaper(addReportData);
+        meiliService.syncMeiliData(MEILI_INDEX.REPORT_PAPERS, flattenedReport);
+      }
+    } catch (error) {
+      console.error("Error update meilisearch paper box:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
@@ -428,24 +483,30 @@ export const manufactureService = {
         }
 
         // Check if there's another planning in 'producing' status for the same machine
-        const existingProducing = await planningRepository.getModelById({
+        const existingProducing = await planningHelper.getModelById({
           model: PlanningPaper,
           where: { chooseMachine: machine, status: "producing" },
           options: { transaction, lock: transaction?.LOCK.UPDATE },
         });
 
         if (existingProducing && existingProducing.planningId !== planningId) {
-          await planningRepository.updateDataModel({
+          await planningHelper.updateDataModel({
             model: existingProducing,
             data: { status: "planning" },
             options: { transaction },
           });
         }
 
-        await planningRepository.updateDataModel({
+        await planningHelper.updateDataModel({
           model: planning,
           data: { status: "producing" },
           options: { transaction },
+        });
+
+        //update meilisearch
+        meiliService.syncMeiliData(MEILI_INDEX.PLANNING_PAPERS, {
+          planningId: planning.planningId,
+          status: "producing",
         });
 
         return { message: "Confirm producing paper successfully", data: planning };
@@ -596,7 +657,7 @@ export const manufactureService = {
 
         const isCompletedOrder = newQtyProduced >= (planning.runningPlan || 0);
 
-        const overflow = await planningRepository.getModelById({
+        const overflow = await planningHelper.getModelById({
           model: timeOverflowPlanning,
           where: { planningBoxId, machine },
           options: { transaction, lock: transaction?.LOCK.UPDATE },
@@ -613,7 +674,7 @@ export const manufactureService = {
         if (isOverflowReport) {
           await overflow?.update({ overflowDayCompleted: new Date(dayCompleted) }, { transaction });
 
-          await planningRepository.updateDataModel({
+          await planningHelper.updateDataModel({
             model: planning,
             data: {
               qtyProduced: newQtyProduced,
@@ -626,7 +687,7 @@ export const manufactureService = {
           dayReportValue = overflow?.getDataValue("overflowDayCompleted");
         } else {
           //Cập nhật kế hoạch với số liệu mới
-          await planningRepository.updateDataModel({
+          await planningHelper.updateDataModel({
             model: planning,
             data: {
               dayCompleted: new Date(dayCompleted),
@@ -641,7 +702,7 @@ export const manufactureService = {
         }
 
         if (!isCompletedOrder) {
-          await planningRepository.updateDataModel({
+          await planningHelper.updateDataModel({
             model: planning,
             data: { status: "lackOfQty" },
             options: { transaction },
@@ -649,7 +710,7 @@ export const manufactureService = {
         }
 
         // 3. tạo report theo số lần báo cáo
-        await createReportPlanning({
+        const reportCreated = await createReportPlanning({
           planning: planning.toJSON(),
           model: ReportPlanningBox,
           qtyProduced: qtyProduced,
@@ -661,6 +722,13 @@ export const manufactureService = {
           transaction,
           isBox: true,
         });
+
+        //==========================MEILISEARCH=================================
+
+        const boxId = planning.PlanningBox.planningBoxId;
+        const reportId = reportCreated.report.reportBoxId;
+
+        await manufactureService.syncBoxForMeili(boxId, reportId, transaction);
 
         return {
           message: "Add Report Production successfully",
@@ -726,7 +794,7 @@ export const manufactureService = {
         const newLackOfQty = (planning.runningPlan || 0) - totalQtyProduced;
 
         //update report box
-        await oldReport.update(
+        const reportUpdated = await oldReport.update(
           {
             qtyProduced: newQty,
             wasteLoss: newWaste,
@@ -749,7 +817,7 @@ export const manufactureService = {
         // Gom chuỗi shiftProduction và shiftManagement
         const { combinedShiftManagement } = aggregateReportFields(allReports);
 
-        await planning.update(
+        const planningUpdated = await planning.update(
           {
             qtyProduced: totalQtyProduced,
             rpWasteLoss: totalQtyWaste,
@@ -759,10 +827,47 @@ export const manufactureService = {
           { transaction },
         );
 
+        //==========================MEILISEARCH=================================
+
+        const boxId = planning.PlanningBox.planningBoxId;
+        const reportId = reportUpdated.reportBoxId;
+
+        await manufactureService.syncBoxForMeili(boxId, reportId, transaction);
+
         return { message: "Update Report successfully", data: oldReport };
       });
     } catch (error) {
       console.error("Error update Report box:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  syncBoxForMeili: async (boxId: number, reportBoxId: number, transaction: Transaction) => {
+    try {
+      //update planningBox
+      const fullBox = await planningBoxRepository.syncPlanningBoxToMeili({
+        whereCondition: { planningBoxId: boxId },
+        transaction,
+      });
+
+      if (fullBox && fullBox.length > 0) {
+        const flattenData = fullBox.map(meiliTransformer.planningBox);
+        meiliService.syncMeiliData(MEILI_INDEX.PLANNING_BOXES, flattenData);
+      }
+
+      //update report
+      const updateReportData = await reportRepository.syncReportBoxesForMeili(
+        reportBoxId,
+        transaction,
+      );
+
+      if (updateReportData) {
+        const flattenedReport = meiliTransformer.reportBox(updateReportData);
+        meiliService.syncMeiliData(MEILI_INDEX.REPORT_BOXES, flattenedReport);
+      }
+    } catch (error) {
+      console.error("Error update meilisearch for box:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
@@ -774,7 +879,7 @@ export const manufactureService = {
     try {
       const result = await runInTransaction(async (transaction) => {
         // Lấy planning cần update
-        const planning = await planningRepository.getModelById({
+        const planning = await planningHelper.getModelById({
           model: PlanningBoxTime,
           where: { planningBoxId, machine },
           options: { transaction, lock: transaction?.LOCK.UPDATE, skipLocked: true },
@@ -808,7 +913,7 @@ export const manufactureService = {
         await manufactureRepo.updatePlanningBoxTime(planningBoxId, machine, transaction);
 
         // Update sang producing
-        await planningRepository.updateDataModel({
+        await planningHelper.updateDataModel({
           model: planning,
           data: { status: "producing" },
           options: { transaction },

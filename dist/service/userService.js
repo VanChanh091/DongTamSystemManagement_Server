@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.userService = void 0;
-const redisCache_1 = __importDefault(require("../assest/configs/redisCache"));
+const redis_config_1 = __importDefault(require("../assest/configs/connect/redis.config"));
 const appError_1 = require("../utils/appError");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const converToWebp_1 = require("../utils/image/converToWebp");
@@ -42,7 +42,7 @@ exports.userService = {
             await user.update(parsedUser);
             const updatedUser = await userRepository_1.userRepository.findUserById(userId);
             const { password, ...sanitizedUser } = updatedUser.toJSON();
-            await redisCache_1.default.del("users:all");
+            await redis_config_1.default.del("users:all");
             return { message: "Update profile user successfully", data: sanitizedUser };
         }
         catch (error) {

@@ -7,8 +7,7 @@ const appError_1 = require("../../../utils/appError");
 //===============================PLANNING ORDER=====================================
 //getOrderAccept
 const getOrderAccept = async (req, res, next) => {
-    const { type, field, keyword } = req.query;
-    //planned and unplanned
+    const { type, field, keyword } = req.query; //planned and unplanned
     try {
         let response;
         if (field && keyword) {
@@ -17,13 +16,7 @@ const getOrderAccept = async (req, res, next) => {
         else {
             response = await planningStatusService_1.planningStatusService.getOrderAccept(type);
         }
-        return res.status(200).json({
-            ...response,
-            // message: response.fromCache //fix cache for 2 case: have running plan or not have running plan
-            //   ? "get all order have status:accept from cache"
-            //   : "get all order have status:accept",
-            message: "get all order have status:accept",
-        });
+        return res.status(200).json(response);
     }
     catch (error) {
         next(error);

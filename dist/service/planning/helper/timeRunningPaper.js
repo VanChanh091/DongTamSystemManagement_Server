@@ -2,9 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.calculateTimeRunning = exports.updateSortPlanning = void 0;
 const sequelize_1 = require("sequelize");
-const planningRepository_1 = require("../../../repository/planningRepository");
+const planningHelper_1 = require("../../../repository/planning/planningHelper");
 const planningPaper_1 = require("../../../models/planning/planningPaper");
 const timeOverflowPlanning_1 = require("../../../models/planning/timeOverflowPlanning");
+const planningPaperRepository_1 = require("../../../repository/planning/planningPaperRepository");
 //Công thức tính thời gian: time = (Thời gian A/B + (tổng dài / tốc độ)) / (hiệu suất / 100)
 // Trong đó:
 // A: Thời gian thay đổi kích thước (phút) (nếu đơn đầu tiên trong ngày thì luôn tính thời gian thay đổi kích thước (30p))
@@ -24,7 +25,7 @@ const timeOverflowPlanning_1 = require("../../../models/planning/timeOverflowPla
 const updateSortPlanning = async (updateIndex, transaction) => {
     const updates = updateIndex
         .filter((item) => item.sortPlanning)
-        .map((item) => planningRepository_1.planningRepository.updateDataModel({
+        .map((item) => planningHelper_1.planningHelper.updateDataModel({
         model: planningPaper_1.PlanningPaper,
         data: { sortPlanning: item.sortPlanning },
         options: {
@@ -52,7 +53,7 @@ const calculateTimeRunning = async ({ plannings, machineInfo, machine, dayStart,
             .sort((a, b) => new Date(b.dayStart).getTime() - new Date(a.dayStart).getTime())[0];
         if (feComplete) {
             const overflowRecord = feComplete.hasOverFlow
-                ? await planningRepository_1.planningRepository.getModelById({
+                ? await planningHelper_1.planningHelper.getModelById({
                     model: timeOverflowPlanning_1.timeOverflowPlanning,
                     where: { planningId: feComplete.planningId },
                     options: { transaction },
@@ -163,7 +164,7 @@ const calculateTimeForOnePlanning = async ({ planning, machine, machineInfo, cur
         timeStart,
         transaction,
     });
-    await planningRepository_1.planningRepository.updateDataModel({
+    await planningHelper_1.planningHelper.updateDataModel({
         model: planningPaper_1.PlanningPaper,
         data: {
             dayStart: new Date(result.dayStart),
@@ -223,7 +224,7 @@ const isDuringBreak = (start, end) => {
 };
 const handleOverflow = async ({ hasOverFlow, predictedEnd, endOfWork, planningId, currentDay, timeStart, transaction, }) => {
     if (!hasOverFlow) {
-        await planningRepository_1.planningRepository.deleteModelData({
+        await planningHelper_1.planningHelper.deleteModelData({
             model: timeOverflowPlanning_1.timeOverflowPlanning,
             where: { planningId },
             transaction,
@@ -242,12 +243,12 @@ const handleOverflow = async ({ hasOverFlow, predictedEnd, endOfWork, planningId
     startOverflow.setDate(startOverflow.getDate() + 1);
     const overflowEnd = new Date(startOverflow);
     overflowEnd.setMinutes(overflowEnd.getMinutes() + overflowMin);
-    await planningRepository_1.planningRepository.deleteModelData({
+    await planningHelper_1.planningHelper.deleteModelData({
         model: timeOverflowPlanning_1.timeOverflowPlanning,
         where: { planningId },
         transaction,
     });
-    await planningRepository_1.planningRepository.createData({
+    await planningHelper_1.planningHelper.createData({
         model: timeOverflowPlanning_1.timeOverflowPlanning,
         data: {
             planningId,
@@ -289,7 +290,7 @@ const getInitialCursor = async ({ machine, dayStart, timeStart, transaction, }) 
     let currentDay = new Date(day);
     let lastGhepKho = null;
     // A) Kiểm tra đơn complete trong cùng ngày
-    const lastComplete = await planningRepository_1.planningRepository.getModelById({
+    const lastComplete = await planningHelper_1.planningHelper.getModelById({
         model: planningPaper_1.PlanningPaper,
         where: { chooseMachine: machine, status: "complete", dayStart: dayStr },
         options: {
@@ -306,7 +307,7 @@ const getInitialCursor = async ({ machine, dayStart, timeStart, transaction, }) 
         }
     }
     // B) Kiểm tra overflow mới nhất (ưu tiên cao hơn)
-    const lastOverflow = await planningRepository_1.planningRepository.getTimeOverflowPaper(machine, transaction);
+    const lastOverflow = await planningPaperRepository_1.planningPaperRepository.getTimeOverflowPaper(machine, transaction);
     if (lastOverflow?.overflowTimeRunning) {
         const overflowDay = new Date(lastOverflow.overflowDayStart ?? "");
         const overflowTime = combineDateAndHHMMSS(overflowDay, lastOverflow.overflowTimeRunning);

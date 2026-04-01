@@ -1,17 +1,12 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getOrderByStatus = exports.filterDataFromCache = exports.filterOrdersFromCache = exports.cachedStatus = exports.updateChildOrder = exports.createDataTable = exports.calculateVolume = exports.calculateOrderMetrics = exports.generateOrderId = exports.validateCustomerAndProduct = void 0;
+exports.getOrderByStatus = exports.cachedStatus = exports.updateChildTable = exports.createDataTable = exports.calculateVolume = exports.calculateOrderMetrics = exports.generateOrderId = exports.validateCustomerAndProduct = void 0;
 exports.formatterStructureOrder = formatterStructureOrder;
 const sequelize_1 = require("sequelize");
 const customer_1 = require("../../../models/customer/customer");
 const product_1 = require("../../../models/product/product");
 const order_1 = require("../../../models/order/order");
-const redisCache_1 = __importDefault(require("../../../assest/configs/redisCache"));
 const orderRepository_1 = require("../../../repository/orderRepository");
-const normalizeVN_1 = require("../normalizeVN");
 const validateCustomerAndProduct = async (customerId, productId) => {
     const customer = await customer_1.Customer.findOne({ where: { customerId } });
     if (!customer) {
@@ -104,7 +99,6 @@ const calculateOrderMetrics = async (data) => {
         sizeCustomer: size,
         quantity: qty,
     });
-    console.log(`volume: ${volume}`);
     const responseData = {
         flute,
         acreage,
@@ -125,10 +119,10 @@ const calculateVolume = async ({ flute, lengthCustomer, sizeCustomer, quantity, 
     return volumeRaw;
 };
 exports.calculateVolume = calculateVolume;
-const createDataTable = async (id, model, data, transaction) => {
+const createDataTable = async ({ model, data, transaction, }) => {
     try {
         if (data) {
-            await model.create({ orderId: id, ...data }, { transaction });
+            await model.create(data, { transaction });
         }
     }
     catch (error) {
@@ -137,23 +131,23 @@ const createDataTable = async (id, model, data, transaction) => {
     }
 };
 exports.createDataTable = createDataTable;
-const updateChildOrder = async (id, model, data) => {
+const updateChildTable = async ({ model, data, where, transaction, }) => {
     try {
-        if (data) {
-            const existingData = await model.findOne({ where: { orderId: id } });
-            if (existingData) {
-                await model.update(data, { where: { orderId: id } });
-            }
-            else {
-                await model.create({ orderId: id, ...data });
-            }
+        if (!data || Object.keys(data).length === 0)
+            return;
+        const existingRecord = await model.findOne({ where, transaction });
+        if (existingRecord) {
+            return await model.update(data, { where, transaction });
+        }
+        else {
+            return await model.create({ ...where, ...data }, { transaction });
         }
     }
     catch (error) {
         console.error(`Create table ${model} error:`, error);
     }
 };
-exports.updateChildOrder = updateChildOrder;
+exports.updateChildTable = updateChildTable;
 const cachedStatus = async (parsed, prop1, prop2, userId, role) => {
     // Nếu redis lưu thẳng mảng thì parsed là array
     // Nếu redis lưu object {data: [...]}, thì lấy parsed.data
@@ -171,91 +165,6 @@ const cachedStatus = async (parsed, prop1, prop2, userId, role) => {
     return data.length > 0 ? data : null;
 };
 exports.cachedStatus = cachedStatus;
-const filterOrdersFromCache = async ({ userId, role, keyword, getFieldValue, page, pageSize, cacheKeyPrefix = "orders:default", message, }) => {
-    const currentPage = Number(page);
-    const currentPageSize = Number(pageSize);
-    const lowerKeyword = keyword?.toLowerCase?.() || "";
-    // Dùng prefix để tạo key cache
-    const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
-    const allDataCacheKey = `${cacheKeyPrefix}:${keyRole}`; //orders:accept_planning:all
-    // Lấy cache
-    let allOrders = await redisCache_1.default.get(allDataCacheKey);
-    let sourceMessage = "";
-    if (!allOrders) {
-        let whereCondition = { status: { [sequelize_1.Op.in]: ["accept", "planning"] } };
-        if (role !== "admin" && role !== "manager") {
-            whereCondition.userId = userId;
-        }
-        allOrders = await orderRepository_1.orderRepository.findAllFilter(whereCondition);
-        await redisCache_1.default.set(allDataCacheKey, JSON.stringify(allOrders), "EX", 900);
-        sourceMessage = "Get all orders from DB";
-    }
-    else {
-        allOrders = JSON.parse(allOrders);
-        sourceMessage = message ?? "Get all orders from cache";
-    }
-    // Lọc data
-    const filteredOrders = allOrders.filter((order) => {
-        const fieldValue = getFieldValue(order);
-        return fieldValue != null
-            ? (0, normalizeVN_1.normalizeVN)(String(fieldValue).toLowerCase()).includes((0, normalizeVN_1.normalizeVN)(lowerKeyword))
-            : false;
-    });
-    const totalOrders = filteredOrders.length;
-    const totalPages = Math.ceil(totalOrders / currentPageSize);
-    const offset = (currentPage - 1) * currentPageSize;
-    const paginatedOrders = filteredOrders.slice(offset, offset + currentPageSize);
-    return {
-        message: sourceMessage,
-        data: paginatedOrders,
-        totalOrders,
-        totalPages,
-        currentPage,
-    };
-};
-exports.filterOrdersFromCache = filterOrdersFromCache;
-const filterDataFromCache = async ({ model, cacheKey, keyword, getFieldValue, page, pageSize, message, fetchFunction, }) => {
-    const currentPage = Number(page) || 1;
-    const currentPageSize = Number(pageSize) || 20;
-    const lowerKeyword = keyword?.toLowerCase?.() || "";
-    try {
-        let allData = await redisCache_1.default.get(cacheKey);
-        let sourceMessage = "";
-        if (!allData) {
-            allData = fetchFunction ? await fetchFunction() : await model.findAll();
-            await redisCache_1.default.set(cacheKey, JSON.stringify(allData), "EX", 900);
-            sourceMessage = `Get ${cacheKey} from DB`;
-        }
-        else {
-            allData = JSON.parse(allData);
-            sourceMessage = message || `Get ${cacheKey} from cache`;
-        }
-        // Lọc dữ liệu
-        const filteredData = allData.filter((item) => {
-            const fieldValue = getFieldValue(item);
-            return fieldValue != null
-                ? (0, normalizeVN_1.normalizeVN)(String(fieldValue).toLowerCase()).includes((0, normalizeVN_1.normalizeVN)(lowerKeyword))
-                : false;
-        });
-        // Phân trang
-        const totalCustomers = filteredData.length;
-        const totalPages = Math.ceil(totalCustomers / currentPageSize);
-        const offset = (currentPage - 1) * currentPageSize;
-        const paginatedData = filteredData.slice(offset, offset + currentPageSize);
-        return {
-            message: sourceMessage,
-            data: paginatedData,
-            totalCustomers,
-            totalPages,
-            currentPage,
-        };
-    }
-    catch (error) {
-        console.error(error);
-        throw new Error("Lỗi server");
-    }
-};
-exports.filterDataFromCache = filterDataFromCache;
 function formatterStructureOrder(cell) {
     const parts = [
         cell.dayReplace || cell.day,
@@ -280,11 +189,11 @@ const getOrderByStatus = async ({ statusList, userId, role, page = 1, pageSize =
     if ((role !== "admin" && role !== "manager") || ownOnly === "true") {
         whereCondition.userId = userId;
     }
-    const queryOptions = orderRepository_1.orderRepository.buildQueryOptions(whereCondition, statusList);
+    const queryOptions = orderRepository_1.orderRepository.buildQueryOptions(whereCondition);
     if (isPaging) {
         queryOptions.offset = (page - 1) * pageSize;
         queryOptions.limit = pageSize;
-        const { count, rows } = await orderRepository_1.orderRepository.findAndCountAll(queryOptions);
+        const { count, rows } = await order_1.Order.findAndCountAll(queryOptions);
         return {
             data: rows,
             totalOrders: count,
@@ -292,7 +201,7 @@ const getOrderByStatus = async ({ statusList, userId, role, page = 1, pageSize =
             currentPage: page,
         };
     }
-    const rows = await orderRepository_1.orderRepository.findAll(queryOptions);
+    const rows = await order_1.Order.findAll(queryOptions);
     return { data: rows };
 };
 exports.getOrderByStatus = getOrderByStatus;

@@ -89,7 +89,13 @@ export const customerService = {
     pageSize: number;
   }) => {
     try {
+      const validFields = ["customerId", "customerName", "cskh", "phone"];
+      if (!validFields.includes(field)) {
+        throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
+      }
+
       const index = meiliClient.index("customers");
+      ``;
 
       const searchResult = await index.search(keyword, {
         attributesToSearchOn: [field],

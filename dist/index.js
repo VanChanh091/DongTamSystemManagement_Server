@@ -9,7 +9,7 @@ const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const http_1 = __importDefault(require("http"));
 const path_1 = __importDefault(require("path"));
-const connectDB_1 = require("./assest/configs/connectDB");
+const database_config_1 = require("./assest/configs/connect/database.config");
 const authMiddleware_1 = __importDefault(require("./middlewares/authMiddleware"));
 //routes
 const index_1 = require("./routes/index");
@@ -20,6 +20,8 @@ const appError_1 = require("./utils/appError");
 const telegramSending_1 = require("./utils/telegram/telegramSending");
 //cron job auto delete image on Cloudinary
 require("./utils/autoDeleteImage");
+const melisearch_config_1 = require("./assest/configs/connect/melisearch.config");
+const configs_1 = require("./assest/configs/meilisearch/configs");
 const app = (0, express_1.default)();
 const server = http_1.default.createServer(app);
 const io = (0, socket_1.initSocket)(server);
@@ -62,9 +64,11 @@ app.use("/api/warehouse", index_1.warehouseRoutes);
 app.use("/api/qc", index_1.qcRoutes);
 app.use("/api/delivery", index_1.deliveryRoutes);
 app.use("/api/process", index_1.processingRoutes);
+//sync meilisearch
+app.use("/api/meilisearch", index_1.meilisearchRoutes);
 //BADGE
 app.use("/api/badge", index_1.badgeRoutes);
-connectDB_1.sequelize
+database_config_1.sequelize
     // .sync({ alter: true })
     .sync()
     .then(() => console.log("✅ Database & tables synchronized"))
@@ -105,7 +109,10 @@ server.listen({ port: Number(process.env.PORT) || 5000, host: "0.0.0.0" }, async
     if (err) {
         console.log(err);
     }
-    await (0, connectDB_1.connectDB)();
+    await (0, database_config_1.connectDB)();
+    //setup meilisearch
+    await (0, melisearch_config_1.connectMeilisearch)();
+    await (0, configs_1.setupMeilisearch)();
     console.log("✅ Cron Job đã được kích hoạt!");
 });
 //# sourceMappingURL=index.js.map

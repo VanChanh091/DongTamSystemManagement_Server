@@ -18,5 +18,9 @@ router.get("/count-pending-planning", authMiddleware_1.default, (0, permissionMi
 router.get("/count-planning-stop", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), badgeController_1.countPlanningStop);
 //waiting check paper & box
 router.get("/count-waiting-check", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["QC"]), badgeController_1.countWaitingCheck);
+//delivery request
+router.get("/count-delivery-request", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), badgeController_1.countDeliveryRequest);
+//prepare goods
+router.get("/count-prepare-goods", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["delivery"]), badgeController_1.countRequestPrepareGoods);
 exports.default = router;
 //# sourceMappingURL=badgeRoutes.js.map

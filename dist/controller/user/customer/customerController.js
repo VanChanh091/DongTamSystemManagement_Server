@@ -57,9 +57,8 @@ exports.createCustomer = createCustomer;
 // update
 const updateCustomer = async (req, res, next) => {
     const { customerId } = req.query;
-    const { ...customerData } = req.body;
     try {
-        const response = await customerService_1.customerService.updateCustomer(customerId, customerData);
+        const response = await customerService_1.customerService.updateCustomer(customerId, req.body);
         return res.status(201).json(response);
     }
     catch (error) {

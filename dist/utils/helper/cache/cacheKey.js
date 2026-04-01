@@ -5,26 +5,22 @@ exports.CacheKey = {
     order: {
         pendingReject: (role) => `orders:${role}:pending_reject`,
         acceptPlanning: (role, page) => `orders:${role}:accept_planning:page:${page}`,
-        searchAcceptPlanning: "orders:accept_planning",
         lastUpdatedPending: "order:pending_reject:lastUpdated",
         lastUpdatedAccept: "order:accept_planning:lastUpdated",
     },
     customer: {
         all: "customers:all",
         page: (page) => `customers:page:${page}`,
-        search: "customers:search:all",
         lastUpdated: "customer:lastUpdated",
     },
     product: {
         all: "products:all",
         page: (page) => `products:page:${page}`,
-        search: "products:search:all",
         lastUpdated: "product:lastUpdated",
     },
     employee: {
         all: "employees:all",
         page: (page) => `employees:page:${page}`,
-        search: "employees:search:all",
         lastUpdated: "employee:lastUpdated",
     },
     planning: {
@@ -34,7 +30,6 @@ exports.CacheKey = {
         },
         paper: {
             machine: (machine) => `planningPaper:machine:${machine}`,
-            search: (machine) => `planningPaper:search:${machine}`,
             lastUpdated: "planningPaper:lastUpdated",
         },
         stop: {
@@ -43,7 +38,6 @@ exports.CacheKey = {
         },
         box: {
             machine: (machine) => `planningBox:machine:${machine}`,
-            search: (machine) => `planningBox:search:${machine}`,
             lastUpdated: "planningBox:lastUpdated",
         },
     },
@@ -64,17 +58,14 @@ exports.CacheKey = {
     warehouse: {
         inbound: {
             page: (page) => `inboundHistory:page:${page}`,
-            search: (page) => `inboundHistory:search:${page}`,
             lastUpdated: "inbound:lastUpdated",
         },
         outbound: {
             page: (page) => `outboundHistory:page:${page}`,
-            search: (page) => `outboundHistory:search:${page}`,
             lastUpdated: "outbound:lastUpdated",
         },
         inventory: {
             page: (page) => `inventory:page:${page}`,
-            search: "inventory:search:all",
             lastUpdated: "inventories:lastUpdated",
         },
     },
@@ -91,12 +82,10 @@ exports.CacheKey = {
     report: {
         paper: {
             all: (machine, page) => `reportPaper:planning:${machine}:${page}`,
-            search: (machine) => `reportPaper:search:${machine}`,
             lastUpdated: "report:paper:lastUpdated",
         },
         box: {
             all: (machine, page) => `reportBox:planning:${machine}:${page}`,
-            search: (machine) => `reportBox:search:${machine}`,
             lastUpdated: "report:box:lastUpdated",
         },
     },
@@ -109,7 +98,6 @@ exports.CacheKey = {
             all: (planningId) => `dashboard:detail:${planningId}`,
             lastUpdated: "db:detail:lastUpdated", //box time machine
         },
-        search: "dashboard:search:all",
     },
 };
 //# sourceMappingURL=cacheKey.js.map

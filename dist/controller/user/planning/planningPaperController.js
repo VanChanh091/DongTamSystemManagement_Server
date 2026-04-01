@@ -76,7 +76,7 @@ const updateIndex_TimeRunning = async (req, res, next) => {
     }
 };
 exports.updateIndex_TimeRunning = updateIndex_TimeRunning;
-//update index & time running
+//socket
 const notifyUpdatePlanning = async (req, res, next) => {
     const { machine, keyName, isPlan } = req.body;
     try {

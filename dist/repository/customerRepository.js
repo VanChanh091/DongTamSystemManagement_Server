@@ -3,21 +3,33 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.customerRepository = void 0;
 const sequelize_1 = require("sequelize");
 const customer_1 = require("../models/customer/customer");
+const customerPayment_1 = require("../models/customer/customerPayment");
 exports.customerRepository = {
     //get all
     findAllCustomer: async () => {
         return await customer_1.Customer.findAll({
-            attributes: { exclude: ["createdAt", "updatedAt"] },
+            attributes: ["customerId", "customerName", "companyName"],
         });
     },
     //get by field
-    findCustomerByPage: async (page, pageSize) => {
-        return await customer_1.Customer.findAndCountAll({
+    findCustomerByPage: async ({ page, pageSize, whereCondition = {}, }) => {
+        const query = {
+            where: whereCondition,
             attributes: { exclude: ["updatedAt"] },
-            offset: (page - 1) * pageSize,
-            limit: pageSize,
+            include: [
+                {
+                    model: customerPayment_1.CustomerPayment,
+                    as: "payment",
+                    attributes: { exclude: ["createdAt", "updatedAt"] },
+                },
+            ],
             order: [["customerSeq", "ASC"]],
-        });
+        };
+        if (page && pageSize) {
+            query.offset = (page - 1) * pageSize;
+            query.limit = pageSize;
+        }
+        return await customer_1.Customer.findAndCountAll(query);
     },
     findByIdOrMst: async (sanitizedPrefix, mst, transaction) => {
         return await customer_1.Customer.findAll({
@@ -33,25 +45,30 @@ exports.customerRepository = {
         return await customer_1.Customer.create(data, { transaction });
     },
     //update
-    findByCustomerId: async (customerId, transaction) => {
-        return await customer_1.Customer.findOne({ where: { customerId }, transaction });
+    findCustomerByPk: async ({ customerId, options = {}, }) => {
+        const includePayment = options.includePayment
+            ? [
+                {
+                    model: customerPayment_1.CustomerPayment,
+                    as: "payment",
+                    attributes: { exclude: ["createdAt", "updatedAt"] },
+                },
+            ]
+            : [];
+        return await customer_1.Customer.findByPk(customerId, {
+            attributes: { exclude: ["updatedAt"] },
+            include: includePayment,
+            transaction: options.transaction,
+        });
     },
     updateCustomer: async (customer, customerData, transaction) => {
         return await customer.update(customerData, { transaction });
     },
-    //delete
-    deleteCustomer: async (customerId, transaction) => {
-        return await customer_1.Customer.destroy({
-            where: { customerId },
+    //find customer for meilisearch
+    findCustomerForMeili: async (customerId, transaction) => {
+        return await customer_1.Customer.findByPk(customerId, {
+            attributes: ["customerId", "customerName", "companyName", "cskh", "phone", "customerSeq"],
             transaction,
-        });
-    },
-    //export
-    findAllForExport: async (whereCondition = {}) => {
-        return await customer_1.Customer.findAll({
-            where: whereCondition,
-            attributes: { exclude: ["createdAt", "updatedAt"] },
-            order: [["customerSeq", "ASC"]],
         });
     },
 };

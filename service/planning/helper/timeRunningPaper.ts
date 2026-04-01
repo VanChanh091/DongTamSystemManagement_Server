@@ -1,8 +1,9 @@
 import { Op } from "sequelize";
-import { planningRepository } from "../../../repository/planningRepository";
+import { planningHelper } from "../../../repository/planning/planningHelper";
 import { PlanningPaper } from "../../../models/planning/planningPaper";
 import { timeOverflowPlanning } from "../../../models/planning/timeOverflowPlanning";
 import { BreakTime } from "../../../interface/types";
+import { planningPaperRepository } from "../../../repository/planning/planningPaperRepository";
 
 //Công thức tính thời gian: time = (Thời gian A/B + (tổng dài / tốc độ)) / (hiệu suất / 100)
 // Trong đó:
@@ -24,19 +25,19 @@ import { BreakTime } from "../../../interface/types";
 
 export const updateSortPlanning = async (
   updateIndex: { planningId: number; sortPlanning: number | null }[],
-  transaction: any
+  transaction: any,
 ) => {
   const updates = updateIndex
     .filter((item) => item.sortPlanning)
     .map((item) =>
-      planningRepository.updateDataModel({
+      planningHelper.updateDataModel({
         model: PlanningPaper,
         data: { sortPlanning: item.sortPlanning },
         options: {
           where: { planningId: item.planningId, status: { [Op.ne]: "complete" } },
           transaction,
         },
-      })
+      }),
     );
   await Promise.all(updates);
 };
@@ -79,7 +80,7 @@ export const calculateTimeRunning = async ({
 
     if (feComplete) {
       const overflowRecord = feComplete.hasOverFlow
-        ? await planningRepository.getModelById({
+        ? await planningHelper.getModelById({
             model: timeOverflowPlanning,
             where: { planningId: feComplete.planningId },
             options: { transaction },
@@ -180,10 +181,10 @@ const calculateTimeForOnePlanning = async ({
     machine === "Máy Quấn Cuồn"
       ? machineInfo.timeChangeSize
       : isFirst
-      ? machineInfo.timeChangeSize
-      : isSameSize
-      ? machineInfo.timeChangeSameSize
-      : machineInfo.timeChangeSize;
+        ? machineInfo.timeChangeSize
+        : isSameSize
+          ? machineInfo.timeChangeSameSize
+          : machineInfo.timeChangeSize;
 
   //công thức
   const productionMinutes = Math.ceil((changeTime + totalLength / speed) / (performance / 100));
@@ -241,7 +242,7 @@ const calculateTimeForOnePlanning = async ({
     transaction,
   });
 
-  await planningRepository.updateDataModel({
+  await planningHelper.updateDataModel({
     model: PlanningPaper,
     data: {
       dayStart: new Date(result.dayStart),
@@ -324,7 +325,7 @@ const handleOverflow = async ({
   transaction: any;
 }) => {
   if (!hasOverFlow) {
-    await planningRepository.deleteModelData({
+    await planningHelper.deleteModelData({
       model: timeOverflowPlanning,
       where: { planningId },
       transaction,
@@ -348,12 +349,12 @@ const handleOverflow = async ({
   const overflowEnd = new Date(startOverflow);
   overflowEnd.setMinutes(overflowEnd.getMinutes() + overflowMin);
 
-  await planningRepository.deleteModelData({
+  await planningHelper.deleteModelData({
     model: timeOverflowPlanning,
     where: { planningId },
     transaction,
   });
-  await planningRepository.createData({
+  await planningHelper.createData({
     model: timeOverflowPlanning,
     data: {
       planningId,
@@ -413,7 +414,7 @@ const getInitialCursor = async ({
   let lastGhepKho = null;
 
   // A) Kiểm tra đơn complete trong cùng ngày
-  const lastComplete = await planningRepository.getModelById({
+  const lastComplete = await planningHelper.getModelById({
     model: PlanningPaper,
     where: { chooseMachine: machine, status: "complete", dayStart: dayStr },
     options: {
@@ -432,7 +433,7 @@ const getInitialCursor = async ({
   }
 
   // B) Kiểm tra overflow mới nhất (ưu tiên cao hơn)
-  const lastOverflow = await planningRepository.getTimeOverflowPaper(machine, transaction);
+  const lastOverflow = await planningPaperRepository.getTimeOverflowPaper(machine, transaction);
 
   if (lastOverflow?.overflowTimeRunning) {
     const overflowDay = new Date(lastOverflow.overflowDayStart ?? "");

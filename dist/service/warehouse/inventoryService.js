@@ -12,7 +12,7 @@ const inventory_1 = require("../../models/warehouse/inventory");
 const excelExporter_1 = require("../../utils/helper/excelExporter");
 const warehouseRepository_1 = require("../../repository/warehouseRepository");
 const inventoryRowAndColumn_1 = require("../../utils/mapping/inventoryRowAndColumn");
-const redisCache_1 = __importDefault(require("../../assest/configs/redisCache"));
+const redis_config_1 = __importDefault(require("../../assest/configs/connect/redis.config"));
 const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inventory } = cacheKey_1.CacheKey.warehouse;
@@ -25,7 +25,7 @@ exports.inventoryService = {
                 await cacheManager_1.CacheManager.clear("inventory");
             }
             else {
-                const cachedData = await redisCache_1.default.get(cacheKey);
+                const cachedData = await redis_config_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ Data inventory from Redis");
@@ -48,7 +48,7 @@ exports.inventoryService = {
                 currentPage: page,
                 totalValueInventory: totals?.totalValueInventory || 0,
             };
-            await redisCache_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+            await redis_config_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
             return responseData;
         }
         catch (error) {

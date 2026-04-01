@@ -5,7 +5,7 @@ const planningBox_1 = require("../../models/planning/planningBox");
 const planningPaper_1 = require("../../models/planning/planningPaper");
 const qcSampleResult_1 = require("../../models/qualityControl/qcSampleResult");
 const qcSession_1 = require("../../models/qualityControl/qcSession");
-const planningRepository_1 = require("../../repository/planningRepository");
+const planningHelper_1 = require("../../repository/planning/planningHelper");
 const qcRepository_1 = require("../../repository/qcRepository");
 const warehouseRepository_1 = require("../../repository/warehouseRepository");
 const appError_1 = require("../../utils/appError");
@@ -118,7 +118,7 @@ exports.qcSampleService = {
                     if (sampleIndex < 1 || sampleIndex > session.totalSample) {
                         throw appError_1.AppError.BadRequest(`Invalid sample index ${sampleIndex}`, "INVALID_SAMPLE_INDEX");
                     }
-                    const sampleResult = await planningRepository_1.planningRepository.getModelById({
+                    const sampleResult = await planningHelper_1.planningHelper.getModelById({
                         model: qcSampleResult_1.QcSampleResult,
                         where: { qcSessionId, sampleIndex },
                         options: { transaction },
@@ -157,7 +157,7 @@ exports.qcSampleService = {
     confirmFinalizeSession: async ({ planningId, planningBoxId, isPaper = true, }) => {
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
-                const session = await planningRepository_1.planningRepository.getModelById({
+                const session = await planningHelper_1.planningHelper.getModelById({
                     model: qcSession_1.QcSession,
                     where: isPaper ? { planningId } : { planningBoxId },
                     options: { transaction },
@@ -201,7 +201,7 @@ exports.qcSampleService = {
                 }
                 //update statusRequest planning
                 if (!isPaper && planning instanceof planningBox_1.PlanningBox) {
-                    await planningRepository_1.planningRepository.updateDataModel({
+                    await planningHelper_1.planningHelper.updateDataModel({
                         model: planningPaper_1.PlanningPaper,
                         data: { statusRequest: "finalize" },
                         options: { where: { planningId: planning.planningId }, transaction },

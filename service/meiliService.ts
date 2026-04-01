@@ -22,15 +22,21 @@ export const meiliService = {
       const documents = Array.isArray(data) ? data : [data];
 
       // Đẩy lên Meilisearch
-      index.addDocuments(documents);
+      index.addDocuments(documents).catch((err) => {
+        console.error(`[Meili] Async Add Error for ${indexKey}:`, err);
+      });
     } catch (error) {
       console.error(`[Meili] Sync error for ${indexKey}:`, error);
     }
   },
+
   deleteMeiliData: (indexKey: string, id: number | string) => {
     try {
       const index = meiliClient.index(indexKey);
-      index.deleteDocument(id);
+
+      index.deleteDocument(id).catch((err) => {
+        console.error(`[Meili] Async Delete Error for ${indexKey}:`, err);
+      });
     } catch (error) {
       console.error(`[Meili] Delete error for ${indexKey}:`, error);
     }

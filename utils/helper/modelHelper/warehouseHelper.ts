@@ -20,7 +20,9 @@ export const getInboundByField = async <T>({
   const lowerKeyword = keyword?.toLowerCase?.() || "";
 
   const { inbound } = CacheKey.warehouse;
-  const cacheKey = inbound.search(page);
+  // const cacheKey = inbound.search(page);
+
+  const cacheKey = 1;
 
   try {
     let allData = await redisCache.get(cacheKey);
@@ -78,7 +80,9 @@ export const getOutboundByField = async <T>({
   const lowerKeyword = keyword?.toLowerCase?.() || "";
 
   const { outbound } = CacheKey.warehouse;
-  const cacheKey = outbound.search(page);
+  // const cacheKey = outbound.search(page);
+
+  const cacheKey = 1;
 
   try {
     let allData = await redisCache.get(cacheKey);

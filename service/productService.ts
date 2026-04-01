@@ -95,6 +95,11 @@ export const productService = {
     pageSize: number;
   }) => {
     try {
+      const validFields = ["productName", "productId"];
+      if (!validFields.includes(field)) {
+        throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
+      }
+
       const index = meiliClient.index("products");
 
       const searchResult = await index.search(keyword, {

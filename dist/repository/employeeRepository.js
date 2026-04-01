@@ -5,17 +5,21 @@ const sequelize_1 = require("sequelize");
 const employeeBasicInfo_1 = require("../models/employee/employeeBasicInfo");
 const employeeCompanyInfo_1 = require("../models/employee/employeeCompanyInfo");
 exports.employeeRepository = {
-    findEmployeeById: async (employeeId) => {
-        return await employeeBasicInfo_1.EmployeeBasicInfo.findOne({
-            where: { employeeId: employeeId },
-            include: [{ model: employeeCompanyInfo_1.EmployeeCompanyInfo, as: "companyInfo" }],
+    findEmployeeByPK: async (employeeId, transaction) => {
+        return await employeeBasicInfo_1.EmployeeBasicInfo.findByPk(employeeId, {
+            attributes: { exclude: ["createdAt", "updatedAt"] },
+            include: [
+                {
+                    model: employeeCompanyInfo_1.EmployeeCompanyInfo,
+                    as: "companyInfo",
+                    attributes: { exclude: ["createdAt", "updatedAt"] },
+                },
+            ],
+            transaction,
         });
     },
     findEmployeeByPk: async (employeeId, transaction) => {
-        return await employeeBasicInfo_1.EmployeeBasicInfo.findByPk(employeeId, {
-            include: [{ model: employeeCompanyInfo_1.EmployeeCompanyInfo, as: "companyInfo" }],
-            transaction,
-        });
+        return await employeeBasicInfo_1.EmployeeBasicInfo.findByPk(employeeId, { transaction });
     },
     findAllEmployee: async () => {
         return await employeeBasicInfo_1.EmployeeBasicInfo.findAll({
@@ -29,8 +33,28 @@ exports.employeeRepository = {
             ],
         });
     },
-    findEmployeeByPage: async (page, pageSize) => {
-        return await employeeBasicInfo_1.EmployeeBasicInfo.findAndCountAll({
+    findEmployeeByPage: async ({ page, pageSize, whereCondition = {}, }) => {
+        const query = {
+            attributes: { exclude: ["createdAt", "updatedAt"] },
+            include: [
+                {
+                    model: employeeCompanyInfo_1.EmployeeCompanyInfo,
+                    where: whereCondition,
+                    as: "companyInfo",
+                    attributes: { exclude: ["createdAt", "updatedAt"] },
+                },
+            ],
+            order: [["employeeId", "ASC"]],
+        };
+        if (page && pageSize) {
+            query.offset = (page - 1) * pageSize;
+            query.limit = pageSize;
+        }
+        return await employeeBasicInfo_1.EmployeeBasicInfo.findAndCountAll(query);
+    },
+    getEmployeeByField: async (whereCondition) => {
+        return await employeeBasicInfo_1.EmployeeBasicInfo.findAll({
+            where: whereCondition,
             attributes: { exclude: ["createdAt", "updatedAt"] },
             include: [
                 {
@@ -39,8 +63,6 @@ exports.employeeRepository = {
                     attributes: { exclude: ["createdAt", "updatedAt"] },
                 },
             ],
-            offset: (page - 1) * pageSize,
-            limit: pageSize,
             order: [["employeeId", "ASC"]],
         });
     },
@@ -73,17 +95,18 @@ exports.employeeRepository = {
     deleteEmployee: async (employee, transaction) => {
         return await employee.destroy(transaction);
     },
-    exportExcelEmpl: async (whereCondition = {}) => {
-        return await employeeBasicInfo_1.EmployeeBasicInfo.findAll({
-            attributes: { exclude: ["createdAt", "updatedAt"] },
+    //find customer for meilisearch
+    findEmployeeForMeili: async (employeeId, transaction) => {
+        return await employeeBasicInfo_1.EmployeeBasicInfo.findByPk(employeeId, {
+            attributes: ["employeeId", "fullName", "phoneNumber"],
             include: [
                 {
                     model: employeeCompanyInfo_1.EmployeeCompanyInfo,
-                    where: whereCondition,
                     as: "companyInfo",
-                    attributes: { exclude: ["createdAt", "updatedAt"] },
+                    attributes: ["employeeCode", "status"],
                 },
             ],
+            transaction,
         });
     },
 };

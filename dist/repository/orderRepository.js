@@ -10,7 +10,7 @@ const order_1 = require("../models/order/order");
 const fluteRatio_1 = require("../models/admin/fluteRatio");
 const orderImage_1 = require("../models/order/orderImage");
 exports.orderRepository = {
-    buildQueryOptions: (whereCondition = {}, statusList) => {
+    buildQueryOptions: (whereCondition = {}) => {
         return {
             where: whereCondition,
             attributes: { exclude: ["createdAt", "updatedAt"] },
@@ -28,33 +28,6 @@ exports.orderRepository = {
                 ["orderSortValue", "ASC"],
             ],
         };
-    },
-    findAndCountAll: (queryOptions) => {
-        return order_1.Order.findAndCountAll(queryOptions);
-    },
-    findAll: (queryOptions) => {
-        return order_1.Order.findAll(queryOptions);
-    },
-    findAllFilter: async (whereCondition = {}) => {
-        return await order_1.Order.findAll({
-            where: whereCondition,
-            include: [
-                { model: customer_1.Customer, attributes: ["customerName", "companyName"] },
-                {
-                    model: product_1.Product,
-                    attributes: ["typeProduct", "productName", "maKhuon"],
-                },
-                {
-                    model: box_1.Box,
-                    as: "box",
-                    attributes: {
-                        exclude: ["boxId", "createdAt", "updatedAt", "orderId"],
-                    },
-                },
-                { model: user_1.User, attributes: ["fullName"] },
-            ],
-            order: [["createdAt", "DESC"]],
-        });
     },
     findOneFluteRatio: async (flute, transaction) => {
         return await fluteRatio_1.FluteRatio.findOne({
@@ -103,6 +76,30 @@ exports.orderRepository = {
                     },
                 },
             ],
+        });
+    },
+    //meilisearch
+    findOrderForMeili: async (orderId, transaction) => {
+        return await order_1.Order.findByPk(orderId, {
+            attributes: [
+                "orderId",
+                "flute",
+                "QC_box",
+                "price",
+                "lengthPaperCustomer",
+                "lengthPaperManufacture",
+                "paperSizeCustomer",
+                "paperSizeManufacture",
+                "quantityCustomer",
+                "quantityManufacture",
+                "status",
+                "orderSortValue",
+            ],
+            include: [
+                { model: customer_1.Customer, attributes: ["customerName"] },
+                { model: product_1.Product, attributes: ["productName"] },
+            ],
+            transaction,
         });
     },
 };

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.countWaitingCheck = exports.countPlanningStop = exports.countOrderPendingPlanning = exports.countOrderRejected = exports.countOrderPending = void 0;
+exports.countRequestPrepareGoods = exports.countDeliveryRequest = exports.countWaitingCheck = exports.countPlanningStop = exports.countOrderPendingPlanning = exports.countOrderRejected = exports.countOrderPending = void 0;
 const badgeService_1 = require("../../service/badge/badgeService");
 const appError_1 = require("../../utils/appError");
 //pending order
@@ -68,4 +68,26 @@ const countWaitingCheck = async (req, res, next) => {
     }
 };
 exports.countWaitingCheck = countWaitingCheck;
+//delivery request
+const countDeliveryRequest = async (req, res, next) => {
+    try {
+        const response = await badgeService_1.badgeService.countDeliveryRequest();
+        return res.status(201).json(response);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.countDeliveryRequest = countDeliveryRequest;
+//prepare goods
+const countRequestPrepareGoods = async (req, res, next) => {
+    try {
+        const response = await badgeService_1.badgeService.countRequestPrepareGoods();
+        return res.status(201).json(response);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.countRequestPrepareGoods = countRequestPrepareGoods;
 //# sourceMappingURL=badgeController.js.map

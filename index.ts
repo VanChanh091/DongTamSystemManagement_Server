@@ -152,7 +152,7 @@ server.listen({ port: Number(process.env.PORT) || 5000, host: "0.0.0.0" }, async
 
   //setup meilisearch
   await connectMeilisearch();
-  // await setupMeilisearch();
+  await setupMeilisearch();
 
   console.log("✅ Cron Job đã được kích hoạt!");
 });

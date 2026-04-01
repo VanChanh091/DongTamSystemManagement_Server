@@ -1,7 +1,7 @@
 import { processTypeQC } from "../../models/qualityControl/qcCriteria";
 import { QcSession, statusQcSession } from "../../models/qualityControl/qcSession";
 import { User } from "../../models/user/user";
-import { planningRepository } from "../../repository/planningRepository";
+import { planningHelper } from "../../repository/planning/planningHelper";
 import { qcRepository } from "../../repository/qcRepository";
 import { AppError } from "../../utils/appError";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
@@ -33,7 +33,7 @@ export const qcSessionService = {
       if (planningId && planningBoxId) {
         throw AppError.BadRequest(
           "Only one of planningId or planningBoxId is allowed",
-          "INVALID_FK"
+          "INVALID_FK",
         );
       }
 
@@ -82,18 +82,18 @@ export const qcSessionService = {
       if (processType === "box" && !planningBoxId) {
         throw AppError.BadRequest(
           "planningBoxId is required for box QC",
-          "PLANNINGBOXID_IS_REQUIRED"
+          "PLANNINGBOXID_IS_REQUIRED",
         );
       }
 
       if (totalSample !== undefined && totalSample < 1) {
         throw AppError.BadRequest(
           "totalSample must be greater than 0",
-          "TOTAL_SAMPLE_MUST_BE_GREATER_THAN_0"
+          "TOTAL_SAMPLE_MUST_BE_GREATER_THAN_0",
         );
       }
 
-      const existedUser = await planningRepository.getModelById({ model: User, where: { userId } });
+      const existedUser = await planningHelper.getModelById({ model: User, where: { userId } });
       if (!existedUser) {
         throw AppError.BadRequest("user not found", "USER_NOT_FOUND");
       }
@@ -108,7 +108,7 @@ export const qcSessionService = {
           checkedBy: existedUser.fullName,
           status: "checking",
         },
-        transaction
+        transaction,
       );
 
       return { message: "create QC Session successfully", data: session };

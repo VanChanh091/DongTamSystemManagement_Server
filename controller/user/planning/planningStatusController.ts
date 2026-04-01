@@ -13,8 +13,7 @@ export const getOrderAccept = async (req: Request, res: Response, next: NextFunc
     type: string;
     field: string;
     keyword: string;
-  };
-  //planned and unplanned
+  }; //planned and unplanned
 
   try {
     let response;
@@ -24,14 +23,7 @@ export const getOrderAccept = async (req: Request, res: Response, next: NextFunc
       response = await planningStatusService.getOrderAccept(type);
     }
 
-    return res.status(200).json({
-      ...response,
-      // message: response.fromCache //fix cache for 2 case: have running plan or not have running plan
-      //   ? "get all order have status:accept from cache"
-      //   : "get all order have status:accept",
-
-      message: "get all order have status:accept",
-    });
+    return res.status(200).json(response);
   } catch (error) {
     next(error);
   }

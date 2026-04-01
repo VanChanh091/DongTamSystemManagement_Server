@@ -29,4 +29,76 @@ export const meiliTransformer = {
       orderSortValue: raw.orderSortValue,
     };
   },
+
+  planningPaper: (paper: any) => {
+    const raw = paper.get({ plain: true });
+
+    return {
+      planningId: raw.planningId,
+      ghepKho: raw.ghepKho,
+      orderId: raw.orderId,
+      chooseMachine: raw.chooseMachine,
+      status: raw.status,
+      customerName: raw.Order?.Customer?.customerName,
+      productName: raw.Order?.Product?.productName,
+    };
+  },
+
+  planningBox: (paper: any) => {
+    const raw = paper.get({ plain: true });
+
+    return {
+      planningBoxId: raw.planningBoxId,
+      orderId: raw.Order?.orderId,
+      QC_box: raw.Order?.QC_box,
+      customerName: raw.Order?.Customer?.customerName,
+
+      boxTimes: raw.boxTimes.map((boxTime: any) => ({
+        machine: boxTime.machine,
+        status: boxTime.status,
+      })),
+    };
+  },
+
+  reportPaper: (db: any) => {
+    const raw = db.get({ plain: true });
+
+    return {
+      reportPaperId: raw.reportPaperId,
+      dayReported: raw.dayReport,
+      shiftManagement: raw.shiftManagement,
+      chooseMachine: raw.PlanningPaper?.chooseMachine,
+      orderId: raw.PlanningPaper?.Order?.orderId,
+      customerName: raw.PlanningPaper?.Order?.Customer?.customerName,
+    };
+  },
+
+  reportBox: (db: any) => {
+    const raw = db.get({ plain: true });
+
+    return {
+      reportBoxId: raw.reportBoxId,
+      dayReported: raw.dayReport,
+      shiftManagement: raw.shiftManagement,
+      machine: raw.machine,
+      orderId: raw.PlanningBox?.Order?.orderId,
+      QC_box: raw.PlanningBox?.Order?.QC_box,
+      customerName: raw.PlanningBox?.Order?.Customer?.customerName,
+    };
+  },
+
+  dashboard: (db: any) => {
+    const raw = db.get({ plain: true });
+
+    return {
+      planningId: raw.planningId,
+      ghepKho: raw.ghepKho,
+      status: raw.status,
+      chooseMachine: raw.chooseMachine,
+      orderId: raw.Order?.orderId,
+      customerName: raw.Order?.Customer?.customerName,
+      companyName: raw.Order?.Customer?.companyName,
+      fullName: raw.Order?.User?.fullName,
+    };
+  },
 };

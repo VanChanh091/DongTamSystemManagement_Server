@@ -6,14 +6,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.outboundService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const redisCache_1 = __importDefault(require("../../assest/configs/redisCache"));
+const redis_config_1 = __importDefault(require("../../assest/configs/connect/redis.config"));
 const order_1 = require("../../models/order/order");
 const appError_1 = require("../../utils/appError");
 const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
 const outboundHistory_1 = require("../../models/warehouse/outboundHistory");
 const warehouseRepository_1 = require("../../repository/warehouseRepository");
 const outboundDetail_1 = require("../../models/warehouse/outboundDetail");
-const planningRepository_1 = require("../../repository/planningRepository");
+const planningHelper_1 = require("../../repository/planning/planningHelper");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
 const inventory_1 = require("../../models/warehouse/inventory");
 const exportPDF_1 = require("../../utils/helper/exportPDF");
@@ -29,7 +29,7 @@ exports.outboundService = {
                 await cacheManager_1.CacheManager.clear("outbound");
             }
             else {
-                const cachedData = await redisCache_1.default.get(cacheKey);
+                const cachedData = await redis_config_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ Data outbound from Redis");
@@ -47,7 +47,7 @@ exports.outboundService = {
                 totalPages,
                 currentPage: page,
             };
-            await redisCache_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+            await redis_config_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
             return responseData;
         }
         catch (error) {
@@ -202,7 +202,7 @@ exports.outboundService = {
                 const year = now.getFullYear().toString().slice(-2);
                 const slipCode = `XK${year}${month}${day}`;
                 // Tạo outbound
-                const outbound = await planningRepository_1.planningRepository.createData({
+                const outbound = await planningHelper_1.planningHelper.createData({
                     model: outboundHistory_1.OutboundHistory,
                     data: {
                         dateOutbound: now,
@@ -216,7 +216,7 @@ exports.outboundService = {
                 });
                 // Tạo outbound detail
                 for (const item of preparedDetails) {
-                    await planningRepository_1.planningRepository.createData({
+                    await planningHelper_1.planningHelper.createData({
                         model: outboundDetail_1.OutboundDetail,
                         data: {
                             outboundId: outbound.outboundId,

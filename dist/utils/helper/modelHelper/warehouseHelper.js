@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getOutboundByField = exports.getInboundByField = void 0;
-const redisCache_1 = __importDefault(require("../../../assest/configs/redisCache"));
+const redis_config_1 = __importDefault(require("../../../assest/configs/connect/redis.config"));
 const warehouseRepository_1 = require("../../../repository/warehouseRepository");
 const appError_1 = require("../../appError");
 const cacheKey_1 = require("../cache/cacheKey");
@@ -12,13 +12,14 @@ const normalizeVN_1 = require("../normalizeVN");
 const getInboundByField = async ({ keyword, getFieldValue, page, pageSize, message, }) => {
     const lowerKeyword = keyword?.toLowerCase?.() || "";
     const { inbound } = cacheKey_1.CacheKey.warehouse;
-    const cacheKey = inbound.search(page);
+    // const cacheKey = inbound.search(page);
+    const cacheKey = 1;
     try {
-        let allData = await redisCache_1.default.get(cacheKey);
+        let allData = await redis_config_1.default.get(cacheKey);
         let sourceMessage = "";
         if (!allData) {
             allData = await warehouseRepository_1.warehouseRepository.findInboundByPage({ paginate: false });
-            await redisCache_1.default.set(cacheKey, JSON.stringify(allData), "EX", 900);
+            await redis_config_1.default.set(cacheKey, JSON.stringify(allData), "EX", 900);
             sourceMessage = `Get inbound from DB`;
         }
         else {
@@ -54,13 +55,14 @@ exports.getInboundByField = getInboundByField;
 const getOutboundByField = async ({ keyword, getFieldValue, page, pageSize, message, }) => {
     const lowerKeyword = keyword?.toLowerCase?.() || "";
     const { outbound } = cacheKey_1.CacheKey.warehouse;
-    const cacheKey = outbound.search(page);
+    // const cacheKey = outbound.search(page);
+    const cacheKey = 1;
     try {
-        let allData = await redisCache_1.default.get(cacheKey);
+        let allData = await redis_config_1.default.get(cacheKey);
         let sourceMessage = "";
         if (!allData) {
             allData = await warehouseRepository_1.warehouseRepository.getOutboundByPage({ paginate: false });
-            await redisCache_1.default.set(cacheKey, JSON.stringify(allData), "EX", 900);
+            await redis_config_1.default.set(cacheKey, JSON.stringify(allData), "EX", 900);
             sourceMessage = `Get outbound from DB`;
         }
         else {

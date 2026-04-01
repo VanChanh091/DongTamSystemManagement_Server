@@ -6,7 +6,7 @@ import { AppError } from "../../utils/appError";
 import { InboundHistory } from "../../models/warehouse/inboundHistory";
 import { warehouseRepository } from "../../repository/warehouseRepository";
 import { manufactureRepo } from "../../repository/manufactureRepository";
-import { planningRepository } from "../../repository/planningRepository";
+import { planningHelper } from "../../repository/planning/planningHelper";
 import { PlanningBox } from "../../models/planning/planningBox";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
@@ -182,7 +182,7 @@ export const inboundService = {
       //create inventory
       await inventoryService.createNewInventory(planning.orderId, transaction);
 
-      const inboundRecord = await planningRepository.createData({
+      const inboundRecord = await planningHelper.createData({
         model: InboundHistory,
         data: {
           dateInbound: new Date(),
@@ -237,7 +237,7 @@ export const inboundService = {
     transaction?: any;
   }) => {
     try {
-      const planning = await planningRepository.getModelById({
+      const planning = await planningHelper.getModelById({
         model: PlanningBox,
         where: { planningBoxId },
         options: {
@@ -271,7 +271,7 @@ export const inboundService = {
       //create inventory
       await inventoryService.createNewInventory(planning.orderId, transaction);
 
-      const inboundRecord = await planningRepository.createData({
+      const inboundRecord = await planningHelper.createData({
         model: InboundHistory,
         data: {
           dateInbound: new Date(),

@@ -12,13 +12,11 @@ import { Request, Response } from "express";
 import { dbPlanningColumns, mappingDbPlanningRow } from "../utils/mapping/dbPlanningRowAndColumn";
 import { exportExcelDbPlanning } from "../utils/helper/excelExporter";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
-import {
-  buildStagesDetails,
-  getDbPlanningByField,
-} from "../utils/helper/modelHelper/planningHelper";
+import { buildStagesDetails } from "../utils/helper/modelHelper/planningHelper";
+import { meiliClient } from "../assest/configs/connect/melisearch.config";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { planning, details, search } = CacheKey.dashboard;
+const { planning, details } = CacheKey.dashboard;
 
 export const dashboardService = {
   getAllDashboardPlanning: async (page: number, pageSize: number, status: string) => {
@@ -117,50 +115,54 @@ export const dashboardService = {
     pageSize: number;
   }) => {
     try {
-      const fieldMap = {
-        orderId: (paper: PlanningPaper) => paper.orderId,
-        machine: (paper: PlanningPaper) => paper.chooseMachine,
-        customerName: (paper: PlanningPaper) => paper.Order.Customer.customerName,
-        companyName: (paper: PlanningPaper) => paper.Order.Customer.companyName,
-        username: (paper: PlanningPaper) => paper.Order.User.fullName,
-      } as const;
-
-      const key = field as keyof typeof fieldMap;
-
-      if (!key || !fieldMap[key]) {
-        throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
+      const validFields = ["orderId", "machine", "customerName", "companyName", "username"];
+      if (!validFields.includes(field)) {
+        throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
       }
 
-      const result = await getDbPlanningByField({
-        cacheKey: search,
-        keyword,
-        getFieldValue: fieldMap[key],
-        page,
-        pageSize,
-        message: `get all by ${field} from filtered cache`,
+      const index = meiliClient.index("dashboard");
+
+      // Tìm kiếm trên Meilisearch để lấy planningId
+      const searchResult = await index.search(keyword, {
+        attributesToSearchOn: [field],
+        attributesToRetrieve: ["planningId"], // Chỉ lấy planningId
+        page: Number(page) || 1,
+        hitsPerPage: Number(pageSize) || 25,
       });
 
-      const planningIdsArr = result.data.map((p: any) => p.planningId);
-      const planningIds = planningIdsArr;
-
-      if (!planningIds || planningIds.length === 0) {
+      const planningIdsArr = searchResult.hits.map((p: any) => p.planningId);
+      if (planningIdsArr.length === 0) {
         return {
-          ...result,
+          message: "No dashboard found",
           data: [],
+          totalPlannings: 0,
+          totalPages: 1,
+          currentPage: page,
         };
       }
 
-      const fullData = await dashboardRepository.getAllDbPlanning({
+      //query db
+      const { rows } = await dashboardRepository.getAllDbPlanning({
         whereCondition: {
-          planningId: planningIds,
+          planningId: { [Op.in]: planningIdsArr },
         },
         paginate: false,
       });
 
-      return { ...result, data: fullData };
-      // return result;
+      // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
+      const finalData = planningIdsArr
+        .map((id) => rows.find((planning) => planning.planningId === id))
+        .filter(Boolean);
+
+      return {
+        message: "Get dashboard from Meilisearch & DB successfully",
+        data: finalData,
+        totalPlannings: searchResult.totalHits,
+        totalPages: searchResult.totalPages,
+        currentPage: page,
+      };
     } catch (error) {
-      console.error(`Failed to get customers by ${field}`, error);
+      console.error(`Failed to get dashboard by ${field}`, error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }

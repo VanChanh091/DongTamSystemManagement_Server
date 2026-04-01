@@ -19,7 +19,7 @@ const excelExporter_1 = require("../utils/helper/excelExporter");
 const deliveryRowAndComlumn_1 = require("../utils/mapping/deliveryRowAndComlumn");
 const cacheKey_1 = require("../utils/helper/cache/cacheKey");
 const cacheManager_1 = require("../utils/helper/cache/cacheManager");
-const redisCache_1 = __importDefault(require("../assest/configs/redisCache"));
+const redis_config_1 = __importDefault(require("../assest/configs/connect/redis.config"));
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { estimate, schedule } = cacheKey_1.CacheKey.delivery;
 exports.deliveryService = {
@@ -32,7 +32,7 @@ exports.deliveryService = {
                 await cacheManager_1.CacheManager.clear("estimate");
             }
             else {
-                const cachedData = await redisCache_1.default.get(cacheKey);
+                const cachedData = await redis_config_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ get planning estimate time from cache");
@@ -99,7 +99,7 @@ exports.deliveryService = {
                 totalPages,
                 currentPage: page,
             };
-            await redisCache_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+            await redis_config_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
             return responseData;
         }
         catch (error) {
@@ -262,21 +262,24 @@ exports.deliveryService = {
     getAllScheduleDelivery: async (deliveryDate) => {
         const cacheKey = schedule.date(deliveryDate);
         try {
-            const { isChanged } = await cacheManager_1.CacheManager.check(deliveryPlan_1.DeliveryPlan, "schedule");
+            const { isChanged } = await cacheManager_1.CacheManager.check(deliveryItem_1.DeliveryItem, "schedule");
             if (isChanged) {
                 await cacheManager_1.CacheManager.clear("schedule");
             }
             else {
-                const cachedData = await redisCache_1.default.get(cacheKey);
+                const cachedData = await redis_config_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ get schedule delivery from cache");
                     return { message: "get all schedule delivery from cache", data: JSON.parse(cachedData) };
                 }
             }
-            const finalData = await deliveryRepository_1.deliveryRepository.getAllDeliveryPlanByDate(deliveryDate, "planned");
+            const finalData = await deliveryRepository_1.deliveryRepository.getAllDeliveryPlanByDate({
+                deliveryDate,
+                status: "planned",
+            });
             //save
-            await redisCache_1.default.set(cacheKey, JSON.stringify(finalData), "EX", 3600);
+            await redis_config_1.default.set(cacheKey, JSON.stringify(finalData), "EX", 3600);
             return { message: "get schedule delivery successfully", data: finalData };
         }
         catch (error) {
@@ -339,7 +342,7 @@ exports.deliveryService = {
     },
     exportScheduleDelivery: async (res, deliveryDate) => {
         try {
-            const data = await deliveryRepository_1.deliveryRepository.getAllDeliveryPlanByDate(deliveryDate);
+            const data = await deliveryRepository_1.deliveryRepository.getAllDeliveryPlanByDate({ deliveryDate });
             await (0, excelExporter_1.exportDeliveryExcelResponse)(res, {
                 data: data,
                 sheetName: "Lịch Giao Hàng",
@@ -350,6 +353,73 @@ exports.deliveryService = {
         }
         catch (error) {
             console.error("❌ Export Excel error:", error);
+            if (error instanceof appError_1.AppError)
+                throw error;
+            throw appError_1.AppError.ServerError();
+        }
+    },
+    //=================================PREPARE GOODS=====================================
+    getRequestPrepareGoods: async (deliveryDate) => {
+        try {
+            const finalData = await deliveryRepository_1.deliveryRepository.getAllDeliveryPlanByDate({
+                deliveryDate,
+                itemStatus: "requested",
+            });
+            return { message: "get schedule delivery successfully", data: finalData };
+        }
+        catch (error) {
+            console.error("❌ Get request prepare goods failed:", error);
+            if (error instanceof appError_1.AppError)
+                throw error;
+            throw appError_1.AppError.ServerError();
+        }
+    },
+    requestOrPrepareGoods: async (deliveryItemId, isRequest) => {
+        try {
+            return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
+                const item = await deliveryItem_1.DeliveryItem.findByPk(deliveryItemId, { transaction });
+                if (!item) {
+                    throw appError_1.AppError.BadRequest("item not found", "ITEM_NOT_FOUND");
+                }
+                // CHỨC NĂNG 1: Gửi yêu cầu (Chuyển từ planned -> requested)
+                if (isRequest === "true") {
+                    if (item.status === "planned") {
+                        await item.update({ status: "requested" }, { transaction });
+                        return { message: "Gửi yêu cầu xuất hàng thành công" };
+                    }
+                    if (item.status === "requested") {
+                        throw appError_1.AppError.BadRequest("Đơn này đã được yêu cầu rồi", "ALREADY_REQUESTED");
+                    }
+                    throw appError_1.AppError.BadRequest("Trạng thái hiện tại không thể thực hiện yêu cầu", "INVALID_STATUS");
+                }
+                // CHỨC NĂNG 2: Chuẩn bị hàng (Chuyển từ requested -> prepared)
+                else {
+                    if (item.status === "requested") {
+                        await item.update({ status: "prepared" }, { transaction });
+                        return { message: "Xác nhận chuẩn bị hàng xong" };
+                    }
+                    // Chặn nếu đơn chưa ở trạng thái requested
+                    throw appError_1.AppError.BadRequest("Chỉ có thể chuẩn bị hàng cho đơn đã được 'Yêu cầu'", "NOT_REQUESTED_YET");
+                }
+            });
+        }
+        catch (error) {
+            console.error("❌ request prepare goods failed:", error);
+            if (error instanceof appError_1.AppError)
+                throw error;
+            throw appError_1.AppError.ServerError();
+        }
+    },
+    //=================================SOCKET=====================================
+    notifyRequestPrepareGoods: async (req) => {
+        try {
+            const item = { message: "Có đơn hàng mới cần chuẩn bị hàng" };
+            //bắt buộc có event để socket.on bên client có thể nhận, nếu không có event sẽ không nhận được data
+            req.io?.to("prepare-goods").emit("prepare-goods-event", item);
+            return { message: "Đã gửi yêu cầu chuẩn bị hàng" };
+        }
+        catch (error) {
+            console.error("❌Lỗi khi gửi socket:", error);
             if (error instanceof appError_1.AppError)
                 throw error;
             throw appError_1.AppError.ServerError();

@@ -6,18 +6,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.inboundService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const redisCache_1 = __importDefault(require("../../assest/configs/redisCache"));
+const redis_config_1 = __importDefault(require("../../assest/configs/connect/redis.config"));
 const appError_1 = require("../../utils/appError");
 const inboundHistory_1 = require("../../models/warehouse/inboundHistory");
 const warehouseRepository_1 = require("../../repository/warehouseRepository");
 const manufactureRepository_1 = require("../../repository/manufactureRepository");
-const planningRepository_1 = require("../../repository/planningRepository");
+const planningHelper_1 = require("../../repository/planning/planningHelper");
 const planningBox_1 = require("../../models/planning/planningBox");
 const planningBoxMachineTime_1 = require("../../models/planning/planningBoxMachineTime");
 const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
 const warehouseHelper_1 = require("../../utils/helper/modelHelper/warehouseHelper");
 const dashboardRepository_1 = require("../../repository/dashboardRepository");
-const planningHelper_1 = require("../../utils/helper/modelHelper/planningHelper");
+const planningHelper_2 = require("../../utils/helper/modelHelper/planningHelper");
 const planningPaper_1 = require("../../models/planning/planningPaper");
 const inventoryService_1 = require("./inventoryService");
 const inventory_1 = require("../../models/warehouse/inventory");
@@ -36,7 +36,7 @@ exports.inboundService = {
                 await cacheManager_1.CacheManager.clear("checkPaper");
             }
             else {
-                const cachedData = await redisCache_1.default.get(cacheKey);
+                const cachedData = await redis_config_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ Data waiting check paper from Redis");
@@ -73,7 +73,7 @@ exports.inboundService = {
                 message: "get planning paper waiting check successfully",
                 data: allPlannings,
             };
-            await redisCache_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+            await redis_config_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
             return responseData;
         }
         catch (error) {
@@ -89,7 +89,7 @@ exports.inboundService = {
                 await cacheManager_1.CacheManager.clear("checkBox");
             }
             else {
-                const cachedData = await redisCache_1.default.get(cacheKey);
+                const cachedData = await redis_config_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ Data waiting check box from Redis");
@@ -101,7 +101,7 @@ exports.inboundService = {
             }
             const planning = await warehouseRepository_1.warehouseRepository.getBoxWaitingChecked();
             const responseData = { message: `get planning box waiting check`, data: planning };
-            await redisCache_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+            await redis_config_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
             return responseData;
         }
         catch (error) {
@@ -118,7 +118,7 @@ exports.inboundService = {
             if (!detail) {
                 throw appError_1.AppError.NotFound("detail not found", "DETAIL_NOT_FOUND");
             }
-            const stages = await (0, planningHelper_1.buildStagesDetails)({
+            const stages = await (0, planningHelper_2.buildStagesDetails)({
                 detail,
                 getBoxTimes: (d) => d.boxTimes,
                 getPlanningBoxId: (d) => d.planningBoxId,
@@ -150,7 +150,7 @@ exports.inboundService = {
             const isFirstInbound = totalInboundQty === 0;
             //create inventory
             await inventoryService_1.inventoryService.createNewInventory(planning.orderId, transaction);
-            const inboundRecord = await planningRepository_1.planningRepository.createData({
+            const inboundRecord = await planningHelper_1.planningHelper.createData({
                 model: inboundHistory_1.InboundHistory,
                 data: {
                     dateInbound: new Date(),
@@ -189,7 +189,7 @@ exports.inboundService = {
     //inbound box
     inboundQtyBox: async ({ planningBoxId, inboundQty, qcSessionId, transaction, }) => {
         try {
-            const planning = await planningRepository_1.planningRepository.getModelById({
+            const planning = await planningHelper_1.planningHelper.getModelById({
                 model: planningBox_1.PlanningBox,
                 where: { planningBoxId },
                 options: {
@@ -214,7 +214,7 @@ exports.inboundService = {
             const isFirstInbound = totalInboundQty === 0;
             //create inventory
             await inventoryService_1.inventoryService.createNewInventory(planning.orderId, transaction);
-            const inboundRecord = await planningRepository_1.planningRepository.createData({
+            const inboundRecord = await planningHelper_1.planningHelper.createData({
                 model: inboundHistory_1.InboundHistory,
                 data: {
                     dateInbound: new Date(),
@@ -267,7 +267,7 @@ exports.inboundService = {
                 await cacheManager_1.CacheManager.clear("inbound");
             }
             else {
-                const cachedData = await redisCache_1.default.get(cacheKey);
+                const cachedData = await redis_config_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ Data inbound from Redis");
@@ -284,7 +284,7 @@ exports.inboundService = {
                 totalPages,
                 currentPage: page,
             };
-            await redisCache_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+            await redis_config_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
             return responseData;
         }
         catch (error) {

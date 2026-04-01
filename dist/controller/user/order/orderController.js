@@ -7,7 +7,7 @@ exports.deleteOrder = exports.updateOrder = exports.addOrder = exports.getOrderP
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const orderService_1 = require("../../../service/orderService");
-const connectCloudinary_1 = __importDefault(require("../../../assest/configs/connectCloudinary"));
+const cloudinary_config_1 = __importDefault(require("../../../assest/configs/connect/cloudinary.config"));
 //===============================ORDER AUTOCOMPLETE=====================================
 const getOrderIdRaw = async (req, res, next) => {
     const { orderId } = req.query;
@@ -43,7 +43,7 @@ const getCloudinarySignature = async (req, res) => {
     const timestamp = Math.round(new Date().getTime() / 1000);
     const folder = "orders";
     // Bây giờ TypeScript sẽ biết chắc chắn CLOUDINARY_API_SECRET là string
-    const signature = connectCloudinary_1.default.utils.api_sign_request({ timestamp, folder }, CLOUDINARY_API_SECRET);
+    const signature = cloudinary_config_1.default.utils.api_sign_request({ timestamp, folder }, CLOUDINARY_API_SECRET);
     return res.json({
         signature,
         timestamp,
@@ -60,7 +60,13 @@ const getOrdersAcceptPlanning = async (req, res, next) => {
         let response;
         // 1. Nhánh tìm kiếm theo field
         if (field && keyword) {
-            response = await orderService_1.orderService.getOrderByField(field, keyword, Number(page), Number(pageSize), req.user);
+            response = await orderService_1.orderService.getOrderByField({
+                field,
+                keyword,
+                page: Number(page),
+                pageSize: Number(pageSize),
+                user: req.user,
+            });
         }
         // 2. Nhánh lấy tất cả
         else {

@@ -6,19 +6,22 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.planningBoxService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
-const planningRepository_1 = require("../../repository/planningRepository");
-const redisCache_1 = __importDefault(require("../../assest/configs/redisCache"));
-const appError_1 = require("../../utils/appError");
-const planningBox_1 = require("../../models/planning/planningBox");
-const planningBoxMachineTime_1 = require("../../models/planning/planningBoxMachineTime");
-const timeOverflowPlanning_1 = require("../../models/planning/timeOverflowPlanning");
 const sequelize_1 = require("sequelize");
+const appError_1 = require("../../utils/appError");
 const machineBox_1 = require("../../models/admin/machineBox");
-const timeRunningBox_1 = require("./helper/timeRunningBox");
-const planningHelper_1 = require("../../utils/helper/modelHelper/planningHelper");
-const transactionHelper_1 = require("../../utils/helper/transactionHelper");
+const meiliService_1 = require("../meiliService");
 const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
+const planningBox_1 = require("../../models/planning/planningBox");
+const redis_config_1 = __importDefault(require("../../assest/configs/connect/redis.config"));
+const timeRunningBox_1 = require("./helper/timeRunningBox");
+const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
+const transactionHelper_1 = require("../../utils/helper/transactionHelper");
+const planningHelper_1 = require("../../repository/planning/planningHelper");
+const melisearch_config_1 = require("../../assest/configs/connect/melisearch.config");
+const timeOverflowPlanning_1 = require("../../models/planning/timeOverflowPlanning");
+const planningBoxRepository_1 = require("../../repository/planning/planningBoxRepository");
+const planningBoxMachineTime_1 = require("../../models/planning/planningBoxMachineTime");
+const meiliTransformer_1 = require("../../assest/configs/meilisearch/meiliTransformer");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { box } = cacheKey_1.CacheKey.planning;
 exports.planningBoxService = {
@@ -35,7 +38,7 @@ exports.planningBoxService = {
                 await cacheManager_1.CacheManager.clear("planningBox");
             }
             else {
-                const cachedData = await redisCache_1.default.get(cacheKey);
+                const cachedData = await redis_config_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ Data PlanningBox from Redis");
@@ -46,7 +49,7 @@ exports.planningBoxService = {
                 }
             }
             const planning = await exports.planningBoxService.getPlanningBoxSorted(machine);
-            await redisCache_1.default.set(cacheKey, JSON.stringify(planning), "EX", 1800);
+            await redis_config_1.default.set(cacheKey, JSON.stringify(planning), "EX", 1800);
             return { message: `get planning by machine: ${machine}`, data: planning };
         }
         catch (error) {
@@ -59,7 +62,7 @@ exports.planningBoxService = {
     //sort planning
     getPlanningBoxSorted: async (machine) => {
         try {
-            const data = await planningRepository_1.planningRepository.getAllPlanningBox({ machine });
+            const data = await planningBoxRepository_1.planningBoxRepository.getAllPlanningBox({ machine });
             //lọc đơn complete trong 1 ngày
             const truncateToDate = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
             const now = truncateToDate(new Date());
@@ -143,39 +146,35 @@ exports.planningBoxService = {
         }
     },
     getPlanningBoxByField: async (machine, field, keyword) => {
-        console.log(`machine ${machine} - field: ${field} - keyword: ${keyword}`);
         try {
-            const fieldMap = {
-                orderId: (paper) => paper.orderId,
-                customerName: (paper) => paper.Order.Customer.customerName,
-                QcBox: (paper) => paper.Order.flute,
-            };
-            const key = field;
-            if (!key || !fieldMap[key]) {
-                throw appError_1.AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
+            const validFields = ["orderId", "customerName", "QC_box"];
+            if (!validFields.includes(field)) {
+                throw appError_1.AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
             }
-            const result = await (0, planningHelper_1.getPlanningByField)({
-                cacheKey: box.search(machine),
-                keyword,
-                getFieldValue: fieldMap[key],
-                whereCondition: { machine, status: { [sequelize_1.Op.ne]: "stop" } },
-                message: `get all by ${field} from filtered cache`,
-                isBox: true,
+            const index = melisearch_config_1.meiliClient.index("planningBoxes");
+            const searchResult = await index.search(keyword, {
+                attributesToSearchOn: [field],
+                attributesToRetrieve: ["planningBoxId"],
+                filter: `boxTimes.machine = "${machine}" AND boxTimes.status != "stop"`,
+                limit: 100,
             });
-            const planningBoxIdsArr = result.data.map((p) => p.planningBoxId);
-            console.log(planningBoxIdsArr);
+            const planningBoxIdsArr = searchResult.hits.map((hit) => hit.planningBoxId);
             if (!planningBoxIdsArr || planningBoxIdsArr.length === 0) {
-                return {
-                    ...result,
-                    data: [],
-                };
+                return { message: "No planning boxes found", data: [] };
             }
-            const fullData = await planningRepository_1.planningRepository.getAllPlanningBox({
-                whereCondition: { planningBoxId: planningBoxIdsArr },
+            //query db
+            const fullData = await planningBoxRepository_1.planningBoxRepository.getAllPlanningBox({
+                whereCondition: { planningBoxId: { [sequelize_1.Op.in]: planningBoxIdsArr } },
                 machine,
             });
-            return { ...result, data: fullData };
-            // return result;
+            // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
+            const finalData = planningBoxIdsArr
+                .map((id) => fullData.find((p) => p.planningBoxId === id))
+                .filter(Boolean);
+            return {
+                message: `Search by ${field} from Meilisearch & DB`,
+                data: finalData,
+            };
         }
         catch (error) {
             console.error(`Failed to get customers by ${field}`, error);
@@ -187,7 +186,7 @@ exports.planningBoxService = {
     confirmCompletePlanningBox: async (planningBoxId, machine) => {
         try {
             const ids = Array.isArray(planningBoxId) ? planningBoxId : [planningBoxId];
-            const planningBox = await planningRepository_1.planningRepository.getBoxsById({
+            const planningBox = await planningBoxRepository_1.planningBoxRepository.getBoxsById({
                 planningBoxIds: ids,
                 machine,
                 options: {
@@ -215,7 +214,7 @@ exports.planningBoxService = {
                 }
             }
             //cập nhật status planning
-            await planningRepository_1.planningRepository.updateDataModel({
+            await planningHelper_1.planningHelper.updateDataModel({
                 model: planningBoxMachineTime_1.PlanningBoxTime,
                 data: { status: "complete" },
                 options: { where: { planningBoxId: ids } },
@@ -224,11 +223,19 @@ exports.planningBoxService = {
                 where: { planningBoxId: ids },
             });
             if (overflowRows.length) {
-                await planningRepository_1.planningRepository.updateDataModel({
+                await planningHelper_1.planningHelper.updateDataModel({
                     model: timeOverflowPlanning_1.timeOverflowPlanning,
                     data: { status: "complete" },
                     options: { where: { planningBoxId: ids } },
                 });
+            }
+            //update meilisearch
+            const fullBox = await planningBoxRepository_1.planningBoxRepository.syncPlanningBoxToMeili({
+                whereCondition: { planningBoxId: { [sequelize_1.Op.in]: ids } },
+            });
+            if (fullBox.length > 0) {
+                const flattenData = fullBox.map(meiliTransformer_1.meiliTransformer.planningBox);
+                meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.PLANNING_BOXES, flattenData);
             }
             return { message: "planning box updated successfully" };
         }
@@ -241,7 +248,7 @@ exports.planningBoxService = {
     },
     acceptLackQtyBox: async (planningBoxIds, newStatus, machine) => {
         try {
-            const plannings = await planningRepository_1.planningRepository.getBoxsById({ planningBoxIds, machine });
+            const plannings = await planningBoxRepository_1.planningBoxRepository.getBoxsById({ planningBoxIds, machine });
             if (plannings.length === 0) {
                 throw appError_1.AppError.NotFound("planning not found", "PLANNING_NOT_FOUND");
             }
@@ -251,11 +258,19 @@ exports.planningBoxService = {
                 }
                 planning.status = newStatus;
                 await planning.save();
-                await planningRepository_1.planningRepository.updateDataModel({
+                await planningHelper_1.planningHelper.updateDataModel({
                     model: timeOverflowPlanning_1.timeOverflowPlanning,
                     data: { status: newStatus },
                     options: { where: { planningBoxId: planning.planningBoxId } },
                 });
+            }
+            //update meilisearch
+            const fullBox = await planningBoxRepository_1.planningBoxRepository.syncPlanningBoxToMeili({
+                whereCondition: { planningBoxId: { [sequelize_1.Op.in]: planningBoxIds } },
+            });
+            if (fullBox.length > 0) {
+                const flattenData = fullBox.map(meiliTransformer_1.meiliTransformer.planningBox);
+                meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.PLANNING_BOXES, flattenData);
             }
             return { message: `Update status:${newStatus} successfully.` };
         }
@@ -273,7 +288,7 @@ exports.planningBoxService = {
                 for (const item of updateIndex) {
                     if (!item.sortPlanning)
                         continue;
-                    const boxTime = await planningRepository_1.planningRepository.getModelById({
+                    const boxTime = await planningHelper_1.planningHelper.getModelById({
                         model: planningBoxMachineTime_1.PlanningBoxTime,
                         where: {
                             planningBoxId: item.planningBoxId,
@@ -283,7 +298,7 @@ exports.planningBoxService = {
                         options: { transaction },
                     });
                     if (boxTime) {
-                        await planningRepository_1.planningRepository.updateDataModel({
+                        await planningHelper_1.planningHelper.updateDataModel({
                             model: boxTime,
                             data: { sortPlanning: item.sortPlanning },
                             options: { transaction },
@@ -291,12 +306,12 @@ exports.planningBoxService = {
                     }
                 }
                 // 2. Lấy lại danh sách planning đã được update
-                const sortedPlannings = await planningRepository_1.planningRepository.getBoxesByUpdateIndex(updateIndex, machine, transaction);
+                const sortedPlannings = await planningBoxRepository_1.planningBoxRepository.getBoxesByUpdateIndex(updateIndex, machine, transaction);
                 // console.log(
                 //   sortedPlannings.map((p) => ({ id: p.planningBoxId, sort: p.boxTimes?.[0]?.sortPlanning }))
                 // );
                 // 3. Tính toán thời gian chạy cho từng planning
-                const machineInfo = await planningRepository_1.planningRepository.getModelById({
+                const machineInfo = await planningHelper_1.planningHelper.getModelById({
                     model: machineBox_1.MachineBox,
                     where: { machineName: machine },
                 });

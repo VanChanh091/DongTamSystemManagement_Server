@@ -13,7 +13,7 @@ function initDeliveryItemModel(sequelize) {
         sequence: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         note: { type: sequelize_1.DataTypes.STRING },
         status: {
-            type: sequelize_1.DataTypes.ENUM("none", "planned", "cancelled", "completed"),
+            type: sequelize_1.DataTypes.ENUM("none", "planned", "requested", "prepared", "cancelled", "completed"),
             allowNull: false,
             defaultValue: "none",
         },

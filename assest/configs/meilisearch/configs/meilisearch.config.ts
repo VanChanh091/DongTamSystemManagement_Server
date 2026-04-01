@@ -34,12 +34,34 @@ export const ordersSettings: Settings = {
 //planning paper
 export const planningPaperSettings: Settings = {
   searchableAttributes: ["orderId", "customerName", "ghepKho"],
+  filterableAttributes: ["chooseMachine", "status"],
   rankingRules: rule,
 };
 
 //planning box
 export const planningBoxSettings: Settings = {
   searchableAttributes: ["orderId", "customerName", "QC_box"],
+  filterableAttributes: ["boxTimes.machine", "boxTimes.status"],
+  rankingRules: rule,
+};
+
+//report paper
+export const reportPaperSettings: Settings = {
+  searchableAttributes: ["orderId", "customerName", "dayReported", "shiftManagement"],
+  filterableAttributes: ["chooseMachine"],
+  rankingRules: rule,
+};
+
+//report box
+export const reportBoxSettings: Settings = {
+  searchableAttributes: ["orderId", "customerName", "dayReported", "QC_box", "shiftManagement"],
+  filterableAttributes: ["machine"],
+  rankingRules: rule,
+};
+
+//inbound history
+export const inboundSettings: Settings = {
+  searchableAttributes: ["orderId", "customerName", "companyName", "productName"],
   rankingRules: rule,
 };
 
@@ -55,26 +77,16 @@ export const inventorySettings: Settings = {
   rankingRules: rule,
 };
 
-//report paper
-export const reportPaperSettings: Settings = {
-  searchableAttributes: ["orderId", "customerName", "dayReported", "shiftManagement"],
-  rankingRules: rule,
-};
-
-//report box
-export const reportBoxSettings: Settings = {
-  searchableAttributes: ["orderId", "customerName", "dayReported", "QC_box", "shiftManagement"],
-  rankingRules: rule,
-};
-
-//inbound history
-export const inboundSettings: Settings = {
-  searchableAttributes: ["orderId", "customerName", "companyName", "productName"],
-  rankingRules: rule,
-};
-
 //dashboard
 export const dashboardSettings: Settings = {
-  searchableAttributes: ["orderId", "machine", "customerName", "companyName", "username"],
+  searchableAttributes: [
+    "orderId",
+    "ghepKho",
+    "chooseMachine",
+    "customerName",
+    "companyName",
+    "fullName",
+  ],
+  filterableAttributes: ["status"],
   rankingRules: rule,
 };

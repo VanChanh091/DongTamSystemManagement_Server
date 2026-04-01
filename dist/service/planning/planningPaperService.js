@@ -7,20 +7,22 @@ exports.planningPaperService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const sequelize_1 = require("sequelize");
-const order_1 = require("../../models/order/order");
-const planningPaper_1 = require("../../models/planning/planningPaper");
-const timeOverflowPlanning_1 = require("../../models/planning/timeOverflowPlanning");
 const appError_1 = require("../../utils/appError");
-const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
-const planningRepository_1 = require("../../repository/planningRepository");
-const planningBox_1 = require("../../models/planning/planningBox");
-const planningBoxMachineTime_1 = require("../../models/planning/planningBoxMachineTime");
-const machinePaper_1 = require("../../models/admin/machinePaper");
-const timeRunningPaper_1 = require("./helper/timeRunningPaper");
-const planningHelper_1 = require("../../utils/helper/modelHelper/planningHelper");
-const transactionHelper_1 = require("../../utils/helper/transactionHelper");
+const order_1 = require("../../models/order/order");
+const meiliService_1 = require("../meiliService");
 const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
-const redisCache_1 = __importDefault(require("../../assest/configs/redisCache"));
+const machinePaper_1 = require("../../models/admin/machinePaper");
+const planningBox_1 = require("../../models/planning/planningBox");
+const redis_config_1 = __importDefault(require("../../assest/configs/connect/redis.config"));
+const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
+const transactionHelper_1 = require("../../utils/helper/transactionHelper");
+const planningHelper_1 = require("../../repository/planning/planningHelper");
+const melisearch_config_1 = require("../../assest/configs/connect/melisearch.config");
+const planningBoxMachineTime_1 = require("../../models/planning/planningBoxMachineTime");
+const timeOverflowPlanning_1 = require("../../models/planning/timeOverflowPlanning");
+const timeRunningPaper_1 = require("./helper/timeRunningPaper");
+const planningPaper_1 = require("../../models/planning/planningPaper");
+const planningPaperRepository_1 = require("../../repository/planning/planningPaperRepository");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper } = cacheKey_1.CacheKey.planning;
 exports.planningPaperService = {
@@ -36,7 +38,7 @@ exports.planningPaperService = {
                 await cacheManager_1.CacheManager.clear("planningPaper");
             }
             else {
-                const cachedData = await redisCache_1.default.get(cacheKey);
+                const cachedData = await redis_config_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ Data PlanningPaper from Redis");
@@ -47,7 +49,7 @@ exports.planningPaperService = {
                 }
             }
             const data = await exports.planningPaperService.getPlanningPaperSorted(machine);
-            await redisCache_1.default.set(cacheKey, JSON.stringify(data), "EX", 1800);
+            await redis_config_1.default.set(cacheKey, JSON.stringify(data), "EX", 1800);
             return { message: `get planning by machine: ${machine}`, data };
         }
         catch (error) {
@@ -60,7 +62,7 @@ exports.planningPaperService = {
     //get sort planning
     getPlanningPaperSorted: async (machine) => {
         try {
-            const data = await planningRepository_1.planningRepository.getPlanningPaper({
+            const { rows: data } = await planningPaperRepository_1.planningPaperRepository.getPlanningPaper({
                 whereCondition: {
                     chooseMachine: machine,
                     status: { [sequelize_1.Op.ne]: "stop" },
@@ -157,33 +159,33 @@ exports.planningPaperService = {
     },
     getPlanningByField: async (machine, field, keyword) => {
         try {
-            const fieldMap = {
-                orderId: (paper) => paper.orderId,
-                ghepKho: (paper) => paper.ghepKho,
-                customerName: (paper) => paper.Order.Customer.customerName,
+            const validFields = ["orderId", "customerName", "ghepKho"];
+            if (!validFields.includes(field)) {
+                throw appError_1.AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
+            }
+            const index = melisearch_config_1.meiliClient.index("planningPapers");
+            const searchResult = await index.search(keyword, {
+                attributesToSearchOn: [field],
+                attributesToRetrieve: ["planningId"],
+                filter: `chooseMachine = "${machine}" AND status != "stop"`,
+                limit: 100,
+            });
+            const planningIds = searchResult.hits.map((hit) => hit.planningId);
+            if (!planningIds || planningIds.length === 0) {
+                return { message: "No planning papers found", data: [] };
+            }
+            //query db
+            const { rows } = await planningPaperRepository_1.planningPaperRepository.getPlanningPaper({
+                whereCondition: { planningId: { [sequelize_1.Op.in]: planningIds } },
+            });
+            // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
+            const finalData = planningIds
+                .map((id) => rows.find((p) => p.planningId === id))
+                .filter(Boolean);
+            return {
+                message: `Search by ${field} from Meilisearch & DB`,
+                data: finalData,
             };
-            const key = field;
-            if (!key || !fieldMap[key]) {
-                throw appError_1.AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
-            }
-            const result = await (0, planningHelper_1.getPlanningByField)({
-                cacheKey: paper.search(machine),
-                keyword,
-                getFieldValue: fieldMap[key],
-                whereCondition: { chooseMachine: machine, status: { [sequelize_1.Op.ne]: "stop" } },
-                message: `get all by ${field} from filtered cache`,
-            });
-            const planningIdsArr = result.data.map((p) => p.planningId);
-            if (!planningIdsArr || planningIdsArr.length === 0) {
-                return {
-                    ...result,
-                    data: [],
-                };
-            }
-            const fullData = await planningRepository_1.planningRepository.getPlanningPaper({
-                whereCondition: { planningId: planningIdsArr },
-            });
-            return { ...result, data: fullData };
         }
         catch (error) {
             console.error(`Failed to get customers by ${field}`, error);
@@ -194,7 +196,7 @@ exports.planningPaperService = {
     },
     changeMachinePlanning: async (planningIds, newMachine) => {
         try {
-            const plannings = await planningRepository_1.planningRepository.getPapersById({ planningIds });
+            const plannings = await planningPaperRepository_1.planningPaperRepository.getPapersById({ planningIds });
             if (plannings.length === 0) {
                 throw appError_1.AppError.NotFound("planning not found", "PLANNING_NOT_FOUND");
             }
@@ -203,6 +205,12 @@ exports.planningPaperService = {
                 planning.sortPlanning = null;
                 await planning.save();
             }
+            //update meilisearch
+            const dataForMeili = plannings.map((p) => ({
+                planningId: p.planningId,
+                chooseMachine: newMachine,
+            }));
+            meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.PLANNING_PAPERS, dataForMeili);
             return { message: "Change machine complete", plannings };
         }
         catch (error) {
@@ -215,7 +223,7 @@ exports.planningPaperService = {
     confirmCompletePlanningPaper: async (planningId) => {
         try {
             const ids = Array.isArray(planningId) ? planningId : [planningId];
-            const planningPaper = await planningRepository_1.planningRepository.getPapersById({
+            const planningPaper = await planningPaperRepository_1.planningPaperRepository.getPapersById({
                 planningIds: ids,
                 options: {
                     attributes: [
@@ -244,7 +252,7 @@ exports.planningPaperService = {
                 }
             }
             //cập nhật status planning
-            await planningRepository_1.planningRepository.updateDataModel({
+            await planningHelper_1.planningHelper.updateDataModel({
                 model: planningPaper_1.PlanningPaper,
                 data: { status: "complete" },
                 options: { where: { planningId: ids } },
@@ -253,12 +261,18 @@ exports.planningPaperService = {
                 where: { planningId: ids },
             });
             if (overflowRows.length) {
-                await planningRepository_1.planningRepository.updateDataModel({
+                await planningHelper_1.planningHelper.updateDataModel({
                     model: timeOverflowPlanning_1.timeOverflowPlanning,
                     data: { status: "complete" },
                     options: { where: { planningId: ids } },
                 });
             }
+            //update meilisearch
+            const dataForMeili = planningPaper.map((p) => ({
+                planningId: p.planningId,
+                status: "complete",
+            }));
+            meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.PLANNING_PAPERS, dataForMeili);
             return { message: "planning paper updated successfully" };
         }
         catch (error) {
@@ -270,14 +284,14 @@ exports.planningPaperService = {
     },
     pauseOrAcceptLackQtyPLanning: async (planningIds, newStatus, rejectReason) => {
         try {
-            const plannings = await planningRepository_1.planningRepository.getPapersById({ planningIds });
+            const plannings = await planningPaperRepository_1.planningPaperRepository.getPapersById({ planningIds });
             if (plannings.length === 0) {
                 throw appError_1.AppError.NotFound("planning npt found", "PLANNING_NOT_FOUND");
             }
             if (newStatus !== "complete") {
                 for (const planning of plannings) {
                     if (planning.orderId) {
-                        const order = await planningRepository_1.planningRepository.getModelById({
+                        const order = await planningHelper_1.planningHelper.getModelById({
                             model: order_1.Order,
                             where: { orderId: planning.orderId },
                         });
@@ -289,7 +303,7 @@ exports.planningPaperService = {
                                     throw appError_1.AppError.Conflict(`Cannot reject planning ${planning.planningId} has produced quantity.`, "CANNOT_REJECT_PRODUCED_PLANNING");
                                 }
                                 // Trả order về reject
-                                await planningRepository_1.planningRepository.updateDataModel({
+                                await planningHelper_1.planningHelper.updateDataModel({
                                     model: order,
                                     data: {
                                         status: newStatus,
@@ -308,56 +322,79 @@ exports.planningPaperService = {
                                 //   await planningRepository.updateDataModel(customer, { debtCurrent: debtAfter });
                                 // }
                                 // Xoá dữ liệu phụ thuộc
-                                const dependents = await planningRepository_1.planningRepository.getBoxByPlanningId(planning.planningId);
+                                const dependents = await planningPaperRepository_1.planningPaperRepository.getBoxByPlanningId(planning.planningId);
                                 for (const box of dependents) {
-                                    await planningRepository_1.planningRepository.deleteModelData({
+                                    await planningHelper_1.planningHelper.deleteModelData({
                                         model: planningBoxMachineTime_1.PlanningBoxTime,
                                         where: { planningBoxId: box.planningBoxId },
                                     });
                                     await box.destroy();
                                 }
                                 //xóa planning paper
+                                const deletedId = planning.planningId;
                                 await planning.destroy();
+                                //delete meilisearch
+                                meiliService_1.meiliService.deleteMeiliData(meiliService_1.MEILI_INDEX.PLANNING_PAPERS, deletedId);
+                                meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.ORDERS, {
+                                    orderSortValue: order.orderSortValue,
+                                    status: newStatus,
+                                });
                             }
                             //case pause planning -> status:accept or stop order
                             //if qtyProduced = 0 -> delete planning paper&box -> status:accept order
                             //if qtyProduced > 0 -> status:stop order -> status:stop planning paper&box
                             else if (newStatus === "stop") {
-                                const dependents = await planningRepository_1.planningRepository.getBoxByPlanningId(planning.planningId);
+                                const dependents = await planningPaperRepository_1.planningPaperRepository.getBoxByPlanningId(planning.planningId);
                                 if ((planning.qtyProduced ?? 0) > 0) {
-                                    await planningRepository_1.planningRepository.updateDataModel({
+                                    await planningHelper_1.planningHelper.updateDataModel({
                                         model: order,
                                         data: {
                                             status: newStatus,
                                             rejectReason: rejectReason,
                                         },
                                     });
-                                    await planningRepository_1.planningRepository.updateDataModel({
+                                    await planningHelper_1.planningHelper.updateDataModel({
                                         model: planning,
                                         data: { status: newStatus },
                                     });
                                     for (const box of dependents) {
-                                        await planningRepository_1.planningRepository.updateDataModel({
+                                        await planningHelper_1.planningHelper.updateDataModel({
                                             model: planningBoxMachineTime_1.PlanningBoxTime,
                                             data: { status: newStatus },
                                             options: { where: { planningBoxId: box.planningBoxId } },
                                         });
                                     }
+                                    //update meilisearch
+                                    meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.PLANNING_PAPERS, {
+                                        planningId: planning.planningId,
+                                        status: newStatus,
+                                    });
+                                    meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.ORDERS, {
+                                        orderSortValue: order.orderSortValue,
+                                        status: newStatus,
+                                    });
                                 }
                                 else {
-                                    await planningRepository_1.planningRepository.updateDataModel({
+                                    await planningHelper_1.planningHelper.updateDataModel({
                                         model: order,
                                         data: { status: "accept" },
                                     });
                                     for (const box of dependents) {
-                                        await planningRepository_1.planningRepository.deleteModelData({
+                                        await planningHelper_1.planningHelper.deleteModelData({
                                             model: planningBoxMachineTime_1.PlanningBoxTime,
                                             where: { planningBoxId: box.planningBoxId },
                                         });
                                         await box.destroy();
                                     }
+                                    const deletedId = planning.planningId;
                                     await planning.destroy();
                                     await cacheManager_1.CacheManager.clear("orderAccept");
+                                    //update and delete meilisearch
+                                    meiliService_1.meiliService.deleteMeiliData(meiliService_1.MEILI_INDEX.PLANNING_PAPERS, deletedId);
+                                    meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.ORDERS, {
+                                        orderSortValue: order.orderSortValue,
+                                        status: "accept",
+                                    });
                                 }
                             }
                         }
@@ -373,24 +410,29 @@ exports.planningPaperService = {
                     planning.status = newStatus;
                     await planning.save();
                     if (planning.hasOverFlow) {
-                        await planningRepository_1.planningRepository.updateDataModel({
+                        await planningHelper_1.planningHelper.updateDataModel({
                             model: timeOverflowPlanning_1.timeOverflowPlanning,
                             data: { status: newStatus },
                             options: { where: { planningId: planning.planningId } },
                         });
                     }
-                    const planningBox = await planningRepository_1.planningRepository.getModelById({
+                    const planningBox = await planningHelper_1.planningHelper.getModelById({
                         model: planningBox_1.PlanningBox,
                         where: {
                             planningId: planning.planningId,
                         },
                     });
-                    if (!planningBox)
-                        continue;
-                    await planningRepository_1.planningRepository.updateDataModel({
-                        model: planningBoxMachineTime_1.PlanningBoxTime,
-                        data: { runningPlan: planning.qtyProduced ?? 0 },
-                        options: { where: { planningBoxId: planningBox.planningBoxId } },
+                    if (planningBox) {
+                        await planningHelper_1.planningHelper.updateDataModel({
+                            model: planningBoxMachineTime_1.PlanningBoxTime,
+                            data: { runningPlan: planning.qtyProduced ?? 0 },
+                            options: { where: { planningBoxId: planningBox.planningBoxId } },
+                        });
+                    }
+                    //update meilisearch
+                    meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.PLANNING_PAPERS, {
+                        planningId: planning.planningId,
+                        status: newStatus,
                     });
                 }
             }
@@ -409,9 +451,9 @@ exports.planningPaperService = {
                 // Cập nhật sortPlanning
                 await (0, timeRunningPaper_1.updateSortPlanning)(updateIndex, transaction);
                 // Lấy lại danh sách đã update
-                const plannings = await planningRepository_1.planningRepository.getPapersByUpdateIndex(updateIndex, transaction);
+                const plannings = await planningPaperRepository_1.planningPaperRepository.getPapersByUpdateIndex(updateIndex, transaction);
                 // Lấy thông tin máy
-                const machineInfo = await planningRepository_1.planningRepository.getModelById({
+                const machineInfo = await planningHelper_1.planningHelper.getModelById({
                     model: machinePaper_1.MachinePaper,
                     where: { machineName: machine },
                 });

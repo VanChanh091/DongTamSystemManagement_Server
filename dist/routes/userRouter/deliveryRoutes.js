@@ -20,5 +20,10 @@ router.put("/planning", authMiddleware_1.default, (0, permissionMiddleware_1.aut
 router.get("/schedule", authMiddleware_1.default, deliveryController_1.getAllScheduleDelivery);
 router.put("/schedule", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan", "delivery"]), deliveryController_1.cancelOrCompleteDeliveryPlan);
 router.post("/schedule/export", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan", "delivery"]), deliveryController_1.exportScheduleDelivery);
+//=================================PREPARE GOODS=====================================
+router.get("/prepare", authMiddleware_1.default, deliveryController_1.getRequestPrepareGoods);
+router.put("/prepare", authMiddleware_1.default, deliveryController_1.requestOrPrepareGoods);
+//socket
+router.post("/notify-delivery", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["delivery"]), deliveryController_1.notifyPrepareGoods);
 exports.default = router;
 //# sourceMappingURL=deliveryRoutes.js.map

@@ -331,10 +331,14 @@ exports.deliveryRepository = {
         });
     },
     //=================================SCHEDULE DELIVERY=====================================
-    getAllDeliveryPlanByDate: async (deliveryDate, status) => {
+    getAllDeliveryPlanByDate: async ({ deliveryDate, status, itemStatus, }) => {
         const whereCondition = { deliveryDate: new Date(deliveryDate) };
         if (status) {
             whereCondition.status = status;
+        }
+        const itemWhereCondition = {};
+        if (itemStatus) {
+            itemWhereCondition.status = itemStatus;
         }
         return await deliveryPlan_1.DeliveryPlan.findAll({
             attributes: { exclude: ["createdAt", "updatedAt"] },
@@ -342,6 +346,7 @@ exports.deliveryRepository = {
             include: [
                 {
                     model: deliveryItem_1.DeliveryItem,
+                    where: Object.keys(itemWhereCondition).length > 0 ? itemWhereCondition : undefined,
                     attributes: { exclude: ["createdAt", "updatedAt"] },
                     include: [
                         {
@@ -376,7 +381,6 @@ exports.deliveryRepository = {
                                             include: [
                                                 { model: customer_1.Customer, attributes: ["customerName", "companyName"] },
                                                 { model: product_1.Product, attributes: ["typeProduct", "productName"] },
-                                                { model: inventory_1.Inventory, attributes: ["qtyInventory"] },
                                             ],
                                         },
                                     ],

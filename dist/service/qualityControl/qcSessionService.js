@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.qcSessionService = void 0;
 const qcSession_1 = require("../../models/qualityControl/qcSession");
 const user_1 = require("../../models/user/user");
-const planningRepository_1 = require("../../repository/planningRepository");
+const planningHelper_1 = require("../../repository/planning/planningHelper");
 const qcRepository_1 = require("../../repository/qcRepository");
 const appError_1 = require("../../utils/appError");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
@@ -56,7 +56,7 @@ exports.qcSessionService = {
             if (totalSample !== undefined && totalSample < 1) {
                 throw appError_1.AppError.BadRequest("totalSample must be greater than 0", "TOTAL_SAMPLE_MUST_BE_GREATER_THAN_0");
             }
-            const existedUser = await planningRepository_1.planningRepository.getModelById({ model: user_1.User, where: { userId } });
+            const existedUser = await planningHelper_1.planningHelper.getModelById({ model: user_1.User, where: { userId } });
             if (!existedUser) {
                 throw appError_1.AppError.BadRequest("user not found", "USER_NOT_FOUND");
             }

@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.dashboardService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const redisCache_1 = __importDefault(require("../assest/configs/redisCache"));
+const redis_config_1 = __importDefault(require("../assest/configs/connect/redis.config"));
 const sequelize_1 = require("sequelize");
 const cacheKey_1 = require("../utils/helper/cache/cacheKey");
 const dashboardRepository_1 = require("../repository/dashboardRepository");
@@ -17,8 +17,9 @@ const dbPlanningRowAndColumn_1 = require("../utils/mapping/dbPlanningRowAndColum
 const excelExporter_1 = require("../utils/helper/excelExporter");
 const planningBoxMachineTime_1 = require("../models/planning/planningBoxMachineTime");
 const planningHelper_1 = require("../utils/helper/modelHelper/planningHelper");
+const melisearch_config_1 = require("../assest/configs/connect/melisearch.config");
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { planning, details, search } = cacheKey_1.CacheKey.dashboard;
+const { planning, details } = cacheKey_1.CacheKey.dashboard;
 exports.dashboardService = {
     getAllDashboardPlanning: async (page, pageSize, status) => {
         const cacheKey = planning.all(status, page);
@@ -28,7 +29,7 @@ exports.dashboardService = {
                 await cacheManager_1.CacheManager.clear("dbPlanning");
             }
             else {
-                const cachedData = await redisCache_1.default.get(cacheKey);
+                const cachedData = await redis_config_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ Get PlanningPaper from cache");
@@ -49,7 +50,7 @@ exports.dashboardService = {
                 totalPages,
                 currentPage: page,
             };
-            await redisCache_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 1800);
+            await redis_config_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 1800);
             return responseData;
         }
         catch (error) {
@@ -65,7 +66,7 @@ exports.dashboardService = {
                 await cacheManager_1.CacheManager.clear("dbPlanningDetail");
             }
             else {
-                const cachedData = await redisCache_1.default.get(cacheKey);
+                const cachedData = await redis_config_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("📦 Get Planning STAGES from cache");
@@ -87,7 +88,7 @@ exports.dashboardService = {
                 getPlanningBoxId: (d) => d.planningBoxId,
                 getAllOverflow: (id) => dashboardRepository_1.dashboardRepository.getAllTimeOverflow(id),
             });
-            await redisCache_1.default.set(cacheKey, JSON.stringify(stages), "EX", 1800);
+            await redis_config_1.default.set(cacheKey, JSON.stringify(stages), "EX", 1800);
             return { message: "get db planning detail succesfully", data: stages };
         }
         catch (error) {
@@ -98,45 +99,49 @@ exports.dashboardService = {
     //get by field
     getDbPlanningByFields: async ({ field, keyword, page, pageSize, }) => {
         try {
-            const fieldMap = {
-                orderId: (paper) => paper.orderId,
-                ghepKho: (paper) => paper.ghepKho,
-                machine: (paper) => paper.chooseMachine,
-                customerName: (paper) => paper.Order.Customer.customerName,
-                companyName: (paper) => paper.Order.Customer.companyName,
-                username: (paper) => paper.Order.User.fullName,
-            };
-            const key = field;
-            if (!key || !fieldMap[key]) {
-                throw appError_1.AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
+            const validFields = ["orderId", "machine", "customerName", "companyName", "username"];
+            if (!validFields.includes(field)) {
+                throw appError_1.AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
             }
-            const result = await (0, planningHelper_1.getDbPlanningByField)({
-                cacheKey: search,
-                keyword,
-                getFieldValue: fieldMap[key],
-                page,
-                pageSize,
-                message: `get all by ${field} from filtered cache`,
+            const index = melisearch_config_1.meiliClient.index("dashboard");
+            // Tìm kiếm trên Meilisearch để lấy planningId
+            const searchResult = await index.search(keyword, {
+                attributesToSearchOn: [field],
+                attributesToRetrieve: ["planningId"], // Chỉ lấy planningId
+                page: Number(page) || 1,
+                hitsPerPage: Number(pageSize) || 25,
             });
-            const planningIdsArr = result.data.map((p) => p.planningId);
-            const planningIds = planningIdsArr;
-            if (!planningIds || planningIds.length === 0) {
+            const planningIdsArr = searchResult.hits.map((p) => p.planningId);
+            if (planningIdsArr.length === 0) {
                 return {
-                    ...result,
+                    message: "No dashboard found",
                     data: [],
+                    totalPlannings: 0,
+                    totalPages: 1,
+                    currentPage: page,
                 };
             }
-            const fullData = await dashboardRepository_1.dashboardRepository.getAllDbPlanning({
+            //query db
+            const { rows } = await dashboardRepository_1.dashboardRepository.getAllDbPlanning({
                 whereCondition: {
-                    planningId: planningIds,
+                    planningId: { [sequelize_1.Op.in]: planningIdsArr },
                 },
                 paginate: false,
             });
-            return { ...result, data: fullData };
-            // return result;
+            // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
+            const finalData = planningIdsArr
+                .map((id) => rows.find((planning) => planning.planningId === id))
+                .filter(Boolean);
+            return {
+                message: "Get dashboard from Meilisearch & DB successfully",
+                data: finalData,
+                totalPlannings: searchResult.totalHits,
+                totalPages: searchResult.totalPages,
+                currentPage: page,
+            };
         }
         catch (error) {
-            console.error(`Failed to get customers by ${field}`, error);
+            console.error(`Failed to get dashboard by ${field}`, error);
             if (error instanceof appError_1.AppError)
                 throw error;
             throw appError_1.AppError.ServerError();

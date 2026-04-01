@@ -23,9 +23,6 @@ function initCustomerModel(sequelize) {
         phone: { type: sequelize_1.DataTypes.STRING },
         contactPerson: { type: sequelize_1.DataTypes.STRING },
         dayCreated: { type: sequelize_1.DataTypes.DATE },
-        debtCurrent: { type: sequelize_1.DataTypes.DOUBLE },
-        debtLimit: { type: sequelize_1.DataTypes.DOUBLE },
-        timePayment: { type: sequelize_1.DataTypes.DATE },
         rateCustomer: { type: sequelize_1.DataTypes.STRING },
         customerSource: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         cskh: { type: sequelize_1.DataTypes.STRING, allowNull: false },
@@ -37,10 +34,6 @@ function initCustomerModel(sequelize) {
         indexes: [
             //get
             { fields: ["customerSeq"] },
-            //search
-            { fields: ["customerName"] },
-            { fields: ["phone"] },
-            { fields: ["cskh"] },
         ],
     });
     return Customer;

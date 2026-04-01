@@ -1,20 +1,22 @@
+import { User } from "../../../../models/user/user";
 import { AppError } from "../../../../utils/appError";
-import { meiliClient } from "../../connect/melisearch.config";
-import { productRepository } from "../../../../repository/productRepository";
 import { Order } from "../../../../models/order/order";
+import { meiliTransformer } from "../meiliTransformer";
 import { Product } from "../../../../models/product/product";
+import { meiliClient } from "../../connect/melisearch.config";
 import { Customer } from "../../../../models/customer/customer";
-import { PlanningPaper } from "../../../../models/planning/planningPaper";
+import { Inventory } from "../../../../models/warehouse/inventory";
 import { PlanningBox } from "../../../../models/planning/planningBox";
+import { PlanningPaper } from "../../../../models/planning/planningPaper";
+import { OutboundDetail } from "../../../../models/warehouse/outboundDetail";
+import { productRepository } from "../../../../repository/productRepository";
 import { InboundHistory } from "../../../../models/warehouse/inboundHistory";
 import { OutboundHistory } from "../../../../models/warehouse/outboundHistory";
-import { OutboundDetail } from "../../../../models/warehouse/outboundDetail";
-import { Inventory } from "../../../../models/warehouse/inventory";
-import { ReportPlanningPaper } from "../../../../models/report/reportPlanningPaper";
 import { ReportPlanningBox } from "../../../../models/report/reportPlanningBox";
-import { meiliTransformer } from "../meiliTransformer";
 import { EmployeeBasicInfo } from "../../../../models/employee/employeeBasicInfo";
+import { ReportPlanningPaper } from "../../../../models/report/reportPlanningPaper";
 import { EmployeeCompanyInfo } from "../../../../models/employee/employeeCompanyInfo";
+import { planningBoxRepository } from "../../../../repository/planning/planningBoxRepository";
 
 interface SyncMeiliData {
   data: any[];
@@ -85,6 +87,7 @@ export const syncProductToMeili = async () => {
     indexName: "products",
     displayName: "products",
     primaryKey: "productId",
+    // isDeleteAll: true,
   });
 };
 
@@ -134,35 +137,42 @@ export const syncOrderToMeili = async () => {
   });
 };
 
-//sync planning waiting
+//sync planning
 export const syncPlanningPaperToMeili = async () => {
   const papers = await PlanningPaper.findAll({
-    where: {},
-    attributes: ["planningId"],
-    // include: [{ model: Customer }, { model: Product }],
+    attributes: ["planningId", "ghepKho", "orderId", "chooseMachine", "status"],
+    include: [
+      {
+        model: Order,
+        include: [
+          { model: Customer, attributes: ["customerName"] },
+          { model: Product, attributes: ["productName"] },
+        ],
+      },
+    ],
   });
 
+  const flattenData = papers.map(meiliTransformer.planningPaper);
+
   return syncMeiliData({
-    data: papers,
+    data: flattenData,
     indexName: "planningPapers",
     displayName: "planningPapers",
     primaryKey: "planningId",
+    // isDeleteAll: true,
   });
 };
 
-// waiting
 export const syncPlanningBoxToMeili = async () => {
-  const boxes = await PlanningBox.findAll({
-    where: {},
-    attributes: ["planningBoxId"],
-    // include: [{ model: Customer }, { model: Product }],
-  });
+  const boxes = await planningBoxRepository.syncPlanningBoxToMeili({});
+  const flattenData = boxes.map(meiliTransformer.planningBox);
 
   return syncMeiliData({
-    data: boxes,
+    data: flattenData,
     indexName: "planningBoxes",
     displayName: "planningBoxes",
     primaryKey: "planningBoxId",
+    // isDeleteAll: true,
   });
 };
 
@@ -217,45 +227,83 @@ export const syncInventoryToMeili = async () => {
 //sync report waiting
 export const syncReportPaperToMeili = async () => {
   const papers = await ReportPlanningPaper.findAll({
-    where: {},
-    attributes: ["reportPaperId"],
-    include: [{ model: Customer }, { model: Product }],
+    attributes: ["reportPaperId", "dayReport", "shiftManagement"],
+    include: [
+      {
+        model: PlanningPaper,
+        attributes: ["chooseMachine"],
+        include: [
+          {
+            model: Order,
+            attributes: ["orderId"],
+            include: [{ model: Customer, attributes: ["customerName"] }],
+          },
+        ],
+      },
+    ],
   });
 
+  const flattenData = papers.map(meiliTransformer.reportPaper);
+
   return syncMeiliData({
-    data: papers,
+    data: flattenData,
     indexName: "reportPapers",
     displayName: "reportPapers",
     primaryKey: "reportPaperId",
+    // isDeleteAll: true,
   });
 };
 
 // waiting
 export const syncReportBoxToMeili = async () => {
   const boxes = await ReportPlanningBox.findAll({
-    where: {},
-    attributes: ["reportBoxId"],
-    include: [{ model: Customer }, { model: Product }],
+    attributes: ["reportBoxId", "dayReport", "shiftManagement", "machine"],
+    include: [
+      {
+        model: PlanningBox,
+        attributes: ["planningBoxId"],
+        include: [
+          {
+            model: Order,
+            attributes: ["orderId", "QC_box"],
+            include: [{ model: Customer, attributes: ["customerName"] }],
+          },
+        ],
+      },
+    ],
   });
 
+  const flattenData = boxes.map(meiliTransformer.reportBox);
+
   return syncMeiliData({
-    data: boxes,
+    data: flattenData,
     indexName: "reportBoxes",
     displayName: "reportBoxes",
     primaryKey: "reportBoxId",
+    // isDeleteAll: true,
   });
 };
 
 //sync dashboard waiting
 export const syncDashboardToMeili = async () => {
   const dashboard = await PlanningPaper.findAll({
-    where: {},
-    attributes: ["planningId"],
-    include: [{ model: Customer }, { model: Product }],
+    attributes: ["planningId", "ghepKho", "chooseMachine", "status"],
+    include: [
+      {
+        model: Order,
+        attributes: ["orderId"],
+        include: [
+          { model: Customer, attributes: ["customerName", "companyName"] },
+          { model: User, attributes: ["fullName"] },
+        ],
+      },
+    ],
   });
 
+  const flattenData = dashboard.map(meiliTransformer.dashboard);
+
   return syncMeiliData({
-    data: dashboard,
+    data: flattenData,
     indexName: "dashboard",
     displayName: "dashboard",
     primaryKey: "planningId",

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.exportScheduleDelivery = exports.cancelOrCompleteDeliveryPlan = exports.getAllScheduleDelivery = exports.confirmForDeliveryPlanning = exports.createDeliveryPlan = exports.getPlanningRequest = exports.registerQtyDelivery = exports.getPlanningEstimateTime = void 0;
+exports.notifyPrepareGoods = exports.requestOrPrepareGoods = exports.getRequestPrepareGoods = exports.exportScheduleDelivery = exports.cancelOrCompleteDeliveryPlan = exports.getAllScheduleDelivery = exports.confirmForDeliveryPlanning = exports.createDeliveryPlan = exports.getPlanningRequest = exports.registerQtyDelivery = exports.getPlanningEstimateTime = void 0;
 const deliveryService_1 = require("../../../service/deliveryService");
 //=================================PLANNING ESTIMATE TIME=====================================
 const getPlanningEstimateTime = async (req, res, next) => {
@@ -114,4 +114,38 @@ const exportScheduleDelivery = async (req, res, next) => {
     }
 };
 exports.exportScheduleDelivery = exportScheduleDelivery;
+//=================================PREPARE GOODS=====================================
+const getRequestPrepareGoods = async (req, res, next) => {
+    const { deliveryDate } = req.query;
+    try {
+        const response = await deliveryService_1.deliveryService.getRequestPrepareGoods(new Date(deliveryDate));
+        return res.status(200).json(response);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.getRequestPrepareGoods = getRequestPrepareGoods;
+const requestOrPrepareGoods = async (req, res, next) => {
+    const { deliveryItemId, isRequest } = req.query;
+    try {
+        const response = await deliveryService_1.deliveryService.requestOrPrepareGoods(Number(deliveryItemId), isRequest);
+        return res.status(200).json(response);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.requestOrPrepareGoods = requestOrPrepareGoods;
+//socket
+const notifyPrepareGoods = async (req, res, next) => {
+    try {
+        const response = await deliveryService_1.deliveryService.notifyRequestPrepareGoods(req);
+        return res.status(201).json(response);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.notifyPrepareGoods = notifyPrepareGoods;
 //# sourceMappingURL=deliveryController.js.map

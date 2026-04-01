@@ -6,6 +6,8 @@ const order_1 = require("../../models/order/order");
 const planningPaper_1 = require("../../models/planning/planningPaper");
 const appError_1 = require("../../utils/appError");
 const planningBox_1 = require("../../models/planning/planningBox");
+const deliveryRequest_1 = require("../../models/delivery/deliveryRequest");
+const deliveryItem_1 = require("../../models/delivery/deliveryItem");
 exports.badgeService = {
     //pending order (admin)
     countOrderPending: async () => {
@@ -15,8 +17,6 @@ exports.badgeService = {
         }
         catch (error) {
             console.error(`Count order pending failed:`, error);
-            if (error instanceof appError_1.AppError)
-                throw error;
             throw appError_1.AppError.ServerError();
         }
     },
@@ -28,8 +28,6 @@ exports.badgeService = {
         }
         catch (error) {
             console.error(`Count order rejected failed:`, error);
-            if (error instanceof appError_1.AppError)
-                throw error;
             throw appError_1.AppError.ServerError();
         }
     },
@@ -41,8 +39,6 @@ exports.badgeService = {
         }
         catch (error) {
             console.error(`Count order pending planning failed:`, error);
-            if (error instanceof appError_1.AppError)
-                throw error;
             throw appError_1.AppError.ServerError();
         }
     },
@@ -54,8 +50,6 @@ exports.badgeService = {
         }
         catch (error) {
             console.error(`Count planning stop failed:`, error);
-            if (error instanceof appError_1.AppError)
-                throw error;
             throw appError_1.AppError.ServerError();
         }
     },
@@ -69,8 +63,6 @@ exports.badgeService = {
         }
         catch (error) {
             console.error(`Count waiting check paper failed:`, error);
-            if (error instanceof appError_1.AppError)
-                throw error;
             throw appError_1.AppError.ServerError();
         }
     },
@@ -83,8 +75,28 @@ exports.badgeService = {
         }
         catch (error) {
             console.error(`Count waiting check box failed:`, error);
-            if (error instanceof appError_1.AppError)
-                throw error;
+            throw appError_1.AppError.ServerError();
+        }
+    },
+    //delivery request
+    countDeliveryRequest: async () => {
+        try {
+            const count = await deliveryRequest_1.DeliveryRequest.count({ where: { status: "requested" } });
+            return { message: "Count delivery request successfully", data: count };
+        }
+        catch (error) {
+            console.error(`Count delivery request failed:`, error);
+            throw appError_1.AppError.ServerError();
+        }
+    },
+    //prepare goods
+    countRequestPrepareGoods: async () => {
+        try {
+            const count = await deliveryItem_1.DeliveryItem.count({ where: { status: "requested" } });
+            return { message: "Count prepare goods successfully", data: count };
+        }
+        catch (error) {
+            console.error(`Count prepare goods failed:`, error);
             throw appError_1.AppError.ServerError();
         }
     },

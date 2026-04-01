@@ -11,14 +11,14 @@ const appError_1 = require("../utils/appError");
 const cacheManager_1 = require("../utils/helper/cache/cacheManager");
 const reportPlanningPaper_1 = require("../models/report/reportPlanningPaper");
 const reportRepository_1 = require("../repository/reportRepository");
-const reportHelper_1 = require("../utils/helper/modelHelper/reportHelper");
 const reportPlanningBox_1 = require("../models/report/reportPlanningBox");
 const excelExporter_1 = require("../utils/helper/excelExporter");
 const reportPaperRowAndColumn_1 = require("../utils/mapping/reportPaperRowAndColumn");
 const reportBoxRowAndColumn_1 = require("../utils/mapping/reportBoxRowAndColumn");
-const redisCache_1 = __importDefault(require("../assest/configs/redisCache"));
+const redis_config_1 = __importDefault(require("../assest/configs/connect/redis.config"));
 const cacheKey_1 = require("../utils/helper/cache/cacheKey");
 const normalizeVN_1 = require("../utils/helper/normalizeVN");
+const melisearch_config_1 = require("../assest/configs/connect/melisearch.config");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper, box } = cacheKey_1.CacheKey.report;
 exports.reportService = {
@@ -31,7 +31,7 @@ exports.reportService = {
                 await cacheManager_1.CacheManager.clear("reportPaper");
             }
             else {
-                const cachedData = await redisCache_1.default.get(cacheKey);
+                const cachedData = await redis_config_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ Data Report Planning Paper from Redis");
@@ -45,11 +45,11 @@ exports.reportService = {
             const responseData = {
                 message: "get all report planning paper successfully",
                 data: rows,
-                totalOrders: count,
+                totalPapers: count,
                 totalPages,
                 currentPage: page,
             };
-            await redisCache_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+            await redis_config_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
             return responseData;
         }
         catch (error) {
@@ -61,25 +61,47 @@ exports.reportService = {
     },
     getReportPaperByField: async (field, keyword, machine, page, pageSize) => {
         try {
-            const fieldMap = {
-                customerName: (report) => report?.PlanningPaper?.Order?.Customer?.customerName,
-                dayReported: (report) => report?.dayReport,
-                shiftManagement: (report) => report?.shiftManagement,
-                orderId: (report) => report?.PlanningPaper?.Order?.orderId,
-            };
-            const key = field;
-            if (!fieldMap[key]) {
-                throw appError_1.AppError.BadRequest("Missing required parameter", "MISSING_PARAMETERS");
+            const validFields = ["orderId", "customerName", "dayReported", "shiftManagement"];
+            if (!validFields.includes(field)) {
+                throw appError_1.AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
             }
-            const result = await (0, reportHelper_1.filterReportByField)({
-                keyword: keyword,
-                machine,
-                getFieldValue: fieldMap[key],
-                page,
-                pageSize,
-                message: `get all by ${field} from filtered cache`,
+            const index = melisearch_config_1.meiliClient.index("reportPapers");
+            const searchResult = await index.search(keyword, {
+                attributesToSearchOn: [field],
+                attributesToRetrieve: ["reportPaperId"], // Chỉ lấy reportPaperId
+                filter: `chooseMachine = "${machine}"`,
+                page: Number(page) || 1,
+                hitsPerPage: Number(pageSize) || 25,
             });
-            return result;
+            const paperIds = searchResult.hits.map((hit) => hit.reportPaperId);
+            if (paperIds.length === 0) {
+                return {
+                    message: "No report papers found",
+                    data: [],
+                    totalPapers: 0,
+                    totalPages: 1,
+                    currentPage: page,
+                };
+            }
+            // Truy vấn DB để lấy data dựa trên orderIds
+            const fullOrders = (await reportRepository_1.reportRepository.getDataReportPaperOrBox({
+                isBox: false,
+                machine,
+                whereCondition: {
+                    reportPaperId: { [sequelize_1.Op.in]: paperIds },
+                },
+            }));
+            // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
+            const finalData = paperIds
+                .map((id) => fullOrders.find((r) => r.reportPaperId === id))
+                .filter(Boolean);
+            return {
+                message: "Get orders from Meilisearch & DB successfully",
+                data: finalData,
+                totalPapers: searchResult.totalHits,
+                totalPages: searchResult.totalPages,
+                currentPage: page,
+            };
         }
         catch (error) {
             console.error(`Failed to get report paper by ${field}:`, error);
@@ -97,7 +119,7 @@ exports.reportService = {
                 await cacheManager_1.CacheManager.clear("reportBox");
             }
             else {
-                const cachedData = await redisCache_1.default.get(cacheKey);
+                const cachedData = await redis_config_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ Data Report Planning Box from Redis");
@@ -106,16 +128,16 @@ exports.reportService = {
                 }
             }
             const offset = (page - 1) * pageSize;
-            const { rows, count } = await reportRepository_1.reportRepository.findAlReportBox(machine, pageSize, offset);
+            const { rows, count } = await reportRepository_1.reportRepository.findAllReportBox(machine, pageSize, offset);
             const totalPages = Math.ceil(count / pageSize);
             const responseData = {
                 message: "get all report planning paper successfully",
                 data: rows,
-                totalOrders: count,
+                totalBoxes: count,
                 totalPages,
                 currentPage: page,
             };
-            await redisCache_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+            await redis_config_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
             return responseData;
         }
         catch (error) {
@@ -127,27 +149,47 @@ exports.reportService = {
     },
     getReportBoxByField: async (field, keyword, machine, page, pageSize) => {
         try {
-            const fieldMap = {
-                customerName: (report) => report?.PlanningBox?.Order?.Customer?.customerName,
-                dayReported: (report) => report?.dayReport,
-                QcBox: (report) => report?.PlanningBox?.Order?.QC_box,
-                shiftManagement: (report) => report?.shiftManagement,
-                orderId: (report) => report?.PlanningBox?.Order?.orderId,
-            };
-            const key = field;
-            if (!fieldMap[key]) {
-                throw appError_1.AppError.BadRequest("Missing required parameter", "MISSING_PARAMETERS");
+            const validFields = ["orderId", "customerName", "dayReported", "QC_box", "shiftManagement"];
+            if (!validFields.includes(field)) {
+                throw appError_1.AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
             }
-            const result = await (0, reportHelper_1.filterReportByField)({
-                keyword: keyword,
-                machine,
-                getFieldValue: fieldMap[key],
-                page,
-                pageSize,
-                message: `get all by ${field} from filtered cache`,
-                isBox: true,
+            const index = melisearch_config_1.meiliClient.index("reportBoxes");
+            const searchResult = await index.search(keyword, {
+                attributesToSearchOn: [field],
+                attributesToRetrieve: ["reportBoxId"], // Chỉ lấy reportBoxId
+                filter: `machine = "${machine}"`,
+                page: Number(page) || 1,
+                hitsPerPage: Number(pageSize) || 25,
             });
-            return result;
+            const boxIds = searchResult.hits.map((hit) => hit.reportBoxId);
+            if (boxIds.length === 0) {
+                return {
+                    message: "No report boxes found",
+                    data: [],
+                    totalBoxes: 0,
+                    totalPages: 1,
+                    currentPage: page,
+                };
+            }
+            // Truy vấn DB để lấy data dựa trên orderIds
+            const fullOrders = (await reportRepository_1.reportRepository.getDataReportPaperOrBox({
+                isBox: true,
+                machine,
+                whereCondition: {
+                    reportBoxId: { [sequelize_1.Op.in]: boxIds },
+                },
+            }));
+            // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
+            const finalData = boxIds
+                .map((id) => fullOrders.find((r) => r.reportBoxId === id))
+                .filter(Boolean);
+            return {
+                message: "Get orders from Meilisearch & DB successfully",
+                data: finalData,
+                totalBoxes: searchResult.totalHits,
+                totalPages: searchResult.totalPages,
+                currentPage: page,
+            };
         }
         catch (error) {
             console.error(`Failed to get report paper by ${field}:`, error);

@@ -266,10 +266,6 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
         { fields: ["productId"] },
         { fields: ["userId"] },
 
-        //search
-        { fields: ["QC_box"] },
-        { fields: ["price"] },
-
         //other field
         { fields: ["status"] },
         { fields: ["createdAt"] },

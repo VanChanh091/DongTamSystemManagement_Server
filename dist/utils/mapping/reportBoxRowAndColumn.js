@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mapReportBoxRow = exports.reportBoxColumns = void 0;
-const machineLabels_1 = require("../../assest/configs/machineLabels");
+const labelFields_1 = require("../../assest/labelFields");
 const orderHelpers_1 = require("../helper/modelHelper/orderHelpers");
 exports.reportBoxColumns = [
     { header: "STT", key: "index" },
@@ -67,7 +67,7 @@ const mapReportBoxRow = (item, index) => {
         qtyDan: 0,
         qtyDongGhim: 0,
     };
-    Object.entries(machineLabels_1.MACHINE_FIELD_MAP).forEach(([mName, field]) => {
+    Object.entries(labelFields_1.MACHINE_FIELD_MAP).forEach(([mName, field]) => {
         qtyFields[field] = getMachineQty(mName, planningBox, item) ?? 0;
     });
     return {

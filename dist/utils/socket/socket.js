@@ -53,6 +53,12 @@ const initSocket = (server) => {
             if (devEnvironment)
                 console.log(`🔔 User joined notification: ${ownerId}`);
         });
+        //request prepare goods
+        socket.on("request-prepare", () => {
+            socket.join(`prepare-goods`); //room
+            if (devEnvironment)
+                console.log(`🔔 User joined prepare goods notification`);
+        });
         socket.on("leave-room", (room) => {
             socket.leave(room);
             if (devEnvironment)

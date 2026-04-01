@@ -1,6 +1,20 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+import { Op } from "sequelize";
+import { Request } from "express";
+import { Box } from "../models/order/box";
+import { AppError } from "../utils/appError";
+import { Order } from "../models/order/order";
+import { OrderImage } from "../models/order/orderImage";
+import { CacheKey } from "../utils/helper/cache/cacheKey";
+import { MEILI_INDEX, meiliService } from "./meiliService";
+import redisCache from "../assest/configs/connect/redis.config";
+import { orderRepository } from "../repository/orderRepository";
+import { CacheManager } from "../utils/helper/cache/cacheManager";
+import { runInTransaction } from "../utils/helper/transactionHelper";
+import { CrudHelper } from "../repository/helper/crud.helper.repository";
+import { meiliClient } from "../assest/configs/connect/melisearch.config";
 import {
   cachedStatus,
   calculateOrderMetrics,
@@ -10,20 +24,6 @@ import {
   updateChildTable,
   validateCustomerAndProduct,
 } from "../utils/helper/modelHelper/orderHelpers";
-import { AppError } from "../utils/appError";
-import redisCache from "../assest/configs/connect/redis.config";
-import { CacheManager } from "../utils/helper/cache/cacheManager";
-import { Box } from "../models/order/box";
-import { Order } from "../models/order/order";
-import { runInTransaction } from "../utils/helper/transactionHelper";
-import { orderRepository } from "../repository/orderRepository";
-import { CacheKey } from "../utils/helper/cache/cacheKey";
-import { Request } from "express";
-import { OrderImage } from "../models/order/orderImage";
-import { CrudHelper } from "../repository/helper/crud.helper.repository";
-import { meiliClient } from "../assest/configs/connect/melisearch.config";
-import { MEILI_INDEX, meiliService } from "./meiliService";
-import { Op } from "sequelize";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { order } = CacheKey;
@@ -133,6 +133,11 @@ export const orderService = {
     const { userId, role } = user;
 
     try {
+      const validFields = ["orderId", "customerName", "productName", "QC_box", "price"];
+      if (!validFields.includes(field)) {
+        throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
+      }
+
       const index = meiliClient.index("orders");
 
       // Phân quyền và Trạng thái
@@ -321,7 +326,6 @@ export const orderService = {
         }
 
         const mergedData = { ...order.toJSON(), ...restOrderData };
-
         const metrics = await calculateOrderMetrics(mergedData);
 
         //Cập nhật thông tin hoặc xóa hình ảnh

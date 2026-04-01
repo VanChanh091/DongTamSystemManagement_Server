@@ -2,7 +2,7 @@ import { PlanningBox } from "../../models/planning/planningBox";
 import { PlanningPaper } from "../../models/planning/planningPaper";
 import { qcChecklistData, QcSampleResult } from "../../models/qualityControl/qcSampleResult";
 import { QcSession } from "../../models/qualityControl/qcSession";
-import { planningRepository } from "../../repository/planningRepository";
+import { planningHelper } from "../../repository/planning/planningHelper";
 import { qcRepository } from "../../repository/qcRepository";
 import { warehouseRepository } from "../../repository/warehouseRepository";
 import { AppError } from "../../utils/appError";
@@ -176,7 +176,7 @@ export const qcSampleService = {
             );
           }
 
-          const sampleResult = await planningRepository.getModelById({
+          const sampleResult = await planningHelper.getModelById({
             model: QcSampleResult,
             where: { qcSessionId, sampleIndex },
             options: { transaction },
@@ -233,7 +233,7 @@ export const qcSampleService = {
   }) => {
     try {
       return await runInTransaction(async (transaction) => {
-        const session = await planningRepository.getModelById({
+        const session = await planningHelper.getModelById({
           model: QcSession,
           where: isPaper ? { planningId } : { planningBoxId },
           options: { transaction },
@@ -292,7 +292,7 @@ export const qcSampleService = {
 
         //update statusRequest planning
         if (!isPaper && planning instanceof PlanningBox) {
-          await planningRepository.updateDataModel({
+          await planningHelper.updateDataModel({
             model: PlanningPaper,
             data: { statusRequest: "finalize" },
             options: { where: { planningId: planning.planningId }, transaction },
