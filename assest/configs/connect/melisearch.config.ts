@@ -3,9 +3,19 @@ dotenv.config();
 
 import { Meilisearch } from "meilisearch";
 
+const devEnvironment = process.env.NODE_ENV === "development";
+
+const apiKey = devEnvironment
+  ? process.env.MEILISEARCH_MASTER_KEY_DEV
+  : process.env.MEILISEARCH_MASTER_KEY_PROD;
+const host = devEnvironment ? "localhost" : "192.168.1.81";
+const port = devEnvironment ? 7701 : 7700;
+
+// console.log(`apiKey: ${apiKey} - host: ${host} - port: ${port}`);
+
 const meiliClient = new Meilisearch({
-  host: "http://localhost:7700",
-  apiKey: process.env.MEILISEARCH_MASTER_KEY,
+  host: `http://${host}:${port}`,
+  apiKey: apiKey,
 });
 
 const connectMeilisearch = async () => {

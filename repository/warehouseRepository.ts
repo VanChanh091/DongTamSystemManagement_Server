@@ -9,11 +9,10 @@ import { PlanningBox } from "../models/planning/planningBox";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { OutboundHistory } from "../models/warehouse/outboundHistory";
 import { OutboundDetail } from "../models/warehouse/outboundDetail";
-import { Op, Sequelize } from "sequelize";
+import { Op, Sequelize, Transaction } from "sequelize";
 import { User } from "../models/user/user";
 import { Inventory } from "../models/warehouse/inventory";
 import { InboundSumByPlanning } from "../interface/types";
-import { get } from "axios";
 import { QcSession } from "../models/qualityControl/qcSession";
 
 export const warehouseRepository = {
@@ -149,13 +148,14 @@ export const warehouseRepository = {
   findInboundByPage: async ({
     page = 1,
     pageSize = 20,
-    paginate = true,
+    whereCondition,
   }: {
     page?: number;
     pageSize?: number;
-    paginate?: boolean;
+    whereCondition?: any;
   }) => {
     const query: any = {
+      where: whereCondition,
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {
@@ -187,7 +187,7 @@ export const warehouseRepository = {
       order: [["dateInbound", "DESC"]],
     };
 
-    if (paginate) {
+    if (page && pageSize) {
       query.offset = (page - 1) * pageSize;
       query.limit = pageSize;
     }
@@ -197,20 +197,17 @@ export const warehouseRepository = {
 
   //====================================OUTBOUND HISTORY========================================
 
-  outboundHistoryCount: async () => {
-    return await OutboundHistory.count();
-  },
-
   getOutboundByPage: async ({
     page = 1,
     pageSize = 20,
-    paginate = true,
+    whereCondition,
   }: {
     page?: number;
     pageSize?: number;
-    paginate?: boolean;
+    whereCondition?: any;
   }) => {
     const query: any = {
+      where: whereCondition,
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {
@@ -231,12 +228,33 @@ export const warehouseRepository = {
       order: [["dateOutbound", "DESC"]],
     };
 
-    if (paginate) {
+    if (page && pageSize) {
       query.offset = (page - 1) * pageSize;
       query.limit = pageSize;
     }
 
-    return await OutboundHistory.findAll(query);
+    return await OutboundHistory.findAndCountAll(query);
+  },
+
+  getOutboundForMeili: async (outboundId: number, transaction: Transaction) => {
+    return await OutboundHistory.findByPk(outboundId, {
+      attributes: ["outboundId", "outboundSlipCode", "dateOutbound"],
+      include: [
+        {
+          model: OutboundDetail,
+          as: "detail",
+          attributes: ["outboundDetailId"],
+          include: [
+            {
+              model: Order,
+              attributes: ["orderId"],
+              include: [{ model: Customer, attributes: ["customerName"] }],
+            },
+          ],
+        },
+      ],
+      transaction,
+    });
   },
 
   getOutboundDetail: async (outboundId: number) => {
@@ -301,15 +319,15 @@ export const warehouseRepository = {
       attributes: ["orderId", "dayReceiveOrder"],
       include: [
         { model: Customer, attributes: ["customerName"] },
-        {
-          model: InboundHistory,
-          attributes: [],
-          required: true,
-          where: { qtyInbound: { [Op.gt]: 0 } },
-        },
+        // {
+        //   model: InboundHistory,
+        //   attributes: ['qtyInbound'],
+        //   required: true,
+        //   where: { qtyInbound: { [Op.gt]: 0 } },
+        // },
         {
           model: Inventory,
-          attributes: [],
+          attributes: ["qtyInventory"],
           required: true,
           where: { qtyInventory: { [Op.ne]: 0 } },
         },
@@ -344,29 +362,60 @@ export const warehouseRepository = {
     });
   },
 
-  //====================================INVENTORY========================================
+  findOneForExportPDF: async (outboundId: number) => {
+    return await OutboundHistory.findByPk(outboundId, {
+      attributes: { exclude: ["createdAt", "updatedAt", "totalOutboundQty"] },
+      include: [
+        {
+          model: OutboundDetail,
+          as: "detail",
+          attributes: { exclude: ["createdAt", "updatedAt", "deliveredQty", "outboundId"] },
+          include: [
+            {
+              model: Order,
+              attributes: [
+                "orderId",
+                "flute",
+                "QC_box",
+                "quantityCustomer",
+                "lengthPaperCustomer",
+                "paperSizeCustomer",
+                "dvt",
+                "discount",
+                "vat",
+                "pricePaper",
+              ],
+              include: [
+                {
+                  model: Customer,
+                  attributes: ["customerName", "companyName", "companyAddress", "mst", "phone"],
+                },
+                { model: Product, attributes: ["typeProduct", "productName"] },
+                { model: User, attributes: ["fullName"] },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+  },
 
+  //====================================INVENTORY========================================
   getInventoryByPage: async ({
-    field,
-    keyword,
     page,
     pageSize,
+    searching,
   }: {
-    field?: string;
-    keyword?: string;
     page?: number;
     pageSize?: number;
+    searching?: any;
   }) => {
-    const whereClause: any = { qtyInventory: { [Op.gt]: 0 } };
+    const whereClause: any = {
+      [Op.and]: [{ qtyInventory: { [Op.gt]: 0 } }],
+    };
 
-    if (field && keyword) {
-      const searchCondition = { [Op.like]: `%${keyword}%` };
-
-      if (field === "customerName") {
-        whereClause["$Order.Customer.customerName$"] = searchCondition;
-      } else if (field === "orderId") {
-        whereClause["orderId"] = searchCondition;
-      }
+    if (searching && typeof searching === "object") {
+      whereClause[Op.and].push(searching);
     }
 
     const options: any = {
@@ -397,10 +446,7 @@ export const warehouseRepository = {
             "vat",
             "totalPriceVAT",
           ],
-          include: [
-            { model: Customer, attributes: ["customerName"] },
-            { model: Product, attributes: ["typeProduct", "productName"] },
-          ],
+          include: [{ model: Customer, attributes: ["customerName"] }],
         },
       ],
     };
@@ -415,6 +461,7 @@ export const warehouseRepository = {
 
   inventoryTotals: async () => {
     const result = await Inventory.findAll({
+      where: { valueInventory: { [Op.gt]: 0 } },
       attributes: [[Sequelize.fn("SUM", Sequelize.col("valueInventory")), "totalValueInventory"]],
       raw: true,
     });
@@ -429,7 +476,13 @@ export const warehouseRepository = {
     });
   },
 
-  findByOrderId: async ({ orderId, transaction }: { orderId: string; transaction: any }) => {
+  findByOrderId: async ({
+    orderId,
+    transaction,
+  }: {
+    orderId: string;
+    transaction: Transaction;
+  }) => {
     return await Inventory.findOne({
       where: { orderId },
       transaction,

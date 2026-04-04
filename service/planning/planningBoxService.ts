@@ -269,7 +269,7 @@ export const planningBoxService = {
         });
       }
 
-      //update meilisearch
+      //--------------------MEILISEARCH-----------------------
       const fullBox = await planningBoxRepository.syncPlanningBoxToMeili({
         whereCondition: { planningBoxId: { [Op.in]: ids } },
       });
@@ -313,7 +313,7 @@ export const planningBoxService = {
         });
       }
 
-      //update meilisearch
+      //--------------------MEILISEARCH-----------------------
       const fullBox = await planningBoxRepository.syncPlanningBoxToMeili({
         whereCondition: { planningBoxId: { [Op.in]: planningBoxIds } },
       });

@@ -14,7 +14,7 @@ export const customerRepository = {
   findCustomerByPage: async ({
     page,
     pageSize,
-    whereCondition = {},
+    whereCondition,
   }: {
     page?: number;
     pageSize?: number;

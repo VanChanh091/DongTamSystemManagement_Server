@@ -1,19 +1,23 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import redisCache from "../../assest/configs/connect/redis.config";
-import { Order } from "../../models/order/order";
+import { Response } from "express";
+import { Op, Transaction } from "sequelize";
 import { AppError } from "../../utils/appError";
-import { CacheManager } from "../../utils/helper/cache/cacheManager";
-import { OutboundHistory } from "../../models/warehouse/outboundHistory";
-import { warehouseRepository } from "../../repository/warehouseRepository";
-import { OutboundDetail } from "../../models/warehouse/outboundDetail";
-import { planningHelper } from "../../repository/planning/planningHelper";
-import { runInTransaction } from "../../utils/helper/transactionHelper";
+import { Order } from "../../models/order/order";
+import { MEILI_INDEX, meiliService } from "../meiliService";
+import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { Inventory } from "../../models/warehouse/inventory";
 import { exportWarehouse } from "../../utils/helper/exportPDF";
-import { Response } from "express";
-import { CacheKey } from "../../utils/helper/cache/cacheKey";
+import redisCache from "../../assest/configs/connect/redis.config";
+import { CacheManager } from "../../utils/helper/cache/cacheManager";
+import { OutboundDetail } from "../../models/warehouse/outboundDetail";
+import { runInTransaction } from "../../utils/helper/transactionHelper";
+import { OutboundHistory } from "../../models/warehouse/outboundHistory";
+import { planningHelper } from "../../repository/planning/planningHelper";
+import { warehouseRepository } from "../../repository/warehouseRepository";
+import { meiliClient } from "../../assest/configs/connect/melisearch.config";
+import { meiliTransformer } from "../../assest/configs/meilisearch/meiliTransformer";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { outbound } = CacheKey.warehouse;
@@ -36,15 +40,13 @@ export const outboundService = {
         }
       }
 
-      const totalOutbounds = await warehouseRepository.outboundHistoryCount();
-      const totalPages = Math.ceil(totalOutbounds / pageSize);
-      const data = await warehouseRepository.getOutboundByPage({ page, pageSize });
+      const { rows, count } = await warehouseRepository.getOutboundByPage({ page, pageSize });
 
       const responseData = {
         message: "Get all outbound history successfully",
-        data,
-        totalOutbounds,
-        totalPages,
+        data: rows,
+        totalOutbounds: count,
+        totalPages: Math.ceil(count / pageSize),
         currentPage: page,
       };
 
@@ -77,7 +79,7 @@ export const outboundService = {
     }
   },
 
-  searchOutboundByField: async ({
+  getOutboundByField: async ({
     field,
     keyword,
     page,
@@ -89,27 +91,48 @@ export const outboundService = {
     pageSize: number;
   }) => {
     try {
-      // const fieldMap = {
-      //   orderId: (outbound: OutboundHistory) => outbound.detail.orderId,
-      //   outboundSlipCode: (outbound: OutboundHistory) => outbound.outboundSlipCode,
-      //   dateOutbound: (outbound: OutboundHistory) => outbound.dateOutbound,
-      //   companyName: (outbound: OutboundHistory) =>
-      //     outbound.outboundDetail.Order.Customer.companyName,
-      //   productName: (outbound: OutboundHistory) =>
-      //     outbound.outboundDetail.Order.Product.productName,
-      // } as const;
-      // const key = field as keyof typeof fieldMap;
-      // if (!fieldMap[key]) {
-      //   throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
-      // }
-      // const result = await getOutboundByField({
-      //   keyword: keyword,
-      //   getFieldValue: fieldMap[key],
-      //   page,
-      //   pageSize,
-      //   message: `get all by ${field} from filtered cache`,
-      // });
-      // return result;
+      const validFields = ["dateOutbound", "outboundSlipCode", "customerName"];
+      if (!validFields.includes(field)) {
+        throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
+      }
+
+      const index = meiliClient.index("outbounds");
+
+      const searchResult = await index.search(keyword, {
+        attributesToSearchOn: [field],
+        attributesToRetrieve: ["outboundId"],
+        page: Number(page) || 1,
+        hitsPerPage: Number(pageSize) || 25, //pageSize
+      });
+
+      const outboundIds = searchResult.hits.map((hit: any) => hit.outboundId);
+      if (outboundIds.length === 0) {
+        return {
+          message: "No outbound records found",
+          data: [],
+          totalOutbounds: 0,
+          totalPages: 0,
+          currentPage: page,
+        };
+      }
+
+      //query db
+      const { rows } = await warehouseRepository.getOutboundByPage({
+        whereCondition: { outboundId: { [Op.in]: outboundIds } },
+      });
+
+      // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
+      const finalData = outboundIds
+        .map((id) => rows.find((o) => o.outboundId === id))
+        .filter(Boolean);
+
+      return {
+        message: "Get outbound records from Meilisearch & DB successfully",
+        data: finalData,
+        totalOutbounds: searchResult.totalHits,
+        totalPages: searchResult.totalPages,
+        currentPage: searchResult.page,
+      };
     } catch (error) {
       console.error(`Failed to get outbound history by ${field}:`, error);
       throw AppError.ServerError();
@@ -141,7 +164,7 @@ export const outboundService = {
       const remainingQty = inventory?.qtyInventory ?? 0;
 
       return {
-        message: "Get all employee by position sucessfully",
+        message: "Get all order inbound quantities successfully",
         data: { ...order.toJSON(), remainingQty },
       };
     } catch (error) {
@@ -293,6 +316,9 @@ export const outboundService = {
             },
           );
         }
+
+        //--------------------MEILISEARCH-----------------------
+        await outboundService.syncDataOutbound(outbound.outboundId, transaction);
 
         return outbound;
       });
@@ -458,7 +484,7 @@ export const outboundService = {
           }
         }
 
-        // 4️⃣ Cập nhật outbound header
+        // Cập nhật outbound header
         await outbound.update(
           {
             totalPriceOrder,
@@ -469,11 +495,27 @@ export const outboundService = {
           { transaction },
         );
 
+        //--------------------MEILISEARCH-----------------------
+        await outboundService.syncDataOutbound(outboundId, transaction);
+
         return outbound;
       });
     } catch (error) {
       console.log("err to update outbound: ", error);
       if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  syncDataOutbound: async (outboundId: number, transaction: Transaction) => {
+    try {
+      const outboundData = await warehouseRepository.getOutboundForMeili(outboundId, transaction);
+
+      const meiliFormatted = meiliTransformer.outbound(outboundData);
+      console.log(meiliFormatted);
+      meiliService.syncMeiliData(MEILI_INDEX.OUTBOUNDS, meiliFormatted);
+    } catch (error) {
+      console.log("err to sync data outbound: ", error);
       throw AppError.ServerError();
     }
   },
@@ -516,6 +558,9 @@ export const outboundService = {
 
         // Xóa outbound history
         await outbound.destroy({ transaction });
+
+        //--------------------MEILISEARCH-----------------------
+        meiliService.deleteMeiliData(MEILI_INDEX.OUTBOUNDS, outboundId);
 
         return { message: "Hủy phiếu xuất kho thành công" };
       });

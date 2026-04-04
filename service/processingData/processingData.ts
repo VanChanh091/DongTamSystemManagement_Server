@@ -14,7 +14,7 @@ export const parseOrderData = (buffer: any) => {
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rawData = xlsx.utils.sheet_to_json(sheet, { defval: null });
 
-  console.log(rawData[0]);
+  // console.log(rawData[0]);
 
   // Nó sẽ xóa \n và trim khoảng trắng để "Số \nĐơn Hàng" thành "Số Đơn Hàng"
   const cleanData = (rawData as any[]).map((row: any) => {
@@ -31,7 +31,10 @@ export const parseOrderData = (buffer: any) => {
     return newRow;
   });
 
-  return cleanData.map((row: any) => {
+  let totalAccept = 0;
+  let totalPlanning = 0;
+
+  const result = cleanData.map((row: any) => {
     // 1. Xử lý VAT (8% -> 8)
     let rawVat = row["VAT"];
 
@@ -94,11 +97,21 @@ export const parseOrderData = (buffer: any) => {
     const rawDoanhSo = parseFloat(row["Doanh Số"]) || 0;
 
     const quantityCustomer = parseInt(row["Số Lượng ĐH"]) || 0;
-    const totalQtyInbound = Math.round(parseFloat(row["Số Lượng Sản Xuất carton"]) || 0);
+    const totalQtyInbound = parseInt(row["Số Lượng Sản Xuất carton"]) || 0;
 
     // Áp dụng công thức của bạn
     const diffValue = totalQtyInbound - quantityCustomer;
-    const calculatedStatus = diffValue > 0 ? "planning" : "accept";
+    const calculatedStatus = diffValue >= 0 ? "planning" : "accept";
+
+    // console.log(
+    //   `quantity: ${quantityCustomer} - inbound: ${totalQtyInbound} => diff: ${diffValue} & status: ${calculatedStatus}`,
+    // );
+
+    if (calculatedStatus === "accept") {
+      totalAccept++;
+    } else {
+      totalPlanning++;
+    }
 
     return {
       orderId: row["Số Đơn Hàng"],
@@ -148,14 +161,35 @@ export const parseOrderData = (buffer: any) => {
       _rawCompanyName: row["Khách Hàng"],
       _rawProductName: row["Tên Sản Phẩm"],
 
+      boxFields: {
+        // inMatTruoc:,
+        // inMatSau:,
+        // chongTham:,
+        // canLan:,
+        // canMang:,
+        // Xa:,
+        // catKhe:,
+        // be:,
+        // maKhuon:,
+        // dan_1_Manh:,
+        // dan_2_Manh:,
+        // dongGhim1Manh:,
+        // dongGhim2Manh:,
+        // dongGoi:,
+      },
+
       inventoryFields: {
-        totalQtyInbound: Math.round(parseFloat(row["Số Lượng Sản Xuất carton"]) || 0),
-        totalQtyOutbound: Math.round(parseFloat(row["Số lượng Giao hàng"]) || 0),
-        qtyInventory: Math.round(parseFloat(row["Số lượng tồn"]) || 0),
-        valueInventory: Math.round(parseFloat(row["Giá trị tồn"]) || 0),
+        totalQtyInbound: parseInt(row["Số Lượng Sản Xuất carton"]) || 0,
+        totalQtyOutbound: parseInt(row["Số lượng Giao hàng"]) || 0,
+        qtyInventory: parseInt(row["Số lượng tồn"]) || 0,
+        valueInventory: parseInt(row["Giá trị tồn"]) || 0,
       },
     };
   });
+
+  // console.log(`Accept: ${totalAccept}, Planning: ${totalPlanning}`);
+
+  return result;
 };
 
 export const parseCustomerData = (buffer: any) => {
@@ -199,7 +233,7 @@ export const parseProductData = (buffer: any) => {
   const rawData = xlsx.utils.sheet_to_json(sheet, { defval: null });
 
   console.log(rawData[0]);
-  ``;
+
   return rawData.map((row: any, index: number) => {
     return {
       productId: row["Mã Sản Phẩm"],

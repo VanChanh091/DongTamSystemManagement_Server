@@ -258,20 +258,9 @@ export const manufactureService = {
         //chuyển sang trang chờ kiểm
         await planning.update({ statusRequest: "requested" }, { transaction });
 
-        //==========================MEILISEARCH=================================
+        //--------------------MEILISEARCH-----------------------
         const reportId = reportCreated.report.reportPaperId;
-
-        meiliService.syncMeiliData(MEILI_INDEX.PLANNING_PAPERS, {
-          planningId: planning.planningId,
-          status: planning.status,
-        });
-
-        const addReportData = await reportRepository.syncReportPaperForMeili(reportId, transaction);
-
-        if (addReportData) {
-          const flattenedReport = meiliTransformer.reportPaper(addReportData);
-          meiliService.syncMeiliData(MEILI_INDEX.REPORT_PAPERS, flattenedReport);
-        }
+        await manufactureService.syncPaperForMeili(reportId, planning, transaction);
 
         return {
           message: "Add Report Production successfully",
@@ -401,21 +390,9 @@ export const manufactureService = {
           });
         }
 
-        //==========================MEILISEARCH=================================
-
+        //--------------------MEILISEARCH-----------------------
         const reportId = reportUpdated.reportPaperId;
-
-        meiliService.syncMeiliData(MEILI_INDEX.PLANNING_PAPERS, {
-          planningId: planningUpdated.planningId,
-          status: planningUpdated.status,
-        });
-
-        const addReportData = await reportRepository.syncReportPaperForMeili(reportId, transaction);
-
-        if (addReportData) {
-          const flattenedReport = meiliTransformer.reportPaper(addReportData);
-          meiliService.syncMeiliData(MEILI_INDEX.REPORT_PAPERS, flattenedReport);
-        }
+        await manufactureService.syncPaperForMeili(reportId, planningUpdated, transaction);
 
         return { message: "Update Report successfully", data: oldReport };
       });
@@ -426,11 +403,11 @@ export const manufactureService = {
     }
   },
 
-  syncPaperForMeili: async (reportId: number, planningUpdated: any, transaction: Transaction) => {
+  syncPaperForMeili: async (reportId: number, planningData: any, transaction: Transaction) => {
     try {
       meiliService.syncMeiliData(MEILI_INDEX.PLANNING_PAPERS, {
-        planningId: planningUpdated.planningId,
-        status: planningUpdated.status,
+        planningId: planningData.planningId,
+        status: planningData.status,
       });
 
       const addReportData = await reportRepository.syncReportPaperForMeili(reportId, transaction);
@@ -503,7 +480,7 @@ export const manufactureService = {
           options: { transaction },
         });
 
-        //update meilisearch
+        //--------------------MEILISEARCH-----------------------
         meiliService.syncMeiliData(MEILI_INDEX.PLANNING_PAPERS, {
           planningId: planning.planningId,
           status: "producing",
@@ -723,8 +700,7 @@ export const manufactureService = {
           isBox: true,
         });
 
-        //==========================MEILISEARCH=================================
-
+        //--------------------MEILISEARCH-----------------------
         const boxId = planning.PlanningBox.planningBoxId;
         const reportId = reportCreated.report.reportBoxId;
 
@@ -817,7 +793,7 @@ export const manufactureService = {
         // Gom chuỗi shiftProduction và shiftManagement
         const { combinedShiftManagement } = aggregateReportFields(allReports);
 
-        const planningUpdated = await planning.update(
+        await planning.update(
           {
             qtyProduced: totalQtyProduced,
             rpWasteLoss: totalQtyWaste,
@@ -827,8 +803,7 @@ export const manufactureService = {
           { transaction },
         );
 
-        //==========================MEILISEARCH=================================
-
+        //--------------------MEILISEARCH-----------------------
         const boxId = planning.PlanningBox.planningBoxId;
         const reportId = reportUpdated.reportBoxId;
 
@@ -918,6 +893,17 @@ export const manufactureService = {
           data: { status: "producing" },
           options: { transaction },
         });
+
+        //--------------------MEILISEARCH-----------------------
+        const fullBox = await planningBoxRepository.syncPlanningBoxToMeili({
+          whereCondition: { planningBoxId: planning.planningBoxId },
+          transaction,
+        });
+
+        if (fullBox && fullBox.length > 0) {
+          const flattenData = fullBox.map(meiliTransformer.planningBox);
+          meiliService.syncMeiliData(MEILI_INDEX.PLANNING_BOXES, flattenData);
+        }
 
         return { message: "Confirm producing box successfully", data: planning };
       });

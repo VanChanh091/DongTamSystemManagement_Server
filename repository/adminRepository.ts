@@ -1,10 +1,11 @@
-import { col, fn, Op, Sequelize, where } from "sequelize";
+import { col, fn, Op, Sequelize, Transaction, where } from "sequelize";
 import { Customer } from "../models/customer/customer";
 import { Box } from "../models/order/box";
 import { Order } from "../models/order/order";
 import { Product } from "../models/product/product";
 import { User } from "../models/user/user";
 import { OrderImage } from "../models/order/orderImage";
+import { CustomerPayment } from "../models/customer/customerPayment";
 
 export const adminRepository = {
   //===============================ADMIN CRUD=====================================
@@ -64,7 +65,7 @@ export const adminRepository = {
     });
   },
 
-  findByOrderId: async (orderId: string) => {
+  findByOrderId: async (orderId: string, transaction: Transaction) => {
     return await Order.findOne({
       where: { orderId },
       attributes: [
@@ -75,11 +76,15 @@ export const adminRepository = {
         "customerId",
         "productId",
         "userId",
+        "orderSortValue",
       ],
       include: [
         {
           model: Customer,
-          attributes: ["customerId", "debtCurrent", "debtLimit"],
+          attributes: ["customerId"],
+          include: [
+            { model: CustomerPayment, as: "payment", attributes: ["debtCurrent", "debtLimit"] },
+          ],
         },
         {
           model: Product,
@@ -88,6 +93,7 @@ export const adminRepository = {
         { model: Box, as: "box" },
         { model: User, attributes: ["fullName"] },
       ],
+      transaction,
     });
   },
 

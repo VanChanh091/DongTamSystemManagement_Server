@@ -237,7 +237,7 @@ export const planningPaperService = {
         await planning.save();
       }
 
-      //update meilisearch
+      //--------------------MEILISEARCH-----------------------
       const dataForMeili = plannings.map((p) => ({
         planningId: p.planningId,
         chooseMachine: newMachine,
@@ -311,7 +311,7 @@ export const planningPaperService = {
         });
       }
 
-      //update meilisearch
+      //--------------------MEILISEARCH-----------------------
       const dataForMeili = planningPaper.map((p) => ({
         planningId: p.planningId,
         status: "complete",
@@ -398,7 +398,7 @@ export const planningPaperService = {
                 const deletedId = planning.planningId;
                 await planning.destroy();
 
-                //delete meilisearch
+                //--------------------MEILISEARCH-----------------------
                 meiliService.deleteMeiliData(MEILI_INDEX.PLANNING_PAPERS, deletedId);
                 meiliService.syncMeiliData(MEILI_INDEX.ORDERS, {
                   orderSortValue: order.orderSortValue,
@@ -435,7 +435,7 @@ export const planningPaperService = {
                     });
                   }
 
-                  //update meilisearch
+                  //--------------------MEILISEARCH-----------------------
                   meiliService.syncMeiliData(MEILI_INDEX.PLANNING_PAPERS, {
                     planningId: planning.planningId,
                     status: newStatus,
@@ -463,7 +463,7 @@ export const planningPaperService = {
                   await planning.destroy();
                   await CacheManager.clear("orderAccept");
 
-                  //update and delete meilisearch
+                  //--------------------MEILISEARCH-----------------------
                   meiliService.deleteMeiliData(MEILI_INDEX.PLANNING_PAPERS, deletedId);
                   meiliService.syncMeiliData(MEILI_INDEX.ORDERS, {
                     orderSortValue: order.orderSortValue,
@@ -510,7 +510,7 @@ export const planningPaperService = {
             });
           }
 
-          //update meilisearch
+          //--------------------MEILISEARCH-----------------------
           meiliService.syncMeiliData(MEILI_INDEX.PLANNING_PAPERS, {
             planningId: planning.planningId,
             status: newStatus,

@@ -17,6 +17,7 @@ import { EmployeeBasicInfo } from "../../../../models/employee/employeeBasicInfo
 import { ReportPlanningPaper } from "../../../../models/report/reportPlanningPaper";
 import { EmployeeCompanyInfo } from "../../../../models/employee/employeeCompanyInfo";
 import { planningBoxRepository } from "../../../../repository/planning/planningBoxRepository";
+import { QcSession } from "../../../../models/qualityControl/qcSession";
 
 interface SyncMeiliData {
   data: any[];
@@ -51,7 +52,6 @@ const syncMeiliData = async ({
     }
 
     // Khai customerId là primary key
-
     console.log(`🚀 Đang đồng bộ ${data.length} ${displayName}... TaskID: ${task.taskUid}`);
 
     return task.taskUid;
@@ -63,7 +63,7 @@ const syncMeiliData = async ({
 };
 
 //sync customer
-export const syncCustomerToMeili = async () => {
+export const syncCustomerToMeili = async (isDeleteAll: boolean) => {
   const customers = await Customer.findAll({
     attributes: ["customerId", "customerName", "companyName", "cskh", "phone", "customerSeq"],
     order: [["customerSeq", "ASC"]],
@@ -74,12 +74,12 @@ export const syncCustomerToMeili = async () => {
     indexName: "customers",
     displayName: "customers",
     primaryKey: "customerId",
-    // isDeleteAll: true,
+    isDeleteAll: isDeleteAll,
   });
 };
 
 //sync product
-export const syncProductToMeili = async () => {
+export const syncProductToMeili = async (isDeleteAll: boolean) => {
   const { rows } = await productRepository.findProductByPage({});
 
   return syncMeiliData({
@@ -87,12 +87,12 @@ export const syncProductToMeili = async () => {
     indexName: "products",
     displayName: "products",
     primaryKey: "productId",
-    // isDeleteAll: true,
+    isDeleteAll: isDeleteAll,
   });
 };
 
 //sync employee
-export const syncEmployeeToMeili = async () => {
+export const syncEmployeeToMeili = async (isDeleteAll: boolean) => {
   const employees = await EmployeeBasicInfo.findAll({
     attributes: ["employeeId", "fullName", "phoneNumber"],
     include: [
@@ -112,12 +112,12 @@ export const syncEmployeeToMeili = async () => {
     indexName: "employees",
     displayName: "employees",
     primaryKey: "employeeId",
-    // isDeleteAll: true,
+    isDeleteAll: isDeleteAll,
   });
 };
 
 //sync order
-export const syncOrderToMeili = async () => {
+export const syncOrderToMeili = async (isDeleteAll: boolean) => {
   const orders = await Order.findAll({
     attributes: ["orderId", "flute", "QC_box", "price", "status", "userId", "orderSortValue"],
     include: [
@@ -133,12 +133,12 @@ export const syncOrderToMeili = async () => {
     indexName: "orders",
     displayName: "orders",
     primaryKey: "orderSortValue",
-    // isDeleteAll: true,
+    isDeleteAll: isDeleteAll,
   });
 };
 
 //sync planning
-export const syncPlanningPaperToMeili = async () => {
+export const syncPlanningPaperToMeili = async (isDeleteAll: boolean) => {
   const papers = await PlanningPaper.findAll({
     attributes: ["planningId", "ghepKho", "orderId", "chooseMachine", "status"],
     include: [
@@ -159,11 +159,11 @@ export const syncPlanningPaperToMeili = async () => {
     indexName: "planningPapers",
     displayName: "planningPapers",
     primaryKey: "planningId",
-    // isDeleteAll: true,
+    isDeleteAll: isDeleteAll,
   });
 };
 
-export const syncPlanningBoxToMeili = async () => {
+export const syncPlanningBoxToMeili = async (isDeleteAll: boolean) => {
   const boxes = await planningBoxRepository.syncPlanningBoxToMeili({});
   const flattenData = boxes.map(meiliTransformer.planningBox);
 
@@ -172,60 +172,92 @@ export const syncPlanningBoxToMeili = async () => {
     indexName: "planningBoxes",
     displayName: "planningBoxes",
     primaryKey: "planningBoxId",
-    // isDeleteAll: true,
+    isDeleteAll: isDeleteAll,
   });
 };
 
 //sync inbound & outbound waiting
-export const syncInboundToMeili = async () => {
+export const syncInboundToMeili = async (isDeleteAll: boolean) => {
   const inbounds = await InboundHistory.findAll({
-    where: {},
-    attributes: ["inboundId"],
-    include: [{ model: Customer }, { model: Product }],
+    attributes: ["inboundId", "dateInbound"],
+    include: [
+      {
+        model: Order,
+        attributes: ["orderId"],
+        include: [{ model: Customer, attributes: ["customerName"] }],
+      },
+      { model: QcSession, attributes: ["checkedBy"] },
+    ],
   });
 
+  const flattenData = inbounds.map(meiliTransformer.inbound);
+
   return syncMeiliData({
-    data: inbounds,
+    data: flattenData,
     indexName: "inboundHistories",
     displayName: "inboundHistories",
     primaryKey: "inboundId",
+    isDeleteAll: isDeleteAll,
   });
 };
 
 // waiting
-export const syncOutboundToMeili = async () => {
+export const syncOutboundToMeili = async (isDeleteAll: boolean) => {
   const outbounds = await OutboundHistory.findAll({
-    where: {},
-    attributes: ["outboundId"],
-    include: [{ model: OutboundDetail }, { model: Customer }, { model: Product }],
+    attributes: ["outboundId", "outboundSlipCode", "dateOutbound"],
+    include: [
+      {
+        model: OutboundDetail,
+        as: "detail",
+        attributes: ["outboundDetailId"],
+        include: [
+          {
+            model: Order,
+            attributes: ["orderId"],
+            include: [{ model: Customer, attributes: ["customerName"] }],
+          },
+        ],
+      },
+    ],
   });
 
+  const flattenData = outbounds.map(meiliTransformer.outbound);
+
   return syncMeiliData({
-    data: outbounds,
+    data: flattenData,
     indexName: "outbounds",
     displayName: "outbounds",
     primaryKey: "outboundId",
+    isDeleteAll: isDeleteAll,
   });
 };
 
 //sync inventory waiting
-export const syncInventoryToMeili = async () => {
+export const syncInventoryToMeili = async (isDeleteAll: boolean) => {
   const inventories = await Inventory.findAll({
-    where: {},
     attributes: ["inventoryId"],
-    include: [{ model: Customer }, { model: Product }],
+    include: [
+      {
+        model: Order,
+        attributes: ["orderId"],
+        include: [{ model: Customer, attributes: ["customerName"] }],
+      },
+    ],
   });
 
+  const flattenData = inventories.map(meiliTransformer.inventory);
+
   return syncMeiliData({
-    data: inventories,
+    data: flattenData,
     indexName: "inventories",
     displayName: "inventories",
     primaryKey: "inventoryId",
+    isDeleteAll: isDeleteAll,
   });
 };
 
-//sync report waiting
-export const syncReportPaperToMeili = async () => {
+//sync report
+export const syncReportPaperToMeili = async (isDeleteAll: boolean) => {
   const papers = await ReportPlanningPaper.findAll({
     attributes: ["reportPaperId", "dayReport", "shiftManagement"],
     include: [
@@ -250,12 +282,11 @@ export const syncReportPaperToMeili = async () => {
     indexName: "reportPapers",
     displayName: "reportPapers",
     primaryKey: "reportPaperId",
-    // isDeleteAll: true,
+    isDeleteAll: isDeleteAll,
   });
 };
 
-// waiting
-export const syncReportBoxToMeili = async () => {
+export const syncReportBoxToMeili = async (isDeleteAll: boolean) => {
   const boxes = await ReportPlanningBox.findAll({
     attributes: ["reportBoxId", "dayReport", "shiftManagement", "machine"],
     include: [
@@ -280,12 +311,12 @@ export const syncReportBoxToMeili = async () => {
     indexName: "reportBoxes",
     displayName: "reportBoxes",
     primaryKey: "reportBoxId",
-    // isDeleteAll: true,
+    isDeleteAll: isDeleteAll,
   });
 };
 
-//sync dashboard waiting
-export const syncDashboardToMeili = async () => {
+//sync dashboard
+export const syncDashboardToMeili = async (isDeleteAll: boolean) => {
   const dashboard = await PlanningPaper.findAll({
     attributes: ["planningId", "ghepKho", "chooseMachine", "status"],
     include: [
@@ -307,5 +338,6 @@ export const syncDashboardToMeili = async () => {
     indexName: "dashboard",
     displayName: "dashboard",
     primaryKey: "planningId",
+    isDeleteAll: isDeleteAll,
   });
 };

@@ -90,7 +90,7 @@ export const planningStatusService = {
         return { message: "No orders found", data: [] };
       }
 
-      const result = await planningStatusRepository.getOrderAccept(type, field, keyword);
+      const result = await planningStatusRepository.getOrderAccept(type);
 
       // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
       const finalData = orderIds
@@ -332,7 +332,7 @@ export const planningStatusService = {
           }
         }
 
-        //update to meilisearch
+        //--------------------MEILISEARCH-----------------------
         const dataCreated = await planningPaperRepository.syncPaperFromOrderToMeili(
           paperPlan.planningId,
           transaction,
@@ -379,7 +379,7 @@ export const planningStatusService = {
 
         await order.update({ status: "reject" }, { transaction });
 
-        //sync order status to meilisearch
+        //--------------------MEILISEARCH-----------------------
         meiliService.syncMeiliData(MEILI_INDEX.ORDERS, {
           orderSortValue: order.orderSortValue,
           status: "reject",
@@ -487,7 +487,7 @@ export const planningStatusService = {
         action: action,
       });
 
-      //update meilisearch
+      //--------------------MEILISEARCH-----------------------
       if (planningUpdated.length > 0) {
         const dataForMeili = planningUpdated.map((p: any) => ({
           planningId: p.planningId,

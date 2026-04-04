@@ -14,6 +14,7 @@ import { exportExcelDbPlanning } from "../utils/helper/excelExporter";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { buildStagesDetails } from "../utils/helper/modelHelper/planningHelper";
 import { meiliClient } from "../assest/configs/connect/melisearch.config";
+import { searchFieldAtribute } from "../interface/types";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { planning, details } = CacheKey.dashboard;
@@ -103,17 +104,7 @@ export const dashboardService = {
   },
 
   //get by field
-  getDbPlanningByFields: async ({
-    field,
-    keyword,
-    page,
-    pageSize,
-  }: {
-    field: string;
-    keyword: string;
-    page: number;
-    pageSize: number;
-  }) => {
+  getDbPlanningByFields: async ({ field, keyword, page, pageSize }: searchFieldAtribute) => {
     try {
       const validFields = ["orderId", "machine", "customerName", "companyName", "username"];
       if (!validFields.includes(field)) {

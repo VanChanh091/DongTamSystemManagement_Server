@@ -47,6 +47,29 @@ export const bulkImportOrdersController = async (
   try {
     const ordersFromExcel = parseOrderData(req.file!.buffer);
 
+    // --- KIỂM TRA TRÙNG LẶP TRONG FILE EXCEL ---
+    const idCounts = new Map<string, number>();
+    const duplicateIds: string[] = [];
+
+    ordersFromExcel.forEach((item: any) => {
+      const id = String(item.orderId || "").trim();
+      if (!id) return;
+
+      idCounts.set(id, (idCounts.get(id) || 0) + 1);
+      if (idCounts.get(id) === 2) {
+        duplicateIds.push(id); // Chỉ add vào danh sách lỗi 1 lần khi phát hiện trùng lần đầu
+      }
+    });
+
+    if (duplicateIds.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `File Excel có ${duplicateIds.length} mã đơn hàng bị trùng lặp ngay trong file!`,
+        duplicateIds: duplicateIds, // Trả về danh sách ID trùng để user sửa file
+      });
+    }
+    // ----------------------------------------------
+
     const [customers, products, users] = await Promise.all([
       Customer.findAll({ attributes: ["customerId", "customerName", "companyName", "cskh"] }),
       Product.findAll({ attributes: ["productId", "productName"] }),
@@ -83,6 +106,10 @@ export const bulkImportOrdersController = async (
         // Điều kiện 1: Tên DB chứa mã SP (ví dụ: "2 lớp 1N/1X" chứa "1n/1x")
         const isMatchName = dbProdName.includes(normExcelProd);
 
+        // console.log(
+        //   `matchProductName: ${isMatchName} - productName: ${dbProdName.includes(normExcelProd)}`,
+        // );
+
         // Điều kiện 2: Xử lý Flute (Ví dụ: "3B" phải tìm thấy "3" và "B" trong DB)
         let isMatchFlute = true;
         if (excelFlute) {
@@ -94,6 +121,10 @@ export const bulkImportOrdersController = async (
           const hasNumber = fluteNumber ? dbProdName.includes(fluteNumber) : true;
 
           isMatchFlute = hasLetter && hasNumber;
+
+          // console.log(
+          //   `matchProduct: ${isMatchFlute} - fluteLetter: ${fluteLetter} - fluteNumber: ${fluteNumber} `,
+          // );
         }
 
         return isMatchName && isMatchFlute;
@@ -110,18 +141,6 @@ export const bulkImportOrdersController = async (
         if (!customer) errorMsg += ` Không tìm thấy KH: ${item._rawCustomerName}`;
         if (!product)
           errorMsg += ` Không tìm thấy SP: ${item._rawProductName} (Flute: ${item.flute || "N/A"})`;
-
-        logs.errors.push(errorMsg);
-        continue;
-      }
-
-      //show err
-      if (!customer || !product) {
-        logs.failed++;
-
-        let errorMsg = `Đơn ${item.orderId || "không ID"}:`;
-        if (!customer) errorMsg += ` Không tìm thấy KH (${item._rawCustomerName}).`;
-        if (!product) errorMsg += ` Không tìm thấy SP (${item._rawProductName}).`;
 
         logs.errors.push(errorMsg);
         continue;
@@ -189,8 +208,26 @@ export const bulkImportOrdersController = async (
 
     if (validOrders.length > 0) {
       await runInTransaction(async (transaction) => {
-        await Order.bulkCreate(validOrders, { transaction });
-        await Inventory.bulkCreate(validInventories, { transaction });
+        try {
+          await Order.bulkCreate(validOrders, { transaction });
+          await Inventory.bulkCreate(validInventories, { transaction });
+        } catch (error: any) {
+          // Kiểm tra xem có phải lỗi Validation của Sequelize không
+          if (
+            error.name === "SequelizeValidationError" ||
+            error.name === "SequelizeUniqueConstraintError"
+          ) {
+            console.error("❌ LỖI VALIDATION CHI TIẾT:");
+            error.errors.forEach((err: any) => {
+              console.error(`- Cột: ${err.path}`);
+              console.error(`  Giá trị đang truyền vào: ${err.value}`);
+              console.error(`  Thông báo lỗi: ${err.message}`);
+              console.error(`  Dòng dữ liệu gốc (nếu có):`, err.instance?.orderId); // Thử lấy ID để biết dòng nào
+              console.error("---");
+            });
+          }
+          throw error;
+        }
       });
     }
 

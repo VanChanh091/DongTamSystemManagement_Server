@@ -15,7 +15,7 @@ export const getOutboundHistory = async (req: Request, res: Response, next: Next
     let response;
 
     if (field && keyword) {
-      response = await outboundService.searchOutboundByField({
+      response = await outboundService.getOutboundByField({
         field,
         keyword,
         page: Number(page),

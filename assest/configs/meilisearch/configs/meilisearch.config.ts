@@ -61,19 +61,19 @@ export const reportBoxSettings: Settings = {
 
 //inbound history
 export const inboundSettings: Settings = {
-  searchableAttributes: ["orderId", "customerName", "companyName", "productName"],
-  rankingRules: rule,
-};
-
-//outbound
-export const outboundSettings: Settings = {
-  searchableAttributes: ["orderId", "outboundSlipCode", "companyName", "productName"],
+  searchableAttributes: ["orderId", "customerName", "dateInbound", "checkedBy"],
   rankingRules: rule,
 };
 
 //inventory
 export const inventorySettings: Settings = {
   searchableAttributes: ["orderId", "customerName"],
+  rankingRules: rule,
+};
+
+//outbound
+export const outboundSettings: Settings = {
+  searchableAttributes: ["dateOutbound", "outboundSlipCode", "customerName"],
   rankingRules: rule,
 };
 

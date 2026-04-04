@@ -21,6 +21,7 @@ import { mappingProductRow, productColumns } from "../utils/mapping/productRowAn
 import { runInTransaction } from "../utils/helper/transactionHelper";
 import { meiliClient } from "../assest/configs/connect/melisearch.config";
 import { MEILI_INDEX, meiliService } from "./meiliService";
+import { searchFieldAtribute } from "../interface/types";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { product } = CacheKey;
@@ -83,17 +84,7 @@ export const productService = {
     }
   },
 
-  getProductByField: async ({
-    field,
-    keyword,
-    page,
-    pageSize,
-  }: {
-    field: string;
-    keyword: string;
-    page: number;
-    pageSize: number;
-  }) => {
+  getProductByField: async ({ field, keyword, page, pageSize }: searchFieldAtribute) => {
     try {
       const validFields = ["productName", "productId"];
       if (!validFields.includes(field)) {
@@ -165,7 +156,7 @@ export const productService = {
           transaction,
         );
 
-        //create meilisearch
+        //--------------------MEILISEARCH-----------------------
         const productCreated = await productRepository.findProductByPk(newProductId, transaction);
 
         if (productCreated) {
@@ -208,7 +199,7 @@ export const productService = {
           transaction,
         );
 
-        //update meilisearch
+        //--------------------MEILISEARCH-----------------------
         const productUpdated = await productRepository.findProductByPk(producId, transaction);
 
         if (productUpdated) {
@@ -252,7 +243,7 @@ export const productService = {
 
         await product.destroy();
 
-        //delete record in meilisearch
+        //--------------------MEILISEARCH-----------------------
         meiliService.deleteMeiliData(MEILI_INDEX.PRODUCTS, productId);
 
         return { message: "Product deleted successfully" };

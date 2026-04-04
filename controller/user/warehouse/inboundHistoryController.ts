@@ -35,7 +35,7 @@ export const getInboundHistory = async (req: Request, res: Response, next: NextF
   try {
     let response;
     if (field && keyword) {
-      response = await inboundService.searchInboundByField({
+      response = await inboundService.getInboundByField({
         field,
         keyword,
         page: Number(page),

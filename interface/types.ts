@@ -46,3 +46,11 @@ export type InboundSumByPlanning = {
   planningBoxId?: number;
   totalInbound: string;
 };
+
+export interface searchFieldAtribute {
+  field: string;
+  keyword: string;
+  user?: any;
+  page?: number;
+  pageSize?: number;
+}

@@ -9,7 +9,7 @@ import { PlanningPaper, planningPaperStatus } from "../../models/planning/planni
 
 export const planningStatusRepository = {
   //====================================PLANNING ORDER========================================
-  getOrderAccept: async (type: string, searchField?: string, keyword?: string) => {
+  getOrderAccept: async (type: string) => {
     const whereOrder: any = { status: "accept" };
 
     let isPlanningRequired = false;
@@ -20,19 +20,6 @@ export const planningStatusRepository = {
     } else if (type === "unplanned") {
       whereOrder["$PlanningPapers.planningId$"] = { [Op.is]: null };
       isPlanningRequired = false;
-    }
-
-    //search
-    if (searchField && keyword) {
-      const searchCondition = { [Op.like]: `%${keyword}%` };
-
-      if (searchField === "customerName") {
-        whereOrder["$Customer.customerName$"] = searchCondition;
-      } else if (searchField === "orderId") {
-        whereOrder.orderId = searchCondition;
-      } else if (searchField === "QC_box") {
-        whereOrder.QC_box = searchCondition;
-      }
     }
 
     return await Order.findAll({

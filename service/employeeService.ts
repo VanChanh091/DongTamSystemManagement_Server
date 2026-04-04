@@ -16,6 +16,7 @@ import redisCache from "../assest/configs/connect/redis.config";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { meiliClient } from "../assest/configs/connect/melisearch.config";
 import { MEILI_INDEX, meiliService } from "./meiliService";
+import { searchFieldAtribute } from "../interface/types";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { employee } = CacheKey;
@@ -81,17 +82,7 @@ export const employeeService = {
     }
   },
 
-  getEmployeesByField: async ({
-    field,
-    keyword,
-    page,
-    pageSize,
-  }: {
-    field: string;
-    keyword: string;
-    page: number;
-    pageSize: number;
-  }) => {
+  getEmployeesByField: async ({ field, keyword, page, pageSize }: searchFieldAtribute) => {
     try {
       const validFields = ["fullName", "phoneNumber", "employeeCode", "status"];
       if (!validFields.includes(field)) {
@@ -192,7 +183,7 @@ export const employeeService = {
           transaction,
         });
 
-        //create meilisearch
+        //--------------------MEILISEARCH-----------------------
         const createdEmployee = await employeeRepository.findEmployeeForMeili(
           employeeId,
           transaction,
@@ -234,7 +225,7 @@ export const employeeService = {
           transaction,
         });
 
-        //update meilisearch
+        //--------------------MEILISEARCH-----------------------
         const updatedEmployee = await employeeRepository.findEmployeeForMeili(
           result.employeeId,
           transaction,
@@ -264,7 +255,7 @@ export const employeeService = {
         // Xóa bản ghi chính
         await employee.destroy({ transaction });
 
-        //delete record in meilisearch
+        //--------------------MEILISEARCH-----------------------
         meiliService.deleteMeiliData(MEILI_INDEX.EMPLOYEES, employeeId);
 
         return { message: "delete employee successfully" };

@@ -2,16 +2,15 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import bcrypt from "bcrypt";
-import cloudinary from "../../assest/configs/connect/cloudinary.config";
 import { Request } from "express";
+import { AppError } from "../../utils/appError";
+import { userRole } from "../../models/user/user";
 import { validPermissions } from "../../assest/labelFields";
 import { Order, OrderStatus } from "../../models/order/order";
-import { userRole } from "../../models/user/user";
 import { adminRepository } from "../../repository/adminRepository";
-import { AppError } from "../../utils/appError";
 import { getCloudinaryPublicId } from "../../utils/image/converToWebp";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
-import { orderRepository } from "../../repository/orderRepository";
+import cloudinary from "../../assest/configs/connect/cloudinary.config";
 import { MEILI_INDEX, meiliService } from "../meiliService";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
@@ -161,7 +160,7 @@ export const adminService = {
           throw AppError.BadRequest("Invalid status", "INVALID_STATUS");
         }
 
-        const order = await adminRepository.findByOrderId(orderId);
+        const order = await adminRepository.findByOrderId(orderId, transaction);
         if (!order) {
           throw AppError.NotFound("Order not found", "ORDER_NOT_FOUND");
         }
@@ -187,7 +186,13 @@ export const adminService = {
           });
         }
 
-        await order.save();
+        await order.save({ transaction });
+
+        //--------------------MEILISEARCH-----------------------
+        meiliService.syncMeiliData(MEILI_INDEX.ORDERS, {
+          orderSortValue: order.orderSortValue,
+          status: newStatus,
+        });
 
         //socket
         const ownerId = order.userId;
@@ -214,13 +219,6 @@ export const adminService = {
           type: "REJECTED_ORDER",
           count: badgeCount,
         });
-
-        // //update meilisearch
-        // const orderUpdated = await orderRepository.findOrderForMeili(orderId, transaction);
-
-        // if (orderUpdated) {
-        //   meiliService.syncMeiliData(MEILI_INDEX.ORDERS, orderUpdated.toJSON());
-        // }
 
         return {
           message: "Order status updated successfully",

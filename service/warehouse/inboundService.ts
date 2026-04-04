@@ -10,7 +10,6 @@ import { planningHelper } from "../../repository/planning/planningHelper";
 import { PlanningBox } from "../../models/planning/planningBox";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
-import { getInboundByField } from "../../utils/helper/modelHelper/warehouseHelper";
 import { dashboardRepository } from "../../repository/dashboardRepository";
 import { buildStagesDetails } from "../../utils/helper/modelHelper/planningHelper";
 import { PlanningPaper } from "../../models/planning/planningPaper";
@@ -18,6 +17,10 @@ import { inventoryService } from "./inventoryService";
 import { Inventory } from "../../models/warehouse/inventory";
 import { Order } from "../../models/order/order";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
+import { MEILI_INDEX, meiliService } from "../meiliService";
+import { searchFieldAtribute } from "../../interface/types";
+import { meiliClient } from "../../assest/configs/connect/melisearch.config";
+import { Op } from "sequelize";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inbound } = CacheKey.warehouse;
@@ -25,7 +28,6 @@ const { paper, box } = CacheKey.waitingCheck;
 
 export const inboundService = {
   //====================================WAITING CHECK AND INBOUND QTY========================================
-
   getPaperWaitingChecked: async () => {
     const cacheKey = paper.all;
 
@@ -180,7 +182,7 @@ export const inboundService = {
       const isFirstInbound = totalInboundQty === 0;
 
       //create inventory
-      await inventoryService.createNewInventory(planning.orderId, transaction);
+      const inventory = await inventoryService.createNewInventory(planning.orderId, transaction);
 
       const inboundRecord = await planningHelper.createData({
         model: InboundHistory,
@@ -212,6 +214,9 @@ export const inboundService = {
       if (isFirstInbound) {
         await planning.update({ statusRequest: "inbounded" }, { transaction });
       }
+
+      //--------------------MEILISEARCH-----------------------
+      meiliService.syncMeiliData(MEILI_INDEX.REPORT_PAPERS, { planningId: planning.planningId });
 
       return {
         message: "Confirm producing paper successfully",
@@ -363,39 +368,50 @@ export const inboundService = {
     }
   },
 
-  searchInboundByField: async ({
-    field,
-    keyword,
-    page,
-    pageSize,
-  }: {
-    field: string;
-    keyword: string;
-    page: number;
-    pageSize: number;
-  }) => {
+  getInboundByField: async ({ field, keyword, page, pageSize }: searchFieldAtribute) => {
     try {
-      const fieldMap = {
-        orderId: (inbound: InboundHistory) => inbound.orderId,
-        customerName: (inbound: InboundHistory) => inbound.Order.Customer.customerName,
-        companyName: (inbound: InboundHistory) => inbound.Order.Customer.companyName,
-        productName: (inbound: InboundHistory) => inbound.Order.Product.productName,
-      } as const;
-
-      const key = field as keyof typeof fieldMap;
-      if (!fieldMap[key]) {
-        throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
+      const validFields = ["orderId", "customerName", "dateInbound", "checkedBy"];
+      if (!validFields.includes(field)) {
+        throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
       }
 
-      const result = await getInboundByField({
-        keyword: keyword,
-        getFieldValue: fieldMap[key],
-        page,
-        pageSize,
-        message: `get all by ${field} from filtered cache`,
+      const index = meiliClient.index("inboundHistories");
+
+      const searchResult = await index.search(keyword, {
+        attributesToSearchOn: [field],
+        attributesToRetrieve: ["inboundId"],
+        page: Number(page) || 1,
+        hitsPerPage: Number(pageSize) || 25, //pageSize
       });
 
-      return result;
+      const inboundIds = searchResult.hits.map((hit: any) => hit.inboundId);
+      if (inboundIds.length === 0) {
+        return {
+          message: "No inbound histories found",
+          data: [],
+          totalInbounds: 0,
+          totalPages: 0,
+          currentPage: page,
+        };
+      }
+
+      //query db
+      const { rows } = await warehouseRepository.findInboundByPage({
+        whereCondition: { inboundId: { [Op.in]: inboundIds } },
+      });
+
+      // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
+      const finalData = inboundIds
+        .map((id) => rows.find((inbound) => inbound.inboundId === id))
+        .filter(Boolean);
+
+      return {
+        message: "Get inbound histories from Meilisearch & DB successfully",
+        data: finalData,
+        totalInbounds: searchResult.totalHits,
+        totalPages: searchResult.totalPages,
+        currentPage: searchResult.page,
+      };
     } catch (error) {
       console.error(`get inbound history by ${field} failed:`, error);
       if (error instanceof AppError) throw error;

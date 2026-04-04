@@ -17,6 +17,7 @@ import { meiliClient } from "../assest/configs/connect/melisearch.config";
 import { customerColumns, mappingCustomerRow } from "../utils/mapping/customerRowAndColumn";
 import { createDataTable, updateChildTable } from "../utils/helper/modelHelper/orderHelpers";
 import { MEILI_INDEX, meiliService } from "./meiliService";
+import { searchFieldAtribute } from "../interface/types";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { customer } = CacheKey;
@@ -77,17 +78,7 @@ export const customerService = {
     }
   },
 
-  getCustomerByFields: async ({
-    field,
-    keyword,
-    page,
-    pageSize,
-  }: {
-    field: string;
-    keyword: string;
-    page: number;
-    pageSize: number;
-  }) => {
+  getCustomerByFields: async ({ field, keyword, page, pageSize }: searchFieldAtribute) => {
     try {
       const validFields = ["customerId", "customerName", "cskh", "phone"];
       if (!validFields.includes(field)) {
@@ -95,7 +86,6 @@ export const customerService = {
       }
 
       const index = meiliClient.index("customers");
-      ``;
 
       const searchResult = await index.search(keyword, {
         attributesToSearchOn: [field],
@@ -187,7 +177,7 @@ export const customerService = {
           transaction,
         });
 
-        //create meilisearch
+        //--------------------MEILISEARCH-----------------------
         const customerCreated = await customerRepository.findCustomerForMeili(
           newCustomerId,
           transaction,
@@ -228,7 +218,7 @@ export const customerService = {
           transaction,
         });
 
-        //update meilisearch
+        //--------------------MEILISEARCH-----------------------
         const customerUpdated = await customerRepository.findCustomerForMeili(
           customerId,
           transaction,
@@ -270,7 +260,7 @@ export const customerService = {
 
         await customer.destroy({ transaction });
 
-        //delete record in meilisearch
+        //--------------------MEILISEARCH-----------------------
         meiliService.deleteMeiliData(MEILI_INDEX.CUSTOMERS, customerId);
 
         return { message: "Customer deleted successfully" };

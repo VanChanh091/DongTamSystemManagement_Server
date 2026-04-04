@@ -24,6 +24,8 @@ import {
   updateChildTable,
   validateCustomerAndProduct,
 } from "../utils/helper/modelHelper/orderHelpers";
+import { meiliTransformer } from "../assest/configs/meilisearch/meiliTransformer";
+import { searchFieldAtribute } from "../interface/types";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { order } = CacheKey;
@@ -117,19 +119,7 @@ export const orderService = {
     }
   },
 
-  getOrderByField: async ({
-    field,
-    keyword,
-    page,
-    pageSize,
-    user,
-  }: {
-    field: string;
-    keyword: string;
-    page: number;
-    pageSize: number;
-    user: any;
-  }) => {
+  getOrderByField: async ({ field, keyword, page, pageSize, user }: searchFieldAtribute) => {
     const { userId, role } = user;
 
     try {
@@ -296,11 +286,12 @@ export const orderService = {
           }
         }
 
-        //create meilisearch
+        //--------------------MEILISEARCH-----------------------
         const orderCreated = await orderRepository.findOrderForMeili(newOrderId, transaction);
 
         if (orderCreated) {
-          meiliService.syncMeiliData(MEILI_INDEX.ORDERS, orderCreated.toJSON());
+          const flattenData = meiliTransformer.order(orderCreated);
+          meiliService.syncMeiliData(MEILI_INDEX.ORDERS, flattenData);
         }
 
         return { order: newOrder, orderId: newOrderId };
@@ -375,11 +366,12 @@ export const orderService = {
           count: badgeCount,
         });
 
-        //update meilisearch
+        //--------------------MEILISEARCH-----------------------
         const orderUpdated = await orderRepository.findOrderForMeili(orderId, transaction);
 
         if (orderUpdated) {
-          meiliService.syncMeiliData(MEILI_INDEX.ORDERS, orderUpdated.toJSON());
+          const flattenData = meiliTransformer.order(orderUpdated);
+          meiliService.syncMeiliData(MEILI_INDEX.ORDERS, flattenData);
         }
 
         return { message: "Order updated successfully", data: order };
@@ -405,7 +397,7 @@ export const orderService = {
 
         await order.destroy({ transaction });
 
-        //delete meilisearch
+        //--------------------MEILISEARCH-----------------------
         meiliService.deleteMeiliData(MEILI_INDEX.ORDERS, orderValue);
 
         return { message: "Order deleted successfully" };

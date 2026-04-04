@@ -7,11 +7,11 @@ export const MEILI_INDEX = {
   EMPLOYEES: "employees",
   PLANNING_PAPERS: "planningPapers",
   PLANNING_BOXES: "planningBoxes",
+  INBOUND: "inboundHistories",
   OUTBOUNDS: "outbounds",
   INVENTORIES: "inventories",
   REPORT_PAPERS: "reportPapers",
   REPORT_BOXES: "reportBoxes",
-  INBOUND: "inboundHistories",
   DASHBOARD: "dashboard",
 };
 
