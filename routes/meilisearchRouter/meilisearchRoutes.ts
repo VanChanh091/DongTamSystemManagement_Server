@@ -1,6 +1,7 @@
 import { Router } from "express";
 import authenticate from "../../middlewares/authMiddleware";
 import {
+  resetMeiliIndex,
   syncCustomerToMeili,
   syncDashboardToMeili,
   syncEmployeeToMeili,
@@ -15,7 +16,6 @@ import {
   syncReportPaperToMeili,
 } from "../../assest/configs/meilisearch/sync/syncMeili";
 import { AppError } from "../../utils/appError";
-import { log } from "node:console";
 
 const router = Router();
 
@@ -53,6 +53,17 @@ router.get("/:entity", authenticate, async (req, res, next) => {
     await syncFn(Boolean(isDelete));
 
     return res.status(200).json({ message: `Sync ${entity} to Meilisearch successfully` });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/", authenticate, async (req, res, next) => {
+  try {
+    const { indexName } = req.query;
+    await resetMeiliIndex(indexName as string);
+
+    return res.status(200).json({ message: `Delete ${indexName} from Meilisearch successfully` });
   } catch (error) {
     next(error);
   }

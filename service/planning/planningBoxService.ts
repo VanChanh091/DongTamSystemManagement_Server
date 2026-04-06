@@ -5,7 +5,7 @@ import { Op } from "sequelize";
 import { Request } from "express";
 import { AppError } from "../../utils/appError";
 import { MachineBox } from "../../models/admin/machineBox";
-import { MEILI_INDEX, meiliService } from "../meiliService";
+import { meiliService } from "../meiliService";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { PlanningBox } from "../../models/planning/planningBox";
 import redisCache from "../../assest/configs/connect/redis.config";
@@ -18,6 +18,7 @@ import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning
 import { planningBoxRepository } from "../../repository/planning/planningBoxRepository";
 import { PlanningBoxTime, statusBoxType } from "../../models/planning/planningBoxMachineTime";
 import { meiliTransformer } from "../../assest/configs/meilisearch/meiliTransformer";
+import { MEILI_INDEX } from "../../assest/labelFields";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { box } = CacheKey.planning;

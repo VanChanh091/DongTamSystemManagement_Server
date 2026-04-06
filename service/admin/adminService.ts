@@ -3,15 +3,15 @@ dotenv.config();
 
 import bcrypt from "bcrypt";
 import { Request } from "express";
+import { meiliService } from "../meiliService";
 import { AppError } from "../../utils/appError";
 import { userRole } from "../../models/user/user";
-import { validPermissions } from "../../assest/labelFields";
+import { MEILI_INDEX, validPermissions } from "../../assest/labelFields";
 import { Order, OrderStatus } from "../../models/order/order";
 import { adminRepository } from "../../repository/adminRepository";
 import { getCloudinaryPublicId } from "../../utils/image/converToWebp";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import cloudinary from "../../assest/configs/connect/cloudinary.config";
-import { MEILI_INDEX, meiliService } from "../meiliService";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 

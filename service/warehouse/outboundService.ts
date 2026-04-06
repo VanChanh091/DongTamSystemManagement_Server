@@ -5,7 +5,7 @@ import { Response } from "express";
 import { Op, Transaction } from "sequelize";
 import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
-import { MEILI_INDEX, meiliService } from "../meiliService";
+import { meiliService } from "../meiliService";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { Inventory } from "../../models/warehouse/inventory";
 import { exportWarehouse } from "../../utils/helper/exportPDF";
@@ -18,6 +18,9 @@ import { planningHelper } from "../../repository/planning/planningHelper";
 import { warehouseRepository } from "../../repository/warehouseRepository";
 import { meiliClient } from "../../assest/configs/connect/melisearch.config";
 import { meiliTransformer } from "../../assest/configs/meilisearch/meiliTransformer";
+import { MEILI_INDEX } from "../../assest/labelFields";
+import { Customer } from "../../models/customer/customer";
+import { CustomerPayment } from "../../models/customer/customerPayment";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { outbound } = CacheKey.warehouse;
@@ -189,6 +192,7 @@ export const outboundService = {
         let totalPriceVAT = 0;
         let totalPricePayment = 0;
         let totalOutboundQty = 0;
+        let timePayment: Date | null = null;
 
         const preparedDetails: {
           orderId: string;
@@ -208,6 +212,20 @@ export const outboundService = {
           // check customer
           if (customerId === null) {
             customerId = order.customerId;
+
+            const customer = await Customer.findByPk(customerId, {
+              attributes: ["customerId"],
+              include: [
+                {
+                  model: CustomerPayment,
+                  as: "payment",
+                  attributes: ["cusPaymentId", "timePayment"],
+                },
+              ],
+              transaction,
+            });
+
+            timePayment = customer?.payment?.timePayment ?? null;
           } else if (customerId !== order.customerId) {
             throw AppError.BadRequest("customer missmatch", "CUSTOMER_MISMATCH");
           }
@@ -285,6 +303,7 @@ export const outboundService = {
             totalPriceVAT,
             totalPricePayment,
             totalOutboundQty,
+            dueDate: now,
           },
           transaction,
         });

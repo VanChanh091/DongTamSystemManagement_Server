@@ -8,7 +8,7 @@ import { AppError } from "../utils/appError";
 import { Order } from "../models/order/order";
 import { OrderImage } from "../models/order/orderImage";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
-import { MEILI_INDEX, meiliService } from "./meiliService";
+import { meiliService } from "./meiliService";
 import redisCache from "../assest/configs/connect/redis.config";
 import { orderRepository } from "../repository/orderRepository";
 import { CacheManager } from "../utils/helper/cache/cacheManager";
@@ -26,6 +26,7 @@ import {
 } from "../utils/helper/modelHelper/orderHelpers";
 import { meiliTransformer } from "../assest/configs/meilisearch/meiliTransformer";
 import { searchFieldAtribute } from "../interface/types";
+import { MEILI_INDEX } from "../assest/labelFields";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { order } = CacheKey;

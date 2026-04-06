@@ -67,7 +67,7 @@ export const manufactureRepo = {
     });
   },
 
-  getPapersById: async (planningId: number, transaction?: any) => {
+  getPapersById: async (planningId: number, transaction?: Transaction) => {
     return await PlanningPaper.findOne({
       where: { planningId },
       include: [
@@ -79,7 +79,7 @@ export const manufactureRepo = {
     });
   },
 
-  getPapersByOrderId: async (orderId: string, transaction?: any) => {
+  getPapersByOrderId: async (orderId: string, transaction?: Transaction) => {
     return await PlanningPaper.findAll({
       where: { orderId: orderId },
       attributes: ["qtyProduced"],

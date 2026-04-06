@@ -17,10 +17,12 @@ import { inventoryService } from "./inventoryService";
 import { Inventory } from "../../models/warehouse/inventory";
 import { Order } from "../../models/order/order";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
-import { MEILI_INDEX, meiliService } from "../meiliService";
+import { meiliService } from "../meiliService";
 import { searchFieldAtribute } from "../../interface/types";
 import { meiliClient } from "../../assest/configs/connect/melisearch.config";
-import { Op } from "sequelize";
+import { Op, Transaction } from "sequelize";
+import { meiliTransformer } from "../../assest/configs/meilisearch/meiliTransformer";
+import { MEILI_INDEX } from "../../assest/labelFields";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inbound } = CacheKey.warehouse;
@@ -169,6 +171,7 @@ export const inboundService = {
       const totalInboundQty =
         (await InboundHistory.sum("qtyInbound", {
           where: { planningId: planning.planningId },
+          transaction,
         })) ?? 0;
 
       const qtyProduced = planning.qtyProduced ?? 0;
@@ -182,7 +185,7 @@ export const inboundService = {
       const isFirstInbound = totalInboundQty === 0;
 
       //create inventory
-      const inventory = await inventoryService.createNewInventory(planning.orderId, transaction);
+      await inventoryService.createNewInventory(planning.orderId, transaction);
 
       const inboundRecord = await planningHelper.createData({
         model: InboundHistory,
@@ -216,7 +219,11 @@ export const inboundService = {
       }
 
       //--------------------MEILISEARCH-----------------------
-      meiliService.syncMeiliData(MEILI_INDEX.REPORT_PAPERS, { planningId: planning.planningId });
+      await inboundService.syncInboundAndInventoryToMeili({
+        inboundId: inboundRecord.inboundId,
+        orderId: planning.orderId,
+        transaction,
+      });
 
       return {
         message: "Confirm producing paper successfully",
@@ -317,6 +324,13 @@ export const inboundService = {
         await paper.update({ statusRequest: "inbounded" }, { transaction });
       }
 
+      //--------------------MEILISEARCH-----------------------
+      await inboundService.syncInboundAndInventoryToMeili({
+        inboundId: inboundRecord.inboundId,
+        orderId: planning.orderId,
+        transaction,
+      });
+
       return {
         message: "Confirm producing paper successfully",
         data: inboundRecord,
@@ -324,6 +338,32 @@ export const inboundService = {
     } catch (error) {
       console.error("Error inbound box:", error);
       if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  syncInboundAndInventoryToMeili: async ({
+    inboundId,
+    orderId,
+    transaction,
+  }: {
+    inboundId: number;
+    orderId: string;
+    transaction: Transaction;
+  }) => {
+    try {
+      const [inbound, inventory] = await Promise.all([
+        warehouseRepository.syncInbound(inboundId, transaction),
+        warehouseRepository.syncInventory(orderId, transaction),
+      ]);
+
+      const flattenInbound = meiliTransformer.inbound(inbound);
+      const flattenInventory = meiliTransformer.inventory(inventory);
+
+      meiliService.syncMeiliData(MEILI_INDEX.INBOUND, flattenInbound);
+      meiliService.syncMeiliData(MEILI_INDEX.INVENTORIES, flattenInventory);
+    } catch (error) {
+      console.error("Error sync inbound & inventory box:", error);
       throw AppError.ServerError();
     }
   },

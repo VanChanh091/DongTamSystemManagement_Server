@@ -15,8 +15,9 @@ import { runInTransaction } from "../utils/helper/transactionHelper";
 import redisCache from "../assest/configs/connect/redis.config";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { meiliClient } from "../assest/configs/connect/melisearch.config";
-import { MEILI_INDEX, meiliService } from "./meiliService";
+import { meiliService } from "./meiliService";
 import { searchFieldAtribute } from "../interface/types";
+import { MEILI_INDEX } from "../assest/labelFields";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { employee } = CacheKey;

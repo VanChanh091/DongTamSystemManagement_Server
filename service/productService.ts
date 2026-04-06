@@ -20,8 +20,9 @@ import { exportExcelResponse } from "../utils/helper/excelExporter";
 import { mappingProductRow, productColumns } from "../utils/mapping/productRowAndColumn";
 import { runInTransaction } from "../utils/helper/transactionHelper";
 import { meiliClient } from "../assest/configs/connect/melisearch.config";
-import { MEILI_INDEX, meiliService } from "./meiliService";
+import { meiliService } from "./meiliService";
 import { searchFieldAtribute } from "../interface/types";
+import { MEILI_INDEX } from "../assest/labelFields";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { product } = CacheKey;

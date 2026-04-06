@@ -8,7 +8,7 @@ interface CustomerPaymentAttributes {
   cusPaymentId: string;
   debtCurrent?: number | null;
   debtLimit?: number | null;
-  timePayment?: Date | null;
+  timePayment: Date | null;
   paymentType: paymentType;
   closingDate: number;
 
@@ -33,7 +33,7 @@ export class CustomerPayment
   declare cusPaymentId: string;
   declare debtCurrent?: number | null;
   declare debtLimit?: number | null;
-  declare timePayment?: Date | null;
+  declare timePayment: Date | null;
   declare paymentType: paymentType;
   declare closingDate: number;
 
@@ -55,7 +55,7 @@ export function initCustomerPaymentModel(sequelize: Sequelize): typeof CustomerP
       },
       debtCurrent: { type: DataTypes.DOUBLE },
       debtLimit: { type: DataTypes.DOUBLE },
-      timePayment: { type: DataTypes.DATE },
+      timePayment: { type: DataTypes.DATE, allowNull: false },
       paymentType: { type: DataTypes.ENUM("daily", "monthly"), allowNull: false },
       closingDate: { type: DataTypes.INTEGER, allowNull: false },
 

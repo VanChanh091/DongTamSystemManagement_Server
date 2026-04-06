@@ -5,7 +5,7 @@ import { Op } from "sequelize";
 import { Request } from "express";
 import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
-import { MEILI_INDEX, meiliService } from "../meiliService";
+import { meiliService } from "../meiliService";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { MachinePaper } from "../../models/admin/machinePaper";
 import { PlanningBox } from "../../models/planning/planningBox";
@@ -19,6 +19,7 @@ import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning
 import { calculateTimeRunning, updateSortPlanning } from "./helper/timeRunningPaper";
 import { machinePaperType, PlanningPaper } from "../../models/planning/planningPaper";
 import { planningPaperRepository } from "../../repository/planning/planningPaperRepository";
+import { MEILI_INDEX } from "../../assest/labelFields";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper } = CacheKey.planning;

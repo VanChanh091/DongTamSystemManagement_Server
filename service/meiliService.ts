@@ -1,20 +1,5 @@
 import { meiliClient } from "../assest/configs/connect/melisearch.config";
 
-export const MEILI_INDEX = {
-  CUSTOMERS: "customers",
-  PRODUCTS: "products",
-  ORDERS: "orders",
-  EMPLOYEES: "employees",
-  PLANNING_PAPERS: "planningPapers",
-  PLANNING_BOXES: "planningBoxes",
-  INBOUND: "inboundHistories",
-  OUTBOUNDS: "outbounds",
-  INVENTORIES: "inventories",
-  REPORT_PAPERS: "reportPapers",
-  REPORT_BOXES: "reportBoxes",
-  DASHBOARD: "dashboard",
-};
-
 export const meiliService = {
   syncMeiliData: (indexKey: string, data: any | any[]) => {
     try {

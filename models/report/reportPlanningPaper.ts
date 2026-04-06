@@ -80,7 +80,6 @@ export function initReportPlanningPaperModel(sequelize: Sequelize): typeof Repor
 
         //indexes
         { fields: ["dayReport"] },
-        { fields: ["shiftManagement"] },
       ],
     },
   );

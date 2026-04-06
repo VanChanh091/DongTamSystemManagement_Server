@@ -7,6 +7,7 @@ import { meiliClient } from "../../connect/melisearch.config";
 import { Customer } from "../../../../models/customer/customer";
 import { Inventory } from "../../../../models/warehouse/inventory";
 import { PlanningBox } from "../../../../models/planning/planningBox";
+import { QcSession } from "../../../../models/qualityControl/qcSession";
 import { PlanningPaper } from "../../../../models/planning/planningPaper";
 import { OutboundDetail } from "../../../../models/warehouse/outboundDetail";
 import { productRepository } from "../../../../repository/productRepository";
@@ -17,7 +18,6 @@ import { EmployeeBasicInfo } from "../../../../models/employee/employeeBasicInfo
 import { ReportPlanningPaper } from "../../../../models/report/reportPlanningPaper";
 import { EmployeeCompanyInfo } from "../../../../models/employee/employeeCompanyInfo";
 import { planningBoxRepository } from "../../../../repository/planning/planningBoxRepository";
-import { QcSession } from "../../../../models/qualityControl/qcSession";
 
 interface SyncMeiliData {
   data: any[];
@@ -59,6 +59,21 @@ const syncMeiliData = async ({
     console.error("❌ Lỗi đồng bộ Meilisearch:", error);
     if (error instanceof AppError) throw error;
     throw AppError.ServerError();
+  }
+};
+
+//delete or add all data in meilisearch
+// export const syncOrDeleteAllDataToMeili = async (isDeleteAll: boolean) => {
+//   try {
+//   } catch (error) {}
+// };
+
+export const resetMeiliIndex = async (indexName: string) => {
+  try {
+    await meiliClient.deleteIndex(indexName);
+    console.log(`🗑️ Đã xóa Index: ${indexName}`);
+  } catch (error) {
+    console.log(`Index ${indexName} chưa tồn tại, không cần xóa.`);
   }
 };
 
@@ -176,7 +191,7 @@ export const syncPlanningBoxToMeili = async (isDeleteAll: boolean) => {
   });
 };
 
-//sync inbound & outbound waiting
+//sync inbound & outbound
 export const syncInboundToMeili = async (isDeleteAll: boolean) => {
   const inbounds = await InboundHistory.findAll({
     attributes: ["inboundId", "dateInbound"],
@@ -201,7 +216,6 @@ export const syncInboundToMeili = async (isDeleteAll: boolean) => {
   });
 };
 
-// waiting
 export const syncOutboundToMeili = async (isDeleteAll: boolean) => {
   const outbounds = await OutboundHistory.findAll({
     attributes: ["outboundId", "outboundSlipCode", "dateOutbound"],
@@ -232,7 +246,7 @@ export const syncOutboundToMeili = async (isDeleteAll: boolean) => {
   });
 };
 
-//sync inventory waiting
+//sync inventory
 export const syncInventoryToMeili = async (isDeleteAll: boolean) => {
   const inventories = await Inventory.findAll({
     attributes: ["inventoryId"],
@@ -263,7 +277,7 @@ export const syncReportPaperToMeili = async (isDeleteAll: boolean) => {
     include: [
       {
         model: PlanningPaper,
-        attributes: ["chooseMachine"],
+        attributes: ["planningId", "chooseMachine"],
         include: [
           {
             model: Order,
@@ -276,6 +290,8 @@ export const syncReportPaperToMeili = async (isDeleteAll: boolean) => {
   });
 
   const flattenData = papers.map(meiliTransformer.reportPaper);
+
+  console.log(flattenData[0]);
 
   return syncMeiliData({
     data: flattenData,
@@ -305,6 +321,8 @@ export const syncReportBoxToMeili = async (isDeleteAll: boolean) => {
   });
 
   const flattenData = boxes.map(meiliTransformer.reportBox);
+
+  console.log(flattenData[0]);
 
   return syncMeiliData({
     data: flattenData,

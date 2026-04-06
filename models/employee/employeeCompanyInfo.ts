@@ -74,7 +74,6 @@ export function initEmployeeCompanyInfoModel(sequelize: Sequelize): typeof Emplo
 
         // find
         { fields: ["employeeCode"] },
-        { fields: ["status"] },
       ],
     },
   );

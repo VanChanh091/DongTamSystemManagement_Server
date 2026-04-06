@@ -44,4 +44,19 @@ const machineMap = {
   hasDongGhim: "Máy Đóng Ghim",
 };
 
-export { machineLabels, MACHINE_FIELD_MAP, validPermissions, machineMap };
+const MEILI_INDEX = {
+  CUSTOMERS: "customers",
+  PRODUCTS: "products",
+  ORDERS: "orders",
+  EMPLOYEES: "employees",
+  PLANNING_PAPERS: "planningPapers",
+  PLANNING_BOXES: "planningBoxes",
+  INBOUND: "inboundHistories",
+  OUTBOUNDS: "outbounds",
+  INVENTORIES: "inventories",
+  REPORT_PAPERS: "reportPapers",
+  REPORT_BOXES: "reportBoxes",
+  DASHBOARD: "dashboard",
+};
+
+export { machineLabels, MACHINE_FIELD_MAP, validPermissions, machineMap, MEILI_INDEX };

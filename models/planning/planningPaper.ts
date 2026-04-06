@@ -242,9 +242,6 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
         //FK
         { fields: ["orderId"] },
 
-        //search
-        { fields: ["ghepKho"] },
-
         //indexes
         { fields: ["sortPlanning"] },
         { fields: ["status"] },

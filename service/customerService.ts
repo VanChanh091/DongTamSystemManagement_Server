@@ -16,8 +16,9 @@ import { customerRepository } from "../repository/customerRepository";
 import { meiliClient } from "../assest/configs/connect/melisearch.config";
 import { customerColumns, mappingCustomerRow } from "../utils/mapping/customerRowAndColumn";
 import { createDataTable, updateChildTable } from "../utils/helper/modelHelper/orderHelpers";
-import { MEILI_INDEX, meiliService } from "./meiliService";
+import { meiliService } from "./meiliService";
 import { searchFieldAtribute } from "../interface/types";
+import { MEILI_INDEX } from "../assest/labelFields";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { customer } = CacheKey;

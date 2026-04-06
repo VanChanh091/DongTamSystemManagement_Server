@@ -1,19 +1,19 @@
-import { InboundHistory } from "../models/warehouse/inboundHistory";
-import { Order } from "../models/order/order";
-import { Customer } from "../models/customer/customer";
-import { Product } from "../models/product/product";
-import { PlanningPaper } from "../models/planning/planningPaper";
-import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
 import { Box } from "../models/order/box";
-import { PlanningBox } from "../models/planning/planningBox";
-import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
-import { OutboundHistory } from "../models/warehouse/outboundHistory";
-import { OutboundDetail } from "../models/warehouse/outboundDetail";
-import { Op, Sequelize, Transaction } from "sequelize";
 import { User } from "../models/user/user";
-import { Inventory } from "../models/warehouse/inventory";
+import { Order } from "../models/order/order";
+import { Product } from "../models/product/product";
+import { Op, Sequelize, Transaction } from "sequelize";
+import { Customer } from "../models/customer/customer";
 import { InboundSumByPlanning } from "../interface/types";
+import { Inventory } from "../models/warehouse/inventory";
+import { PlanningBox } from "../models/planning/planningBox";
 import { QcSession } from "../models/qualityControl/qcSession";
+import { PlanningPaper } from "../models/planning/planningPaper";
+import { InboundHistory } from "../models/warehouse/inboundHistory";
+import { OutboundDetail } from "../models/warehouse/outboundDetail";
+import { OutboundHistory } from "../models/warehouse/outboundHistory";
+import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
+import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
 
 export const warehouseRepository = {
   //====================================WAITING CHECK========================================
@@ -193,6 +193,21 @@ export const warehouseRepository = {
     }
 
     return await InboundHistory.findAndCountAll(query);
+  },
+
+  syncInbound: async (inboundId: number, transaction: Transaction) => {
+    return await InboundHistory.findByPk(inboundId, {
+      attributes: ["inboundId", "dateInbound"],
+      include: [
+        {
+          model: Order,
+          attributes: ["orderId"],
+          include: [{ model: Customer, attributes: ["customerName"] }],
+        },
+        { model: QcSession, attributes: ["checkedBy"] },
+      ],
+      transaction,
+    });
   },
 
   //====================================OUTBOUND HISTORY========================================
@@ -487,6 +502,21 @@ export const warehouseRepository = {
       where: { orderId },
       transaction,
       lock: transaction.LOCK.UPDATE,
+    });
+  },
+
+  syncInventory: async (orderId: string, transaction: Transaction) => {
+    return await Inventory.findOne({
+      where: { orderId },
+      attributes: ["inventoryId"],
+      include: [
+        {
+          model: Order,
+          attributes: ["orderId"],
+          include: [{ model: Customer, attributes: ["customerName"] }],
+        },
+      ],
+      transaction,
     });
   },
 };

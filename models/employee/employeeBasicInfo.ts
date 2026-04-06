@@ -83,11 +83,6 @@ export function initEmployeeBasicInfoModel(sequelize: Sequelize): typeof Employe
       sequelize,
       tableName: "EmployeeBasicInfos",
       timestamps: true,
-      indexes: [
-        //search
-        { fields: ["fullName"] },
-        { fields: ["phoneNumber"] },
-      ],
     },
   );
 
