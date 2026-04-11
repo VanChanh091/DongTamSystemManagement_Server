@@ -4,11 +4,12 @@ import { deliveryService } from "../../../service/deliveryService";
 //=================================PLANNING ESTIMATE TIME=====================================
 
 export const getPlanningEstimateTime = async (req: Request, res: Response, next: NextFunction) => {
-  const { page, pageSize, dayStart, estimateTime } = req.query as {
+  const { page, pageSize, dayStart, estimateTime, all } = req.query as {
     page: string;
     pageSize: string;
     dayStart: string;
     estimateTime: string;
+    all: string;
   };
 
   try {
@@ -18,6 +19,7 @@ export const getPlanningEstimateTime = async (req: Request, res: Response, next:
       dayStart: new Date(dayStart),
       estimateTime,
       userId: req.user.userId,
+      all,
     });
     return res.status(200).json(response);
   } catch (error) {

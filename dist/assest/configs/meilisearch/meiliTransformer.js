@@ -76,6 +76,33 @@ exports.meiliTransformer = {
             customerName: raw.PlanningBox?.Order?.Customer?.customerName,
         };
     },
+    inbound: (db) => {
+        const raw = db.get({ plain: true });
+        return {
+            inboundId: raw.inboundId,
+            dateInbound: raw.dateInbound,
+            orderId: raw.Order?.orderId,
+            customerName: raw.Order?.Customer?.customerName,
+            checkedBy: raw.QcSession?.checkedBy,
+        };
+    },
+    outbound: (db) => {
+        const raw = db.get({ plain: true });
+        return {
+            outboundId: raw.outboundId,
+            dateOutbound: raw.dateOutbound,
+            outboundSlipCode: raw.outboundSlipCode,
+            customerName: raw.detail?.[0]?.Order?.Customer?.customerName,
+        };
+    },
+    inventory: (db) => {
+        const raw = db.get({ plain: true });
+        return {
+            inventoryId: raw.inventoryId,
+            orderId: raw.Order?.orderId,
+            customerName: raw.Order?.Customer?.customerName,
+        };
+    },
     dashboard: (db) => {
         const raw = db.get({ plain: true });
         return {

@@ -15,10 +15,10 @@ const reportPlanningBox_1 = require("../models/report/reportPlanningBox");
 const excelExporter_1 = require("../utils/helper/excelExporter");
 const reportPaperRowAndColumn_1 = require("../utils/mapping/reportPaperRowAndColumn");
 const reportBoxRowAndColumn_1 = require("../utils/mapping/reportBoxRowAndColumn");
-const redis_config_1 = __importDefault(require("../assest/configs/connect/redis.config"));
+const redis_connect_1 = __importDefault(require("../assest/configs/connect/redis.connect"));
 const cacheKey_1 = require("../utils/helper/cache/cacheKey");
 const normalizeVN_1 = require("../utils/helper/normalizeVN");
-const melisearch_config_1 = require("../assest/configs/connect/melisearch.config");
+const meilisearch_connect_1 = require("../assest/configs/connect/meilisearch.connect");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper, box } = cacheKey_1.CacheKey.report;
 exports.reportService = {
@@ -31,7 +31,7 @@ exports.reportService = {
                 await cacheManager_1.CacheManager.clear("reportPaper");
             }
             else {
-                const cachedData = await redis_config_1.default.get(cacheKey);
+                const cachedData = await redis_connect_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ Data Report Planning Paper from Redis");
@@ -49,7 +49,7 @@ exports.reportService = {
                 totalPages,
                 currentPage: page,
             };
-            await redis_config_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+            await redis_connect_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
             return responseData;
         }
         catch (error) {
@@ -65,7 +65,7 @@ exports.reportService = {
             if (!validFields.includes(field)) {
                 throw appError_1.AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
             }
-            const index = melisearch_config_1.meiliClient.index("reportPapers");
+            const index = meilisearch_connect_1.meiliClient.index("reportPapers");
             const searchResult = await index.search(keyword, {
                 attributesToSearchOn: [field],
                 attributesToRetrieve: ["reportPaperId"], // Chỉ lấy reportPaperId
@@ -119,7 +119,7 @@ exports.reportService = {
                 await cacheManager_1.CacheManager.clear("reportBox");
             }
             else {
-                const cachedData = await redis_config_1.default.get(cacheKey);
+                const cachedData = await redis_connect_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ Data Report Planning Box from Redis");
@@ -137,7 +137,7 @@ exports.reportService = {
                 totalPages,
                 currentPage: page,
             };
-            await redis_config_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+            await redis_connect_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
             return responseData;
         }
         catch (error) {
@@ -153,7 +153,7 @@ exports.reportService = {
             if (!validFields.includes(field)) {
                 throw appError_1.AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
             }
-            const index = melisearch_config_1.meiliClient.index("reportBoxes");
+            const index = meilisearch_connect_1.meiliClient.index("reportBoxes");
             const searchResult = await index.search(keyword, {
                 attributesToSearchOn: [field],
                 attributesToRetrieve: ["reportBoxId"], // Chỉ lấy reportBoxId

@@ -1,25 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.meiliService = exports.MEILI_INDEX = void 0;
-const melisearch_config_1 = require("../assest/configs/connect/melisearch.config");
-exports.MEILI_INDEX = {
-    CUSTOMERS: "customers",
-    PRODUCTS: "products",
-    ORDERS: "orders",
-    EMPLOYEES: "employees",
-    PLANNING_PAPERS: "planningPapers",
-    PLANNING_BOXES: "planningBoxes",
-    OUTBOUNDS: "outbounds",
-    INVENTORIES: "inventories",
-    REPORT_PAPERS: "reportPapers",
-    REPORT_BOXES: "reportBoxes",
-    INBOUND: "inboundHistories",
-    DASHBOARD: "dashboard",
-};
+exports.meiliService = void 0;
+const meilisearch_connect_1 = require("../assest/configs/connect/meilisearch.connect");
 exports.meiliService = {
     syncMeiliData: (indexKey, data) => {
         try {
-            const index = melisearch_config_1.meiliClient.index(indexKey);
+            const index = meilisearch_connect_1.meiliClient.index(indexKey);
             const documents = Array.isArray(data) ? data : [data];
             // Đẩy lên Meilisearch
             index.addDocuments(documents).catch((err) => {
@@ -32,7 +18,7 @@ exports.meiliService = {
     },
     deleteMeiliData: (indexKey, id) => {
         try {
-            const index = melisearch_config_1.meiliClient.index(indexKey);
+            const index = meilisearch_connect_1.meiliClient.index(indexKey);
             index.deleteDocument(id).catch((err) => {
                 console.error(`[Meili] Async Delete Error for ${indexKey}:`, err);
             });

@@ -6,18 +6,24 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.outboundService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const redis_config_1 = __importDefault(require("../../assest/configs/connect/redis.config"));
-const order_1 = require("../../models/order/order");
+const sequelize_1 = require("sequelize");
 const appError_1 = require("../../utils/appError");
-const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
-const outboundHistory_1 = require("../../models/warehouse/outboundHistory");
-const warehouseRepository_1 = require("../../repository/warehouseRepository");
-const outboundDetail_1 = require("../../models/warehouse/outboundDetail");
-const planningHelper_1 = require("../../repository/planning/planningHelper");
-const transactionHelper_1 = require("../../utils/helper/transactionHelper");
+const order_1 = require("../../models/order/order");
+const meiliService_1 = require("../meiliService");
+const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
 const inventory_1 = require("../../models/warehouse/inventory");
 const exportPDF_1 = require("../../utils/helper/exportPDF");
-const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
+const redis_connect_1 = __importDefault(require("../../assest/configs/connect/redis.connect"));
+const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
+const outboundDetail_1 = require("../../models/warehouse/outboundDetail");
+const transactionHelper_1 = require("../../utils/helper/transactionHelper");
+const outboundHistory_1 = require("../../models/warehouse/outboundHistory");
+const planningHelper_1 = require("../../repository/planning/planningHelper");
+const warehouseRepository_1 = require("../../repository/warehouseRepository");
+const meilisearch_connect_1 = require("../../assest/configs/connect/meilisearch.connect");
+const meiliTransformer_1 = require("../../assest/configs/meilisearch/meiliTransformer");
+const labelFields_1 = require("../../assest/labelFields");
+const customerRepository_1 = require("../../repository/customerRepository");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { outbound } = cacheKey_1.CacheKey.warehouse;
 exports.outboundService = {
@@ -29,7 +35,7 @@ exports.outboundService = {
                 await cacheManager_1.CacheManager.clear("outbound");
             }
             else {
-                const cachedData = await redis_config_1.default.get(cacheKey);
+                const cachedData = await redis_connect_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ Data outbound from Redis");
@@ -37,17 +43,15 @@ exports.outboundService = {
                     return { ...parsed, message: `Get all outbound from cache` };
                 }
             }
-            const totalOutbounds = await warehouseRepository_1.warehouseRepository.outboundHistoryCount();
-            const totalPages = Math.ceil(totalOutbounds / pageSize);
-            const data = await warehouseRepository_1.warehouseRepository.getOutboundByPage({ page, pageSize });
+            const { rows, count } = await warehouseRepository_1.warehouseRepository.getOutboundByPage({ page, pageSize });
             const responseData = {
                 message: "Get all outbound history successfully",
-                data,
-                totalOutbounds,
-                totalPages,
+                data: rows,
+                totalOutbounds: count,
+                totalPages: Math.ceil(count / pageSize),
                 currentPage: page,
             };
-            await redis_config_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+            await redis_connect_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
             return responseData;
         }
         catch (error) {
@@ -73,29 +77,44 @@ exports.outboundService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    searchOutboundByField: async ({ field, keyword, page, pageSize, }) => {
+    getOutboundByField: async ({ field, keyword, page, pageSize, }) => {
         try {
-            // const fieldMap = {
-            //   orderId: (outbound: OutboundHistory) => outbound.detail.orderId,
-            //   outboundSlipCode: (outbound: OutboundHistory) => outbound.outboundSlipCode,
-            //   dateOutbound: (outbound: OutboundHistory) => outbound.dateOutbound,
-            //   companyName: (outbound: OutboundHistory) =>
-            //     outbound.outboundDetail.Order.Customer.companyName,
-            //   productName: (outbound: OutboundHistory) =>
-            //     outbound.outboundDetail.Order.Product.productName,
-            // } as const;
-            // const key = field as keyof typeof fieldMap;
-            // if (!fieldMap[key]) {
-            //   throw AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
-            // }
-            // const result = await getOutboundByField({
-            //   keyword: keyword,
-            //   getFieldValue: fieldMap[key],
-            //   page,
-            //   pageSize,
-            //   message: `get all by ${field} from filtered cache`,
-            // });
-            // return result;
+            const validFields = ["dateOutbound", "outboundSlipCode", "customerName"];
+            if (!validFields.includes(field)) {
+                throw appError_1.AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
+            }
+            const index = meilisearch_connect_1.meiliClient.index("outbounds");
+            const searchResult = await index.search(keyword, {
+                attributesToSearchOn: [field],
+                attributesToRetrieve: ["outboundId"],
+                page: Number(page) || 1,
+                hitsPerPage: Number(pageSize) || 25, //pageSize
+            });
+            const outboundIds = searchResult.hits.map((hit) => hit.outboundId);
+            if (outboundIds.length === 0) {
+                return {
+                    message: "No outbound records found",
+                    data: [],
+                    totalOutbounds: 0,
+                    totalPages: 0,
+                    currentPage: page,
+                };
+            }
+            //query db
+            const { rows } = await warehouseRepository_1.warehouseRepository.getOutboundByPage({
+                whereCondition: { outboundId: { [sequelize_1.Op.in]: outboundIds } },
+            });
+            // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
+            const finalData = outboundIds
+                .map((id) => rows.find((o) => o.outboundId === id))
+                .filter(Boolean);
+            return {
+                message: "Get outbound records from Meilisearch & DB successfully",
+                data: finalData,
+                totalOutbounds: searchResult.totalHits,
+                totalPages: searchResult.totalPages,
+                currentPage: searchResult.page,
+            };
         }
         catch (error) {
             console.error(`Failed to get outbound history by ${field}:`, error);
@@ -123,7 +142,7 @@ exports.outboundService = {
             const inventory = await warehouseRepository_1.warehouseRepository.findInventoryByOrderId(orderId);
             const remainingQty = inventory?.qtyInventory ?? 0;
             return {
-                message: "Get all employee by position sucessfully",
+                message: "Get all order inbound quantities successfully",
                 data: { ...order.toJSON(), remainingQty },
             };
         }
@@ -144,6 +163,7 @@ exports.outboundService = {
                 let totalPriceVAT = 0;
                 let totalPricePayment = 0;
                 let totalOutboundQty = 0;
+                let timePayment = null;
                 const preparedDetails = [];
                 for (const item of outboundDetails) {
                     // check order is exist
@@ -154,6 +174,10 @@ exports.outboundService = {
                     // check customer
                     if (customerId === null) {
                         customerId = order.customerId;
+                        const customer = await customerRepository_1.customerRepository.findCusPaymentByPk(customerId, transaction);
+                        if (customer && customer.payment) {
+                            timePayment = customer.payment.timePayment;
+                        }
                     }
                     else if (customerId !== order.customerId) {
                         throw appError_1.AppError.BadRequest("customer missmatch", "CUSTOMER_MISMATCH");
@@ -211,6 +235,7 @@ exports.outboundService = {
                         totalPriceVAT,
                         totalPricePayment,
                         totalOutboundQty,
+                        dueDate: timePayment,
                     },
                     transaction,
                 });
@@ -237,6 +262,8 @@ exports.outboundService = {
                         transaction,
                     });
                 }
+                //--------------------MEILISEARCH-----------------------
+                await exports.outboundService.syncDataOutbound(outbound.outboundId, transaction);
                 return outbound;
             });
         }
@@ -357,13 +384,15 @@ exports.outboundService = {
                         await oldDetail.destroy({ transaction });
                     }
                 }
-                // 4️⃣ Cập nhật outbound header
+                // Cập nhật outbound header
                 await outbound.update({
                     totalPriceOrder,
                     totalPriceVAT,
                     totalPricePayment,
                     totalOutboundQty,
                 }, { transaction });
+                //--------------------MEILISEARCH-----------------------
+                await exports.outboundService.syncDataOutbound(outboundId, transaction);
                 return outbound;
             });
         }
@@ -371,6 +400,18 @@ exports.outboundService = {
             console.log("err to update outbound: ", error);
             if (error instanceof appError_1.AppError)
                 throw error;
+            throw appError_1.AppError.ServerError();
+        }
+    },
+    syncDataOutbound: async (outboundId, transaction) => {
+        try {
+            const outboundData = await warehouseRepository_1.warehouseRepository.getOutboundForMeili(outboundId, transaction);
+            const meiliFormatted = meiliTransformer_1.meiliTransformer.outbound(outboundData);
+            console.log(meiliFormatted);
+            meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.OUTBOUNDS, meiliFormatted);
+        }
+        catch (error) {
+            console.log("err to sync data outbound: ", error);
             throw appError_1.AppError.ServerError();
         }
     },
@@ -404,6 +445,8 @@ exports.outboundService = {
                 });
                 // Xóa outbound history
                 await outbound.destroy({ transaction });
+                //--------------------MEILISEARCH-----------------------
+                meiliService_1.meiliService.deleteMeiliData(labelFields_1.MEILI_INDEX.OUTBOUNDS, outboundId);
                 return { message: "Hủy phiếu xuất kho thành công" };
             });
         }

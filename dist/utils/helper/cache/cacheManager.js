@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CacheManager = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const redis_config_1 = __importDefault(require("../../../assest/configs/connect/redis.config"));
+const redis_connect_1 = __importDefault(require("../../../assest/configs/connect/redis.connect"));
 const cacheKey_1 = require("./cacheKey");
 const checkLastChangeHelper_1 = require("./checkLastChangeHelper");
 const devEnvironment = process.env.NODE_ENV !== "production";
@@ -47,10 +47,10 @@ const CACHE_CONFIG = {
 exports.CacheManager = {
     //Xóa toàn bộ cache theo prefix
     async clearByPrefix(prefix) {
-        const keys = await redis_config_1.default.keys(`${prefix}*`);
+        const keys = await redis_connect_1.default.keys(`${prefix}*`);
         //console.log(keys);
         if (keys.length > 0) {
-            await redis_config_1.default.del(...keys);
+            await redis_connect_1.default.del(...keys);
             if (devEnvironment)
                 console.log(`🧹 Cleared ${keys.length} keys for prefix: ${prefix}`);
         }
@@ -79,7 +79,7 @@ exports.CacheManager = {
         await Promise.all(prefixes.map((p) => this.clearByPrefix(p)));
         // Thực hiện xóa các key cụ thể (nếu có)
         if (extraKeys.length > 0) {
-            await redis_config_1.default.del(...extraKeys);
+            await redis_connect_1.default.del(...extraKeys);
         }
     },
     /** Check lastChange cho 1 module */

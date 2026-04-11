@@ -83,8 +83,6 @@ function initPlanningPaperModel(sequelize) {
         indexes: [
             //FK
             { fields: ["orderId"] },
-            //search
-            { fields: ["ghepKho"] },
             //indexes
             { fields: ["sortPlanning"] },
             { fields: ["status"] },

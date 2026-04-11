@@ -8,6 +8,7 @@ const order_1 = require("../models/order/order");
 const product_1 = require("../models/product/product");
 const user_1 = require("../models/user/user");
 const orderImage_1 = require("../models/order/orderImage");
+const customerPayment_1 = require("../models/customer/customerPayment");
 exports.adminRepository = {
     //===============================ADMIN CRUD=====================================
     getAllItems: async ({ model }) => {
@@ -43,7 +44,7 @@ exports.adminRepository = {
             order: [["orderSortValue", "ASC"]],
         });
     },
-    findByOrderId: async (orderId) => {
+    findByOrderId: async (orderId, transaction) => {
         return await order_1.Order.findOne({
             where: { orderId },
             attributes: [
@@ -54,11 +55,15 @@ exports.adminRepository = {
                 "customerId",
                 "productId",
                 "userId",
+                "orderSortValue",
             ],
             include: [
                 {
                     model: customer_1.Customer,
-                    attributes: ["customerId", "debtCurrent", "debtLimit"],
+                    attributes: ["customerId"],
+                    include: [
+                        { model: customerPayment_1.CustomerPayment, as: "payment", attributes: ["debtCurrent", "debtLimit"] },
+                    ],
                 },
                 {
                     model: product_1.Product,
@@ -67,6 +72,7 @@ exports.adminRepository = {
                 { model: box_1.Box, as: "box" },
                 { model: user_1.User, attributes: ["fullName"] },
             ],
+            transaction,
         });
     },
     updateDebtCustomer: async (customer, newDebt) => {

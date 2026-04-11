@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { Op } from "sequelize";
-import redisCache from "../assest/configs/connect/redis.config";
+import redisCache from "../assets/configs/connect/redis.connect";
 import { Request, Response } from "express";
 import { Order } from "../models/order/order";
 import { Product } from "../models/product/product";
@@ -15,14 +15,14 @@ import {
   getCloudinaryPublicId,
   uploadImageToCloudinary,
 } from "../utils/image/converToWebp";
-import cloudinary from "../assest/configs/connect/cloudinary.config";
+import cloudinary from "../assets/configs/connect/cloudinary.connect";
 import { exportExcelResponse } from "../utils/helper/excelExporter";
 import { mappingProductRow, productColumns } from "../utils/mapping/productRowAndColumn";
 import { runInTransaction } from "../utils/helper/transactionHelper";
-import { meiliClient } from "../assest/configs/connect/melisearch.config";
+import { meiliClient } from "../assets/configs/connect/meilisearch.connect";
 import { meiliService } from "./meiliService";
 import { searchFieldAtribute } from "../interface/types";
-import { MEILI_INDEX } from "../assest/labelFields";
+import { MEILI_INDEX } from "../assets/labelFields";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { product } = CacheKey;

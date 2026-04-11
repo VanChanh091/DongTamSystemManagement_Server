@@ -7,53 +7,13 @@ exports.exportWarehouse = exportWarehouse;
 const path_1 = __importDefault(require("path"));
 const pdfkit_1 = __importDefault(require("pdfkit"));
 const appError_1 = require("../appError");
-const user_1 = require("../../models/user/user");
-const order_1 = require("../../models/order/order");
-const product_1 = require("../../models/product/product");
-const customer_1 = require("../../models/customer/customer");
-const outboundHistory_1 = require("../../models/warehouse/outboundHistory");
-const outboundDetail_1 = require("../../models/warehouse/outboundDetail");
+const warehouseRepository_1 = require("../../repository/warehouseRepository");
 const FONT_REGULAR = path_1.default.join(process.cwd(), "assest/fonts/NotoSerif-Regular.ttf");
 const FONT_BOLD = path_1.default.join(process.cwd(), "assest/fonts/NotoSerif-Bold.ttf");
 const FONT_ITALIC = path_1.default.join(process.cwd(), "assest/fonts/NotoSerif-Italic.ttf");
 const FONT_BOLD_ITALIC = path_1.default.join(process.cwd(), "assest/fonts/NotoSerif-BoldItalic.ttf");
 async function exportWarehouse(res, outboundId) {
-    const outbound = await outboundHistory_1.OutboundHistory.findOne({
-        where: { outboundId },
-        attributes: { exclude: ["createdAt", "updatedAt", "totalOutboundQty"] },
-        include: [
-            {
-                model: outboundDetail_1.OutboundDetail,
-                as: "detail",
-                attributes: { exclude: ["createdAt", "updatedAt", "deliveredQty", "outboundId"] },
-                include: [
-                    {
-                        model: order_1.Order,
-                        attributes: [
-                            "orderId",
-                            "flute",
-                            "QC_box",
-                            "quantityCustomer",
-                            "lengthPaperCustomer",
-                            "paperSizeCustomer",
-                            "dvt",
-                            "discount",
-                            "vat",
-                            "pricePaper",
-                        ],
-                        include: [
-                            {
-                                model: customer_1.Customer,
-                                attributes: ["customerName", "companyName", "companyAddress", "mst", "phone"],
-                            },
-                            { model: product_1.Product, attributes: ["typeProduct", "productName"] },
-                            { model: user_1.User, attributes: ["fullName"] },
-                        ],
-                    },
-                ],
-            },
-        ],
-    });
+    const outbound = await warehouseRepository_1.warehouseRepository.findOneForExportPDF(outboundId);
     if (!outbound)
         throw appError_1.AppError.NotFound("Outbound not found", "OUTBOUND_NOT_FOUND");
     return buildWarehouseSalePDF({
@@ -124,42 +84,53 @@ function buildWarehouseSalePDF({ res, outbound }) {
 }
 function drawTableRow({ doc, y, row, colX, colW, tableLeft, tableRight, isHeader = false, bold = false, }) {
     doc.font(bold ? FONT_BOLD : FONT_REGULAR).fontSize(10);
+    const CELL_PADDING_X = 5;
+    const CELL_PADDING_Y = 10; // Khoảng cách đệm trên dưới
     let maxHeight = 0;
     const heights = [];
-    // đo height từng cell
+    // 1. Đo chiều cao thực tế của từng ô dựa trên chiều rộng cột
     row.forEach((text, i) => {
+        const textWidth = colW[i] - CELL_PADDING_X * 2;
         const h = doc.heightOfString(String(text ?? ""), {
-            width: colW[i],
+            width: textWidth,
+            lineGap: 2,
         });
         heights[i] = h;
         maxHeight = Math.max(maxHeight, h);
     });
-    const rowH = Math.max(26, maxHeight + 10);
-    // vẽ text
-    const CELL_PADDING_X = 4;
+    // 2. Tính chiều cao dòng (Đảm bảo tối thiểu 26 và có đủ padding)
+    const rowH = Math.max(26, maxHeight + CELL_PADDING_Y);
+    // 3. Vẽ text
     row.forEach((text, i) => {
         let align = "left";
-        let textY = y;
         if (isHeader) {
             align = "center";
-            textY = y + (rowH - heights[i]) / 2;
         }
         else {
-            align = i >= 4 ? "right" : "left";
-            const isNameCol = i === 2;
-            textY = isNameCol ? y + 4 : y + (rowH - heights[i]) / 2;
+            // Cột 0(STT), 3(ĐVT) căn giữa. Cột 4,5,6 (Số lượng, giá, tiền) căn phải. Còn lại căn trái.
+            if (i === 0 || i === 3)
+                align = "center";
+            else if (i >= 4)
+                align = "right";
+            else
+                align = "left";
         }
+        // TẤT CẢ CÁC CỘT ĐỀU CĂN GIỮA THEO CHIỀU DỌC (Vertical Center)
+        const textHeight = heights[i];
+        const textY = y + (rowH - textHeight) / 2;
         const textX = colX[i] + CELL_PADDING_X;
         const textWidth = colW[i] - CELL_PADDING_X * 2;
         doc.text(String(text ?? ""), textX, textY, {
             width: textWidth,
             align,
+            lineGap: 2,
         });
     });
-    // line ngang
+    // 4. Vẽ đường kẻ ngang đáy dòng
     doc
         .moveTo(tableLeft, y + rowH)
         .lineTo(tableRight, y + rowH)
+        .lineWidth(0.5)
         .stroke();
     return rowH;
 }
@@ -192,7 +163,8 @@ function drawItemTable(doc, outbound) {
             : [];
     const startY = doc.y;
     const startX = 40;
-    const colW = [30, 80, 150, 75, 65, 60, 75];
+    const colW = [30, 85, 180, 40, 60, 55, 85];
+    const tableName = ["STT", "Mã Đơn hàng", "Tên Hàng", "ĐVT", "Số Lượng", "Đơn Giá", "Thành Tiền"];
     const colX = colW.reduce((acc, w, i) => {
         acc.push(i === 0 ? startX : acc[i - 1] + colW[i - 1]);
         return acc;
@@ -206,7 +178,7 @@ function drawItemTable(doc, outbound) {
     currentY += drawTableRow({
         doc,
         y: currentY,
-        row: ["STT", "Mã Đơn hàng", "Tên Hàng", "Đơn Vị Tính", "Số Lượng", "Đơn Giá", "Thành Tiền"],
+        row: tableName,
         colX,
         colW,
         tableLeft,
@@ -299,10 +271,17 @@ function drawItemTable(doc, outbound) {
     colX.forEach((x, i) => {
         if (i === 0)
             return;
-        doc.moveTo(x, startY).lineTo(x, summaryStartY).stroke();
+        // Vẽ từ đỉnh Header (startY) xuống tận đáy của danh sách hàng hóa (summaryStartY)
+        doc.moveTo(x, startY).lineTo(x, summaryStartY).lineWidth(0.5).stroke();
     });
-    // ===== BORDER NGOÀI =====
-    doc.rect(tableLeft, startY, tableRight - tableLeft, tableBottom - startY).stroke();
+    // Vẽ thêm đường kẻ dọc ngăn cách cột "Thành tiền" cho phần Summary
+    // Điều này giúp phần "Cộng tiền", "Thuế", "Tổng thanh toán" có khung rõ ràng
+    doc.moveTo(amountColX, summaryStartY).lineTo(amountColX, tableBottom).lineWidth(0.5).stroke();
+    // ===== BORDER NGOÀI (Hình chữ nhật bao quanh toàn bộ bảng) =====
+    doc
+        .rect(tableLeft, startY, tableRight - tableLeft, tableBottom - startY)
+        .lineWidth(0.8)
+        .stroke();
     doc.y = tableBottom + 10;
 }
 function numberToVietnamese(num) {
@@ -310,54 +289,56 @@ function numberToVietnamese(num) {
         return "Không đồng";
     const units = ["không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"];
     const scales = ["", "nghìn", "triệu", "tỷ"];
-    function readTriple(n, full) {
-        let result = "";
+    function readTriple(n, isFirstGroup) {
+        let res = "";
         const hundred = Math.floor(n / 100);
         const ten = Math.floor((n % 100) / 10);
         const unit = n % 10;
-        if (hundred > 0) {
-            result += units[hundred] + " trăm";
-            if (ten === 0 && unit > 0)
-                result += " lẻ";
+        // 1. Đọc hàng trăm
+        if (hundred > 0 || !isFirstGroup) {
+            res += units[hundred] + " trăm ";
         }
-        else if (full && (ten > 0 || unit > 0)) {
-            // CHỈ đọc "lẻ", KHÔNG đọc "không trăm"
-            if (ten === 0 && unit > 0)
-                result += " lẻ";
-        }
+        // 2. Đọc hàng chục
         if (ten > 1) {
-            result += " " + units[ten] + " mươi";
-            if (unit === 1)
-                result += " mốt";
-            else if (unit === 5)
-                result += " lăm";
-            else if (unit > 0)
-                result += " " + units[unit];
+            res += units[ten] + " mươi ";
         }
         else if (ten === 1) {
-            result += " mười";
-            if (unit === 5)
-                result += " lăm";
-            else if (unit > 0)
-                result += " " + units[unit];
+            res += "mười ";
         }
-        else if (ten === 0 && unit > 0 && hundred > 0) {
-            result += " " + units[unit];
+        else if (hundred > 0 && unit > 0) {
+            res += "lẻ ";
         }
-        return result.trim();
+        else if (!isFirstGroup && unit > 0) {
+            res += "lẻ ";
+        }
+        // 3. Đọc hàng đơn vị
+        if (unit > 0) {
+            if (unit === 1 && ten > 1)
+                res += "mốt";
+            else if (unit === 5 && ten > 0)
+                res += "lăm";
+            else
+                res += units[unit];
+        }
+        return res.trim();
     }
     let str = "";
-    let scaleIndex = 0;
-    let isFirst = true;
-    while (num > 0) {
-        const part = num % 1000;
+    let tempNum = Math.floor(num);
+    let groupIdx = 0;
+    // Cắt số thành từng nhóm 3 chữ số từ phải sang trái
+    const groups = [];
+    while (tempNum > 0) {
+        groups.push(tempNum % 1000);
+        tempNum = Math.floor(tempNum / 1000);
+    }
+    for (let i = groups.length - 1; i >= 0; i--) {
+        const part = groups[i];
         if (part > 0) {
-            const partStr = readTriple(part, !isFirst);
-            str = partStr + " " + scales[scaleIndex] + " " + str;
-            isFirst = false;
+            // isFirstGroup = true nếu đây là nhóm đầu tiên bên trái có giá trị
+            const isFirst = i === groups.length - 1;
+            const partStr = readTriple(part, isFirst);
+            str += partStr + " " + scales[i] + " ";
         }
-        num = Math.floor(num / 1000);
-        scaleIndex++;
     }
     const finalStr = str.trim();
     return finalStr.charAt(0).toUpperCase() + finalStr.slice(1) + " đồng chẵn";

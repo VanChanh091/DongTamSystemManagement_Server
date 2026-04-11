@@ -19,7 +19,7 @@ const excelExporter_1 = require("../utils/helper/excelExporter");
 const deliveryRowAndComlumn_1 = require("../utils/mapping/deliveryRowAndComlumn");
 const cacheKey_1 = require("../utils/helper/cache/cacheKey");
 const cacheManager_1 = require("../utils/helper/cache/cacheManager");
-const redis_config_1 = __importDefault(require("../assest/configs/connect/redis.config"));
+const redis_connect_1 = __importDefault(require("../assest/configs/connect/redis.connect"));
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { estimate, schedule } = cacheKey_1.CacheKey.delivery;
 exports.deliveryService = {
@@ -32,7 +32,7 @@ exports.deliveryService = {
                 await cacheManager_1.CacheManager.clear("estimate");
             }
             else {
-                const cachedData = await redis_config_1.default.get(cacheKey);
+                const cachedData = await redis_connect_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ get planning estimate time from cache");
@@ -99,7 +99,7 @@ exports.deliveryService = {
                 totalPages,
                 currentPage: page,
             };
-            await redis_config_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+            await redis_connect_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
             return responseData;
         }
         catch (error) {
@@ -267,7 +267,7 @@ exports.deliveryService = {
                 await cacheManager_1.CacheManager.clear("schedule");
             }
             else {
-                const cachedData = await redis_config_1.default.get(cacheKey);
+                const cachedData = await redis_connect_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ get schedule delivery from cache");
@@ -279,7 +279,7 @@ exports.deliveryService = {
                 status: "planned",
             });
             //save
-            await redis_config_1.default.set(cacheKey, JSON.stringify(finalData), "EX", 3600);
+            await redis_connect_1.default.set(cacheKey, JSON.stringify(finalData), "EX", 3600);
             return { message: "get schedule delivery successfully", data: finalData };
         }
         catch (error) {

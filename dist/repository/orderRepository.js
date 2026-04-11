@@ -81,20 +81,7 @@ exports.orderRepository = {
     //meilisearch
     findOrderForMeili: async (orderId, transaction) => {
         return await order_1.Order.findByPk(orderId, {
-            attributes: [
-                "orderId",
-                "flute",
-                "QC_box",
-                "price",
-                "lengthPaperCustomer",
-                "lengthPaperManufacture",
-                "paperSizeCustomer",
-                "paperSizeManufacture",
-                "quantityCustomer",
-                "quantityManufacture",
-                "status",
-                "orderSortValue",
-            ],
+            attributes: ["orderId", "flute", "QC_box", "price", "status", "userId", "orderSortValue"],
             include: [
                 { model: customer_1.Customer, attributes: ["customerName"] },
                 { model: product_1.Product, attributes: ["productName"] },

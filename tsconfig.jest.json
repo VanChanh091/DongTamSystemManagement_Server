@@ -1,8 +1,9 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    "module": "CommonJS",
     "isolatedModules": true,
-    "types": ["jest", "node"],
+    "types": ["jest"],
     "noEmit": true
   },
   "include": ["tests", "types"]

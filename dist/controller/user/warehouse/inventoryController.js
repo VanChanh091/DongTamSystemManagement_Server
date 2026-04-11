@@ -3,14 +3,20 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.exportInventory = exports.createNewInventory = exports.getAllInventory = void 0;
 const inventoryService_1 = require("../../../service/warehouse/inventoryService");
 const getAllInventory = async (req, res, next) => {
-    const { field, keyword, page = 1, pageSize = 20, } = req.query;
+    const { field, keyword, page, pageSize } = req.query;
     try {
-        const response = await inventoryService_1.inventoryService.getAllInventory({
-            field,
-            keyword,
-            page: Number(page),
-            pageSize: Number(pageSize),
-        });
+        let response;
+        if (field && keyword) {
+            response = await inventoryService_1.inventoryService.getInventoryByField({
+                field,
+                keyword,
+                page: Number(page),
+                pageSize: Number(pageSize),
+            });
+        }
+        else {
+            response = await inventoryService_1.inventoryService.getAllInventory(Number(page), Number(pageSize));
+        }
         return res.status(200).json(response);
     }
     catch (error) {

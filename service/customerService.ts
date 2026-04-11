@@ -1,4 +1,4 @@
-import redisCache from "../assest/configs/connect/redis.config";
+import redisCache from "../assets/configs/connect/redis.connect";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -13,12 +13,12 @@ import { exportExcelResponse } from "../utils/helper/excelExporter";
 import { CustomerPayment } from "../models/customer/customerPayment";
 import { runInTransaction } from "../utils/helper/transactionHelper";
 import { customerRepository } from "../repository/customerRepository";
-import { meiliClient } from "../assest/configs/connect/melisearch.config";
+import { meiliClient } from "../assets/configs/connect/meilisearch.connect";
 import { customerColumns, mappingCustomerRow } from "../utils/mapping/customerRowAndColumn";
 import { createDataTable, updateChildTable } from "../utils/helper/modelHelper/orderHelpers";
 import { meiliService } from "./meiliService";
 import { searchFieldAtribute } from "../interface/types";
-import { MEILI_INDEX } from "../assest/labelFields";
+import { MEILI_INDEX } from "../assets/labelFields";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { customer } = CacheKey;

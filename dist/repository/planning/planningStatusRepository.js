@@ -11,7 +11,7 @@ const planningBoxMachineTime_1 = require("../../models/planning/planningBoxMachi
 const planningPaper_1 = require("../../models/planning/planningPaper");
 exports.planningStatusRepository = {
     //====================================PLANNING ORDER========================================
-    getOrderAccept: async (type, searchField, keyword) => {
+    getOrderAccept: async (type) => {
         const whereOrder = { status: "accept" };
         let isPlanningRequired = false;
         //lọc theo planned/unplanned
@@ -21,19 +21,6 @@ exports.planningStatusRepository = {
         else if (type === "unplanned") {
             whereOrder["$PlanningPapers.planningId$"] = { [sequelize_1.Op.is]: null };
             isPlanningRequired = false;
-        }
-        //search
-        if (searchField && keyword) {
-            const searchCondition = { [sequelize_1.Op.like]: `%${keyword}%` };
-            if (searchField === "customerName") {
-                whereOrder["$Customer.customerName$"] = searchCondition;
-            }
-            else if (searchField === "orderId") {
-                whereOrder.orderId = searchCondition;
-            }
-            else if (searchField === "QC_box") {
-                whereOrder.QC_box = searchCondition;
-            }
         }
         return await order_1.Order.findAll({
             where: whereOrder,

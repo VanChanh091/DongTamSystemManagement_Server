@@ -3,24 +3,23 @@ dotenv.config();
 
 import { Response } from "express";
 import { Op, Transaction } from "sequelize";
+import { meiliService } from "../meiliService";
 import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
-import { meiliService } from "../meiliService";
-import { CacheKey } from "../../utils/helper/cache/cacheKey";
+import { MEILI_INDEX } from "../../assets/labelFields";
 import { Inventory } from "../../models/warehouse/inventory";
+import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { exportWarehouse } from "../../utils/helper/exportPDF";
-import redisCache from "../../assest/configs/connect/redis.config";
+import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { OutboundDetail } from "../../models/warehouse/outboundDetail";
+import { customerRepository } from "../../repository/customerRepository";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { OutboundHistory } from "../../models/warehouse/outboundHistory";
 import { planningHelper } from "../../repository/planning/planningHelper";
 import { warehouseRepository } from "../../repository/warehouseRepository";
-import { meiliClient } from "../../assest/configs/connect/melisearch.config";
-import { meiliTransformer } from "../../assest/configs/meilisearch/meiliTransformer";
-import { MEILI_INDEX } from "../../assest/labelFields";
-import { Customer } from "../../models/customer/customer";
-import { CustomerPayment } from "../../models/customer/customerPayment";
+import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
+import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { outbound } = CacheKey.warehouse;
@@ -212,20 +211,11 @@ export const outboundService = {
           // check customer
           if (customerId === null) {
             customerId = order.customerId;
+            const customer = await customerRepository.findCusPaymentByPk(customerId, transaction);
 
-            const customer = await Customer.findByPk(customerId, {
-              attributes: ["customerId"],
-              include: [
-                {
-                  model: CustomerPayment,
-                  as: "payment",
-                  attributes: ["cusPaymentId", "timePayment"],
-                },
-              ],
-              transaction,
-            });
-
-            timePayment = customer?.payment?.timePayment ?? null;
+            if (customer && customer.payment) {
+              timePayment = customer.payment.timePayment;
+            }
           } else if (customerId !== order.customerId) {
             throw AppError.BadRequest("customer missmatch", "CUSTOMER_MISMATCH");
           }
@@ -256,12 +246,12 @@ export const outboundService = {
           });
 
           const deliveredQty = Number(exportedQty ?? 0);
-          if (deliveredQty + item.outboundQty > order.quantityCustomer) {
-            throw AppError.BadRequest(
-              `Xuất vượt số lượng bán cho order ${item.orderId}`,
-              "OUTBOUND_QTY_EXCEED",
-            );
-          }
+          // if (deliveredQty + item.outboundQty > order.quantityCustomer) {
+          //   throw AppError.BadRequest(
+          //     `Xuất vượt số lượng bán cho order ${item.orderId}`,
+          //     "OUTBOUND_QTY_EXCEED",
+          //   );
+          // }
 
           //total price for outbound detail
           const totalPriceOutbound = order.pricePaper * item.outboundQty;
@@ -303,7 +293,7 @@ export const outboundService = {
             totalPriceVAT,
             totalPricePayment,
             totalOutboundQty,
-            dueDate: now,
+            dueDate: timePayment,
           },
           transaction,
         });
@@ -430,12 +420,12 @@ export const outboundService = {
           });
 
           const deliveredQty = Number(exportedQty ?? 0);
-          if (deliveredQty + item.outboundQty > order.quantityCustomer) {
-            throw AppError.BadRequest(
-              `Xuất vượt số lượng bán cho order ${item.orderId}`,
-              "OUTBOUND_QTY_EXCEED",
-            );
-          }
+          // if (deliveredQty + item.outboundQty > order.quantityCustomer) {
+          //   throw AppError.BadRequest(
+          //     `Xuất vượt số lượng bán cho order ${item.orderId}`,
+          //     "OUTBOUND_QTY_EXCEED",
+          //   );
+          // }
 
           // cập nhật tồn kho theo delta
           if (deltaQty !== 0) {

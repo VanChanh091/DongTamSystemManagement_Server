@@ -1,4 +1,4 @@
-import { meiliClient } from "../../connect/melisearch.config";
+import { meiliClient } from "../../connect/meilisearch.connect";
 import {
   customersSettings,
   dashboardSettings,

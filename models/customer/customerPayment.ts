@@ -8,7 +8,7 @@ interface CustomerPaymentAttributes {
   cusPaymentId: string;
   debtCurrent?: number | null;
   debtLimit?: number | null;
-  timePayment: Date | null;
+  timePayment: Date;
   paymentType: paymentType;
   closingDate: number;
 
@@ -33,7 +33,7 @@ export class CustomerPayment
   declare cusPaymentId: string;
   declare debtCurrent?: number | null;
   declare debtLimit?: number | null;
-  declare timePayment: Date | null;
+  declare timePayment: Date;
   declare paymentType: paymentType;
   declare closingDate: number;
 

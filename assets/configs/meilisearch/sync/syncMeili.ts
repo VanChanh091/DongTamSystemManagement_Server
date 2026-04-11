@@ -3,7 +3,7 @@ import { AppError } from "../../../../utils/appError";
 import { Order } from "../../../../models/order/order";
 import { meiliTransformer } from "../meiliTransformer";
 import { Product } from "../../../../models/product/product";
-import { meiliClient } from "../../connect/melisearch.config";
+import { meiliClient } from "../../connect/meilisearch.connect";
 import { Customer } from "../../../../models/customer/customer";
 import { Inventory } from "../../../../models/warehouse/inventory";
 import { PlanningBox } from "../../../../models/planning/planningBox";

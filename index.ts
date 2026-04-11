@@ -6,7 +6,7 @@ import cors from "cors";
 import http from "http";
 import path from "path";
 
-import { connectDB, sequelize } from "./assest/configs/connect/database.config";
+import { connectDB, sequelize } from "./assets/configs/connect/database.connect";
 import authenticate from "./middlewares/authMiddleware";
 
 //routes
@@ -38,8 +38,8 @@ import { cleanStackTrace, sendTelegramAlert } from "./utils/telegram/telegramSen
 
 //cron job auto delete image on Cloudinary
 import "./utils/autoDeleteImage";
-import { connectMeilisearch } from "./assest/configs/connect/melisearch.config";
-import { setupMeilisearch } from "./assest/configs/meilisearch/configs";
+import { connectMeilisearch } from "./assets/configs/connect/meilisearch.connect";
+import { setupMeilisearch } from "./assets/configs/meilisearch/configs";
 
 const app = express();
 

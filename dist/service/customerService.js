@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.customerService = void 0;
-const redis_config_1 = __importDefault(require("../assest/configs/connect/redis.config"));
+const redis_connect_1 = __importDefault(require("../assest/configs/connect/redis.connect"));
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const sequelize_1 = require("sequelize");
@@ -17,10 +17,11 @@ const excelExporter_1 = require("../utils/helper/excelExporter");
 const customerPayment_1 = require("../models/customer/customerPayment");
 const transactionHelper_1 = require("../utils/helper/transactionHelper");
 const customerRepository_1 = require("../repository/customerRepository");
-const melisearch_config_1 = require("../assest/configs/connect/melisearch.config");
+const meilisearch_connect_1 = require("../assest/configs/connect/meilisearch.connect");
 const customerRowAndColumn_1 = require("../utils/mapping/customerRowAndColumn");
 const orderHelpers_1 = require("../utils/helper/modelHelper/orderHelpers");
 const meiliService_1 = require("./meiliService");
+const labelFields_1 = require("../assest/labelFields");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { customer } = cacheKey_1.CacheKey;
 exports.customerService = {
@@ -33,7 +34,7 @@ exports.customerService = {
                 await cacheManager_1.CacheManager.clear("customer");
             }
             else {
-                const cachedData = await redis_config_1.default.get(cacheKey);
+                const cachedData = await redis_connect_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ Data Customer from Redis");
@@ -59,7 +60,7 @@ exports.customerService = {
                 totalPages,
                 currentPage: noPagingMode ? 1 : page,
             };
-            await redis_config_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+            await redis_connect_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
             return responseData;
         }
         catch (error) {
@@ -67,14 +68,13 @@ exports.customerService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    getCustomerByFields: async ({ field, keyword, page, pageSize, }) => {
+    getCustomerByFields: async ({ field, keyword, page, pageSize }) => {
         try {
             const validFields = ["customerId", "customerName", "cskh", "phone"];
             if (!validFields.includes(field)) {
                 throw appError_1.AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
             }
-            const index = melisearch_config_1.meiliClient.index("customers");
-            ``;
+            const index = meilisearch_connect_1.meiliClient.index("customers");
             const searchResult = await index.search(keyword, {
                 attributesToSearchOn: [field],
                 attributesToRetrieve: ["customerId"],
@@ -141,10 +141,10 @@ exports.customerService = {
                     data: { customerId: newCustomerId, ...payment },
                     transaction,
                 });
-                //create meilisearch
+                //--------------------MEILISEARCH-----------------------
                 const customerCreated = await customerRepository_1.customerRepository.findCustomerForMeili(newCustomerId, transaction);
                 if (customerCreated) {
-                    meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.CUSTOMERS, customerCreated.toJSON());
+                    meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.CUSTOMERS, customerCreated.toJSON());
                 }
                 return { message: "Customer created successfully", data: newCustomer };
             });
@@ -174,10 +174,10 @@ exports.customerService = {
                     data: { customerId, ...payment },
                     transaction,
                 });
-                //update meilisearch
+                //--------------------MEILISEARCH-----------------------
                 const customerUpdated = await customerRepository_1.customerRepository.findCustomerForMeili(customerId, transaction);
                 if (customerUpdated) {
-                    meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.CUSTOMERS, customerUpdated.toJSON());
+                    meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.CUSTOMERS, customerUpdated.toJSON());
                 }
                 return { message: "Customer updated successfully", data: customerUpdated };
             });
@@ -206,8 +206,8 @@ exports.customerService = {
                     }
                 }
                 await customer.destroy({ transaction });
-                //delete record in meilisearch
-                meiliService_1.meiliService.deleteMeiliData(meiliService_1.MEILI_INDEX.CUSTOMERS, customerId);
+                //--------------------MEILISEARCH-----------------------
+                meiliService_1.meiliService.deleteMeiliData(labelFields_1.MEILI_INDEX.CUSTOMERS, customerId);
                 return { message: "Customer deleted successfully" };
             });
         }

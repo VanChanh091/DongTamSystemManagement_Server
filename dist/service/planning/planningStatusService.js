@@ -15,11 +15,11 @@ const meiliService_1 = require("../meiliService");
 const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
 const planningBox_1 = require("../../models/planning/planningBox");
 const wasteNormPaper_1 = require("../../models/admin/wasteNormPaper");
-const redis_config_1 = __importDefault(require("../../assest/configs/connect/redis.config"));
+const redis_connect_1 = __importDefault(require("../../assest/configs/connect/redis.connect"));
 const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
 const planningHelper_1 = require("../../repository/planning/planningHelper");
-const melisearch_config_1 = require("../../assest/configs/connect/melisearch.config");
+const meilisearch_connect_1 = require("../../assest/configs/connect/meilisearch.connect");
 const waveCrestCoefficient_1 = require("../../models/admin/waveCrestCoefficient");
 const timeOverflowPlanning_1 = require("../../models/planning/timeOverflowPlanning");
 const meiliTransformer_1 = require("../../assest/configs/meilisearch/meiliTransformer");
@@ -69,7 +69,7 @@ exports.planningStatusService = {
             if (!validFields.includes(field)) {
                 throw appError_1.AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
             }
-            const index = melisearch_config_1.meiliClient.index("orders");
+            const index = meilisearch_connect_1.meiliClient.index("orders");
             // Tìm kiếm trên Meilisearch để lấy orderId
             const searchResult = await index.search(keyword, {
                 filter: ["status IN [accept]"],
@@ -80,7 +80,7 @@ exports.planningStatusService = {
             if (orderIds.length === 0) {
                 return { message: "No orders found", data: [] };
             }
-            const result = await planningStatusRepository_1.planningStatusRepository.getOrderAccept(type, field, keyword);
+            const result = await planningStatusRepository_1.planningStatusRepository.getOrderAccept(type);
             // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
             const finalData = orderIds
                 .map((id) => result.find((order) => order.orderId === id))
@@ -269,11 +269,11 @@ exports.planningStatusService = {
                         await planningStatusRepository_1.planningStatusRepository.createPlanningBoxTime(machineTimes, transaction);
                     }
                 }
-                //update to meilisearch
+                //--------------------MEILISEARCH-----------------------
                 const dataCreated = await planningPaperRepository_1.planningPaperRepository.syncPaperFromOrderToMeili(paperPlan.planningId, transaction);
                 if (dataCreated) {
                     const flatData = meiliTransformer_1.meiliTransformer.planningPaper(dataCreated);
-                    meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.PLANNING_PAPERS, flatData);
+                    meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.PLANNING_PAPERS, flatData);
                 }
                 return {
                     message: "Đã tạo kế hoạch thành công.",
@@ -309,8 +309,8 @@ exports.planningStatusService = {
                     throw appError_1.AppError.BadRequest("Order has produced items", "ORDER_HAS_PRODUCED_ITEMS");
                 }
                 await order.update({ status: "reject" }, { transaction });
-                //sync order status to meilisearch
-                meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.ORDERS, {
+                //--------------------MEILISEARCH-----------------------
+                meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.ORDERS, {
                     orderSortValue: order.orderSortValue,
                     status: "reject",
                 });
@@ -356,7 +356,7 @@ exports.planningStatusService = {
                 await cacheManager_1.CacheManager.clear("planningStop");
             }
             else {
-                const cachedData = await redis_config_1.default.get(cacheKey);
+                const cachedData = await redis_connect_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ Data PlanningPaper from Redis");
@@ -378,7 +378,7 @@ exports.planningStatusService = {
                 totalPages,
                 currentPage: page,
             };
-            await redis_config_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 1800);
+            await redis_connect_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 1800);
             return responseData;
         }
         catch (error) {
@@ -397,13 +397,13 @@ exports.planningStatusService = {
                 planningIds: ids,
                 action: action,
             });
-            //update meilisearch
+            //--------------------MEILISEARCH-----------------------
             if (planningUpdated.length > 0) {
                 const dataForMeili = planningUpdated.map((p) => ({
                     planningId: p.planningId,
                     status: action,
                 }));
-                meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.PLANNING_PAPERS, dataForMeili);
+                meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.PLANNING_PAPERS, dataForMeili);
             }
             return { message: "planning updated successfully" };
         }

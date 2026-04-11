@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.authService = void 0;
-const redis_config_1 = __importDefault(require("../assest/configs/connect/redis.config"));
+const redis_connect_1 = __importDefault(require("../assest/configs/connect/redis.connect"));
 const jwtHelper_1 = __importDefault(require("../middlewares/jwtHelper"));
 const authRepository_1 = require("../repository/authRepository");
 const appError_1 = require("../utils/appError");
@@ -19,7 +19,7 @@ const handleSendEmail = async (email, otp) => {
     }
 };
 const checkExistAndMatchOtp = async (email, otpInput) => {
-    const redisUser = await redis_config_1.default.get(`user:${email}`);
+    const redisUser = await redis_connect_1.default.get(`user:${email}`);
     if (!redisUser) {
         return { success: false, message: "OTP đã hết hạn" };
     }
@@ -36,7 +36,7 @@ exports.authService = {
             const otp = Math.round(1000 + Math.random() * 9000);
             const userData = JSON.stringify({ email, otp });
             //save new data user into Redis in 5m
-            await redis_config_1.default.setex(`user:${email}`, 600, userData);
+            await redis_connect_1.default.setex(`user:${email}`, 600, userData);
             // Send OTP email
             handleSendEmail(email, otp);
             return { message: `Mã OTP đã được gửi đến bạn, mã OTP là ${otp}` };
@@ -63,7 +63,7 @@ exports.authService = {
             const salt = await bcrypt_1.default.genSalt(10);
             const hashedPassword = await bcrypt_1.default.hash(password, salt);
             await authRepository_1.authRepository.createUser({ fullName, email, password: hashedPassword });
-            await redis_config_1.default.del(`user:${email}`);
+            await redis_connect_1.default.del(`user:${email}`);
             return { message: "Đăng ký thành công!" };
         }
         catch (error) {
@@ -124,7 +124,7 @@ exports.authService = {
     },
     changePassword: async (email, newPassword, confirmNewPW) => {
         try {
-            const redisData = await redis_config_1.default.get(`user:${email}`);
+            const redisData = await redis_connect_1.default.get(`user:${email}`);
             if (!redisData) {
                 throw appError_1.AppError.Unauthorized("Email không hợp lệ", "INVALID_EMAIL");
             }
@@ -134,7 +134,7 @@ exports.authService = {
             const salt = await bcrypt_1.default.genSalt(10);
             const hashedPassword = await bcrypt_1.default.hash(newPassword, salt);
             await authRepository_1.authRepository.updatePassword(email, hashedPassword);
-            await redis_config_1.default.del(`user:${email}`);
+            await redis_connect_1.default.del(`user:${email}`);
             return { message: "Cập nhật mật khẩu thành công" };
         }
         catch (error) {

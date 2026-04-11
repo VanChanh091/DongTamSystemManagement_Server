@@ -12,7 +12,7 @@ exports.customerRepository = {
         });
     },
     //get by field
-    findCustomerByPage: async ({ page, pageSize, whereCondition = {}, }) => {
+    findCustomerByPage: async ({ page, pageSize, whereCondition, }) => {
         const query = {
             where: whereCondition,
             attributes: { exclude: ["updatedAt"] },
@@ -68,6 +68,19 @@ exports.customerRepository = {
     findCustomerForMeili: async (customerId, transaction) => {
         return await customer_1.Customer.findByPk(customerId, {
             attributes: ["customerId", "customerName", "companyName", "cskh", "phone", "customerSeq"],
+            transaction,
+        });
+    },
+    findCusPaymentByPk: async (customerId, transaction) => {
+        return await customer_1.Customer.findByPk(customerId, {
+            attributes: ["customerId"],
+            include: [
+                {
+                    model: customerPayment_1.CustomerPayment,
+                    as: "payment",
+                    attributes: ["cusPaymentId", "timePayment"],
+                },
+            ],
             transaction,
         });
     },

@@ -15,7 +15,7 @@ import { exportDeliveryExcelResponse } from "../utils/helper/excelExporter";
 import { deliveryColumns, mappingDeliveryRow } from "../utils/mapping/deliveryRowAndComlumn";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { CacheManager } from "../utils/helper/cache/cacheManager";
-import redisCache from "../assest/configs/connect/redis.config";
+import redisCache from "../assets/configs/connect/redis.connect";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { estimate, schedule } = CacheKey.delivery;
@@ -28,27 +28,29 @@ export const deliveryService = {
     dayStart,
     estimateTime,
     userId,
+    all = "false",
   }: {
     page?: number;
     pageSize?: number;
     dayStart: Date;
     estimateTime: string;
     userId: number;
+    all: string;
   }) => {
-    const cacheKey = estimate.page(page);
+    // const cacheKey = estimate.page(page);
 
     try {
-      const { isChanged } = await CacheManager.check(PlanningPaper, "estimate");
+      // const { isChanged } = await CacheManager.check(PlanningPaper, "estimate");
 
-      if (isChanged) {
-        await CacheManager.clear("estimate");
-      } else {
-        const cachedData = await redisCache.get(cacheKey);
-        if (cachedData) {
-          if (devEnvironment) console.log("✅ get planning estimate time from cache");
-          return { ...JSON.parse(cachedData), message: "get all planning estimate from cache" };
-        }
-      }
+      // if (isChanged) {
+      //   await CacheManager.clear("estimate");
+      // } else {
+      //   const cachedData = await redisCache.get(cacheKey);
+      //   if (cachedData) {
+      //     if (devEnvironment) console.log("✅ get planning estimate time from cache");
+      //     return { ...JSON.parse(cachedData), message: "get all planning estimate from cache" };
+      //   }
+      // }
 
       const [endHour, endMinute] = estimateTime.split(":").map(Number);
 
@@ -67,7 +69,11 @@ export const deliveryService = {
       const [estH, estM] = estimateTime.split(":").map(Number);
       const estimateMinutes = estH * 60 + estM;
 
-      const paperPlannings = await deliveryRepository.getPlanningEstimateTime(dayStart, userId);
+      const paperPlannings = await deliveryRepository.getPlanningEstimateTime(
+        dayStart,
+        userId,
+        all,
+      );
 
       //filter
       const filtered = paperPlannings.filter((paper) => {
@@ -131,7 +137,7 @@ export const deliveryService = {
         currentPage: page,
       };
 
-      await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+      // await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
 
       return responseData;
     } catch (error) {
@@ -166,7 +172,7 @@ export const deliveryService = {
 
         if (qtyRegistered > planning.qtyProduced!) {
           throw AppError.BadRequest(
-            `Số lượng đăng ký (${qtyRegistered}) vượt quá số lượng đã sản xuất (${planning.qtyProduced})`,
+            `Số lượng đăng ký (${qtyRegistered}) vượt quá số lượng đã sản xuất (${planning.qtyProduced ?? 0})`,
             "QTY_EXCEEDED",
           );
         }

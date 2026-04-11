@@ -13,16 +13,17 @@ const meiliService_1 = require("../meiliService");
 const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
 const machinePaper_1 = require("../../models/admin/machinePaper");
 const planningBox_1 = require("../../models/planning/planningBox");
-const redis_config_1 = __importDefault(require("../../assest/configs/connect/redis.config"));
+const redis_connect_1 = __importDefault(require("../../assest/configs/connect/redis.connect"));
 const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
 const planningHelper_1 = require("../../repository/planning/planningHelper");
-const melisearch_config_1 = require("../../assest/configs/connect/melisearch.config");
+const meilisearch_connect_1 = require("../../assest/configs/connect/meilisearch.connect");
 const planningBoxMachineTime_1 = require("../../models/planning/planningBoxMachineTime");
 const timeOverflowPlanning_1 = require("../../models/planning/timeOverflowPlanning");
 const timeRunningPaper_1 = require("./helper/timeRunningPaper");
 const planningPaper_1 = require("../../models/planning/planningPaper");
 const planningPaperRepository_1 = require("../../repository/planning/planningPaperRepository");
+const labelFields_1 = require("../../assest/labelFields");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper } = cacheKey_1.CacheKey.planning;
 exports.planningPaperService = {
@@ -38,7 +39,7 @@ exports.planningPaperService = {
                 await cacheManager_1.CacheManager.clear("planningPaper");
             }
             else {
-                const cachedData = await redis_config_1.default.get(cacheKey);
+                const cachedData = await redis_connect_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ Data PlanningPaper from Redis");
@@ -49,7 +50,7 @@ exports.planningPaperService = {
                 }
             }
             const data = await exports.planningPaperService.getPlanningPaperSorted(machine);
-            await redis_config_1.default.set(cacheKey, JSON.stringify(data), "EX", 1800);
+            await redis_connect_1.default.set(cacheKey, JSON.stringify(data), "EX", 1800);
             return { message: `get planning by machine: ${machine}`, data };
         }
         catch (error) {
@@ -163,7 +164,7 @@ exports.planningPaperService = {
             if (!validFields.includes(field)) {
                 throw appError_1.AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
             }
-            const index = melisearch_config_1.meiliClient.index("planningPapers");
+            const index = meilisearch_connect_1.meiliClient.index("planningPapers");
             const searchResult = await index.search(keyword, {
                 attributesToSearchOn: [field],
                 attributesToRetrieve: ["planningId"],
@@ -205,12 +206,12 @@ exports.planningPaperService = {
                 planning.sortPlanning = null;
                 await planning.save();
             }
-            //update meilisearch
+            //--------------------MEILISEARCH-----------------------
             const dataForMeili = plannings.map((p) => ({
                 planningId: p.planningId,
                 chooseMachine: newMachine,
             }));
-            meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.PLANNING_PAPERS, dataForMeili);
+            meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.PLANNING_PAPERS, dataForMeili);
             return { message: "Change machine complete", plannings };
         }
         catch (error) {
@@ -267,12 +268,12 @@ exports.planningPaperService = {
                     options: { where: { planningId: ids } },
                 });
             }
-            //update meilisearch
+            //--------------------MEILISEARCH-----------------------
             const dataForMeili = planningPaper.map((p) => ({
                 planningId: p.planningId,
                 status: "complete",
             }));
-            meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.PLANNING_PAPERS, dataForMeili);
+            meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.PLANNING_PAPERS, dataForMeili);
             return { message: "planning paper updated successfully" };
         }
         catch (error) {
@@ -333,9 +334,9 @@ exports.planningPaperService = {
                                 //xóa planning paper
                                 const deletedId = planning.planningId;
                                 await planning.destroy();
-                                //delete meilisearch
-                                meiliService_1.meiliService.deleteMeiliData(meiliService_1.MEILI_INDEX.PLANNING_PAPERS, deletedId);
-                                meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.ORDERS, {
+                                //--------------------MEILISEARCH-----------------------
+                                meiliService_1.meiliService.deleteMeiliData(labelFields_1.MEILI_INDEX.PLANNING_PAPERS, deletedId);
+                                meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.ORDERS, {
                                     orderSortValue: order.orderSortValue,
                                     status: newStatus,
                                 });
@@ -364,12 +365,12 @@ exports.planningPaperService = {
                                             options: { where: { planningBoxId: box.planningBoxId } },
                                         });
                                     }
-                                    //update meilisearch
-                                    meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.PLANNING_PAPERS, {
+                                    //--------------------MEILISEARCH-----------------------
+                                    meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.PLANNING_PAPERS, {
                                         planningId: planning.planningId,
                                         status: newStatus,
                                     });
-                                    meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.ORDERS, {
+                                    meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.ORDERS, {
                                         orderSortValue: order.orderSortValue,
                                         status: newStatus,
                                     });
@@ -389,9 +390,9 @@ exports.planningPaperService = {
                                     const deletedId = planning.planningId;
                                     await planning.destroy();
                                     await cacheManager_1.CacheManager.clear("orderAccept");
-                                    //update and delete meilisearch
-                                    meiliService_1.meiliService.deleteMeiliData(meiliService_1.MEILI_INDEX.PLANNING_PAPERS, deletedId);
-                                    meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.ORDERS, {
+                                    //--------------------MEILISEARCH-----------------------
+                                    meiliService_1.meiliService.deleteMeiliData(labelFields_1.MEILI_INDEX.PLANNING_PAPERS, deletedId);
+                                    meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.ORDERS, {
                                         orderSortValue: order.orderSortValue,
                                         status: "accept",
                                     });
@@ -429,8 +430,8 @@ exports.planningPaperService = {
                             options: { where: { planningBoxId: planningBox.planningBoxId } },
                         });
                     }
-                    //update meilisearch
-                    meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.PLANNING_PAPERS, {
+                    //--------------------MEILISEARCH-----------------------
+                    meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.PLANNING_PAPERS, {
                         planningId: planning.planningId,
                         status: newStatus,
                     });

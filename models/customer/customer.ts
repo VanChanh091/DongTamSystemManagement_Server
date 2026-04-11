@@ -1,6 +1,5 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { CustomerPayment } from "./customerPayment";
-import { meiliClient } from "../../assest/configs/connect/melisearch.config";
 
 //định nghĩa trường trong bảng
 interface CustomerAttributes {

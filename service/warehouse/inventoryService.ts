@@ -7,11 +7,11 @@ import { AppError } from "../../utils/appError";
 import { searchFieldAtribute } from "../../interface/types";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { Inventory } from "../../models/warehouse/inventory";
-import redisCache from "../../assest/configs/connect/redis.config";
+import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { exportExcelResponse } from "../../utils/helper/excelExporter";
 import { warehouseRepository } from "../../repository/warehouseRepository";
-import { meiliClient } from "../../assest/configs/connect/melisearch.config";
+import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { inventoryColumns, mappingInventoryRow } from "../../utils/mapping/inventoryRowAndColumn";
 
 const devEnvironment = process.env.NODE_ENV !== "production";

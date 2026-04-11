@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.dashboardService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const redis_config_1 = __importDefault(require("../assest/configs/connect/redis.config"));
+const redis_connect_1 = __importDefault(require("../assest/configs/connect/redis.connect"));
 const sequelize_1 = require("sequelize");
 const cacheKey_1 = require("../utils/helper/cache/cacheKey");
 const dashboardRepository_1 = require("../repository/dashboardRepository");
@@ -17,7 +17,7 @@ const dbPlanningRowAndColumn_1 = require("../utils/mapping/dbPlanningRowAndColum
 const excelExporter_1 = require("../utils/helper/excelExporter");
 const planningBoxMachineTime_1 = require("../models/planning/planningBoxMachineTime");
 const planningHelper_1 = require("../utils/helper/modelHelper/planningHelper");
-const melisearch_config_1 = require("../assest/configs/connect/melisearch.config");
+const meilisearch_connect_1 = require("../assest/configs/connect/meilisearch.connect");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { planning, details } = cacheKey_1.CacheKey.dashboard;
 exports.dashboardService = {
@@ -29,7 +29,7 @@ exports.dashboardService = {
                 await cacheManager_1.CacheManager.clear("dbPlanning");
             }
             else {
-                const cachedData = await redis_config_1.default.get(cacheKey);
+                const cachedData = await redis_connect_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ Get PlanningPaper from cache");
@@ -50,7 +50,7 @@ exports.dashboardService = {
                 totalPages,
                 currentPage: page,
             };
-            await redis_config_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 1800);
+            await redis_connect_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 1800);
             return responseData;
         }
         catch (error) {
@@ -66,7 +66,7 @@ exports.dashboardService = {
                 await cacheManager_1.CacheManager.clear("dbPlanningDetail");
             }
             else {
-                const cachedData = await redis_config_1.default.get(cacheKey);
+                const cachedData = await redis_connect_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("📦 Get Planning STAGES from cache");
@@ -88,7 +88,7 @@ exports.dashboardService = {
                 getPlanningBoxId: (d) => d.planningBoxId,
                 getAllOverflow: (id) => dashboardRepository_1.dashboardRepository.getAllTimeOverflow(id),
             });
-            await redis_config_1.default.set(cacheKey, JSON.stringify(stages), "EX", 1800);
+            await redis_connect_1.default.set(cacheKey, JSON.stringify(stages), "EX", 1800);
             return { message: "get db planning detail succesfully", data: stages };
         }
         catch (error) {
@@ -97,13 +97,13 @@ exports.dashboardService = {
         }
     },
     //get by field
-    getDbPlanningByFields: async ({ field, keyword, page, pageSize, }) => {
+    getDbPlanningByFields: async ({ field, keyword, page, pageSize }) => {
         try {
             const validFields = ["orderId", "machine", "customerName", "companyName", "username"];
             if (!validFields.includes(field)) {
                 throw appError_1.AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
             }
-            const index = melisearch_config_1.meiliClient.index("dashboard");
+            const index = meilisearch_connect_1.meiliClient.index("dashboard");
             // Tìm kiếm trên Meilisearch để lấy planningId
             const searchResult = await index.search(keyword, {
                 attributesToSearchOn: [field],

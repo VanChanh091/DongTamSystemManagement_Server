@@ -27,7 +27,6 @@ function initEmployeeCompanyInfoModel(sequelize) {
             { fields: ["employeeId"] },
             // find
             { fields: ["employeeCode"] },
-            { fields: ["status"] },
         ],
     });
     return EmployeeCompanyInfo;

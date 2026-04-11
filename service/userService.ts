@@ -1,4 +1,4 @@
-import redisCache from "../assest/configs/connect/redis.config";
+import redisCache from "../assets/configs/connect/redis.connect";
 import { AppError } from "../utils/appError";
 import bcrypt from "bcrypt";
 import { convertToWebp, uploadImageToCloudinary } from "../utils/image/converToWebp";

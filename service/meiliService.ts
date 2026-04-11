@@ -1,4 +1,4 @@
-import { meiliClient } from "../assest/configs/connect/melisearch.config";
+import { meiliClient } from "../assets/configs/connect/meilisearch.connect";
 
 export const meiliService = {
   syncMeiliData: (indexKey: string, data: any | any[]) => {

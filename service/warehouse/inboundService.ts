@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import redisCache from "../../assest/configs/connect/redis.config";
+import redisCache from "../../assets/configs/connect/redis.connect";
 import { AppError } from "../../utils/appError";
 import { InboundHistory } from "../../models/warehouse/inboundHistory";
 import { warehouseRepository } from "../../repository/warehouseRepository";
@@ -19,10 +19,10 @@ import { Order } from "../../models/order/order";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { meiliService } from "../meiliService";
 import { searchFieldAtribute } from "../../interface/types";
-import { meiliClient } from "../../assest/configs/connect/melisearch.config";
+import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { Op, Transaction } from "sequelize";
-import { meiliTransformer } from "../../assest/configs/meilisearch/meiliTransformer";
-import { MEILI_INDEX } from "../../assest/labelFields";
+import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
+import { MEILI_INDEX } from "../../assets/labelFields";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inbound } = CacheKey.warehouse;

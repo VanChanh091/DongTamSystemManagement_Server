@@ -11,10 +11,10 @@ import { ReportPlanningBox } from "../models/report/reportPlanningBox";
 import { exportExcelResponse } from "../utils/helper/excelExporter";
 import { mapReportPaperRow, reportPaperColumns } from "../utils/mapping/reportPaperRowAndColumn";
 import { mapReportBoxRow, reportBoxColumns } from "../utils/mapping/reportBoxRowAndColumn";
-import redisCache from "../assest/configs/connect/redis.config";
+import redisCache from "../assets/configs/connect/redis.connect";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { normalizeVN } from "../utils/helper/normalizeVN";
-import { meiliClient } from "../assest/configs/connect/melisearch.config";
+import { meiliClient } from "../assets/configs/connect/meilisearch.connect";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper, box } = CacheKey.report;

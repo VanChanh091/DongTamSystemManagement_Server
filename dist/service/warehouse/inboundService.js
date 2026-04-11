@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.inboundService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const redis_config_1 = __importDefault(require("../../assest/configs/connect/redis.config"));
+const redis_connect_1 = __importDefault(require("../../assest/configs/connect/redis.connect"));
 const appError_1 = require("../../utils/appError");
 const inboundHistory_1 = require("../../models/warehouse/inboundHistory");
 const warehouseRepository_1 = require("../../repository/warehouseRepository");
@@ -15,7 +15,6 @@ const planningHelper_1 = require("../../repository/planning/planningHelper");
 const planningBox_1 = require("../../models/planning/planningBox");
 const planningBoxMachineTime_1 = require("../../models/planning/planningBoxMachineTime");
 const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
-const warehouseHelper_1 = require("../../utils/helper/modelHelper/warehouseHelper");
 const dashboardRepository_1 = require("../../repository/dashboardRepository");
 const planningHelper_2 = require("../../utils/helper/modelHelper/planningHelper");
 const planningPaper_1 = require("../../models/planning/planningPaper");
@@ -23,6 +22,11 @@ const inventoryService_1 = require("./inventoryService");
 const inventory_1 = require("../../models/warehouse/inventory");
 const order_1 = require("../../models/order/order");
 const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
+const meiliService_1 = require("../meiliService");
+const meilisearch_connect_1 = require("../../assest/configs/connect/meilisearch.connect");
+const sequelize_1 = require("sequelize");
+const meiliTransformer_1 = require("../../assest/configs/meilisearch/meiliTransformer");
+const labelFields_1 = require("../../assest/labelFields");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inbound } = cacheKey_1.CacheKey.warehouse;
 const { paper, box } = cacheKey_1.CacheKey.waitingCheck;
@@ -36,7 +40,7 @@ exports.inboundService = {
                 await cacheManager_1.CacheManager.clear("checkPaper");
             }
             else {
-                const cachedData = await redis_config_1.default.get(cacheKey);
+                const cachedData = await redis_connect_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ Data waiting check paper from Redis");
@@ -73,7 +77,7 @@ exports.inboundService = {
                 message: "get planning paper waiting check successfully",
                 data: allPlannings,
             };
-            await redis_config_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+            await redis_connect_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
             return responseData;
         }
         catch (error) {
@@ -89,7 +93,7 @@ exports.inboundService = {
                 await cacheManager_1.CacheManager.clear("checkBox");
             }
             else {
-                const cachedData = await redis_config_1.default.get(cacheKey);
+                const cachedData = await redis_connect_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ Data waiting check box from Redis");
@@ -101,7 +105,7 @@ exports.inboundService = {
             }
             const planning = await warehouseRepository_1.warehouseRepository.getBoxWaitingChecked();
             const responseData = { message: `get planning box waiting check`, data: planning };
-            await redis_config_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+            await redis_connect_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
             return responseData;
         }
         catch (error) {
@@ -142,6 +146,7 @@ exports.inboundService = {
             }
             const totalInboundQty = (await inboundHistory_1.InboundHistory.sum("qtyInbound", {
                 where: { planningId: planning.planningId },
+                transaction,
             })) ?? 0;
             const qtyProduced = planning.qtyProduced ?? 0;
             if (totalInboundQty + inboundQty > qtyProduced) {
@@ -174,6 +179,12 @@ exports.inboundService = {
             if (isFirstInbound) {
                 await planning.update({ statusRequest: "inbounded" }, { transaction });
             }
+            //--------------------MEILISEARCH-----------------------
+            await exports.inboundService.syncInboundAndInventoryToMeili({
+                inboundId: inboundRecord.inboundId,
+                orderId: planning.orderId,
+                transaction,
+            });
             return {
                 message: "Confirm producing paper successfully",
                 data: inboundRecord,
@@ -246,6 +257,12 @@ exports.inboundService = {
                 }
                 await paper.update({ statusRequest: "inbounded" }, { transaction });
             }
+            //--------------------MEILISEARCH-----------------------
+            await exports.inboundService.syncInboundAndInventoryToMeili({
+                inboundId: inboundRecord.inboundId,
+                orderId: planning.orderId,
+                transaction,
+            });
             return {
                 message: "Confirm producing paper successfully",
                 data: inboundRecord,
@@ -258,6 +275,22 @@ exports.inboundService = {
             throw appError_1.AppError.ServerError();
         }
     },
+    syncInboundAndInventoryToMeili: async ({ inboundId, orderId, transaction, }) => {
+        try {
+            const [inbound, inventory] = await Promise.all([
+                warehouseRepository_1.warehouseRepository.syncInbound(inboundId, transaction),
+                warehouseRepository_1.warehouseRepository.syncInventory(orderId, transaction),
+            ]);
+            const flattenInbound = meiliTransformer_1.meiliTransformer.inbound(inbound);
+            const flattenInventory = meiliTransformer_1.meiliTransformer.inventory(inventory);
+            meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.INBOUND, flattenInbound);
+            meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.INVENTORIES, flattenInventory);
+        }
+        catch (error) {
+            console.error("Error sync inbound & inventory box:", error);
+            throw appError_1.AppError.ServerError();
+        }
+    },
     //====================================INBOUND HISTORY========================================
     getAllInboundHistory: async (page, pageSize) => {
         const cacheKey = inbound.page(page);
@@ -267,7 +300,7 @@ exports.inboundService = {
                 await cacheManager_1.CacheManager.clear("inbound");
             }
             else {
-                const cachedData = await redis_config_1.default.get(cacheKey);
+                const cachedData = await redis_connect_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ Data inbound from Redis");
@@ -284,7 +317,7 @@ exports.inboundService = {
                 totalPages,
                 currentPage: page,
             };
-            await redis_config_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+            await redis_connect_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
             return responseData;
         }
         catch (error) {
@@ -294,26 +327,44 @@ exports.inboundService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    searchInboundByField: async ({ field, keyword, page, pageSize, }) => {
+    getInboundByField: async ({ field, keyword, page, pageSize }) => {
         try {
-            const fieldMap = {
-                orderId: (inbound) => inbound.orderId,
-                customerName: (inbound) => inbound.Order.Customer.customerName,
-                companyName: (inbound) => inbound.Order.Customer.companyName,
-                productName: (inbound) => inbound.Order.Product.productName,
-            };
-            const key = field;
-            if (!fieldMap[key]) {
-                throw appError_1.AppError.BadRequest("Invalid field parameter", "INVALID_FIELD");
+            const validFields = ["orderId", "customerName", "dateInbound", "checkedBy"];
+            if (!validFields.includes(field)) {
+                throw appError_1.AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
             }
-            const result = await (0, warehouseHelper_1.getInboundByField)({
-                keyword: keyword,
-                getFieldValue: fieldMap[key],
-                page,
-                pageSize,
-                message: `get all by ${field} from filtered cache`,
+            const index = meilisearch_connect_1.meiliClient.index("inboundHistories");
+            const searchResult = await index.search(keyword, {
+                attributesToSearchOn: [field],
+                attributesToRetrieve: ["inboundId"],
+                page: Number(page) || 1,
+                hitsPerPage: Number(pageSize) || 25, //pageSize
             });
-            return result;
+            const inboundIds = searchResult.hits.map((hit) => hit.inboundId);
+            if (inboundIds.length === 0) {
+                return {
+                    message: "No inbound histories found",
+                    data: [],
+                    totalInbounds: 0,
+                    totalPages: 0,
+                    currentPage: page,
+                };
+            }
+            //query db
+            const { rows } = await warehouseRepository_1.warehouseRepository.findInboundByPage({
+                whereCondition: { inboundId: { [sequelize_1.Op.in]: inboundIds } },
+            });
+            // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
+            const finalData = inboundIds
+                .map((id) => rows.find((inbound) => inbound.inboundId === id))
+                .filter(Boolean);
+            return {
+                message: "Get inbound histories from Meilisearch & DB successfully",
+                data: finalData,
+                totalInbounds: searchResult.totalHits,
+                totalPages: searchResult.totalPages,
+                currentPage: searchResult.page,
+            };
         }
         catch (error) {
             console.error(`get inbound history by ${field} failed:`, error);

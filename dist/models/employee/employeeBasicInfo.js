@@ -29,11 +29,6 @@ function initEmployeeBasicInfoModel(sequelize) {
         sequelize,
         tableName: "EmployeeBasicInfos",
         timestamps: true,
-        indexes: [
-            //search
-            { fields: ["fullName"] },
-            { fields: ["phoneNumber"] },
-        ],
     });
     return EmployeeBasicInfo;
 }

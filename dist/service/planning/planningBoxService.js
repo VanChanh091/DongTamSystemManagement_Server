@@ -12,16 +12,17 @@ const machineBox_1 = require("../../models/admin/machineBox");
 const meiliService_1 = require("../meiliService");
 const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
 const planningBox_1 = require("../../models/planning/planningBox");
-const redis_config_1 = __importDefault(require("../../assest/configs/connect/redis.config"));
+const redis_connect_1 = __importDefault(require("../../assest/configs/connect/redis.connect"));
 const timeRunningBox_1 = require("./helper/timeRunningBox");
 const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
 const planningHelper_1 = require("../../repository/planning/planningHelper");
-const melisearch_config_1 = require("../../assest/configs/connect/melisearch.config");
+const meilisearch_connect_1 = require("../../assest/configs/connect/meilisearch.connect");
 const timeOverflowPlanning_1 = require("../../models/planning/timeOverflowPlanning");
 const planningBoxRepository_1 = require("../../repository/planning/planningBoxRepository");
 const planningBoxMachineTime_1 = require("../../models/planning/planningBoxMachineTime");
 const meiliTransformer_1 = require("../../assest/configs/meilisearch/meiliTransformer");
+const labelFields_1 = require("../../assest/labelFields");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { box } = cacheKey_1.CacheKey.planning;
 exports.planningBoxService = {
@@ -38,7 +39,7 @@ exports.planningBoxService = {
                 await cacheManager_1.CacheManager.clear("planningBox");
             }
             else {
-                const cachedData = await redis_config_1.default.get(cacheKey);
+                const cachedData = await redis_connect_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ Data PlanningBox from Redis");
@@ -49,7 +50,7 @@ exports.planningBoxService = {
                 }
             }
             const planning = await exports.planningBoxService.getPlanningBoxSorted(machine);
-            await redis_config_1.default.set(cacheKey, JSON.stringify(planning), "EX", 1800);
+            await redis_connect_1.default.set(cacheKey, JSON.stringify(planning), "EX", 1800);
             return { message: `get planning by machine: ${machine}`, data: planning };
         }
         catch (error) {
@@ -151,7 +152,7 @@ exports.planningBoxService = {
             if (!validFields.includes(field)) {
                 throw appError_1.AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
             }
-            const index = melisearch_config_1.meiliClient.index("planningBoxes");
+            const index = meilisearch_connect_1.meiliClient.index("planningBoxes");
             const searchResult = await index.search(keyword, {
                 attributesToSearchOn: [field],
                 attributesToRetrieve: ["planningBoxId"],
@@ -229,13 +230,13 @@ exports.planningBoxService = {
                     options: { where: { planningBoxId: ids } },
                 });
             }
-            //update meilisearch
+            //--------------------MEILISEARCH-----------------------
             const fullBox = await planningBoxRepository_1.planningBoxRepository.syncPlanningBoxToMeili({
                 whereCondition: { planningBoxId: { [sequelize_1.Op.in]: ids } },
             });
             if (fullBox.length > 0) {
                 const flattenData = fullBox.map(meiliTransformer_1.meiliTransformer.planningBox);
-                meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.PLANNING_BOXES, flattenData);
+                meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.PLANNING_BOXES, flattenData);
             }
             return { message: "planning box updated successfully" };
         }
@@ -264,13 +265,13 @@ exports.planningBoxService = {
                     options: { where: { planningBoxId: planning.planningBoxId } },
                 });
             }
-            //update meilisearch
+            //--------------------MEILISEARCH-----------------------
             const fullBox = await planningBoxRepository_1.planningBoxRepository.syncPlanningBoxToMeili({
                 whereCondition: { planningBoxId: { [sequelize_1.Op.in]: planningBoxIds } },
             });
             if (fullBox.length > 0) {
                 const flattenData = fullBox.map(meiliTransformer_1.meiliTransformer.planningBox);
-                meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.PLANNING_BOXES, flattenData);
+                meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.PLANNING_BOXES, flattenData);
             }
             return { message: `Update status:${newStatus} successfully.` };
         }

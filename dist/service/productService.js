@@ -7,7 +7,7 @@ exports.productService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const sequelize_1 = require("sequelize");
-const redis_config_1 = __importDefault(require("../assest/configs/connect/redis.config"));
+const redis_connect_1 = __importDefault(require("../assest/configs/connect/redis.connect"));
 const order_1 = require("../models/order/order");
 const product_1 = require("../models/product/product");
 const cacheKey_1 = require("../utils/helper/cache/cacheKey");
@@ -15,12 +15,13 @@ const productRepository_1 = require("../repository/productRepository");
 const appError_1 = require("../utils/appError");
 const cacheManager_1 = require("../utils/helper/cache/cacheManager");
 const converToWebp_1 = require("../utils/image/converToWebp");
-const cloudinary_config_1 = __importDefault(require("../assest/configs/connect/cloudinary.config"));
+const cloudinary_connect_1 = __importDefault(require("../assest/configs/connect/cloudinary.connect"));
 const excelExporter_1 = require("../utils/helper/excelExporter");
 const productRowAndColumn_1 = require("../utils/mapping/productRowAndColumn");
 const transactionHelper_1 = require("../utils/helper/transactionHelper");
-const melisearch_config_1 = require("../assest/configs/connect/melisearch.config");
+const meilisearch_connect_1 = require("../assest/configs/connect/meilisearch.connect");
 const meiliService_1 = require("./meiliService");
+const labelFields_1 = require("../assest/labelFields");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { product } = cacheKey_1.CacheKey;
 exports.productService = {
@@ -33,7 +34,7 @@ exports.productService = {
                 await cacheManager_1.CacheManager.clear("product");
             }
             else {
-                const cachedData = await redis_config_1.default.get(cacheKey);
+                const cachedData = await redis_connect_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ Data Product from Redis");
@@ -60,7 +61,7 @@ exports.productService = {
                 totalPages,
                 currentPage: noPagingMode ? 1 : page,
             };
-            await redis_config_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+            await redis_connect_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
             return responseData;
         }
         catch (error) {
@@ -68,13 +69,13 @@ exports.productService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    getProductByField: async ({ field, keyword, page, pageSize, }) => {
+    getProductByField: async ({ field, keyword, page, pageSize }) => {
         try {
             const validFields = ["productName", "productId"];
             if (!validFields.includes(field)) {
                 throw appError_1.AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
             }
-            const index = melisearch_config_1.meiliClient.index("products");
+            const index = meilisearch_connect_1.meiliClient.index("products");
             const searchResult = await index.search(keyword, {
                 attributesToSearchOn: [field],
                 // Phân trang
@@ -123,10 +124,10 @@ exports.productService = {
                     parsedProduct.productImage = result.secure_url;
                 }
                 const newProduct = await productRepository_1.productRepository.createProduct({ productId: newProductId, productSeq: nextId, ...parsedProduct }, transaction);
-                //create meilisearch
+                //--------------------MEILISEARCH-----------------------
                 const productCreated = await productRepository_1.productRepository.findProductByPk(newProductId, transaction);
                 if (productCreated) {
-                    meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.PRODUCTS, productCreated.toJSON());
+                    meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.PRODUCTS, productCreated.toJSON());
                 }
                 return { message: "Product created successfully", data: newProduct };
             });
@@ -158,10 +159,10 @@ exports.productService = {
                     }
                 }
                 const result = await productRepository_1.productRepository.updateProduct(existingProduct, productData, transaction);
-                //update meilisearch
+                //--------------------MEILISEARCH-----------------------
                 const productUpdated = await productRepository_1.productRepository.findProductByPk(producId, transaction);
                 if (productUpdated) {
-                    meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.PRODUCTS, productUpdated.toJSON());
+                    meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.PRODUCTS, productUpdated.toJSON());
                 }
                 return { message: "Product updated successfully", data: result };
             });
@@ -190,12 +191,12 @@ exports.productService = {
                 if (imageName && imageName.includes("cloudinary.com")) {
                     const publicId = (0, converToWebp_1.getCloudinaryPublicId)(imageName);
                     if (publicId) {
-                        await cloudinary_config_1.default.uploader.destroy(publicId);
+                        await cloudinary_connect_1.default.uploader.destroy(publicId);
                     }
                 }
                 await product.destroy();
-                //delete record in meilisearch
-                meiliService_1.meiliService.deleteMeiliData(meiliService_1.MEILI_INDEX.PRODUCTS, productId);
+                //--------------------MEILISEARCH-----------------------
+                meiliService_1.meiliService.deleteMeiliData(labelFields_1.MEILI_INDEX.PRODUCTS, productId);
                 return { message: "Product deleted successfully" };
             });
         }

@@ -1,4 +1,4 @@
-import redisCache from "../assest/configs/connect/redis.config";
+import redisCache from "../assets/configs/connect/redis.connect";
 import { RedisUserData } from "../interface/types";
 import generateToken from "../middlewares/jwtHelper";
 import { authRepository } from "../repository/authRepository";

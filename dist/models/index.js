@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const database_config_1 = require("../assest/configs/connect/database.config");
+const database_connect_1 = require("../assest/configs/connect/database.connect");
 const fluteRatio_1 = require("./admin/fluteRatio");
 const machineBox_1 = require("./admin/machineBox");
 const machinePaper_1 = require("./admin/machinePaper");
@@ -34,48 +34,48 @@ const inventory_1 = require("./warehouse/inventory");
 const outboundDetail_1 = require("./warehouse/outboundDetail");
 const outboundHistory_1 = require("./warehouse/outboundHistory");
 //other
-const User = (0, user_1.initUserModel)(database_config_1.sequelize);
-const Product = (0, product_1.initProductModel)(database_config_1.sequelize);
+const User = (0, user_1.initUserModel)(database_connect_1.sequelize);
+const Product = (0, product_1.initProductModel)(database_connect_1.sequelize);
 //customer
-const Customer = (0, customer_1.initCustomerModel)(database_config_1.sequelize);
-const CustomerPayment = (0, customerPayment_1.initCustomerPaymentModel)(database_config_1.sequelize);
+const Customer = (0, customer_1.initCustomerModel)(database_connect_1.sequelize);
+const CustomerPayment = (0, customerPayment_1.initCustomerPaymentModel)(database_connect_1.sequelize);
 //order
-const Order = (0, order_1.initOrderModel)(database_config_1.sequelize);
-const Box = (0, box_1.initBoxModel)(database_config_1.sequelize);
-const OrderImage = (0, orderImage_1.initOrderImageModel)(database_config_1.sequelize);
+const Order = (0, order_1.initOrderModel)(database_connect_1.sequelize);
+const Box = (0, box_1.initBoxModel)(database_connect_1.sequelize);
+const OrderImage = (0, orderImage_1.initOrderImageModel)(database_connect_1.sequelize);
 //planning
-const PlanningPaper = (0, planningPaper_1.initPlanningPaperModel)(database_config_1.sequelize);
-const PlanningBox = (0, planningBox_1.initPlanningBoxModel)(database_config_1.sequelize);
-const timeOverflowPlanning = (0, timeOverflowPlanning_1.initTimeOverflowPlanningModel)(database_config_1.sequelize);
-const PlanningBoxTime = (0, planningBoxMachineTime_1.initPlanningBoxTimeModel)(database_config_1.sequelize);
+const PlanningPaper = (0, planningPaper_1.initPlanningPaperModel)(database_connect_1.sequelize);
+const PlanningBox = (0, planningBox_1.initPlanningBoxModel)(database_connect_1.sequelize);
+const timeOverflowPlanning = (0, timeOverflowPlanning_1.initTimeOverflowPlanningModel)(database_connect_1.sequelize);
+const PlanningBoxTime = (0, planningBoxMachineTime_1.initPlanningBoxTimeModel)(database_connect_1.sequelize);
 //report
-const ReportPlanningPaper = (0, reportPlanningPaper_1.initReportPlanningPaperModel)(database_config_1.sequelize);
-const ReportPlanningBox = (0, reportPlanningBox_1.initReportPlanningBoxModel)(database_config_1.sequelize);
+const ReportPlanningPaper = (0, reportPlanningPaper_1.initReportPlanningPaperModel)(database_connect_1.sequelize);
+const ReportPlanningBox = (0, reportPlanningBox_1.initReportPlanningBoxModel)(database_connect_1.sequelize);
 //employee
-const EmployeeBasicInfo = (0, employeeBasicInfo_1.initEmployeeBasicInfoModel)(database_config_1.sequelize);
-const EmployeeCompanyInfo = (0, employeeCompanyInfo_1.initEmployeeCompanyInfoModel)(database_config_1.sequelize);
+const EmployeeBasicInfo = (0, employeeBasicInfo_1.initEmployeeBasicInfoModel)(database_connect_1.sequelize);
+const EmployeeCompanyInfo = (0, employeeCompanyInfo_1.initEmployeeCompanyInfoModel)(database_connect_1.sequelize);
 //admin
-const MachinePaper = (0, machinePaper_1.initMachinePaperModel)(database_config_1.sequelize);
-const MachineBox = (0, machineBox_1.initMachineBoxModel)(database_config_1.sequelize);
-const WasteNormPaper = (0, wasteNormPaper_1.initWasteNormPaperModel)(database_config_1.sequelize);
-const WasteNormBox = (0, wasteNormBox_1.initWasteNormBoxModel)(database_config_1.sequelize);
-const WaveCrestCoefficient = (0, waveCrestCoefficient_1.initWaveCrestCoefficientModel)(database_config_1.sequelize);
-const Vehicle = (0, vehicle_1.initVehicleModel)(database_config_1.sequelize);
-const FluteRatio = (0, fluteRatio_1.initFluteRatioCoefficientModel)(database_config_1.sequelize);
+const MachinePaper = (0, machinePaper_1.initMachinePaperModel)(database_connect_1.sequelize);
+const MachineBox = (0, machineBox_1.initMachineBoxModel)(database_connect_1.sequelize);
+const WasteNormPaper = (0, wasteNormPaper_1.initWasteNormPaperModel)(database_connect_1.sequelize);
+const WasteNormBox = (0, wasteNormBox_1.initWasteNormBoxModel)(database_connect_1.sequelize);
+const WaveCrestCoefficient = (0, waveCrestCoefficient_1.initWaveCrestCoefficientModel)(database_connect_1.sequelize);
+const Vehicle = (0, vehicle_1.initVehicleModel)(database_connect_1.sequelize);
+const FluteRatio = (0, fluteRatio_1.initFluteRatioCoefficientModel)(database_connect_1.sequelize);
 //QC
-const QcSession = (0, qcSession_1.initQcSessionModel)(database_config_1.sequelize);
-const QcCriteria = (0, qcCriteria_1.initQcCriteriaModel)(database_config_1.sequelize);
-const QcSampleResult = (0, qcSampleResult_1.initQcSamepleResultModel)(database_config_1.sequelize);
+const QcSession = (0, qcSession_1.initQcSessionModel)(database_connect_1.sequelize);
+const QcCriteria = (0, qcCriteria_1.initQcCriteriaModel)(database_connect_1.sequelize);
+const QcSampleResult = (0, qcSampleResult_1.initQcSamepleResultModel)(database_connect_1.sequelize);
 //warehouse
-const InboundHistory = (0, inboundHistory_1.initInboundHistoryModel)(database_config_1.sequelize);
-const OutboundHistory = (0, outboundHistory_1.initOutboundHistoryModel)(database_config_1.sequelize);
-const OutboundDetail = (0, outboundDetail_1.initOutboundDetailModel)(database_config_1.sequelize);
+const InboundHistory = (0, inboundHistory_1.initInboundHistoryModel)(database_connect_1.sequelize);
+const OutboundHistory = (0, outboundHistory_1.initOutboundHistoryModel)(database_connect_1.sequelize);
+const OutboundDetail = (0, outboundDetail_1.initOutboundDetailModel)(database_connect_1.sequelize);
 //inventory
-const Inventory = (0, inventory_1.initInventoryModel)(database_config_1.sequelize);
+const Inventory = (0, inventory_1.initInventoryModel)(database_connect_1.sequelize);
 //delivery
-const DeliveryRequest = (0, deliveryRequest_1.initDeliveryRequestModel)(database_config_1.sequelize);
-const DeliveryPlan = (0, deliveryPlan_1.initDeliveryPlanModel)(database_config_1.sequelize);
-const DeliveryItem = (0, deliveryItem_1.initDeliveryItemModel)(database_config_1.sequelize);
+const DeliveryRequest = (0, deliveryRequest_1.initDeliveryRequestModel)(database_connect_1.sequelize);
+const DeliveryPlan = (0, deliveryPlan_1.initDeliveryPlanModel)(database_connect_1.sequelize);
+const DeliveryItem = (0, deliveryItem_1.initDeliveryItemModel)(database_connect_1.sequelize);
 const models = {
     User,
     Product,

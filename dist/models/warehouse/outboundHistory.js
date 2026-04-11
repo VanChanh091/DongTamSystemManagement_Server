@@ -16,6 +16,14 @@ function initOutboundHistoryModel(sequelize) {
         totalPriceVAT: { type: sequelize_1.DataTypes.DOUBLE },
         totalPricePayment: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false },
         totalOutboundQty: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
+        dueDate: { type: sequelize_1.DataTypes.DATE, allowNull: false }, //thời hạn thanh toán PXK
+        paidAmount: { type: sequelize_1.DataTypes.DOUBLE }, //số tiền đã thanh toán
+        remainingAmount: { type: sequelize_1.DataTypes.DOUBLE }, //số tiền còn lại phải thanh toán
+        status: {
+            type: sequelize_1.DataTypes.ENUM("paid", "unpaid", "partial"),
+            defaultValue: "unpaid",
+            allowNull: false,
+        },
     }, {
         sequelize,
         tableName: "OutboundHistory",

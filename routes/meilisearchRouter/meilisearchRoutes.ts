@@ -14,7 +14,7 @@ import {
   syncProductToMeili,
   syncReportBoxToMeili,
   syncReportPaperToMeili,
-} from "../../assest/configs/meilisearch/sync/syncMeili";
+} from "../../assets/configs/meilisearch/sync/syncMeili";
 import { AppError } from "../../utils/appError";
 
 const router = Router();

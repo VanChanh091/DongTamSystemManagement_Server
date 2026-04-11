@@ -3,20 +3,40 @@ dotenv.config();
 
 import { Meilisearch } from "meilisearch";
 
+interface MeiliConfig {
+  apiKey: string;
+  host: string;
+  port: number;
+}
+
+let meiliConfig: MeiliConfig;
+
 const devEnvironment = process.env.NODE_ENV === "development";
 
-const apiKey = devEnvironment
-  ? process.env.MEILISEARCH_MASTER_KEY_DEV
-  : process.env.MEILISEARCH_MASTER_KEY_PROD;
-const host = devEnvironment ? "localhost" : "192.168.1.81";
-const port = devEnvironment ? 7701 : 7700;
-
-// console.log(`apiKey: ${apiKey} - host: ${host} - port: ${port}`);
+if (devEnvironment) {
+  meiliConfig = {
+    apiKey: process.env.MEILISEARCH_MASTER_KEY_DEV as string,
+    host: "localhost",
+    port: 7701,
+  };
+} else {
+  meiliConfig = {
+    apiKey: process.env.MEILISEARCH_MASTER_KEY_PROD as string,
+    host: "192.168.1.81",
+    port: 7700,
+  };
+}
 
 const meiliClient = new Meilisearch({
-  host: `http://${host}:${port}`,
-  apiKey: apiKey,
+  host: `http://${meiliConfig.host}:${meiliConfig.port}`,
+  apiKey: meiliConfig.apiKey,
 });
+
+// console.log("--- CHECK BIẾN MÔI TRƯỜNG ---");
+// console.log("NODE_ENV:", process.env.NODE_ENV);
+// console.log("MEILI_KEY:", meiliConfig.apiKey ? "Đã nhận" : "Trống rỗng");
+// console.log("MEILI_HOST:", meiliConfig.host);
+// console.log("MEILI_PORT:", meiliConfig.port);
 
 const connectMeilisearch = async () => {
   try {

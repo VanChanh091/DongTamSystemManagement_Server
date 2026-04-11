@@ -37,7 +37,6 @@ function initReportPlanningPaperModel(sequelize) {
             { fields: ["planningId"] },
             //indexes
             { fields: ["dayReport"] },
-            { fields: ["shiftManagement"] },
         ],
     });
     return ReportPlanningPaper;

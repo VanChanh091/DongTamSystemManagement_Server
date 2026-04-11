@@ -9,12 +9,12 @@ import { Order } from "../models/order/order";
 import { OrderImage } from "../models/order/orderImage";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { meiliService } from "./meiliService";
-import redisCache from "../assest/configs/connect/redis.config";
+import redisCache from "../assets/configs/connect/redis.connect";
 import { orderRepository } from "../repository/orderRepository";
 import { CacheManager } from "../utils/helper/cache/cacheManager";
 import { runInTransaction } from "../utils/helper/transactionHelper";
 import { CrudHelper } from "../repository/helper/crud.helper.repository";
-import { meiliClient } from "../assest/configs/connect/melisearch.config";
+import { meiliClient } from "../assets/configs/connect/meilisearch.connect";
 import {
   cachedStatus,
   calculateOrderMetrics,
@@ -24,9 +24,9 @@ import {
   updateChildTable,
   validateCustomerAndProduct,
 } from "../utils/helper/modelHelper/orderHelpers";
-import { meiliTransformer } from "../assest/configs/meilisearch/meiliTransformer";
+import { meiliTransformer } from "../assets/configs/meilisearch/meiliTransformer";
 import { searchFieldAtribute } from "../interface/types";
-import { MEILI_INDEX } from "../assest/labelFields";
+import { MEILI_INDEX } from "../assets/labelFields";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { order } = CacheKey;

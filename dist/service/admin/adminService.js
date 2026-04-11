@@ -7,13 +7,14 @@ exports.adminService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const bcrypt_1 = __importDefault(require("bcrypt"));
-const cloudinary_config_1 = __importDefault(require("../../assest/configs/connect/cloudinary.config"));
+const meiliService_1 = require("../meiliService");
+const appError_1 = require("../../utils/appError");
 const labelFields_1 = require("../../assest/labelFields");
 const order_1 = require("../../models/order/order");
 const adminRepository_1 = require("../../repository/adminRepository");
-const appError_1 = require("../../utils/appError");
 const converToWebp_1 = require("../../utils/image/converToWebp");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
+const cloudinary_connect_1 = __importDefault(require("../../assest/configs/connect/cloudinary.connect"));
 const devEnvironment = process.env.NODE_ENV !== "production";
 exports.adminService = {
     //===============================ADMIN CRUD=====================================
@@ -115,7 +116,7 @@ exports.adminService = {
                 if (!["accept", "reject"].includes(newStatus)) {
                     throw appError_1.AppError.BadRequest("Invalid status", "INVALID_STATUS");
                 }
-                const order = await adminRepository_1.adminRepository.findByOrderId(orderId);
+                const order = await adminRepository_1.adminRepository.findByOrderId(orderId, transaction);
                 if (!order) {
                     throw appError_1.AppError.NotFound("Order not found", "ORDER_NOT_FOUND");
                 }
@@ -138,7 +139,12 @@ exports.adminService = {
                         rejectReason: null,
                     });
                 }
-                await order.save();
+                await order.save({ transaction });
+                //--------------------MEILISEARCH-----------------------
+                meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.ORDERS, {
+                    orderSortValue: order.orderSortValue,
+                    status: newStatus,
+                });
                 //socket
                 const ownerId = order.userId;
                 const badgeCount = await order_1.Order.count({ where: { status: "reject", userId: ownerId } });
@@ -160,11 +166,6 @@ exports.adminService = {
                     type: "REJECTED_ORDER",
                     count: badgeCount,
                 });
-                // //update meilisearch
-                // const orderUpdated = await orderRepository.findOrderForMeili(orderId, transaction);
-                // if (orderUpdated) {
-                //   meiliService.syncMeiliData(MEILI_INDEX.ORDERS, orderUpdated.toJSON());
-                // }
                 return {
                     message: "Order status updated successfully",
                     notification: {
@@ -417,7 +418,7 @@ exports.adminService = {
             if (imageName && imageName.includes("cloudinary.com")) {
                 const publicId = (0, converToWebp_1.getCloudinaryPublicId)(imageName);
                 if (publicId) {
-                    await cloudinary_config_1.default.uploader.destroy(publicId);
+                    await cloudinary_connect_1.default.uploader.destroy(publicId);
                 }
             }
             return { message: "User deleted successfully" };

@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.checkLastChange = void 0;
-const redis_config_1 = __importDefault(require("../../../assest/configs/connect/redis.config"));
+const redis_connect_1 = __importDefault(require("../../../assest/configs/connect/redis.connect"));
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const checkLastChange = async (models, cacheKey, { setCache = true } = {}) => {
@@ -32,10 +32,10 @@ const checkLastChange = async (models, cacheKey, { setCache = true } = {}) => {
     //Gộp tất cả thành chữ ký tổng
     const combinedSignature = lastChanges.join("|");
     //So sánh với cache Redis
-    const lastCached = await redis_config_1.default.get(cacheKey);
+    const lastCached = await redis_connect_1.default.get(cacheKey);
     const isChanged = lastCached !== combinedSignature;
     if (setCache && isChanged) {
-        await redis_config_1.default.set(cacheKey, combinedSignature);
+        await redis_connect_1.default.set(cacheKey, combinedSignature);
     }
     // 5️⃣ Log debug cho dev mode
     if (process.env.NODE_ENV !== "production") {

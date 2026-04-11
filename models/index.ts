@@ -1,4 +1,4 @@
-import { sequelize } from "../assest/configs/connect/database.config";
+import { sequelize } from "../assets/configs/connect/database.connect";
 import { initFluteRatioCoefficientModel } from "./admin/fluteRatio";
 import { initMachineBoxModel } from "./admin/machineBox";
 import { initMachinePaperModel } from "./admin/machinePaper";

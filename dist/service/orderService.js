@@ -13,13 +13,15 @@ const order_1 = require("../models/order/order");
 const orderImage_1 = require("../models/order/orderImage");
 const cacheKey_1 = require("../utils/helper/cache/cacheKey");
 const meiliService_1 = require("./meiliService");
-const redis_config_1 = __importDefault(require("../assest/configs/connect/redis.config"));
+const redis_connect_1 = __importDefault(require("../assest/configs/connect/redis.connect"));
 const orderRepository_1 = require("../repository/orderRepository");
 const cacheManager_1 = require("../utils/helper/cache/cacheManager");
 const transactionHelper_1 = require("../utils/helper/transactionHelper");
 const crud_helper_repository_1 = require("../repository/helper/crud.helper.repository");
-const melisearch_config_1 = require("../assest/configs/connect/melisearch.config");
+const meilisearch_connect_1 = require("../assest/configs/connect/meilisearch.connect");
 const orderHelpers_1 = require("../utils/helper/modelHelper/orderHelpers");
+const meiliTransformer_1 = require("../assest/configs/meilisearch/meiliTransformer");
+const labelFields_1 = require("../assest/labelFields");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { order } = cacheKey_1.CacheKey;
 exports.orderService = {
@@ -33,7 +35,7 @@ exports.orderService = {
                 await cacheManager_1.CacheManager.clear("orderAcceptPlanning", keyRole);
             }
             else {
-                const cachedData = await redis_config_1.default.get(cacheKey);
+                const cachedData = await redis_connect_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
                         console.log("✅ Data Order accept_planning from Redis");
@@ -51,7 +53,7 @@ exports.orderService = {
                 ownOnly,
                 isPaging: true,
             });
-            await redis_config_1.default.set(cacheKey, JSON.stringify(result), "EX", 3600);
+            await redis_connect_1.default.set(cacheKey, JSON.stringify(result), "EX", 3600);
             return { message: "Get all orders from DB with status: accept and planning", ...result };
         }
         catch (error) {
@@ -74,7 +76,7 @@ exports.orderService = {
                 await cacheManager_1.CacheManager.clear("orderPendingReject", keyRole);
             }
             else {
-                const cachedResult = await (0, orderHelpers_1.cachedStatus)(redis_config_1.default, "pending", "reject", userId, role);
+                const cachedResult = await (0, orderHelpers_1.cachedStatus)(redis_connect_1.default, "pending", "reject", userId, role);
                 if (cachedResult) {
                     if (devEnvironment)
                         console.log("✅ Data Order pending_reject from Redis");
@@ -88,7 +90,7 @@ exports.orderService = {
                 ownOnly,
                 isPaging: false,
             });
-            await redis_config_1.default.set(cacheKey, JSON.stringify(result), "EX", 3600);
+            await redis_connect_1.default.set(cacheKey, JSON.stringify(result), "EX", 3600);
             return { message: "Get all orders from DB with status: pending and reject", ...result };
         }
         catch (error) {
@@ -98,14 +100,14 @@ exports.orderService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    getOrderByField: async ({ field, keyword, page, pageSize, user, }) => {
+    getOrderByField: async ({ field, keyword, page, pageSize, user }) => {
         const { userId, role } = user;
         try {
             const validFields = ["orderId", "customerName", "productName", "QC_box", "price"];
             if (!validFields.includes(field)) {
                 throw appError_1.AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
             }
-            const index = melisearch_config_1.meiliClient.index("orders");
+            const index = meilisearch_connect_1.meiliClient.index("orders");
             // Phân quyền và Trạng thái
             let filters = ["status IN [accept, planning]"];
             if (role !== "admin" && role !== "manager") {
@@ -237,10 +239,11 @@ exports.orderService = {
                         throw appError_1.AppError.ServerError();
                     }
                 }
-                //create meilisearch
+                //--------------------MEILISEARCH-----------------------
                 const orderCreated = await orderRepository_1.orderRepository.findOrderForMeili(newOrderId, transaction);
                 if (orderCreated) {
-                    meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.ORDERS, orderCreated.toJSON());
+                    const flattenData = meiliTransformer_1.meiliTransformer.order(orderCreated);
+                    meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.ORDERS, flattenData);
                 }
                 return { order: newOrder, orderId: newOrderId };
             });
@@ -308,10 +311,11 @@ exports.orderService = {
                     type: "REJECTED_ORDER",
                     count: badgeCount,
                 });
-                //update meilisearch
+                //--------------------MEILISEARCH-----------------------
                 const orderUpdated = await orderRepository_1.orderRepository.findOrderForMeili(orderId, transaction);
                 if (orderUpdated) {
-                    meiliService_1.meiliService.syncMeiliData(meiliService_1.MEILI_INDEX.ORDERS, orderUpdated.toJSON());
+                    const flattenData = meiliTransformer_1.meiliTransformer.order(orderUpdated);
+                    meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.ORDERS, flattenData);
                 }
                 return { message: "Order updated successfully", data: order };
             });
@@ -334,8 +338,8 @@ exports.orderService = {
                 //save value before delete for meilisearch
                 const orderValue = order.orderSortValue;
                 await order.destroy({ transaction });
-                //delete meilisearch
-                meiliService_1.meiliService.deleteMeiliData(meiliService_1.MEILI_INDEX.ORDERS, orderValue);
+                //--------------------MEILISEARCH-----------------------
+                meiliService_1.meiliService.deleteMeiliData(labelFields_1.MEILI_INDEX.ORDERS, orderValue);
                 return { message: "Order deleted successfully" };
             });
         }

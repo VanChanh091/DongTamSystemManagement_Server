@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import redisCache from "../assest/configs/connect/redis.config";
+import redisCache from "../assets/configs/connect/redis.connect";
 import { Op } from "sequelize";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { dashboardRepository } from "../repository/dashboardRepository";
@@ -13,7 +13,7 @@ import { dbPlanningColumns, mappingDbPlanningRow } from "../utils/mapping/dbPlan
 import { exportExcelDbPlanning } from "../utils/helper/excelExporter";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { buildStagesDetails } from "../utils/helper/modelHelper/planningHelper";
-import { meiliClient } from "../assest/configs/connect/melisearch.config";
+import { meiliClient } from "../assets/configs/connect/meilisearch.connect";
 import { searchFieldAtribute } from "../interface/types";
 
 const devEnvironment = process.env.NODE_ENV !== "production";

@@ -16,7 +16,7 @@ function initCustomerPaymentModel(sequelize) {
         },
         debtCurrent: { type: sequelize_1.DataTypes.DOUBLE },
         debtLimit: { type: sequelize_1.DataTypes.DOUBLE },
-        timePayment: { type: sequelize_1.DataTypes.DATE },
+        timePayment: { type: sequelize_1.DataTypes.DATE, allowNull: false },
         paymentType: { type: sequelize_1.DataTypes.ENUM("daily", "monthly"), allowNull: false },
         closingDate: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
         //FK

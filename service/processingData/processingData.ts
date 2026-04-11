@@ -14,7 +14,7 @@ export const parseOrderData = (buffer: any) => {
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rawData = xlsx.utils.sheet_to_json(sheet, { defval: null });
 
-  // console.log(rawData[0]);
+  // console.log(rawData[5]);
 
   // Nó sẽ xóa \n và trim khoảng trắng để "Số \nĐơn Hàng" thành "Số Đơn Hàng"
   const cleanData = (rawData as any[]).map((row: any) => {
@@ -73,12 +73,15 @@ export const parseOrderData = (buffer: any) => {
       matC: null,
       songE: null,
       matE: null,
+      songE2: null, // Dự phòng nếu có 2 sóng E
     };
 
-    if (parts.length >= 2) {
-      const fluteInfo = parts[1];
+    for (let i = 1; i < parts.length; i += 2) {
+      const fluteInfo = parts[i];
+      if (!fluteInfo) continue;
+
       const fluteType = fluteInfo.charAt(0).toUpperCase();
-      const nextLayer = parts[2] ? parts[2].split(" ")[0] : null;
+      const nextLayer = parts[i + 1] ? parts[i + 1].split(" ")[0] : null;
 
       if (fluteType === "B") {
         structure.songB = fluteInfo;
@@ -87,8 +90,13 @@ export const parseOrderData = (buffer: any) => {
         structure.songC = fluteInfo;
         structure.matC = nextLayer;
       } else if (fluteType === "E") {
-        structure.songE = fluteInfo;
-        structure.matE = nextLayer;
+        // Nếu đã có sóng E rồi thì nhét vào E2, chưa có thì nhét vào E
+        if (structure.songE) {
+          structure.songE2 = fluteInfo;
+        } else {
+          structure.songE = fluteInfo;
+          structure.matE = nextLayer;
+        }
       }
     }
 
@@ -197,7 +205,7 @@ export const parseCustomerData = (buffer: any) => {
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rawData = xlsx.utils.sheet_to_json(sheet, { defval: null });
 
-  console.log(rawData[0]);
+  // console.log(rawData[0]);
 
   return rawData.map((row: any, index: number) => {
     return {
@@ -232,7 +240,7 @@ export const parseProductData = (buffer: any) => {
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rawData = xlsx.utils.sheet_to_json(sheet, { defval: null });
 
-  console.log(rawData[0]);
+  // console.log(rawData[0]);
 
   return rawData.map((row: any, index: number) => {
     return {

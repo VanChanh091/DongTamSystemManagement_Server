@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.machineMap = exports.validPermissions = exports.MACHINE_FIELD_MAP = exports.machineLabels = void 0;
+exports.MEILI_INDEX = exports.machineMap = exports.validPermissions = exports.MACHINE_FIELD_MAP = exports.machineLabels = void 0;
 const machineLabels = {
     "Máy 1350": "machine1350",
     "Máy 1900": "machine1900",
@@ -47,4 +47,19 @@ const machineMap = {
     hasDongGhim: "Máy Đóng Ghim",
 };
 exports.machineMap = machineMap;
+const MEILI_INDEX = {
+    CUSTOMERS: "customers",
+    PRODUCTS: "products",
+    ORDERS: "orders",
+    EMPLOYEES: "employees",
+    PLANNING_PAPERS: "planningPapers",
+    PLANNING_BOXES: "planningBoxes",
+    INBOUND: "inboundHistories",
+    OUTBOUNDS: "outbounds",
+    INVENTORIES: "inventories",
+    REPORT_PAPERS: "reportPapers",
+    REPORT_BOXES: "reportBoxes",
+    DASHBOARD: "dashboard",
+};
+exports.MEILI_INDEX = MEILI_INDEX;
 //# sourceMappingURL=labelFields.js.map

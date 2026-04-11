@@ -25,13 +25,25 @@ const syncFunctions = {
 router.get("/:entity", authMiddleware_1.default, async (req, res, next) => {
     try {
         const { entity } = req.params;
+        const { isDeleteAll } = req.query;
+        const isDelete = isDeleteAll === "true";
         const syncFn = syncFunctions[entity];
         if (!syncFn) {
             throw appError_1.AppError.BadRequest(`Thực thể '${entity}' không được hỗ trợ đồng bộ`, "INVALID_SYNC_ENTITY");
         }
         // Thực hiện gọi hàm sync tương ứng
-        await syncFn();
+        await syncFn(Boolean(isDelete));
         return res.status(200).json({ message: `Sync ${entity} to Meilisearch successfully` });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+router.delete("/", authMiddleware_1.default, async (req, res, next) => {
+    try {
+        const { indexName } = req.query;
+        await (0, syncMeili_1.resetMeiliIndex)(indexName);
+        return res.status(200).json({ message: `Delete ${indexName} from Meilisearch successfully` });
     }
     catch (error) {
         next(error);

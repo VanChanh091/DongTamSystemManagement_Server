@@ -1,4 +1,4 @@
-import { MACHINE_FIELD_MAP } from "../../assest/labelFields";
+import { MACHINE_FIELD_MAP } from "../../assets/labelFields";
 import { ReportPlanningBox } from "../../models/report/reportPlanningBox";
 import { formatterStructureOrder } from "../helper/modelHelper/orderHelpers";
 import ExcelJS from "exceljs";

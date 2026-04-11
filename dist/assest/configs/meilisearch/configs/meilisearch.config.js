@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.dashboardSettings = exports.inventorySettings = exports.outboundSettings = exports.inboundSettings = exports.reportBoxSettings = exports.reportPaperSettings = exports.planningBoxSettings = exports.planningPaperSettings = exports.ordersSettings = exports.employeesSettings = exports.productsSettings = exports.customersSettings = void 0;
+exports.dashboardSettings = exports.outboundSettings = exports.inventorySettings = exports.inboundSettings = exports.reportBoxSettings = exports.reportPaperSettings = exports.planningBoxSettings = exports.planningPaperSettings = exports.ordersSettings = exports.employeesSettings = exports.productsSettings = exports.customersSettings = void 0;
 const rule = ["words", "typo", "proximity", "attribute", "sort", "exactness"];
 //customer
 exports.customersSettings = {
@@ -53,17 +53,17 @@ exports.reportBoxSettings = {
 };
 //inbound history
 exports.inboundSettings = {
-    searchableAttributes: ["orderId", "customerName", "companyName", "productName"],
-    rankingRules: rule,
-};
-//outbound
-exports.outboundSettings = {
-    searchableAttributes: ["orderId", "outboundSlipCode", "companyName", "productName"],
+    searchableAttributes: ["orderId", "customerName", "dateInbound", "checkedBy"],
     rankingRules: rule,
 };
 //inventory
 exports.inventorySettings = {
     searchableAttributes: ["orderId", "customerName"],
+    rankingRules: rule,
+};
+//outbound
+exports.outboundSettings = {
+    searchableAttributes: ["dateOutbound", "outboundSlipCode", "customerName"],
     rankingRules: rule,
 };
 //dashboard

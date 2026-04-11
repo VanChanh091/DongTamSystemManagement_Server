@@ -9,7 +9,7 @@ const node_cron_1 = __importDefault(require("node-cron"));
 const appError_1 = require("./appError");
 const orderImage_1 = require("../models/order/orderImage");
 const sequelize_1 = require("sequelize");
-const cloudinary_config_1 = __importDefault(require("../assest/configs/connect/cloudinary.config"));
+const cloudinary_connect_1 = __importDefault(require("../assest/configs/connect/cloudinary.connect"));
 const devEnvironment = process.env.NODE_ENV !== "production";
 // Lịch chạy vào lúc 0:00 mỗi Chủ Nhật hàng tuần để xóa ảnh cũ hơn 30 ngày
 node_cron_1.default.schedule("0 0 * * 0", async () => {
@@ -30,7 +30,7 @@ node_cron_1.default.schedule("0 0 * * 0", async () => {
         if (oldImages.length === 0)
             return;
         const publicIds = oldImages.map((img) => img.publicId);
-        await cloudinary_config_1.default.api.delete_resources(publicIds);
+        await cloudinary_connect_1.default.api.delete_resources(publicIds);
         await orderImage_1.OrderImage.destroy({ where: { publicId: publicIds } });
         if (devEnvironment)
             console.log(`✅ Đã xóa ${oldImages.length} ảnh cũ`);

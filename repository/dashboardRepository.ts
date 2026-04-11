@@ -90,9 +90,7 @@ export const dashboardRepository = {
       query.limit = pageSize;
     }
 
-    const rawPapers = await PlanningPaper.findAndCountAll(query);
-
-    return rawPapers;
+    return await PlanningPaper.findAndCountAll(query);
   },
 
   getDBPlanningDetail: async (planningId: number) => {

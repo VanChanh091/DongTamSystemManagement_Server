@@ -1,6 +1,8 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { OutboundDetail } from "./outboundDetail";
 
+export type statusOutbound = "paid" | "unpaid" | "partial";
+
 //định nghĩa trường trong bảng
 interface OutboundHistoryAttributes {
   outboundId: number;
@@ -10,6 +12,11 @@ interface OutboundHistoryAttributes {
   totalPriceVAT?: number;
   totalPricePayment: number;
   totalOutboundQty: number;
+  dueDate: Date;
+  paidAmount?: number;
+  remainingAmount?: number;
+  status: statusOutbound;
+
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -32,6 +39,11 @@ export class OutboundHistory
   declare totalPriceVAT?: number;
   declare totalPricePayment: number;
   declare totalOutboundQty: number;
+  declare dueDate: Date;
+  declare paidAmount?: number;
+  declare remainingAmount?: number;
+  declare status: statusOutbound;
+
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
 
@@ -49,6 +61,14 @@ export function initOutboundHistoryModel(sequelize: Sequelize): typeof OutboundH
       totalPriceVAT: { type: DataTypes.DOUBLE },
       totalPricePayment: { type: DataTypes.DOUBLE, allowNull: false },
       totalOutboundQty: { type: DataTypes.INTEGER, allowNull: false },
+      dueDate: { type: DataTypes.DATE, allowNull: false }, //thời hạn thanh toán PXK
+      paidAmount: { type: DataTypes.DOUBLE }, //số tiền đã thanh toán
+      remainingAmount: { type: DataTypes.DOUBLE }, //số tiền còn lại phải thanh toán
+      status: {
+        type: DataTypes.ENUM("paid", "unpaid", "partial"),
+        defaultValue: "unpaid",
+        allowNull: false,
+      },
     },
     {
       sequelize,

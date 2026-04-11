@@ -37,7 +37,6 @@ function initReportPlanningBoxModel(sequelize) {
             { fields: ["planningBoxId"] },
             //indexes
             { fields: ["dayReport"] },
-            { fields: ["shiftManagement"] },
             { fields: ["machine"] },
         ],
     });

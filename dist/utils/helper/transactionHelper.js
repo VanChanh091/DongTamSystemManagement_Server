@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runInTransaction = void 0;
-const database_config_1 = require("../../assest/configs/connect/database.config");
+const database_connect_1 = require("../../assest/configs/connect/database.connect");
 const runInTransaction = async (fn) => {
-    const t = await database_config_1.sequelize.transaction();
+    const t = await database_connect_1.sequelize.transaction();
     try {
         const result = await fn(t);
         await t.commit();

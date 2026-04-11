@@ -1,14 +1,14 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import redisCache from "../assest/configs/connect/redis.config";
+import redisCache from "../assets/configs/connect/redis.connect";
 import { Op, Transaction } from "sequelize";
 import { CacheManager } from "../utils/helper/cache/cacheManager";
 import { AppError } from "../utils/appError";
 import { PlanningPaper } from "../models/planning/planningPaper";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
-import { machineLabels, MEILI_INDEX } from "../assest/labelFields";
+import { machineLabels, MEILI_INDEX } from "../assets/labelFields";
 import { planningHelper } from "../repository/planning/planningHelper";
 import { PlanningBox } from "../models/planning/planningBox";
 import { Order } from "../models/order/order";
@@ -24,7 +24,7 @@ import { aggregateReportFields } from "../utils/helper/modelHelper/manufactureHe
 import { manufactureRepo } from "../repository/manufactureRepository";
 import { meiliService } from "./meiliService";
 import { reportRepository } from "../repository/reportRepository";
-import { meiliTransformer } from "../assest/configs/meilisearch/meiliTransformer";
+import { meiliTransformer } from "../assets/configs/meilisearch/meiliTransformer";
 import { planningBoxRepository } from "../repository/planning/planningBoxRepository";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
