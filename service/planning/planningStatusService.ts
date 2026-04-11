@@ -22,6 +22,7 @@ import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransfor
 import { PlanningPaper, planningPaperStatus } from "../../models/planning/planningPaper";
 import { planningStatusRepository } from "../../repository/planning/planningStatusRepository";
 import { planningPaperRepository } from "../../repository/planning/planningPaperRepository";
+import { planningBoxRepository } from "../../repository/planning/planningBoxRepository";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { stop, order } = CacheKey.planning;
@@ -283,7 +284,7 @@ export const planningStatusService = {
 
         let boxPlan = null;
 
-        // 8) Nếu đơn hàng có làm thùng, tạo thêm kế hoạch lam-thung (waiting)
+        // 8) Nếu đơn hàng có làm thùng, tạo thêm kế hoạch làm thùng
         const box = order.box;
         if (order.isBox) {
           boxPlan = await planningHelper.createData({
@@ -333,14 +334,32 @@ export const planningStatusService = {
         }
 
         //--------------------MEILISEARCH-----------------------
-        const dataCreated = await planningPaperRepository.syncPaperFromOrderToMeili(
+        const paperToSync = await planningPaperRepository.syncPaperFromOrderToMeili(
           paperPlan.planningId,
           transaction,
         );
 
-        if (dataCreated) {
-          const flatData = meiliTransformer.planningPaper(dataCreated);
-          meiliService.syncMeiliData(MEILI_INDEX.PLANNING_PAPERS, flatData);
+        if (paperToSync) {
+          const flatPaperData = meiliTransformer.planningPaper(paperToSync);
+          await meiliService.syncOrUpdateMeiliData({
+            indexKey: MEILI_INDEX.PLANNING_PAPERS,
+            data: flatPaperData,
+            transaction,
+          });
+
+          if (order.isBox) {
+            const boxToSync = await planningBoxRepository.syncPlanningBoxByPlanningId(
+              paperToSync.planningId,
+              transaction,
+            );
+
+            const flatBoxData = meiliTransformer.planningBox(boxToSync);
+            await meiliService.syncOrUpdateMeiliData({
+              indexKey: MEILI_INDEX.PLANNING_BOXES,
+              data: flatBoxData,
+              transaction,
+            });
+          }
         }
 
         return {
@@ -380,9 +399,11 @@ export const planningStatusService = {
         await order.update({ status: "reject" }, { transaction });
 
         //--------------------MEILISEARCH-----------------------
-        meiliService.syncMeiliData(MEILI_INDEX.ORDERS, {
-          orderSortValue: order.orderSortValue,
-          status: "reject",
+        await meiliService.syncOrUpdateMeiliData({
+          indexKey: MEILI_INDEX.ORDERS,
+          data: { orderSortValue: order.orderSortValue, status: "reject" },
+          transaction,
+          isUpdate: true,
         });
 
         //socket
@@ -475,29 +496,36 @@ export const planningStatusService = {
     action: planningPaperStatus;
   }) => {
     try {
-      const ids = Array.isArray(planningId) ? planningId : [planningId];
+      return await runInTransaction(async (transaction) => {
+        const ids = Array.isArray(planningId) ? planningId : [planningId];
 
-      const plannings = await planningStatusRepository.getStopByIds(ids);
-      if (plannings.length == 0) {
-        throw AppError.BadRequest("planning not found", "PLANNING_NOT_FOUND");
-      }
+        const plannings = await planningStatusRepository.getStopByIds(ids);
+        if (plannings.length == 0) {
+          throw AppError.BadRequest("planning not found", "PLANNING_NOT_FOUND");
+        }
 
-      const planningUpdated = await planningStatusRepository.updateStatusPlanning({
-        planningIds: ids,
-        action: action,
+        const planningUpdated = await planningStatusRepository.updateStatusPlanning({
+          planningIds: ids,
+          action: action,
+        });
+
+        //--------------------MEILISEARCH-----------------------
+        if (planningUpdated.length > 0) {
+          const dataForMeili = planningUpdated.map((p: any) => ({
+            planningId: p.planningId,
+            status: action,
+          }));
+
+          await meiliService.syncOrUpdateMeiliData({
+            indexKey: MEILI_INDEX.PLANNING_PAPERS,
+            data: dataForMeili,
+            transaction,
+            isUpdate: true,
+          });
+        }
+
+        return { message: "planning updated successfully" };
       });
-
-      //--------------------MEILISEARCH-----------------------
-      if (planningUpdated.length > 0) {
-        const dataForMeili = planningUpdated.map((p: any) => ({
-          planningId: p.planningId,
-          status: action,
-        }));
-
-        meiliService.syncMeiliData(MEILI_INDEX.PLANNING_PAPERS, dataForMeili);
-      }
-
-      return { message: "planning updated successfully" };
     } catch (error) {
       console.error("error to cancel or continue planning stop:", error);
       if (error instanceof AppError) throw error;

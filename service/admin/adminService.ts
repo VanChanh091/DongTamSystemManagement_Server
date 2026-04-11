@@ -12,6 +12,9 @@ import { adminRepository } from "../../repository/adminRepository";
 import { getCloudinaryPublicId } from "../../utils/image/converToWebp";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import cloudinary from "../../assets/configs/connect/cloudinary.connect";
+import { Inventory } from "../../models/warehouse/inventory";
+import { warehouseRepository } from "../../repository/warehouseRepository";
+import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 
@@ -180,21 +183,49 @@ export const adminService = {
           // await customer.update({ debtCurrent: newDebt });
 
           //check type product
+
+          const phiKhac = order.Product.typeProduct == "Phí Khác";
+
           order.set({
-            status: order.Product.typeProduct == "Phí Khác" ? "planning" : newStatus,
+            status: phiKhac ? "planning" : newStatus,
             rejectReason: null,
           });
+
+          if (phiKhac) {
+            await Inventory.create(
+              {
+                totalQtyInbound: order.quantityCustomer,
+                qtyInventory: order.quantityCustomer,
+                valueInventory: order.totalPrice,
+                orderId,
+              },
+              { transaction },
+            );
+
+            const inventory = await warehouseRepository.syncInventory(orderId, transaction);
+
+            if (inventory) {
+              const flattenData = meiliTransformer.inventory(inventory);
+              await meiliService.syncOrUpdateMeiliData({
+                indexKey: MEILI_INDEX.INVENTORIES,
+                data: flattenData,
+                transaction,
+              });
+            }
+          }
         }
 
         await order.save({ transaction });
 
         //--------------------MEILISEARCH-----------------------
-        meiliService.syncMeiliData(MEILI_INDEX.ORDERS, {
-          orderSortValue: order.orderSortValue,
-          status: newStatus,
+        await meiliService.syncOrUpdateMeiliData({
+          indexKey: MEILI_INDEX.ORDERS,
+          data: { orderSortValue: order.orderSortValue, status: newStatus },
+          transaction,
+          isUpdate: true,
         });
 
-        //socket
+        //-------------------- SOCKET -----------------------
         const ownerId = order.userId;
         const badgeCount = await Order.count({ where: { status: "reject", userId: ownerId } });
 

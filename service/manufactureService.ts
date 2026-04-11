@@ -405,16 +405,25 @@ export const manufactureService = {
 
   syncPaperForMeili: async (reportId: number, planningData: any, transaction: Transaction) => {
     try {
-      meiliService.syncMeiliData(MEILI_INDEX.PLANNING_PAPERS, {
-        planningId: planningData.planningId,
-        status: planningData.status,
+      await meiliService.syncOrUpdateMeiliData({
+        indexKey: MEILI_INDEX.PLANNING_PAPERS,
+        data: {
+          planningId: planningData.planningId,
+          status: planningData.status,
+        },
+        transaction,
+        isUpdate: true,
       });
 
       const addReportData = await reportRepository.syncReportPaperForMeili(reportId, transaction);
 
       if (addReportData) {
         const flattenedReport = meiliTransformer.reportPaper(addReportData);
-        meiliService.syncMeiliData(MEILI_INDEX.REPORT_PAPERS, flattenedReport);
+        await meiliService.syncOrUpdateMeiliData({
+          indexKey: MEILI_INDEX.REPORT_PAPERS,
+          data: flattenedReport,
+          transaction,
+        });
       }
     } catch (error) {
       console.error("Error update meilisearch paper box:", error);
@@ -481,9 +490,11 @@ export const manufactureService = {
         });
 
         //--------------------MEILISEARCH-----------------------
-        meiliService.syncMeiliData(MEILI_INDEX.PLANNING_PAPERS, {
-          planningId: planning.planningId,
-          status: "producing",
+        await meiliService.syncOrUpdateMeiliData({
+          indexKey: MEILI_INDEX.PLANNING_PAPERS,
+          data: { planningId: planning.planningId, status: "producing" },
+          transaction,
+          isUpdate: true,
         });
 
         return { message: "Confirm producing paper successfully", data: planning };
@@ -828,7 +839,11 @@ export const manufactureService = {
 
       if (fullBox && fullBox.length > 0) {
         const flattenData = fullBox.map(meiliTransformer.planningBox);
-        meiliService.syncMeiliData(MEILI_INDEX.PLANNING_BOXES, flattenData);
+        await meiliService.syncOrUpdateMeiliData({
+          indexKey: MEILI_INDEX.PLANNING_BOXES,
+          data: flattenData,
+          transaction,
+        });
       }
 
       //update report
@@ -839,7 +854,11 @@ export const manufactureService = {
 
       if (updateReportData) {
         const flattenedReport = meiliTransformer.reportBox(updateReportData);
-        meiliService.syncMeiliData(MEILI_INDEX.REPORT_BOXES, flattenedReport);
+        await meiliService.syncOrUpdateMeiliData({
+          indexKey: MEILI_INDEX.REPORT_BOXES,
+          data: flattenedReport,
+          transaction,
+        });
       }
     } catch (error) {
       console.error("Error update meilisearch for box:", error);
@@ -902,7 +921,11 @@ export const manufactureService = {
 
         if (fullBox && fullBox.length > 0) {
           const flattenData = fullBox.map(meiliTransformer.planningBox);
-          meiliService.syncMeiliData(MEILI_INDEX.PLANNING_BOXES, flattenData);
+          await meiliService.syncOrUpdateMeiliData({
+            indexKey: MEILI_INDEX.PLANNING_BOXES,
+            data: flattenData,
+            transaction,
+          });
         }
 
         return { message: "Confirm producing box successfully", data: planning };

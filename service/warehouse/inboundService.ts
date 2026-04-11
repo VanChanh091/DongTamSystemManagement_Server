@@ -360,8 +360,16 @@ export const inboundService = {
       const flattenInbound = meiliTransformer.inbound(inbound);
       const flattenInventory = meiliTransformer.inventory(inventory);
 
-      meiliService.syncMeiliData(MEILI_INDEX.INBOUND, flattenInbound);
-      meiliService.syncMeiliData(MEILI_INDEX.INVENTORIES, flattenInventory);
+      await meiliService.syncOrUpdateMeiliData({
+        indexKey: MEILI_INDEX.INBOUND,
+        data: flattenInbound,
+        transaction,
+      });
+      await meiliService.syncOrUpdateMeiliData({
+        indexKey: MEILI_INDEX.INVENTORIES,
+        data: flattenInventory,
+        transaction,
+      });
     } catch (error) {
       console.error("Error sync inbound & inventory box:", error);
       throw AppError.ServerError();

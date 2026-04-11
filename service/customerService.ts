@@ -179,14 +179,7 @@ export const customerService = {
         });
 
         //--------------------MEILISEARCH-----------------------
-        const customerCreated = await customerRepository.findCustomerForMeili(
-          newCustomerId,
-          transaction,
-        );
-
-        if (customerCreated) {
-          meiliService.syncMeiliData(MEILI_INDEX.CUSTOMERS, customerCreated.toJSON());
-        }
+        await customerService.syncCustomerForMeili(newCustomerId, transaction);
 
         return { message: "Customer created successfully", data: newCustomer };
       });
@@ -220,19 +213,30 @@ export const customerService = {
         });
 
         //--------------------MEILISEARCH-----------------------
-        const customerUpdated = await customerRepository.findCustomerForMeili(
-          customerId,
-          transaction,
-        );
-
-        if (customerUpdated) {
-          meiliService.syncMeiliData(MEILI_INDEX.CUSTOMERS, customerUpdated.toJSON());
-        }
+        const customerUpdated = await customerService.syncCustomerForMeili(customerId, transaction);
 
         return { message: "Customer updated successfully", data: customerUpdated };
       });
     } catch (error) {
       console.error("❌ Update customer failed:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  syncCustomerForMeili: async (customerId: string, transaction: any) => {
+    try {
+      const customer = await customerRepository.findCustomerForMeili(customerId, transaction);
+
+      if (customer) {
+        await meiliService.syncOrUpdateMeiliData({
+          indexKey: MEILI_INDEX.CUSTOMERS,
+          data: customer.toJSON(),
+          transaction,
+        });
+      }
+    } catch (error) {
+      console.error("❌ sync customer failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
@@ -262,7 +266,7 @@ export const customerService = {
         await customer.destroy({ transaction });
 
         //--------------------MEILISEARCH-----------------------
-        meiliService.deleteMeiliData(MEILI_INDEX.CUSTOMERS, customerId);
+        await meiliService.deleteMeiliData(MEILI_INDEX.CUSTOMERS, customerId, transaction);
 
         return { message: "Customer deleted successfully" };
       });

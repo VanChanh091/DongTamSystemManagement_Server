@@ -5,7 +5,6 @@ import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning
 import { Order } from "../../models/order/order";
 import { Customer } from "../../models/customer/customer";
 import { Box } from "../../models/order/box";
-import { PlanningPaper } from "../../models/planning/planningPaper";
 
 export const planningBoxRepository = {
   getAllPlanningBox: async ({
@@ -36,12 +35,14 @@ export const planningBoxRepository = {
           model: PlanningBoxTime,
           where: { machine: machine },
           as: "boxTimes",
+          required: true,
           attributes: { exclude: ["createdAt", "updatedAt"] },
         },
         {
           model: PlanningBoxTime,
           as: "allBoxTimes",
           where: { machine: { [Op.ne]: machine } },
+          required: false,
           attributes: {
             exclude: [
               "timeRunning",
@@ -199,6 +200,26 @@ export const planningBoxRepository = {
   }) => {
     return await PlanningBox.findAll({
       where: whereCondition,
+      attributes: ["planningBoxId"],
+      include: [
+        {
+          model: PlanningBoxTime,
+          as: "boxTimes",
+          attributes: { exclude: ["createdAt", "updatedAt"] },
+        },
+        {
+          model: Order,
+          attributes: ["orderId", "QC_box"],
+          include: [{ model: Customer, attributes: ["customerName"] }],
+        },
+      ],
+      transaction,
+    });
+  },
+
+  syncPlanningBoxByPlanningId: async (planningId: number, transaction: any) => {
+    return await PlanningBox.findOne({
+      where: { planningId },
       attributes: ["planningBoxId"],
       include: [
         {

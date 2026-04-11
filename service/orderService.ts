@@ -290,9 +290,15 @@ export const orderService = {
         //--------------------MEILISEARCH-----------------------
         const orderCreated = await orderRepository.findOrderForMeili(newOrderId, transaction);
 
+        console.log(orderCreated);
+
         if (orderCreated) {
           const flattenData = meiliTransformer.order(orderCreated);
-          meiliService.syncMeiliData(MEILI_INDEX.ORDERS, flattenData);
+          await meiliService.syncOrUpdateMeiliData({
+            indexKey: MEILI_INDEX.ORDERS,
+            data: flattenData,
+            transaction,
+          });
         }
 
         return { order: newOrder, orderId: newOrderId };
@@ -370,9 +376,15 @@ export const orderService = {
         //--------------------MEILISEARCH-----------------------
         const orderUpdated = await orderRepository.findOrderForMeili(orderId, transaction);
 
+        console.log(orderUpdated);
+
         if (orderUpdated) {
           const flattenData = meiliTransformer.order(orderUpdated);
-          meiliService.syncMeiliData(MEILI_INDEX.ORDERS, flattenData);
+          await meiliService.syncOrUpdateMeiliData({
+            indexKey: MEILI_INDEX.ORDERS,
+            data: flattenData,
+            transaction,
+          });
         }
 
         return { message: "Order updated successfully", data: order };
@@ -399,7 +411,7 @@ export const orderService = {
         await order.destroy({ transaction });
 
         //--------------------MEILISEARCH-----------------------
-        meiliService.deleteMeiliData(MEILI_INDEX.ORDERS, orderValue);
+        await meiliService.deleteMeiliData(MEILI_INDEX.ORDERS, orderValue, transaction);
 
         return { message: "Order deleted successfully" };
       });

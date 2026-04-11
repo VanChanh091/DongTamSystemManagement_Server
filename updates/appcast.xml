@@ -3,12 +3,14 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.0.0</title>
-            <sparkle:version>4.0.0</sparkle:version> 
-            <description>Thêm hiển thị số lượng cho đơn chờ xếp giao và lệnh xuất kho 
-            Thêm thông báo khi có lệnh yêu cầu xuất kho mới
-            Tách bảng khách hàng thành 2 phần: thông tin khách hàng và thanh toán
-            Cải thiện hiệu suất tìm kiếm dữ liệu bằng meilisearch
+            <title>Version 4.0.1</title>
+            <sparkle:version>4.0.1</sparkle:version> 
+            <description>Thêm hướng dẫn đặc biệt vào duyệt đơn
+            Thêm lọc đơn chờ đăng ký giao giữa tất cả và mỗi sale
+            Cho phép copy và dán ảnh vào đơn hàng
+            Thêm icon thể hiện trùng mã đơn hàng ở trang kế hoạch giao hàng
+            Sửa các đơn tràn giờ nhảy sai ngày
+            Khi duyệt các đơn là phí khác khi duyệt sẽ tự động lưu tồn kho
             </description>
             <pubDate>Wed, 1 April 2026</pubDate>
             <enclosure url="dongtam.exe" 

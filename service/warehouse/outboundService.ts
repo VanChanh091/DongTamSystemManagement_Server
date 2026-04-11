@@ -521,8 +521,11 @@ export const outboundService = {
       const outboundData = await warehouseRepository.getOutboundForMeili(outboundId, transaction);
 
       const meiliFormatted = meiliTransformer.outbound(outboundData);
-      console.log(meiliFormatted);
-      meiliService.syncMeiliData(MEILI_INDEX.OUTBOUNDS, meiliFormatted);
+      await meiliService.syncOrUpdateMeiliData({
+        indexKey: MEILI_INDEX.OUTBOUNDS,
+        data: meiliFormatted,
+        transaction,
+      });
     } catch (error) {
       console.log("err to sync data outbound: ", error);
       throw AppError.ServerError();
@@ -569,7 +572,7 @@ export const outboundService = {
         await outbound.destroy({ transaction });
 
         //--------------------MEILISEARCH-----------------------
-        meiliService.deleteMeiliData(MEILI_INDEX.OUTBOUNDS, outboundId);
+        await meiliService.deleteMeiliData(MEILI_INDEX.OUTBOUNDS, outboundId, transaction);
 
         return { message: "Hủy phiếu xuất kho thành công" };
       });

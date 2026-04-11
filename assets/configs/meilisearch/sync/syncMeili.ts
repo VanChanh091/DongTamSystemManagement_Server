@@ -84,7 +84,7 @@ export const syncCustomerToMeili = async (isDeleteAll: boolean) => {
     order: [["customerSeq", "ASC"]],
   });
 
-  return syncMeiliData({
+  return await syncMeiliData({
     data: customers,
     indexName: "customers",
     displayName: "customers",
@@ -97,7 +97,7 @@ export const syncCustomerToMeili = async (isDeleteAll: boolean) => {
 export const syncProductToMeili = async (isDeleteAll: boolean) => {
   const { rows } = await productRepository.findProductByPage({});
 
-  return syncMeiliData({
+  return await syncMeiliData({
     data: rows,
     indexName: "products",
     displayName: "products",
@@ -122,7 +122,7 @@ export const syncEmployeeToMeili = async (isDeleteAll: boolean) => {
 
   const flattenData = employees.map(meiliTransformer.employee);
 
-  return syncMeiliData({
+  return await syncMeiliData({
     data: flattenData,
     indexName: "employees",
     displayName: "employees",
@@ -143,7 +143,7 @@ export const syncOrderToMeili = async (isDeleteAll: boolean) => {
 
   const flattenData = orders.map(meiliTransformer.order);
 
-  return syncMeiliData({
+  return await syncMeiliData({
     data: flattenData,
     indexName: "orders",
     displayName: "orders",
@@ -169,7 +169,7 @@ export const syncPlanningPaperToMeili = async (isDeleteAll: boolean) => {
 
   const flattenData = papers.map(meiliTransformer.planningPaper);
 
-  return syncMeiliData({
+  return await syncMeiliData({
     data: flattenData,
     indexName: "planningPapers",
     displayName: "planningPapers",
@@ -182,7 +182,7 @@ export const syncPlanningBoxToMeili = async (isDeleteAll: boolean) => {
   const boxes = await planningBoxRepository.syncPlanningBoxToMeili({});
   const flattenData = boxes.map(meiliTransformer.planningBox);
 
-  return syncMeiliData({
+  return await syncMeiliData({
     data: flattenData,
     indexName: "planningBoxes",
     displayName: "planningBoxes",
@@ -207,7 +207,7 @@ export const syncInboundToMeili = async (isDeleteAll: boolean) => {
 
   const flattenData = inbounds.map(meiliTransformer.inbound);
 
-  return syncMeiliData({
+  return await syncMeiliData({
     data: flattenData,
     indexName: "inboundHistories",
     displayName: "inboundHistories",
@@ -237,7 +237,7 @@ export const syncOutboundToMeili = async (isDeleteAll: boolean) => {
 
   const flattenData = outbounds.map(meiliTransformer.outbound);
 
-  return syncMeiliData({
+  return await syncMeiliData({
     data: flattenData,
     indexName: "outbounds",
     displayName: "outbounds",
@@ -261,7 +261,7 @@ export const syncInventoryToMeili = async (isDeleteAll: boolean) => {
 
   const flattenData = inventories.map(meiliTransformer.inventory);
 
-  return syncMeiliData({
+  return await syncMeiliData({
     data: flattenData,
     indexName: "inventories",
     displayName: "inventories",
@@ -293,7 +293,7 @@ export const syncReportPaperToMeili = async (isDeleteAll: boolean) => {
 
   console.log(flattenData[0]);
 
-  return syncMeiliData({
+  return await syncMeiliData({
     data: flattenData,
     indexName: "reportPapers",
     displayName: "reportPapers",
@@ -322,9 +322,9 @@ export const syncReportBoxToMeili = async (isDeleteAll: boolean) => {
 
   const flattenData = boxes.map(meiliTransformer.reportBox);
 
-  console.log(flattenData[0]);
+  // console.log(flattenData[0]);
 
-  return syncMeiliData({
+  return await syncMeiliData({
     data: flattenData,
     indexName: "reportBoxes",
     displayName: "reportBoxes",
@@ -351,7 +351,7 @@ export const syncDashboardToMeili = async (isDeleteAll: boolean) => {
 
   const flattenData = dashboard.map(meiliTransformer.dashboard);
 
-  return syncMeiliData({
+  return await syncMeiliData({
     data: flattenData,
     indexName: "dashboard",
     displayName: "dashboard",

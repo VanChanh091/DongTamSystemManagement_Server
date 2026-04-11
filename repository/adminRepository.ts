@@ -76,6 +76,7 @@ export const adminRepository = {
         "customerId",
         "productId",
         "userId",
+        "quantityCustomer",
         "orderSortValue",
       ],
       include: [

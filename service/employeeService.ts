@@ -185,14 +185,7 @@ export const employeeService = {
         });
 
         //--------------------MEILISEARCH-----------------------
-        const createdEmployee = await employeeRepository.findEmployeeForMeili(
-          employeeId,
-          transaction,
-        );
-
-        if (createdEmployee) {
-          meiliService.syncMeiliData(MEILI_INDEX.EMPLOYEES, createdEmployee.toJSON());
-        }
+        await employeeService.syncEmployeeForMeili(employeeId, transaction);
 
         return { message: "create new employee successfully" };
       });
@@ -228,18 +221,32 @@ export const employeeService = {
 
         //--------------------MEILISEARCH-----------------------
         const updatedEmployee = await employeeRepository.findEmployeeForMeili(
-          result.employeeId,
+          employeeId,
           transaction,
         );
-
-        if (updatedEmployee) {
-          meiliService.syncMeiliData(MEILI_INDEX.EMPLOYEES, updatedEmployee.toJSON());
-        }
 
         return { message: "Cập nhật nhân viên thành công", data: updatedEmployee };
       });
     } catch (error) {
       console.error("updated employees failed:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  syncEmployeeForMeili: async (employeeId: number, transaction: any) => {
+    try {
+      const employee = await employeeRepository.findEmployeeForMeili(employeeId, transaction);
+
+      if (employee) {
+        await meiliService.syncOrUpdateMeiliData({
+          indexKey: MEILI_INDEX.EMPLOYEES,
+          data: employee.toJSON(),
+          transaction,
+        });
+      }
+    } catch (error) {
+      console.error("❌ sync employee failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
@@ -257,7 +264,7 @@ export const employeeService = {
         await employee.destroy({ transaction });
 
         //--------------------MEILISEARCH-----------------------
-        meiliService.deleteMeiliData(MEILI_INDEX.EMPLOYEES, employeeId);
+        await meiliService.deleteMeiliData(MEILI_INDEX.EMPLOYEES, employeeId, transaction);
 
         return { message: "delete employee successfully" };
       });

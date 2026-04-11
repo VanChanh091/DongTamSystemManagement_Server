@@ -158,11 +158,7 @@ export const productService = {
         );
 
         //--------------------MEILISEARCH-----------------------
-        const productCreated = await productRepository.findProductByPk(newProductId, transaction);
-
-        if (productCreated) {
-          meiliService.syncMeiliData(MEILI_INDEX.PRODUCTS, productCreated.toJSON());
-        }
+        await productService.syncProductForMeili(newProductId, transaction);
 
         return { message: "Product created successfully", data: newProduct };
       });
@@ -201,16 +197,30 @@ export const productService = {
         );
 
         //--------------------MEILISEARCH-----------------------
-        const productUpdated = await productRepository.findProductByPk(producId, transaction);
-
-        if (productUpdated) {
-          meiliService.syncMeiliData(MEILI_INDEX.PRODUCTS, productUpdated.toJSON());
-        }
+        const productUpdated = await productService.syncProductForMeili(producId, transaction);
 
         return { message: "Product updated successfully", data: result };
       });
     } catch (error) {
       console.error("❌ Update product error:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  syncProductForMeili: async (producId: string, transaction: any) => {
+    try {
+      const product = await productRepository.findProductByPk(producId, transaction);
+
+      if (product) {
+        await meiliService.syncOrUpdateMeiliData({
+          indexKey: MEILI_INDEX.PRODUCTS,
+          data: product.toJSON(),
+          transaction,
+        });
+      }
+    } catch (error) {
+      console.error("❌ sync product failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
@@ -245,7 +255,7 @@ export const productService = {
         await product.destroy();
 
         //--------------------MEILISEARCH-----------------------
-        meiliService.deleteMeiliData(MEILI_INDEX.PRODUCTS, productId);
+        await meiliService.deleteMeiliData(MEILI_INDEX.PRODUCTS, productId, transaction);
 
         return { message: "Product deleted successfully" };
       });

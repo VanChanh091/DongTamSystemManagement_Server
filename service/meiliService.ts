@@ -1,29 +1,65 @@
+import { Transaction } from "sequelize";
 import { meiliClient } from "../assets/configs/connect/meilisearch.connect";
 
 export const meiliService = {
-  syncMeiliData: (indexKey: string, data: any | any[]) => {
-    try {
-      const index = meiliClient.index(indexKey);
-      const documents = Array.isArray(data) ? data : [data];
+  syncOrUpdateMeiliData: async ({
+    indexKey,
+    data,
+    transaction,
+    isUpdate = false,
+  }: {
+    indexKey: string;
+    data: any | any[];
+    transaction: Transaction;
+    isUpdate?: boolean;
+  }) => {
+    const performSyncOrUpdate = async () => {
+      try {
+        const index = meiliClient.index(indexKey);
+        const documents = Array.isArray(data) ? data : [data];
 
-      // Đẩy lên Meilisearch
-      index.addDocuments(documents).catch((err) => {
-        console.error(`[Meili] Async Add Error for ${indexKey}:`, err);
+        // Đẩy lên Meilisearch
+        if (isUpdate) {
+          return await index.updateDocuments(documents);
+        }
+
+        return await index.addDocuments(documents);
+      } catch (error) {
+        console.error(`[Meili] Sync error for ${indexKey}:`, error);
+        throw error;
+      }
+    };
+
+    // Nếu có transaction, đăng ký thực hiện sau khi DB commit thành công
+    if (transaction) {
+      transaction.afterCommit(async () => {
+        await performSyncOrUpdate();
       });
-    } catch (error) {
-      console.error(`[Meili] Sync error for ${indexKey}:`, error);
+      return;
     }
+
+    return await performSyncOrUpdate();
   },
 
-  deleteMeiliData: (indexKey: string, id: number | string) => {
-    try {
-      const index = meiliClient.index(indexKey);
+  deleteMeiliData: async (indexKey: string, id: number | string, transaction?: Transaction) => {
+    const performDelete = async () => {
+      try {
+        const index = meiliClient.index(indexKey);
+        return await index.deleteDocument(id);
+      } catch (error) {
+        console.error(`[Meili] Delete error for ${indexKey}:`, error);
+        throw error;
+      }
+    };
 
-      index.deleteDocument(id).catch((err) => {
-        console.error(`[Meili] Async Delete Error for ${indexKey}:`, err);
+    // Nếu có transaction, đăng ký thực hiện sau khi DB commit thành công
+    if (transaction) {
+      transaction.afterCommit(async () => {
+        await performDelete();
       });
-    } catch (error) {
-      console.error(`[Meili] Delete error for ${indexKey}:`, error);
+      return;
     }
+
+    return await performDelete();
   },
 };

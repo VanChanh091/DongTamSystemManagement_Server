@@ -216,71 +216,77 @@ export const planningBoxService = {
 
   confirmCompletePlanningBox: async (planningBoxId: number | number[], machine: string) => {
     try {
-      const ids = Array.isArray(planningBoxId) ? planningBoxId : [planningBoxId];
+      return await runInTransaction(async (transaction) => {
+        const ids = Array.isArray(planningBoxId) ? planningBoxId : [planningBoxId];
 
-      const planningBox = await planningBoxRepository.getBoxsById({
-        planningBoxIds: ids,
-        machine,
-        options: {
-          attributes: ["runningPlan", "qtyProduced", "status", "machine"],
-          include: [
-            {
-              model: PlanningBox,
-              attributes: ["planningBoxId", "hasOverFlow", "orderId", "statusRequest"],
-            },
-          ],
-        },
-      });
-      if (planningBox.length !== ids.length) {
-        throw AppError.BadRequest("planning not found", "PLANNING_NOT_FOUND");
-      }
-
-      // Kiểm tra sl từng đơn
-      for (const box of planningBox) {
-        const { qtyProduced, runningPlan } = box;
-        if ((qtyProduced ?? 0) < (runningPlan ?? 0)) {
-          throw AppError.BadRequest("Lack quantity", "LACK_QUANTITY");
+        const planningBox = await planningBoxRepository.getBoxsById({
+          planningBoxIds: ids,
+          machine,
+          options: {
+            attributes: ["runningPlan", "qtyProduced", "status", "machine"],
+            include: [
+              {
+                model: PlanningBox,
+                attributes: ["planningBoxId", "hasOverFlow", "orderId", "statusRequest"],
+              },
+            ],
+          },
+        });
+        if (planningBox.length !== ids.length) {
+          throw AppError.BadRequest("planning not found", "PLANNING_NOT_FOUND");
         }
 
-        //check đã nhập kho chưa
-        if (box.PlanningBox.statusRequest !== "finalize") {
-          throw AppError.BadRequest(
-            `Mã đơn ${box.PlanningBox.orderId} chưa được chốt nhập kho`,
-            "PLANNING_NOT_FINALIZED",
-          );
+        // Kiểm tra sl từng đơn
+        for (const box of planningBox) {
+          const { qtyProduced, runningPlan } = box;
+          if ((qtyProduced ?? 0) < (runningPlan ?? 0)) {
+            throw AppError.BadRequest("Lack quantity", "LACK_QUANTITY");
+          }
+
+          //check đã nhập kho chưa
+          if (box.PlanningBox.statusRequest !== "finalize") {
+            throw AppError.BadRequest(
+              `Mã đơn ${box.PlanningBox.orderId} chưa được chốt nhập kho`,
+              "PLANNING_NOT_FINALIZED",
+            );
+          }
         }
-      }
 
-      //cập nhật status planning
-      await planningHelper.updateDataModel({
-        model: PlanningBoxTime,
-        data: { status: "complete" },
-        options: { where: { planningBoxId: ids } },
-      });
-
-      const overflowRows = await timeOverflowPlanning.findAll({
-        where: { planningBoxId: ids },
-      });
-
-      if (overflowRows.length) {
+        //cập nhật status planning
         await planningHelper.updateDataModel({
-          model: timeOverflowPlanning,
+          model: PlanningBoxTime,
           data: { status: "complete" },
           options: { where: { planningBoxId: ids } },
         });
-      }
 
-      //--------------------MEILISEARCH-----------------------
-      const fullBox = await planningBoxRepository.syncPlanningBoxToMeili({
-        whereCondition: { planningBoxId: { [Op.in]: ids } },
+        const overflowRows = await timeOverflowPlanning.findAll({
+          where: { planningBoxId: ids },
+        });
+
+        if (overflowRows.length) {
+          await planningHelper.updateDataModel({
+            model: timeOverflowPlanning,
+            data: { status: "complete" },
+            options: { where: { planningBoxId: ids } },
+          });
+        }
+
+        //--------------------MEILISEARCH-----------------------
+        const fullBox = await planningBoxRepository.syncPlanningBoxToMeili({
+          whereCondition: { planningBoxId: { [Op.in]: ids } },
+        });
+
+        if (fullBox.length > 0) {
+          const flattenData = fullBox.map(meiliTransformer.planningBox);
+          await meiliService.syncOrUpdateMeiliData({
+            indexKey: MEILI_INDEX.PLANNING_BOXES,
+            data: flattenData,
+            transaction,
+          });
+        }
+
+        return { message: "planning box updated successfully" };
       });
-
-      if (fullBox.length > 0) {
-        const flattenData = fullBox.map(meiliTransformer.planningBox);
-        meiliService.syncMeiliData(MEILI_INDEX.PLANNING_BOXES, flattenData);
-      }
-
-      return { message: "planning box updated successfully" };
     } catch (error) {
       console.log(`error confirm complete planning`, error);
       if (error instanceof AppError) throw error;
@@ -290,41 +296,47 @@ export const planningBoxService = {
 
   acceptLackQtyBox: async (planningBoxIds: number[], newStatus: statusBoxType, machine: string) => {
     try {
-      const plannings = await planningBoxRepository.getBoxsById({ planningBoxIds, machine });
-      if (plannings.length === 0) {
-        throw AppError.NotFound("planning not found", "PLANNING_NOT_FOUND");
-      }
-
-      for (const planning of plannings) {
-        if (planning.sortPlanning === null) {
-          throw AppError.Conflict(
-            "Cannot pause planning without sortPlanning",
-            "CANNOT_PAUSE_NO_SORT",
-          );
+      return await runInTransaction(async (transaction) => {
+        const plannings = await planningBoxRepository.getBoxsById({ planningBoxIds, machine });
+        if (plannings.length === 0) {
+          throw AppError.NotFound("planning not found", "PLANNING_NOT_FOUND");
         }
 
-        planning.status = newStatus;
+        for (const planning of plannings) {
+          if (planning.sortPlanning === null) {
+            throw AppError.Conflict(
+              "Cannot pause planning without sortPlanning",
+              "CANNOT_PAUSE_NO_SORT",
+            );
+          }
 
-        await planning.save();
+          planning.status = newStatus;
 
-        await planningHelper.updateDataModel({
-          model: timeOverflowPlanning,
-          data: { status: newStatus },
-          options: { where: { planningBoxId: planning.planningBoxId } },
+          await planning.save();
+
+          await planningHelper.updateDataModel({
+            model: timeOverflowPlanning,
+            data: { status: newStatus },
+            options: { where: { planningBoxId: planning.planningBoxId } },
+          });
+        }
+
+        //--------------------MEILISEARCH-----------------------
+        const fullBox = await planningBoxRepository.syncPlanningBoxToMeili({
+          whereCondition: { planningBoxId: { [Op.in]: planningBoxIds } },
         });
-      }
 
-      //--------------------MEILISEARCH-----------------------
-      const fullBox = await planningBoxRepository.syncPlanningBoxToMeili({
-        whereCondition: { planningBoxId: { [Op.in]: planningBoxIds } },
+        if (fullBox.length > 0) {
+          const flattenData = fullBox.map(meiliTransformer.planningBox);
+          await meiliService.syncOrUpdateMeiliData({
+            indexKey: MEILI_INDEX.PLANNING_BOXES,
+            data: flattenData,
+            transaction,
+          });
+        }
+
+        return { message: `Update status:${newStatus} successfully.` };
       });
-
-      if (fullBox.length > 0) {
-        const flattenData = fullBox.map(meiliTransformer.planningBox);
-        meiliService.syncMeiliData(MEILI_INDEX.PLANNING_BOXES, flattenData);
-      }
-
-      return { message: `Update status:${newStatus} successfully.` };
     } catch (error) {
       console.error("❌ accept lack qty failed:", error);
       if (error instanceof AppError) throw error;
