@@ -277,11 +277,31 @@ export const outboundService = {
         // Generate slip code
         const now = new Date();
 
-        const day = now.getDate().toString().padStart(2, "0");
         const month = (now.getMonth() + 1).toString().padStart(2, "0");
         const year = now.getFullYear().toString().slice(-2);
+        let number = 1;
 
-        const slipCode = `XK${year}${month}${day}`;
+        const prefix = `XKBH${year}${month}`;
+
+        const lastOutbound = await OutboundHistory.findOne({
+          where: {
+            outboundSlipCode: { [Op.like]: `${prefix}%` },
+          },
+          order: [["outboundId", "DESC"]],
+          transaction,
+        });
+
+        if (lastOutbound && lastOutbound.outboundSlipCode) {
+          const lastCode = lastOutbound.outboundSlipCode;
+          const lastNumberStr = lastCode.replace(prefix, "");
+          const lastNumber = parseInt(lastNumberStr, 10);
+
+          if (!isNaN(lastNumber)) {
+            number = lastNumber + 1;
+          }
+        }
+
+        const slipCode = `${prefix}${number.toString().padStart(4, "0")}`; //XKBH26040001
 
         // Tạo outbound
         const outbound = await planningHelper.createData({
