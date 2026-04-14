@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.notifyUpdatePlanning = exports.updateIndex_TimeRunning = exports.updatePlanningPapers = exports.getPlanningPapers = void 0;
+exports.exportExcelPlanningPaper = exports.notifyUpdatePlanning = exports.updateIndex_TimeRunning = exports.updatePlanningPapers = exports.getPlanningPapers = void 0;
 const planningPaperService_1 = require("../../../service/planning/planningPaperService");
 const appError_1 = require("../../../utils/appError");
 const getPlanningPapers = async (req, res, next) => {
@@ -94,4 +94,15 @@ const notifyUpdatePlanning = async (req, res, next) => {
     }
 };
 exports.notifyUpdatePlanning = notifyUpdatePlanning;
+const exportExcelPlanningPaper = async (req, res, next) => {
+    const { machine } = req.query;
+    try {
+        const response = await planningPaperService_1.planningPaperService.exportExcelPlanningOrder(res, machine);
+        return res.status(200).json(response);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.exportExcelPlanningPaper = exportExcelPlanningPaper;
 //# sourceMappingURL=planningPaperController.js.map

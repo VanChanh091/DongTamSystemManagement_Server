@@ -15,10 +15,10 @@ const reportPlanningBox_1 = require("../models/report/reportPlanningBox");
 const excelExporter_1 = require("../utils/helper/excelExporter");
 const reportPaperRowAndColumn_1 = require("../utils/mapping/reportPaperRowAndColumn");
 const reportBoxRowAndColumn_1 = require("../utils/mapping/reportBoxRowAndColumn");
-const redis_connect_1 = __importDefault(require("../assest/configs/connect/redis.connect"));
+const redis_connect_1 = __importDefault(require("../assets/configs/connect/redis.connect"));
 const cacheKey_1 = require("../utils/helper/cache/cacheKey");
 const normalizeVN_1 = require("../utils/helper/normalizeVN");
-const meilisearch_connect_1 = require("../assest/configs/connect/meilisearch.connect");
+const meilisearch_connect_1 = require("../assets/configs/connect/meilisearch.connect");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper, box } = cacheKey_1.CacheKey.report;
 exports.reportService = {

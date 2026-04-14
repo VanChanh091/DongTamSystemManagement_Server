@@ -28,7 +28,8 @@ import { initReportPlanningBoxModel } from "./report/reportPlanningBox";
 import { initReportPlanningPaperModel } from "./report/reportPlanningPaper";
 import { initUserModel } from "./user/user";
 import { initInboundHistoryModel } from "./warehouse/inboundHistory";
-import { initInventoryModel } from "./warehouse/inventory";
+import { initInventoryModel } from "./warehouse/inventory/inventory";
+import { initLiquidationInventoryModel } from "./warehouse/inventory/liquidationInventory";
 import { initOutboundDetailModel } from "./warehouse/outboundDetail";
 import { initOutboundHistoryModel } from "./warehouse/outboundHistory";
 
@@ -80,6 +81,7 @@ const OutboundDetail = initOutboundDetailModel(sequelize);
 
 //inventory
 const Inventory = initInventoryModel(sequelize);
+const LiquidationInv = initLiquidationInventoryModel(sequelize);
 
 //delivery
 const DeliveryRequest = initDeliveryRequestModel(sequelize);
@@ -122,7 +124,10 @@ const models = {
   InboundHistory,
   OutboundHistory,
   OutboundDetail,
+
+  //inventory
   Inventory,
+  LiquidationInv,
 
   //Delivery
   DeliveryRequest,
@@ -281,6 +286,12 @@ OutboundDetail.belongsTo(Order, { foreignKey: "orderId" });
 //===============================INVENTORY=================================
 Order.hasOne(Inventory, { foreignKey: "orderId", onDelete: "CASCADE" });
 Inventory.belongsTo(Order, { foreignKey: "orderId" });
+
+Order.hasOne(LiquidationInv, { foreignKey: "orderId", onDelete: "CASCADE" });
+LiquidationInv.belongsTo(Order, { foreignKey: "orderId" });
+
+Inventory.hasOne(LiquidationInv, { foreignKey: "inventoryId", onDelete: "CASCADE" });
+LiquidationInv.belongsTo(Inventory, { foreignKey: "inventoryId" });
 
 //===============================DELIVERY=================================
 PlanningPaper.hasOne(DeliveryRequest, { foreignKey: "planningId", onDelete: "CASCADE" });

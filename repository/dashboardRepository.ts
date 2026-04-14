@@ -6,7 +6,7 @@ import { PlanningPaper } from "../models/planning/planningPaper";
 import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
 import { Product } from "../models/product/product";
 import { User } from "../models/user/user";
-import { Inventory } from "../models/warehouse/inventory";
+import { Inventory } from "../models/warehouse/inventory/inventory";
 
 export const dashboardRepository = {
   getAllDbPlanning: async ({

@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const authMiddleware_1 = __importDefault(require("../../middlewares/authMiddleware"));
-const syncMeili_1 = require("../../assest/configs/meilisearch/sync/syncMeili");
+const syncMeili_1 = require("../../assets/configs/meilisearch/sync/syncMeili");
 const appError_1 = require("../../utils/appError");
 const router = (0, express_1.Router)();
 const syncFunctions = {

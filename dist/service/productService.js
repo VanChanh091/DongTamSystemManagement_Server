@@ -7,7 +7,7 @@ exports.productService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const sequelize_1 = require("sequelize");
-const redis_connect_1 = __importDefault(require("../assest/configs/connect/redis.connect"));
+const redis_connect_1 = __importDefault(require("../assets/configs/connect/redis.connect"));
 const order_1 = require("../models/order/order");
 const product_1 = require("../models/product/product");
 const cacheKey_1 = require("../utils/helper/cache/cacheKey");
@@ -15,13 +15,13 @@ const productRepository_1 = require("../repository/productRepository");
 const appError_1 = require("../utils/appError");
 const cacheManager_1 = require("../utils/helper/cache/cacheManager");
 const converToWebp_1 = require("../utils/image/converToWebp");
-const cloudinary_connect_1 = __importDefault(require("../assest/configs/connect/cloudinary.connect"));
+const cloudinary_connect_1 = __importDefault(require("../assets/configs/connect/cloudinary.connect"));
 const excelExporter_1 = require("../utils/helper/excelExporter");
 const productRowAndColumn_1 = require("../utils/mapping/productRowAndColumn");
 const transactionHelper_1 = require("../utils/helper/transactionHelper");
-const meilisearch_connect_1 = require("../assest/configs/connect/meilisearch.connect");
+const meilisearch_connect_1 = require("../assets/configs/connect/meilisearch.connect");
 const meiliService_1 = require("./meiliService");
-const labelFields_1 = require("../assest/labelFields");
+const labelFields_1 = require("../assets/labelFields");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { product } = cacheKey_1.CacheKey;
 exports.productService = {
@@ -125,10 +125,7 @@ exports.productService = {
                 }
                 const newProduct = await productRepository_1.productRepository.createProduct({ productId: newProductId, productSeq: nextId, ...parsedProduct }, transaction);
                 //--------------------MEILISEARCH-----------------------
-                const productCreated = await productRepository_1.productRepository.findProductByPk(newProductId, transaction);
-                if (productCreated) {
-                    meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.PRODUCTS, productCreated.toJSON());
-                }
+                await exports.productService.syncProductForMeili(newProductId, transaction);
                 return { message: "Product created successfully", data: newProduct };
             });
         }
@@ -160,15 +157,30 @@ exports.productService = {
                 }
                 const result = await productRepository_1.productRepository.updateProduct(existingProduct, productData, transaction);
                 //--------------------MEILISEARCH-----------------------
-                const productUpdated = await productRepository_1.productRepository.findProductByPk(producId, transaction);
-                if (productUpdated) {
-                    meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.PRODUCTS, productUpdated.toJSON());
-                }
+                const productUpdated = await exports.productService.syncProductForMeili(producId, transaction);
                 return { message: "Product updated successfully", data: result };
             });
         }
         catch (error) {
             console.error("❌ Update product error:", error);
+            if (error instanceof appError_1.AppError)
+                throw error;
+            throw appError_1.AppError.ServerError();
+        }
+    },
+    syncProductForMeili: async (producId, transaction) => {
+        try {
+            const product = await productRepository_1.productRepository.findProductByPk(producId, transaction);
+            if (product) {
+                await meiliService_1.meiliService.syncOrUpdateMeiliData({
+                    indexKey: labelFields_1.MEILI_INDEX.PRODUCTS,
+                    data: product.toJSON(),
+                    transaction,
+                });
+            }
+        }
+        catch (error) {
+            console.error("❌ sync product failed:", error);
             if (error instanceof appError_1.AppError)
                 throw error;
             throw appError_1.AppError.ServerError();
@@ -196,7 +208,7 @@ exports.productService = {
                 }
                 await product.destroy();
                 //--------------------MEILISEARCH-----------------------
-                meiliService_1.meiliService.deleteMeiliData(labelFields_1.MEILI_INDEX.PRODUCTS, productId);
+                await meiliService_1.meiliService.deleteMeiliData(labelFields_1.MEILI_INDEX.PRODUCTS, productId, transaction);
                 return { message: "Product deleted successfully" };
             });
         }

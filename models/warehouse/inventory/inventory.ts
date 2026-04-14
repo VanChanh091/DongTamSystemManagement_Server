@@ -1,5 +1,5 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
-import { Order } from "../order/order";
+import { Order } from "../../order/order";
 
 //định nghĩa trường trong bảng
 interface InventoryAttributes {
@@ -55,7 +55,7 @@ export function initInventoryModel(sequelize: Sequelize): typeof Inventory {
       valueInventory: { type: DataTypes.DOUBLE, allowNull: false, defaultValue: 0 },
 
       //FK
-      orderId: { type: DataTypes.STRING, allowNull: false, unique: true },
+      orderId: { type: DataTypes.STRING, allowNull: false },
     },
     {
       sequelize,
@@ -63,7 +63,7 @@ export function initInventoryModel(sequelize: Sequelize): typeof Inventory {
       timestamps: true,
       indexes: [
         //FK
-        { unique: true, fields: ["orderId"] },
+        { fields: ["orderId"] },
 
         //indexes
         { fields: ["qtyInventory"] },

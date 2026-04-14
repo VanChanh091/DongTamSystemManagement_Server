@@ -14,7 +14,7 @@ import { dashboardRepository } from "../../repository/dashboardRepository";
 import { buildStagesDetails } from "../../utils/helper/modelHelper/planningHelper";
 import { PlanningPaper } from "../../models/planning/planningPaper";
 import { inventoryService } from "./inventoryService";
-import { Inventory } from "../../models/warehouse/inventory";
+import { Inventory } from "../../models/warehouse/inventory/inventory";
 import { Order } from "../../models/order/order";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { meiliService } from "../meiliService";
@@ -23,6 +23,7 @@ import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { Op, Transaction } from "sequelize";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
 import { MEILI_INDEX } from "../../assets/labelFields";
+import { inventoryRepository } from "../../repository/inventoryRepository";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inbound } = CacheKey.warehouse;
@@ -354,7 +355,7 @@ export const inboundService = {
     try {
       const [inbound, inventory] = await Promise.all([
         warehouseRepository.syncInbound(inboundId, transaction),
-        warehouseRepository.syncInventory(orderId, transaction),
+        inventoryRepository.syncInventory(orderId, transaction),
       ]);
 
       const flattenInbound = meiliTransformer.inbound(inbound);

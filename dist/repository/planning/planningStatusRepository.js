@@ -30,7 +30,6 @@ exports.planningStatusRepository = {
                     "paperSizeCustomer",
                     "quantityCustomer",
                     "acreage",
-                    "dvt",
                     "price",
                     "pricePaper",
                     "discount",

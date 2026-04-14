@@ -7,7 +7,7 @@ const order_1 = require("../models/order/order");
 const product_1 = require("../models/product/product");
 const sequelize_1 = require("sequelize");
 const customer_1 = require("../models/customer/customer");
-const inventory_1 = require("../models/warehouse/inventory");
+const inventory_1 = require("../models/warehouse/inventory/inventory");
 const planningBox_1 = require("../models/planning/planningBox");
 const qcSession_1 = require("../models/qualityControl/qcSession");
 const planningPaper_1 = require("../models/planning/planningPaper");
@@ -364,87 +364,6 @@ exports.warehouseRepository = {
                     ],
                 },
             ],
-        });
-    },
-    //====================================INVENTORY========================================
-    getInventoryByPage: async ({ page, pageSize, searching, }) => {
-        const whereClause = {
-            [sequelize_1.Op.and]: [{ qtyInventory: { [sequelize_1.Op.gt]: 0 } }],
-        };
-        if (searching && typeof searching === "object") {
-            whereClause[sequelize_1.Op.and].push(searching);
-        }
-        const options = {
-            where: whereClause,
-            attributes: { exclude: ["createdAt", "updatedAt"] },
-            include: [
-                {
-                    model: order_1.Order,
-                    attributes: [
-                        "orderId",
-                        "dayReceiveOrder",
-                        "flute",
-                        "day",
-                        "matE",
-                        "matB",
-                        "matC",
-                        "matE2",
-                        "songE",
-                        "songB",
-                        "songC",
-                        "songE2",
-                        "lengthPaperCustomer",
-                        "paperSizeCustomer",
-                        "quantityCustomer",
-                        "dvt",
-                        "pricePaper",
-                        "totalPrice",
-                        "vat",
-                        "totalPriceVAT",
-                    ],
-                    include: [{ model: customer_1.Customer, attributes: ["customerName"] }],
-                },
-            ],
-        };
-        if (page !== undefined && pageSize !== undefined) {
-            options.offset = (page - 1) * pageSize;
-            options.limit = pageSize;
-        }
-        return await inventory_1.Inventory.findAndCountAll(options);
-    },
-    inventoryTotals: async () => {
-        const result = await inventory_1.Inventory.findAll({
-            where: { valueInventory: { [sequelize_1.Op.gt]: 0 } },
-            attributes: [[sequelize_1.Sequelize.fn("SUM", sequelize_1.Sequelize.col("valueInventory")), "totalValueInventory"]],
-            raw: true,
-        });
-        return result[0];
-    },
-    findInventoryByOrderId: async (orderId) => {
-        return await inventory_1.Inventory.findOne({
-            where: { orderId },
-            attributes: ["qtyInventory"],
-        });
-    },
-    findByOrderId: async ({ orderId, transaction, }) => {
-        return await inventory_1.Inventory.findOne({
-            where: { orderId },
-            transaction,
-            lock: transaction.LOCK.UPDATE,
-        });
-    },
-    syncInventory: async (orderId, transaction) => {
-        return await inventory_1.Inventory.findOne({
-            where: { orderId },
-            attributes: ["inventoryId"],
-            include: [
-                {
-                    model: order_1.Order,
-                    attributes: ["orderId"],
-                    include: [{ model: customer_1.Customer, attributes: ["customerName"] }],
-                },
-            ],
-            transaction,
         });
     },
 };

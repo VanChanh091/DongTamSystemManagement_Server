@@ -37,7 +37,7 @@ import { AppError } from "./utils/appError";
 import { cleanStackTrace, sendTelegramAlert } from "./utils/telegram/telegramSending";
 
 //cron job auto delete image on Cloudinary
-import "./utils/autoDeleteImage";
+import "./utils/cronJob/autoDeleteImage";
 import { connectMeilisearch } from "./assets/configs/connect/meilisearch.connect";
 import { setupMeilisearch } from "./assets/configs/meilisearch/configs";
 

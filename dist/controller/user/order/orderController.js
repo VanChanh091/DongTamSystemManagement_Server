@@ -7,7 +7,7 @@ exports.deleteOrder = exports.updateOrder = exports.addOrder = exports.getOrderP
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const orderService_1 = require("../../../service/orderService");
-const cloudinary_connect_1 = __importDefault(require("../../../assest/configs/connect/cloudinary.connect"));
+const cloudinary_connect_1 = __importDefault(require("../../../assets/configs/connect/cloudinary.connect"));
 //===============================ORDER AUTOCOMPLETE=====================================
 const getOrderIdRaw = async (req, res, next) => {
     const { orderId } = req.query;

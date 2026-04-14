@@ -4,7 +4,7 @@ exports.notifyPrepareGoods = exports.requestOrPrepareGoods = exports.getRequestP
 const deliveryService_1 = require("../../../service/deliveryService");
 //=================================PLANNING ESTIMATE TIME=====================================
 const getPlanningEstimateTime = async (req, res, next) => {
-    const { page, pageSize, dayStart, estimateTime } = req.query;
+    const { page, pageSize, dayStart, estimateTime, all } = req.query;
     try {
         const response = await deliveryService_1.deliveryService.getPlanningEstimateTime({
             page: Number(page),
@@ -12,6 +12,7 @@ const getPlanningEstimateTime = async (req, res, next) => {
             dayStart: new Date(dayStart),
             estimateTime,
             userId: req.user.userId,
+            all,
         });
         return res.status(200).json(response);
     }

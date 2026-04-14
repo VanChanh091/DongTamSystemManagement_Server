@@ -7,7 +7,7 @@ import { meiliService } from "../meiliService";
 import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
 import { MEILI_INDEX } from "../../assets/labelFields";
-import { Inventory } from "../../models/warehouse/inventory";
+import { Inventory } from "../../models/warehouse/inventory/inventory";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { exportWarehouse } from "../../utils/helper/exportPDF";
 import redisCache from "../../assets/configs/connect/redis.connect";
@@ -18,6 +18,7 @@ import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { OutboundHistory } from "../../models/warehouse/outboundHistory";
 import { planningHelper } from "../../repository/planning/planningHelper";
 import { warehouseRepository } from "../../repository/warehouseRepository";
+import { inventoryRepository } from "../../repository/inventoryRepository";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
 
@@ -161,7 +162,7 @@ export const outboundService = {
         throw AppError.NotFound("Order not found", "ORDER_NOT_FOUND");
       }
 
-      const inventory = await warehouseRepository.findInventoryByOrderId(orderId);
+      const inventory = await inventoryRepository.findInventoryByOrderId(orderId);
 
       const remainingQty = inventory?.qtyInventory ?? 0;
 
@@ -221,7 +222,7 @@ export const outboundService = {
           }
 
           // check inventory
-          const inventory = await warehouseRepository.findByOrderId({
+          const inventory = await inventoryRepository.findByOrderId({
             orderId: item.orderId,
             transaction,
           });
@@ -246,12 +247,6 @@ export const outboundService = {
           });
 
           const deliveredQty = Number(exportedQty ?? 0);
-          // if (deliveredQty + item.outboundQty > order.quantityCustomer) {
-          //   throw AppError.BadRequest(
-          //     `Xuất vượt số lượng bán cho order ${item.orderId}`,
-          //     "OUTBOUND_QTY_EXCEED",
-          //   );
-          // }
 
           //total price for outbound detail
           const totalPriceOutbound = order.pricePaper * item.outboundQty;
@@ -388,6 +383,7 @@ export const outboundService = {
         }
 
         let customerId: string | null = null;
+        let timePayment: Date | null = null;
         let totalPriceOrder = 0;
         let totalPriceVAT = 0;
         let totalPricePayment = 0;
@@ -405,11 +401,16 @@ export const outboundService = {
           // check customer
           if (customerId === null) {
             customerId = order.customerId;
+            const customer = await customerRepository.findCusPaymentByPk(customerId, transaction);
+
+            if (customer && customer.payment) {
+              timePayment = customer.payment.timePayment;
+            }
           } else if (customerId !== order.customerId) {
             throw AppError.BadRequest("Các đơn hàng không cùng khách hàng", "CUSTOMER_MISMATCH");
           }
 
-          const inventory = await warehouseRepository.findByOrderId({
+          const inventory = await inventoryRepository.findByOrderId({
             orderId: item.orderId,
             transaction,
           });
@@ -440,12 +441,6 @@ export const outboundService = {
           });
 
           const deliveredQty = Number(exportedQty ?? 0);
-          // if (deliveredQty + item.outboundQty > order.quantityCustomer) {
-          //   throw AppError.BadRequest(
-          //     `Xuất vượt số lượng bán cho order ${item.orderId}`,
-          //     "OUTBOUND_QTY_EXCEED",
-          //   );
-          // }
 
           // cập nhật tồn kho theo delta
           if (deltaQty !== 0) {
@@ -513,6 +508,8 @@ export const outboundService = {
           }
         }
 
+        const finalDueDate = timePayment || outbound.dueDate;
+
         // Cập nhật outbound header
         await outbound.update(
           {
@@ -520,6 +517,7 @@ export const outboundService = {
             totalPriceVAT,
             totalPricePayment,
             totalOutboundQty,
+            dueDate: finalDueDate,
           },
           { transaction },
         );

@@ -16,11 +16,11 @@ const employeeCompanyInfo_1 = require("../models/employee/employeeCompanyInfo");
 const excelExporter_1 = require("../utils/helper/excelExporter");
 const employeeRowAndColumn_1 = require("../utils/mapping/employeeRowAndColumn");
 const transactionHelper_1 = require("../utils/helper/transactionHelper");
-const redis_connect_1 = __importDefault(require("../assest/configs/connect/redis.connect"));
+const redis_connect_1 = __importDefault(require("../assets/configs/connect/redis.connect"));
 const cacheKey_1 = require("../utils/helper/cache/cacheKey");
-const meilisearch_connect_1 = require("../assest/configs/connect/meilisearch.connect");
+const meilisearch_connect_1 = require("../assets/configs/connect/meilisearch.connect");
 const meiliService_1 = require("./meiliService");
-const labelFields_1 = require("../assest/labelFields");
+const labelFields_1 = require("../assets/labelFields");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { employee } = cacheKey_1.CacheKey;
 exports.employeeService = {
@@ -154,10 +154,7 @@ exports.employeeService = {
                     transaction,
                 });
                 //--------------------MEILISEARCH-----------------------
-                const createdEmployee = await employeeRepository_1.employeeRepository.findEmployeeForMeili(employeeId, transaction);
-                if (createdEmployee) {
-                    meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.EMPLOYEES, createdEmployee.toJSON());
-                }
+                await exports.employeeService.syncEmployeeForMeili(employeeId, transaction);
                 return { message: "create new employee successfully" };
             });
         }
@@ -188,15 +185,30 @@ exports.employeeService = {
                     transaction,
                 });
                 //--------------------MEILISEARCH-----------------------
-                const updatedEmployee = await employeeRepository_1.employeeRepository.findEmployeeForMeili(result.employeeId, transaction);
-                if (updatedEmployee) {
-                    meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.EMPLOYEES, updatedEmployee.toJSON());
-                }
+                const updatedEmployee = await employeeRepository_1.employeeRepository.findEmployeeForMeili(employeeId, transaction);
                 return { message: "Cập nhật nhân viên thành công", data: updatedEmployee };
             });
         }
         catch (error) {
             console.error("updated employees failed:", error);
+            if (error instanceof appError_1.AppError)
+                throw error;
+            throw appError_1.AppError.ServerError();
+        }
+    },
+    syncEmployeeForMeili: async (employeeId, transaction) => {
+        try {
+            const employee = await employeeRepository_1.employeeRepository.findEmployeeForMeili(employeeId, transaction);
+            if (employee) {
+                await meiliService_1.meiliService.syncOrUpdateMeiliData({
+                    indexKey: labelFields_1.MEILI_INDEX.EMPLOYEES,
+                    data: employee.toJSON(),
+                    transaction,
+                });
+            }
+        }
+        catch (error) {
+            console.error("❌ sync employee failed:", error);
             if (error instanceof appError_1.AppError)
                 throw error;
             throw appError_1.AppError.ServerError();
@@ -212,7 +224,7 @@ exports.employeeService = {
                 // Xóa bản ghi chính
                 await employee.destroy({ transaction });
                 //--------------------MEILISEARCH-----------------------
-                meiliService_1.meiliService.deleteMeiliData(labelFields_1.MEILI_INDEX.EMPLOYEES, employeeId);
+                await meiliService_1.meiliService.deleteMeiliData(labelFields_1.MEILI_INDEX.EMPLOYEES, employeeId, transaction);
                 return { message: "delete employee successfully" };
             });
         }

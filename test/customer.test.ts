@@ -83,7 +83,7 @@ describe("customer service", () => {
       expect.objectContaining({ customerId: "TEST0006" }),
       mockTransaction,
     );
-    expect(meiliService.syncMeiliData).toHaveBeenCalled();
+    expect(meiliService.syncOrUpdateMeiliData).toHaveBeenCalled();
   });
 
   //  Case 2: Trùng Prefix

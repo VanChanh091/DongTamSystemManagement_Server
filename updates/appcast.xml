@@ -3,14 +3,16 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.0.1</title>
-            <sparkle:version>4.0.1</sparkle:version> 
+            <title>Version 4.1.0</title>
+            <sparkle:version>4.1.0</sparkle:version> 
             <description>Thêm hướng dẫn đặc biệt vào duyệt đơn
+            Chỉnh sửa lại dịch vụ tìm kiếm để trả về dữ liệu chính xác
             Thêm lọc đơn chờ đăng ký giao giữa tất cả và mỗi sale
             Cho phép copy và dán ảnh vào đơn hàng
             Thêm icon thể hiện trùng mã đơn hàng ở trang kế hoạch giao hàng
             Sửa các đơn tràn giờ nhảy sai ngày
             Khi duyệt các đơn là phí khác khi duyệt sẽ tự động lưu tồn kho
+            Thay đổi định dạng phiếu xuất kho
             </description>
             <pubDate>Wed, 1 April 2026</pubDate>
             <enclosure url="dongtam.exe" 

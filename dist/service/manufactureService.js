@@ -6,14 +6,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.manufactureService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const redis_connect_1 = __importDefault(require("../assest/configs/connect/redis.connect"));
+const redis_connect_1 = __importDefault(require("../assets/configs/connect/redis.connect"));
 const sequelize_1 = require("sequelize");
 const cacheManager_1 = require("../utils/helper/cache/cacheManager");
 const appError_1 = require("../utils/appError");
 const planningPaper_1 = require("../models/planning/planningPaper");
 const planningBoxMachineTime_1 = require("../models/planning/planningBoxMachineTime");
 const timeOverflowPlanning_1 = require("../models/planning/timeOverflowPlanning");
-const labelFields_1 = require("../assest/labelFields");
+const labelFields_1 = require("../assets/labelFields");
 const planningHelper_1 = require("../repository/planning/planningHelper");
 const planningBox_1 = require("../models/planning/planningBox");
 const order_1 = require("../models/order/order");
@@ -28,7 +28,7 @@ const manufactureHelper_1 = require("../utils/helper/modelHelper/manufactureHelp
 const manufactureRepository_1 = require("../repository/manufactureRepository");
 const meiliService_1 = require("./meiliService");
 const reportRepository_1 = require("../repository/reportRepository");
-const meiliTransformer_1 = require("../assest/configs/meilisearch/meiliTransformer");
+const meiliTransformer_1 = require("../assets/configs/meilisearch/meiliTransformer");
 const planningBoxRepository_1 = require("../repository/planning/planningBoxRepository");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper, box } = cacheKey_1.CacheKey.manufacture;
@@ -190,8 +190,9 @@ exports.manufactureService = {
                 //check qty to change status order
                 const allPlans = await manufactureRepository_1.manufactureRepo.getPapersByOrderId(planning.orderId, transaction);
                 const totalQtyProduced = allPlans.reduce((sum, p) => sum + Number(p.qtyProduced || 0), 0);
-                const quantityCustomer = planning.Order?.quantityCustomer || 0;
-                if (totalQtyProduced >= quantityCustomer) {
+                const quantityManufacture = planning.Order?.quantityManufacture || 0;
+                //update stauts if enough qty
+                if (totalQtyProduced >= quantityManufacture) {
                     await planningHelper_1.planningHelper.updateDataModel({
                         model: order_1.Order,
                         data: { status: "planning" },
@@ -309,8 +310,8 @@ exports.manufactureService = {
                 //check qty to change status order
                 const allPlans = await manufactureRepository_1.manufactureRepo.getPapersByOrderId(planning.orderId, transaction);
                 const totalOrderQty = allPlans.reduce((sum, p) => sum + Number(p.qtyProduced || 0), 0);
-                const quantityCustomer = planning.Order?.quantityCustomer || 0;
-                if (totalOrderQty >= quantityCustomer) {
+                const quantityManufacture = planning.Order?.quantityManufacture || 0;
+                if (totalOrderQty >= quantityManufacture) {
                     await planningHelper_1.planningHelper.updateDataModel({
                         model: order_1.Order,
                         data: { status: "planning" },
@@ -332,14 +333,23 @@ exports.manufactureService = {
     },
     syncPaperForMeili: async (reportId, planningData, transaction) => {
         try {
-            meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.PLANNING_PAPERS, {
-                planningId: planningData.planningId,
-                status: planningData.status,
+            await meiliService_1.meiliService.syncOrUpdateMeiliData({
+                indexKey: labelFields_1.MEILI_INDEX.PLANNING_PAPERS,
+                data: {
+                    planningId: planningData.planningId,
+                    status: planningData.status,
+                },
+                transaction,
+                isUpdate: true,
             });
             const addReportData = await reportRepository_1.reportRepository.syncReportPaperForMeili(reportId, transaction);
             if (addReportData) {
                 const flattenedReport = meiliTransformer_1.meiliTransformer.reportPaper(addReportData);
-                meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.REPORT_PAPERS, flattenedReport);
+                await meiliService_1.meiliService.syncOrUpdateMeiliData({
+                    indexKey: labelFields_1.MEILI_INDEX.REPORT_PAPERS,
+                    data: flattenedReport,
+                    transaction,
+                });
             }
         }
         catch (error) {
@@ -395,9 +405,11 @@ exports.manufactureService = {
                     options: { transaction },
                 });
                 //--------------------MEILISEARCH-----------------------
-                meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.PLANNING_PAPERS, {
-                    planningId: planning.planningId,
-                    status: "producing",
+                await meiliService_1.meiliService.syncOrUpdateMeiliData({
+                    indexKey: labelFields_1.MEILI_INDEX.PLANNING_PAPERS,
+                    data: { planningId: planning.planningId, status: "producing" },
+                    transaction,
+                    isUpdate: true,
                 });
                 return { message: "Confirm producing paper successfully", data: planning };
             });
@@ -679,13 +691,21 @@ exports.manufactureService = {
             });
             if (fullBox && fullBox.length > 0) {
                 const flattenData = fullBox.map(meiliTransformer_1.meiliTransformer.planningBox);
-                meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.PLANNING_BOXES, flattenData);
+                await meiliService_1.meiliService.syncOrUpdateMeiliData({
+                    indexKey: labelFields_1.MEILI_INDEX.PLANNING_BOXES,
+                    data: flattenData,
+                    transaction,
+                });
             }
             //update report
             const updateReportData = await reportRepository_1.reportRepository.syncReportBoxesForMeili(reportBoxId, transaction);
             if (updateReportData) {
                 const flattenedReport = meiliTransformer_1.meiliTransformer.reportBox(updateReportData);
-                meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.REPORT_BOXES, flattenedReport);
+                await meiliService_1.meiliService.syncOrUpdateMeiliData({
+                    indexKey: labelFields_1.MEILI_INDEX.REPORT_BOXES,
+                    data: flattenedReport,
+                    transaction,
+                });
             }
         }
         catch (error) {
@@ -740,7 +760,11 @@ exports.manufactureService = {
                 });
                 if (fullBox && fullBox.length > 0) {
                     const flattenData = fullBox.map(meiliTransformer_1.meiliTransformer.planningBox);
-                    meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.PLANNING_BOXES, flattenData);
+                    await meiliService_1.meiliService.syncOrUpdateMeiliData({
+                        indexKey: labelFields_1.MEILI_INDEX.PLANNING_BOXES,
+                        data: flattenData,
+                        transaction,
+                    });
                 }
                 return { message: "Confirm producing box successfully", data: planning };
             });

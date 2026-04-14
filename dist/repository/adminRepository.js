@@ -55,6 +55,7 @@ exports.adminRepository = {
                 "customerId",
                 "productId",
                 "userId",
+                "quantityCustomer",
                 "orderSortValue",
             ],
             include: [

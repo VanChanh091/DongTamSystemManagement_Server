@@ -8,7 +8,7 @@ const order_1 = require("../models/order/order");
 const customer_1 = require("../models/customer/customer");
 const product_1 = require("../models/product/product");
 const user_1 = require("../models/user/user");
-const inventory_1 = require("../models/warehouse/inventory");
+const inventory_1 = require("../models/warehouse/inventory/inventory");
 const planningBox_1 = require("../models/planning/planningBox");
 const planningBoxMachineTime_1 = require("../models/planning/planningBoxMachineTime");
 const deliveryPlan_1 = require("../models/delivery/deliveryPlan");
@@ -17,7 +17,7 @@ const vehicle_1 = require("../models/admin/vehicle");
 const deliveryRequest_1 = require("../models/delivery/deliveryRequest");
 exports.deliveryRepository = {
     //================================PLANNING ESTIMATE TIME==================================
-    getPlanningEstimateTime: async (dayStart, userId) => {
+    getPlanningEstimateTime: async (dayStart, userId, all) => {
         return await planningPaper_1.PlanningPaper.findAll({
             where: {
                 deliveryPlanned: { [sequelize_1.Op.in]: ["none", "pending"] },
@@ -84,7 +84,7 @@ exports.deliveryRepository = {
                     include: [
                         { model: customer_1.Customer, attributes: ["customerName", "companyName"] },
                         { model: product_1.Product, attributes: ["typeProduct", "productName"] },
-                        { model: user_1.User, where: { userId }, attributes: ["fullName"] },
+                        { model: user_1.User, where: all === "true" ? {} : { userId }, attributes: ["fullName"] },
                         { model: inventory_1.Inventory, attributes: ["qtyInventory"] },
                     ],
                 },

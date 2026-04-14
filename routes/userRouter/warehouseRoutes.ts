@@ -17,6 +17,7 @@ import {
   createNewInventory,
   exportInventory,
   getAllInventory,
+  getAllLiquidationInventory,
 } from "../../controller/user/warehouse/inventoryController";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 
@@ -42,10 +43,12 @@ router.delete("/outbound", authorizeAnyPermission(["delivery"]), authenticate, d
 //auto complete dialog
 router.get("/outbound/get-search", authenticate, outboundAutoComplete);
 
-//========================INVENTORY===========================
+//========================INVENTORY & LIQUIDATION===========================
 router.get("/inventory", authenticate, getAllInventory);
 router.post("/inventory", authenticate, createNewInventory);
 router.post("/inventory/export", authenticate, authorizeAnyPermission(["plan"]), exportInventory);
+
+router.get("/liquidation", authenticate, getAllLiquidationInventory);
 
 //========================TEST CRASH===========================
 router.get("/test-crash", (req, res) => {

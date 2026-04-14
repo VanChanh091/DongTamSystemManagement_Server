@@ -9,7 +9,7 @@ const planningPaper_1 = require("../models/planning/planningPaper");
 const timeOverflowPlanning_1 = require("../models/planning/timeOverflowPlanning");
 const product_1 = require("../models/product/product");
 const user_1 = require("../models/user/user");
-const inventory_1 = require("../models/warehouse/inventory");
+const inventory_1 = require("../models/warehouse/inventory/inventory");
 exports.dashboardRepository = {
     getAllDbPlanning: async ({ page = 1, pageSize = 20, whereCondition = {}, paginate = true, }) => {
         const query = {
@@ -80,8 +80,7 @@ exports.dashboardRepository = {
             query.offset = (page - 1) * pageSize;
             query.limit = pageSize;
         }
-        const rawPapers = await planningPaper_1.PlanningPaper.findAndCountAll(query);
-        return rawPapers;
+        return await planningPaper_1.PlanningPaper.findAndCountAll(query);
     },
     getDBPlanningDetail: async (planningId) => {
         return await planningPaper_1.PlanningPaper.findByPk(planningId, {

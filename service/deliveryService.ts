@@ -170,12 +170,12 @@ export const deliveryService = {
           throw AppError.BadRequest(`Planning ${planningId} bị overflow`, "PLANNING_OVERFLOW");
         }
 
-        if (qtyRegistered > planning.qtyProduced!) {
-          throw AppError.BadRequest(
-            `Số lượng đăng ký (${qtyRegistered}) vượt quá số lượng đã sản xuất (${planning.qtyProduced ?? 0})`,
-            "QTY_EXCEEDED",
-          );
-        }
+        // if (qtyRegistered > planning.qtyProduced!) {
+        //   throw AppError.BadRequest(
+        //     `Số lượng đăng ký (${qtyRegistered}) vượt quá số lượng đã sản xuất (${planning.qtyProduced ?? 0})`,
+        //     "QTY_EXCEEDED",
+        //   );
+        // }
 
         const newDeliveryStatus = qtyRegistered === planning.qtyProduced ? "delivered" : "pending";
 

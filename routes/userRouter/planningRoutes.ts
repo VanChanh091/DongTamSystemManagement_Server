@@ -2,6 +2,7 @@ import { Router } from "express";
 import authenticate from "../../middlewares/authMiddleware";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 import {
+  exportExcelPlanningPaper,
   getPlanningPapers,
   notifyUpdatePlanning,
   updateIndex_TimeRunning,
@@ -45,6 +46,7 @@ router.post(
   authorizeAnyPermission(["plan"]),
   updateIndex_TimeRunning,
 );
+router.post("/export", authenticate, exportExcelPlanningPaper);
 router.put(
   "/planning-papers",
   authenticate,

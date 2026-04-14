@@ -19,26 +19,24 @@ const excelExporter_1 = require("../utils/helper/excelExporter");
 const deliveryRowAndComlumn_1 = require("../utils/mapping/deliveryRowAndComlumn");
 const cacheKey_1 = require("../utils/helper/cache/cacheKey");
 const cacheManager_1 = require("../utils/helper/cache/cacheManager");
-const redis_connect_1 = __importDefault(require("../assest/configs/connect/redis.connect"));
+const redis_connect_1 = __importDefault(require("../assets/configs/connect/redis.connect"));
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { estimate, schedule } = cacheKey_1.CacheKey.delivery;
 exports.deliveryService = {
     //================================PLANNING ESTIMATE TIME==================================
-    getPlanningEstimateTime: async ({ page = 1, pageSize = 20, dayStart, estimateTime, userId, }) => {
-        const cacheKey = estimate.page(page);
+    getPlanningEstimateTime: async ({ page = 1, pageSize = 20, dayStart, estimateTime, userId, all = "false", }) => {
+        // const cacheKey = estimate.page(page);
         try {
-            const { isChanged } = await cacheManager_1.CacheManager.check(planningPaper_1.PlanningPaper, "estimate");
-            if (isChanged) {
-                await cacheManager_1.CacheManager.clear("estimate");
-            }
-            else {
-                const cachedData = await redis_connect_1.default.get(cacheKey);
-                if (cachedData) {
-                    if (devEnvironment)
-                        console.log("✅ get planning estimate time from cache");
-                    return { ...JSON.parse(cachedData), message: "get all planning estimate from cache" };
-                }
-            }
+            // const { isChanged } = await CacheManager.check(PlanningPaper, "estimate");
+            // if (isChanged) {
+            //   await CacheManager.clear("estimate");
+            // } else {
+            //   const cachedData = await redisCache.get(cacheKey);
+            //   if (cachedData) {
+            //     if (devEnvironment) console.log("✅ get planning estimate time from cache");
+            //     return { ...JSON.parse(cachedData), message: "get all planning estimate from cache" };
+            //   }
+            // }
             const [endHour, endMinute] = estimateTime.split(":").map(Number);
             if (isNaN(endHour) ||
                 isNaN(endMinute) ||
@@ -51,7 +49,7 @@ exports.deliveryService = {
             // mốc kết thúc NGÀY HÔM NAY
             const [estH, estM] = estimateTime.split(":").map(Number);
             const estimateMinutes = estH * 60 + estM;
-            const paperPlannings = await deliveryRepository_1.deliveryRepository.getPlanningEstimateTime(dayStart, userId);
+            const paperPlannings = await deliveryRepository_1.deliveryRepository.getPlanningEstimateTime(dayStart, userId, all);
             //filter
             const filtered = paperPlannings.filter((paper) => {
                 if (paper.hasOverFlow)
@@ -99,7 +97,7 @@ exports.deliveryService = {
                 totalPages,
                 currentPage: page,
             };
-            await redis_connect_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+            // await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
             return responseData;
         }
         catch (error) {
@@ -120,9 +118,12 @@ exports.deliveryService = {
                 if (planning.hasOverFlow) {
                     throw appError_1.AppError.BadRequest(`Planning ${planningId} bị overflow`, "PLANNING_OVERFLOW");
                 }
-                if (qtyRegistered > planning.qtyProduced) {
-                    throw appError_1.AppError.BadRequest(`Số lượng đăng ký (${qtyRegistered}) vượt quá số lượng đã sản xuất (${planning.qtyProduced})`, "QTY_EXCEEDED");
-                }
+                // if (qtyRegistered > planning.qtyProduced!) {
+                //   throw AppError.BadRequest(
+                //     `Số lượng đăng ký (${qtyRegistered}) vượt quá số lượng đã sản xuất (${planning.qtyProduced ?? 0})`,
+                //     "QTY_EXCEEDED",
+                //   );
+                // }
                 const newDeliveryStatus = qtyRegistered === planning.qtyProduced ? "delivered" : "pending";
                 //calculate volume
                 const volume = await (0, orderHelpers_1.calculateVolume)({

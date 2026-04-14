@@ -6,13 +6,16 @@ import { Response } from "express";
 import { AppError } from "../../utils/appError";
 import { searchFieldAtribute } from "../../interface/types";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
-import { Inventory } from "../../models/warehouse/inventory";
+import { Inventory } from "../../models/warehouse/inventory/inventory";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { exportExcelResponse } from "../../utils/helper/excelExporter";
-import { warehouseRepository } from "../../repository/warehouseRepository";
+import { inventoryRepository } from "../../repository/inventoryRepository";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { inventoryColumns, mappingInventoryRow } from "../../utils/mapping/inventoryRowAndColumn";
+import { runInTransaction } from "../../utils/helper/transactionHelper";
+import { Order } from "../../models/order/order";
+import { LiquidationInventory } from "../../models/warehouse/inventory/liquidationInventory";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inventory } = CacheKey.warehouse;
@@ -33,8 +36,8 @@ export const inventoryService = {
         }
       }
 
-      const { rows, count } = await warehouseRepository.getInventoryByPage({ page, pageSize });
-      const totals: any = await warehouseRepository.inventoryTotals();
+      const { rows, count } = await inventoryRepository.getInventoryByPage({ page, pageSize });
+      const totals: any = await inventoryRepository.inventoryTotals();
 
       const responseData = {
         message: "Get all inventory successfully",
@@ -82,7 +85,7 @@ export const inventoryService = {
       }
 
       //query db
-      const { rows } = await warehouseRepository.getInventoryByPage({
+      const { rows } = await inventoryRepository.getInventoryByPage({
         searching: { inventoryId: { [Op.in]: inventoryIds } },
       });
 
@@ -110,13 +113,237 @@ export const inventoryService = {
         throw AppError.BadRequest("Missing orderId", "MISSING_ORDER_ID");
       }
 
-      const existedInventory = await warehouseRepository.findByOrderId({ orderId, transaction });
+      const existedInventory = await inventoryRepository.findByOrderId({ orderId, transaction });
       if (existedInventory) {
         return existedInventory;
       }
 
       return await Inventory.create({ orderId }, { transaction });
     } catch (error) {
+      console.error("Failed to create inventory:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  transferOrderQty: async (data: {
+    sourceOrderId: string;
+    targetOrderId: string;
+    qtyTransfer: number;
+  }) => {
+    const { sourceOrderId, targetOrderId, qtyTransfer } = data;
+
+    try {
+      return await runInTransaction(async (transaction) => {
+        // Tìm và Check tồn
+        const sourceInv = await inventoryRepository.findByOrderId({
+          orderId: sourceOrderId,
+          transaction,
+          options: {
+            include: [
+              {
+                model: Order,
+                attributes: ["flute", "pricePaper", "lengthPaperCustomer", "paperSizeCustomer"],
+              },
+            ],
+          },
+        });
+        if (!sourceInv) {
+          throw AppError.NotFound(
+            `Source inventory with orderId ${sourceOrderId} not found`,
+            "SOURCE_INVENTORY_NOT_FOUND",
+          );
+        }
+
+        // Check đủ số lượng để chuyển giao không
+        if (sourceInv.qtyInventory < qtyTransfer) {
+          throw AppError.BadRequest(
+            `Insufficient quantity in source inventory`,
+            "INSUFFICIENT_QUANTITY",
+          );
+        }
+
+        //Lấy thông tin đơn hàng đích để có giá tấm
+        const order = await Order.findOne({
+          where: { orderId: targetOrderId },
+          attributes: [
+            "orderId",
+            "flute",
+            "status",
+            "pricePaper",
+            "lengthPaperCustomer",
+            "paperSizeCustomer",
+            "quantityCustomer",
+            "quantityManufacture",
+          ],
+          transaction,
+        });
+        if (!order) {
+          throw AppError.NotFound(
+            `Target order with orderId ${targetOrderId} not found`,
+            "TARGET_ORDER_NOT_FOUND",
+          );
+        }
+
+        const isSpecsMatch =
+          sourceInv.Order.flute === order.flute &&
+          sourceInv.Order.lengthPaperCustomer === order.lengthPaperCustomer &&
+          sourceInv.Order.paperSizeCustomer === order.paperSizeCustomer;
+
+        if (!isSpecsMatch) {
+          throw AppError.BadRequest("Thông số kỹ thuật không khớp!", "SPECIFICATIONS_MISMATCH");
+        }
+
+        //xử lý cho đơn hàng nguồn
+        const sourcePrice = sourceInv.Order.pricePaper || 0;
+        const remainingQty = sourceInv.qtyInventory - qtyTransfer;
+
+        const newValueSource = remainingQty > 0 ? remainingQty * sourcePrice : 0;
+        const valuePriceSource = sourceInv.valueInventory - newValueSource;
+
+        //xử lý cho đơn đích
+        const unitPrice = order.pricePaper || 0;
+        const addedValue = qtyTransfer * unitPrice;
+
+        await sourceInv.decrement(
+          { qtyInventory: qtyTransfer, valueInventory: valuePriceSource },
+          { transaction },
+        );
+        await sourceInv.reload({ transaction });
+
+        // if (sourceInv.qtyInventory <= 0) {
+        //   await sourceInv.destroy({ transaction });
+        // }
+
+        // Xử lý cộng kho đích
+        const targetInv = await inventoryRepository.findByOrderId({
+          orderId: targetOrderId,
+          transaction,
+        });
+
+        if (targetInv) {
+          // Đã có record: Tăng cả lượng và tổng giá trị
+          await targetInv.increment(
+            { qtyInventory: qtyTransfer, valueInventory: addedValue },
+            { transaction },
+          );
+        } else {
+          await Inventory.create(
+            {
+              orderId: targetOrderId,
+              qtyInventory: qtyTransfer,
+              valueInventory: addedValue,
+            },
+            { transaction },
+          );
+        }
+
+        //check đã đủ số lượng cho đơn hàng chưa để chuyển trạng thái đơn hàng
+        const totalInventory = await Inventory.sum("qtyInventory", {
+          where: { orderId: targetOrderId },
+          transaction,
+        });
+
+        let newStatus = order.status;
+        if (totalInventory >= order.quantityCustomer) {
+          newStatus = "planning";
+        }
+
+        //trừ số lượng đã chuyển giao khỏi quantityManufacture của đơn hàng
+        const newQtyManufacture = Math.max(0, order.quantityManufacture - qtyTransfer);
+
+        await order.update(
+          { quantityManufacture: newQtyManufacture, status: newStatus },
+          { transaction },
+        );
+
+        return {
+          message: "Transfer quantity successfully",
+          remainingQtyManufacture: newQtyManufacture,
+          status: newStatus,
+        };
+      });
+    } catch (error) {
+      console.log("err to transfer qty: ", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  transferQtyToLiquidationInv: async ({
+    inventoryId,
+    qtyTransfer,
+    reason,
+  }: {
+    inventoryId: number;
+    qtyTransfer: number;
+    reason: string;
+  }) => {
+    try {
+      return await runInTransaction(async (transaction) => {
+        const inventory = await Inventory.findOne({
+          where: { inventoryId },
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+        if (!inventory) {
+          throw AppError.NotFound(
+            `Inventory with id ${inventoryId} not found`,
+            "INVENTORY_NOT_FOUND",
+          );
+        }
+
+        if (inventory.qtyInventory < qtyTransfer) {
+          throw AppError.BadRequest(`Insufficient quantity in inventory`, "INSUFFICIENT_QUANTITY");
+        }
+
+        //tính giá trị chuyển đổi
+        const transferValue = Math.round(
+          (inventory.valueInventory / inventory.qtyInventory) * qtyTransfer,
+        );
+
+        await inventory.update(
+          {
+            qtyInventory: inventory.qtyInventory - qtyTransfer,
+            totalQtyOutbound: inventory.totalQtyOutbound + qtyTransfer,
+            valueInventory: inventory.valueInventory - transferValue,
+          },
+          { transaction },
+        );
+
+        const liquidationInv = await LiquidationInventory.findOne({
+          where: { inventoryId },
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+
+        if (liquidationInv) {
+          await liquidationInv.increment(
+            {
+              qtyTransferred: qtyTransfer,
+              qtyRemaining: qtyTransfer,
+              liquidationValue: transferValue,
+            },
+            { transaction },
+          );
+        } else {
+          await LiquidationInventory.create(
+            {
+              qtyTransferred: qtyTransfer,
+              qtyRemaining: qtyTransfer,
+              liquidationValue: transferValue,
+              reason,
+              inventoryId,
+              orderId: inventory.orderId,
+            },
+            { transaction },
+          );
+        }
+
+        return { message: "Transfer quantity to liquidation inventory successfully" };
+      });
+    } catch (error) {
+      console.log("err to transfer qty to liquidation inventory: ", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
@@ -124,7 +351,7 @@ export const inventoryService = {
 
   exportExcelInventory: async (res: Response) => {
     try {
-      const { rows } = await warehouseRepository.getInventoryByPage({});
+      const { rows } = await inventoryRepository.getInventoryByPage({});
 
       await exportExcelResponse(res, {
         data: rows,

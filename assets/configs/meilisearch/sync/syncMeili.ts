@@ -5,7 +5,7 @@ import { meiliTransformer } from "../meiliTransformer";
 import { Product } from "../../../../models/product/product";
 import { meiliClient } from "../../connect/meilisearch.connect";
 import { Customer } from "../../../../models/customer/customer";
-import { Inventory } from "../../../../models/warehouse/inventory";
+import { Inventory } from "../../../../models/warehouse/inventory/inventory";
 import { PlanningBox } from "../../../../models/planning/planningBox";
 import { QcSession } from "../../../../models/qualityControl/qcSession";
 import { PlanningPaper } from "../../../../models/planning/planningPaper";

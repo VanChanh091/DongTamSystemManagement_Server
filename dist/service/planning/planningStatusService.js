@@ -10,22 +10,23 @@ const sequelize_1 = require("sequelize");
 const user_1 = require("../../models/user/user");
 const appError_1 = require("../../utils/appError");
 const order_1 = require("../../models/order/order");
-const labelFields_1 = require("../../assest/labelFields");
+const labelFields_1 = require("../../assets/labelFields");
 const meiliService_1 = require("../meiliService");
 const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
 const planningBox_1 = require("../../models/planning/planningBox");
 const wasteNormPaper_1 = require("../../models/admin/wasteNormPaper");
-const redis_connect_1 = __importDefault(require("../../assest/configs/connect/redis.connect"));
+const redis_connect_1 = __importDefault(require("../../assets/configs/connect/redis.connect"));
 const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
 const planningHelper_1 = require("../../repository/planning/planningHelper");
-const meilisearch_connect_1 = require("../../assest/configs/connect/meilisearch.connect");
+const meilisearch_connect_1 = require("../../assets/configs/connect/meilisearch.connect");
 const waveCrestCoefficient_1 = require("../../models/admin/waveCrestCoefficient");
 const timeOverflowPlanning_1 = require("../../models/planning/timeOverflowPlanning");
-const meiliTransformer_1 = require("../../assest/configs/meilisearch/meiliTransformer");
+const meiliTransformer_1 = require("../../assets/configs/meilisearch/meiliTransformer");
 const planningPaper_1 = require("../../models/planning/planningPaper");
 const planningStatusRepository_1 = require("../../repository/planning/planningStatusRepository");
 const planningPaperRepository_1 = require("../../repository/planning/planningPaperRepository");
+const planningBoxRepository_1 = require("../../repository/planning/planningBoxRepository");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { stop, order } = cacheKey_1.CacheKey.planning;
 exports.planningStatusService = {
@@ -225,7 +226,7 @@ exports.planningStatusService = {
                 Object.assign(paperPlan, waste);
                 await paperPlan.save({ transaction });
                 let boxPlan = null;
-                // 8) Nếu đơn hàng có làm thùng, tạo thêm kế hoạch lam-thung (waiting)
+                // 8) Nếu đơn hàng có làm thùng, tạo thêm kế hoạch làm thùng
                 const box = order.box;
                 if (order.isBox) {
                     boxPlan = await planningHelper_1.planningHelper.createData({
@@ -270,10 +271,23 @@ exports.planningStatusService = {
                     }
                 }
                 //--------------------MEILISEARCH-----------------------
-                const dataCreated = await planningPaperRepository_1.planningPaperRepository.syncPaperFromOrderToMeili(paperPlan.planningId, transaction);
-                if (dataCreated) {
-                    const flatData = meiliTransformer_1.meiliTransformer.planningPaper(dataCreated);
-                    meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.PLANNING_PAPERS, flatData);
+                const paperToSync = await planningPaperRepository_1.planningPaperRepository.syncPaperFromOrderToMeili(paperPlan.planningId, transaction);
+                if (paperToSync) {
+                    const flatPaperData = meiliTransformer_1.meiliTransformer.planningPaper(paperToSync);
+                    await meiliService_1.meiliService.syncOrUpdateMeiliData({
+                        indexKey: labelFields_1.MEILI_INDEX.PLANNING_PAPERS,
+                        data: flatPaperData,
+                        transaction,
+                    });
+                    if (order.isBox) {
+                        const boxToSync = await planningBoxRepository_1.planningBoxRepository.syncPlanningBoxByPlanningId(paperToSync.planningId, transaction);
+                        const flatBoxData = meiliTransformer_1.meiliTransformer.planningBox(boxToSync);
+                        await meiliService_1.meiliService.syncOrUpdateMeiliData({
+                            indexKey: labelFields_1.MEILI_INDEX.PLANNING_BOXES,
+                            data: flatBoxData,
+                            transaction,
+                        });
+                    }
                 }
                 return {
                     message: "Đã tạo kế hoạch thành công.",
@@ -310,9 +324,11 @@ exports.planningStatusService = {
                 }
                 await order.update({ status: "reject" }, { transaction });
                 //--------------------MEILISEARCH-----------------------
-                meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.ORDERS, {
-                    orderSortValue: order.orderSortValue,
-                    status: "reject",
+                await meiliService_1.meiliService.syncOrUpdateMeiliData({
+                    indexKey: labelFields_1.MEILI_INDEX.ORDERS,
+                    data: { orderSortValue: order.orderSortValue, status: "reject" },
+                    transaction,
+                    isUpdate: true,
                 });
                 //socket
                 const ownerId = order.userId;
@@ -388,24 +404,38 @@ exports.planningStatusService = {
     },
     cancelOrContinuePlannning: async ({ planningId, action, }) => {
         try {
-            const ids = Array.isArray(planningId) ? planningId : [planningId];
-            const plannings = await planningStatusRepository_1.planningStatusRepository.getStopByIds(ids);
-            if (plannings.length == 0) {
-                throw appError_1.AppError.BadRequest("planning not found", "PLANNING_NOT_FOUND");
-            }
-            const planningUpdated = await planningStatusRepository_1.planningStatusRepository.updateStatusPlanning({
-                planningIds: ids,
-                action: action,
+            return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
+                const ids = Array.isArray(planningId) ? planningId : [planningId];
+                const plannings = await planningStatusRepository_1.planningStatusRepository.getStopByIds(ids);
+                if (plannings.length == 0) {
+                    throw appError_1.AppError.BadRequest("planning not found", "PLANNING_NOT_FOUND");
+                }
+                const planningUpdated = await planningStatusRepository_1.planningStatusRepository.updateStatusPlanning({
+                    planningIds: ids,
+                    action: action,
+                });
+                const orderIds = [...new Set(planningUpdated.map((p) => p.orderId))];
+                if (action === "planning") {
+                    await order_1.Order.update({ status: "planning" }, {
+                        where: { orderId: { [sequelize_1.Op.in]: orderIds } },
+                        transaction,
+                    });
+                }
+                //--------------------MEILISEARCH-----------------------
+                if (planningUpdated.length > 0) {
+                    const dataForMeili = planningUpdated.map((p) => ({
+                        planningId: p.planningId,
+                        status: action,
+                    }));
+                    await meiliService_1.meiliService.syncOrUpdateMeiliData({
+                        indexKey: labelFields_1.MEILI_INDEX.PLANNING_PAPERS,
+                        data: dataForMeili,
+                        transaction,
+                        isUpdate: true,
+                    });
+                }
+                return { message: "planning updated successfully" };
             });
-            //--------------------MEILISEARCH-----------------------
-            if (planningUpdated.length > 0) {
-                const dataForMeili = planningUpdated.map((p) => ({
-                    planningId: p.planningId,
-                    status: action,
-                }));
-                meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.PLANNING_PAPERS, dataForMeili);
-            }
-            return { message: "planning updated successfully" };
         }
         catch (error) {
             console.error("error to cancel or continue planning stop:", error);

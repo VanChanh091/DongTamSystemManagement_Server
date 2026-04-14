@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.dashboardService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const redis_connect_1 = __importDefault(require("../assest/configs/connect/redis.connect"));
+const redis_connect_1 = __importDefault(require("../assets/configs/connect/redis.connect"));
 const sequelize_1 = require("sequelize");
 const cacheKey_1 = require("../utils/helper/cache/cacheKey");
 const dashboardRepository_1 = require("../repository/dashboardRepository");
@@ -17,7 +17,7 @@ const dbPlanningRowAndColumn_1 = require("../utils/mapping/dbPlanningRowAndColum
 const excelExporter_1 = require("../utils/helper/excelExporter");
 const planningBoxMachineTime_1 = require("../models/planning/planningBoxMachineTime");
 const planningHelper_1 = require("../utils/helper/modelHelper/planningHelper");
-const meilisearch_connect_1 = require("../assest/configs/connect/meilisearch.connect");
+const meilisearch_connect_1 = require("../assets/configs/connect/meilisearch.connect");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { planning, details } = cacheKey_1.CacheKey.dashboard;
 exports.dashboardService = {

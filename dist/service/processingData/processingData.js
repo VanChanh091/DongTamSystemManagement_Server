@@ -18,7 +18,7 @@ const parseOrderData = (buffer) => {
     const workbook = xlsx_1.default.read(buffer, { type: "buffer", cellDates: true });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rawData = xlsx_1.default.utils.sheet_to_json(sheet, { defval: null });
-    // console.log(rawData[0]);
+    // console.log(rawData[5]);
     // Nó sẽ xóa \n và trim khoảng trắng để "Số \nĐơn Hàng" thành "Số Đơn Hàng"
     const cleanData = rawData.map((row) => {
         const newRow = {};
@@ -67,11 +67,14 @@ const parseOrderData = (buffer) => {
             matC: null,
             songE: null,
             matE: null,
+            songE2: null, // Dự phòng nếu có 2 sóng E
         };
-        if (parts.length >= 2) {
-            const fluteInfo = parts[1];
+        for (let i = 1; i < parts.length; i += 2) {
+            const fluteInfo = parts[i];
+            if (!fluteInfo)
+                continue;
             const fluteType = fluteInfo.charAt(0).toUpperCase();
-            const nextLayer = parts[2] ? parts[2].split(" ")[0] : null;
+            const nextLayer = parts[i + 1] ? parts[i + 1].split(" ")[0] : null;
             if (fluteType === "B") {
                 structure.songB = fluteInfo;
                 structure.matB = nextLayer;
@@ -81,8 +84,14 @@ const parseOrderData = (buffer) => {
                 structure.matC = nextLayer;
             }
             else if (fluteType === "E") {
-                structure.songE = fluteInfo;
-                structure.matE = nextLayer;
+                // Nếu đã có sóng E rồi thì nhét vào E2, chưa có thì nhét vào E
+                if (structure.songE) {
+                    structure.songE2 = fluteInfo;
+                }
+                else {
+                    structure.songE = fluteInfo;
+                    structure.matE = nextLayer;
+                }
             }
         }
         const formattedDaoXa = toTitleCase(row["Tề Biên"]);
@@ -174,7 +183,7 @@ const parseCustomerData = (buffer) => {
     const workbook = xlsx_1.default.read(buffer, { type: "buffer", cellDates: true });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rawData = xlsx_1.default.utils.sheet_to_json(sheet, { defval: null });
-    console.log(rawData[0]);
+    // console.log(rawData[0]);
     return rawData.map((row, index) => {
         return {
             customerId: row["Mã Khách Hàng"],
@@ -206,7 +215,7 @@ const parseProductData = (buffer) => {
     const workbook = xlsx_1.default.read(buffer, { type: "buffer", cellDates: true });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rawData = xlsx_1.default.utils.sheet_to_json(sheet, { defval: null });
-    console.log(rawData[0]);
+    // console.log(rawData[0]);
     return rawData.map((row, index) => {
         return {
             productId: row["Mã Sản Phẩm"],

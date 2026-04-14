@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { Op } from "sequelize";
-import { Request } from "express";
+import { Request, Response } from "express";
 import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
 import { meiliService } from "../meiliService";
@@ -20,6 +20,13 @@ import { calculateTimeRunning, updateSortPlanning } from "./helper/timeRunningPa
 import { machinePaperType, PlanningPaper } from "../../models/planning/planningPaper";
 import { planningPaperRepository } from "../../repository/planning/planningPaperRepository";
 import { MEILI_INDEX } from "../../assets/labelFields";
+import { exportExcelResponse } from "../../utils/helper/excelExporter";
+import { Customer } from "../../models/customer/customer";
+import { normalizeVN } from "../../utils/helper/normalizeVN";
+import {
+  mapPlanningPaperRow,
+  planningPaperColumns,
+} from "../../utils/mapping/planningPaperRowAndColumn";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper } = CacheKey.planning;
@@ -651,6 +658,57 @@ export const planningPaperService = {
       return { message: "Đã gửi thông báo cập nhật kế hoạch" };
     } catch (error) {
       console.error("❌Lỗi khi gửi socket:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  exportExcelPlanningOrder: async (res: Response, machine: string) => {
+    try {
+      const data = await PlanningPaper.findAll({
+        where: {
+          chooseMachine: machine,
+          status: { [Op.notIn]: ["complete", "stop", "cancel"] },
+          statusRequest: { [Op.in]: ["none", "requested"] },
+          sortPlanning: { [Op.ne]: null },
+        },
+        attributes: [
+          "planningId",
+          "dayStart",
+          "dayReplace",
+          "matEReplace",
+          "matBReplace",
+          "matCReplace",
+          "matE2Replace",
+          "songEReplace",
+          "songBReplace",
+          "songCReplace",
+          "songE2Replace",
+          "lengthPaperPlanning",
+          "sizePaperPLaning",
+          "numberChild",
+          "ghepKho",
+        ],
+        include: [
+          {
+            model: Order,
+            attributes: ["orderId", "flute", "totalPrice", "instructSpecial"],
+            include: [{ model: Customer, attributes: ["customerName"] }],
+          },
+        ],
+      });
+
+      const safeMachineName = machine.replace(/\s+/g, "-");
+
+      await exportExcelResponse(res, {
+        data: data,
+        sheetName: "Kế hoạch sản xuất",
+        fileName: `KHSX_${normalizeVN(safeMachineName)}`,
+        columns: planningPaperColumns,
+        rows: mapPlanningPaperRow,
+      });
+    } catch (error) {
+      console.error("Error create inventory:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }

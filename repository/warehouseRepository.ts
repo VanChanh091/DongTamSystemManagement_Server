@@ -5,7 +5,7 @@ import { Product } from "../models/product/product";
 import { Op, Sequelize, Transaction } from "sequelize";
 import { Customer } from "../models/customer/customer";
 import { InboundSumByPlanning } from "../interface/types";
-import { Inventory } from "../models/warehouse/inventory";
+import { Inventory } from "../models/warehouse/inventory/inventory";
 import { PlanningBox } from "../models/planning/planningBox";
 import { QcSession } from "../models/qualityControl/qcSession";
 import { PlanningPaper } from "../models/planning/planningPaper";
@@ -412,111 +412,6 @@ export const warehouseRepository = {
           ],
         },
       ],
-    });
-  },
-
-  //====================================INVENTORY========================================
-  getInventoryByPage: async ({
-    page,
-    pageSize,
-    searching,
-  }: {
-    page?: number;
-    pageSize?: number;
-    searching?: any;
-  }) => {
-    const whereClause: any = {
-      [Op.and]: [{ qtyInventory: { [Op.gt]: 0 } }],
-    };
-
-    if (searching && typeof searching === "object") {
-      whereClause[Op.and].push(searching);
-    }
-
-    const options: any = {
-      where: whereClause,
-      attributes: { exclude: ["createdAt", "updatedAt"] },
-      include: [
-        {
-          model: Order,
-          attributes: [
-            "orderId",
-            "dayReceiveOrder",
-            "flute",
-            "day",
-            "matE",
-            "matB",
-            "matC",
-            "matE2",
-            "songE",
-            "songB",
-            "songC",
-            "songE2",
-            "lengthPaperCustomer",
-            "paperSizeCustomer",
-            "quantityCustomer",
-            "dvt",
-            "pricePaper",
-            "totalPrice",
-            "vat",
-            "totalPriceVAT",
-          ],
-          include: [{ model: Customer, attributes: ["customerName"] }],
-        },
-      ],
-    };
-
-    if (page !== undefined && pageSize !== undefined) {
-      options.offset = (page - 1) * pageSize;
-      options.limit = pageSize;
-    }
-
-    return await Inventory.findAndCountAll(options);
-  },
-
-  inventoryTotals: async () => {
-    const result = await Inventory.findAll({
-      where: { valueInventory: { [Op.gt]: 0 } },
-      attributes: [[Sequelize.fn("SUM", Sequelize.col("valueInventory")), "totalValueInventory"]],
-      raw: true,
-    });
-
-    return result[0];
-  },
-
-  findInventoryByOrderId: async (orderId: string) => {
-    return await Inventory.findOne({
-      where: { orderId },
-      attributes: ["qtyInventory"],
-    });
-  },
-
-  findByOrderId: async ({
-    orderId,
-    transaction,
-  }: {
-    orderId: string;
-    transaction: Transaction;
-  }) => {
-    return await Inventory.findOne({
-      where: { orderId },
-      transaction,
-      lock: transaction.LOCK.UPDATE,
-    });
-  },
-
-  syncInventory: async (orderId: string, transaction: Transaction) => {
-    return await Inventory.findOne({
-      where: { orderId },
-      attributes: ["inventoryId"],
-      include: [
-        {
-          model: Order,
-          attributes: ["orderId"],
-          include: [{ model: Customer, attributes: ["customerName"] }],
-        },
-      ],
-      transaction,
     });
   },
 };

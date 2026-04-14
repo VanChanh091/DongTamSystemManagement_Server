@@ -4,7 +4,7 @@ import { Product } from "../product/product.js";
 import { User } from "../user/user.js";
 import { Box } from "./box.js";
 import { OutboundHistory } from "../warehouse/outboundHistory.js";
-import { Inventory } from "../warehouse/inventory.js";
+import { Inventory } from "../warehouse/inventory/inventory.js";
 
 export type OrderStatus = "pending" | "accept" | "reject" | "planning" | "stop";
 

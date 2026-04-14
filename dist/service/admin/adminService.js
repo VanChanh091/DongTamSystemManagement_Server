@@ -9,12 +9,15 @@ dotenv_1.default.config();
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const meiliService_1 = require("../meiliService");
 const appError_1 = require("../../utils/appError");
-const labelFields_1 = require("../../assest/labelFields");
+const labelFields_1 = require("../../assets/labelFields");
 const order_1 = require("../../models/order/order");
 const adminRepository_1 = require("../../repository/adminRepository");
 const converToWebp_1 = require("../../utils/image/converToWebp");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
-const cloudinary_connect_1 = __importDefault(require("../../assest/configs/connect/cloudinary.connect"));
+const cloudinary_connect_1 = __importDefault(require("../../assets/configs/connect/cloudinary.connect"));
+const inventory_1 = require("../../models/warehouse/inventory/inventory");
+const meiliTransformer_1 = require("../../assets/configs/meilisearch/meiliTransformer");
+const inventoryRepository_1 = require("../../repository/inventoryRepository");
 const devEnvironment = process.env.NODE_ENV !== "production";
 exports.adminService = {
     //===============================ADMIN CRUD=====================================
@@ -134,18 +137,38 @@ exports.adminService = {
                     // }
                     // await customer.update({ debtCurrent: newDebt });
                     //check type product
+                    const phiKhac = order.Product.typeProduct == "Phí Khác";
                     order.set({
-                        status: order.Product.typeProduct == "Phí Khác" ? "planning" : newStatus,
+                        status: phiKhac ? "planning" : newStatus,
                         rejectReason: null,
                     });
+                    if (phiKhac) {
+                        await inventory_1.Inventory.create({
+                            totalQtyInbound: order.quantityCustomer,
+                            qtyInventory: order.quantityCustomer,
+                            valueInventory: order.totalPrice,
+                            orderId,
+                        }, { transaction });
+                        const inventory = await inventoryRepository_1.inventoryRepository.syncInventory(orderId, transaction);
+                        if (inventory) {
+                            const flattenData = meiliTransformer_1.meiliTransformer.inventory(inventory);
+                            await meiliService_1.meiliService.syncOrUpdateMeiliData({
+                                indexKey: labelFields_1.MEILI_INDEX.INVENTORIES,
+                                data: flattenData,
+                                transaction,
+                            });
+                        }
+                    }
                 }
                 await order.save({ transaction });
                 //--------------------MEILISEARCH-----------------------
-                meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.ORDERS, {
-                    orderSortValue: order.orderSortValue,
-                    status: newStatus,
+                await meiliService_1.meiliService.syncOrUpdateMeiliData({
+                    indexKey: labelFields_1.MEILI_INDEX.ORDERS,
+                    data: { orderSortValue: order.orderSortValue, status: newStatus },
+                    transaction,
+                    isUpdate: true,
                 });
-                //socket
+                //-------------------- SOCKET -----------------------
                 const ownerId = order.userId;
                 const badgeCount = await order_1.Order.count({ where: { status: "reject", userId: ownerId } });
                 const roomName = `reject-order-${ownerId}`;

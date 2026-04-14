@@ -233,9 +233,10 @@ export const manufactureService = {
         const allPlans = await manufactureRepo.getPapersByOrderId(planning.orderId, transaction);
 
         const totalQtyProduced = allPlans.reduce((sum, p) => sum + Number(p.qtyProduced || 0), 0);
-        const quantityCustomer = planning.Order?.quantityCustomer || 0;
+        const quantityManufacture = planning.Order?.quantityManufacture || 0;
 
-        if (totalQtyProduced >= quantityCustomer) {
+        //update stauts if enough qty
+        if (totalQtyProduced >= quantityManufacture) {
           await planningHelper.updateDataModel({
             model: Order,
             data: { status: "planning" },
@@ -380,9 +381,9 @@ export const manufactureService = {
         const allPlans = await manufactureRepo.getPapersByOrderId(planning.orderId, transaction);
 
         const totalOrderQty = allPlans.reduce((sum, p) => sum + Number(p.qtyProduced || 0), 0);
-        const quantityCustomer = planning.Order?.quantityCustomer || 0;
+        const quantityManufacture = planning.Order?.quantityManufacture || 0;
 
-        if (totalOrderQty >= quantityCustomer) {
+        if (totalOrderQty >= quantityManufacture) {
           await planningHelper.updateDataModel({
             model: Order,
             data: { status: "planning" },

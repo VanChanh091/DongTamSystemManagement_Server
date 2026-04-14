@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.calculateTimeRunning = exports.updateSortPlanning = void 0;
 const sequelize_1 = require("sequelize");
-const planningHelper_1 = require("../../../repository/planning/planningHelper");
 const planningPaper_1 = require("../../../models/planning/planningPaper");
+const planningHelper_1 = require("../../../repository/planning/planningHelper");
 const timeOverflowPlanning_1 = require("../../../models/planning/timeOverflowPlanning");
 const planningPaperRepository_1 = require("../../../repository/planning/planningPaperRepository");
 //Công thức tính thời gian: time = (Thời gian A/B + (tổng dài / tốc độ)) / (hiệu suất / 100)
@@ -107,6 +107,7 @@ const calculateTimeRunning = async ({ plannings, machineInfo, machine, dayStart,
     return updated;
 };
 exports.calculateTimeRunning = calculateTimeRunning;
+// HÀM CHÍNH: Tính toán thời gian
 const calculateTimeForOnePlanning = async ({ planning, machine, machineInfo, currentTime, currentDay, timeStart, totalTimeWorking, lastGhepKho, transaction, isFirst, }) => {
     const { planningId, runningPlan, ghepKho, Order } = planning;
     const numberChild = Order?.numberChild || 1;
@@ -122,39 +123,42 @@ const calculateTimeForOnePlanning = async ({ planning, machine, machineInfo, cur
             : isSameSize
                 ? machineInfo.timeChangeSameSize
                 : machineInfo.timeChangeSize;
-    //công thức
     const productionMinutes = Math.ceil((changeTime + totalLength / speed) / (performance / 100));
-    // Tính thời gian bắt đầu và kết thúc ca làm việc cho currentDay
+    // --- BƯỚC 1: Tính thời gian kết thúc (Tạm thời) ---
+    let tempEnd = new Date(currentTime);
+    tempEnd.setMinutes(tempEnd.getMinutes() + productionMinutes);
+    let extraBreak = isDuringBreak(currentTime, tempEnd);
+    let predictedEnd = new Date(currentTime);
+    predictedEnd.setMinutes(predictedEnd.getMinutes() + productionMinutes + extraBreak);
+    // --- BƯỚC 2: Kiểm tra nhảy ca & Tràn giờ ---
     const [h, m] = timeStart.split(":").map(Number);
-    let startOfWork = new Date(currentDay);
+    let startOfWork = new Date(currentTime);
     startOfWork.setHours(h, m, 0, 0);
+    // Đảm bảo startOfWork bám đúng ca
+    if (currentTime < startOfWork) {
+        startOfWork.setDate(startOfWork.getDate() - 1);
+    }
     let endOfWork = new Date(startOfWork);
     endOfWork.setHours(startOfWork.getHours() + totalTimeWorking);
-    // Nếu currentTime < start → set currentTime = start
-    if (currentTime < startOfWork) {
-        currentTime = new Date(startOfWork);
-    }
-    // Nếu currentTime >= end → nhảy sang hôm sau
-    if (currentTime >= endOfWork) {
-        currentDay.setDate(currentDay.getDate() + 1);
-        startOfWork.setDate(startOfWork.getDate() + 1);
-        endOfWork.setDate(endOfWork.getDate() + 1);
-        currentTime = new Date(startOfWork);
-    }
-    let endTime = new Date(currentTime);
-    endTime.setMinutes(endTime.getMinutes() + productionMinutes);
-    const extraBreak = isDuringBreak(currentTime, endTime);
-    const predictedEnd = new Date(currentTime);
-    predictedEnd.setMinutes(predictedEnd.getMinutes() + productionMinutes + extraBreak);
-    if (totalTimeWorking >= 24) {
-        const prevMinutes = currentTime.getHours() * 60 + currentTime.getMinutes() + currentTime.getSeconds() / 60;
-        const currMinutes = predictedEnd.getHours() * 60 + predictedEnd.getMinutes() + predictedEnd.getSeconds() / 60;
-        if (currMinutes < prevMinutes) {
-            currentDay = new Date(currentDay);
-            currentDay.setDate(currentDay.getDate() + 1);
+    let hasOverFlow = false;
+    if (totalTimeWorking < 24) {
+        // Nếu qua mốc kết thúc ca -> Bắt đầu ngày mới
+        if (currentTime >= endOfWork) {
+            startOfWork.setDate(startOfWork.getDate() + 1);
+            endOfWork.setDate(endOfWork.getDate() + 1);
+            currentTime = new Date(startOfWork);
+            // Tính lại breakTime cho mốc giờ bắt đầu ca mới
+            let newTempEnd = new Date(currentTime);
+            newTempEnd.setMinutes(newTempEnd.getMinutes() + productionMinutes);
+            extraBreak = isDuringBreak(currentTime, newTempEnd);
+            predictedEnd = new Date(currentTime);
+            predictedEnd.setMinutes(predictedEnd.getMinutes() + productionMinutes + extraBreak);
         }
+        hasOverFlow = predictedEnd > endOfWork;
     }
-    const hasOverFlow = predictedEnd > endOfWork;
+    // --- BƯỚC 3: Chốt "Ngày sản xuất" (Dựa theo ngày kết thúc thực tế) ---
+    currentDay = new Date(predictedEnd);
+    currentDay.setHours(0, 0, 0, 0);
     const result = await handleOverflow({
         hasOverFlow,
         predictedEnd,
@@ -167,7 +171,7 @@ const calculateTimeForOnePlanning = async ({ planning, machine, machineInfo, cur
     await planningHelper_1.planningHelper.updateDataModel({
         model: planningPaper_1.PlanningPaper,
         data: {
-            dayStart: new Date(result.dayStart),
+            dayStart: new Date(result.dayStart), // result.dayStart đã an toàn khỏi lỗi Timezone
             timeRunning: result.timeRunning,
             hasOverFlow,
         },
@@ -175,22 +179,57 @@ const calculateTimeForOnePlanning = async ({ planning, machine, machineInfo, cur
     });
     return { result, nextTime: result.nextTime, nextDay: result.nextDay, ghepKho };
 };
-// console.log("🔍 [Tính toán đơn hàng]:", {
-//   planningId,
-//   status: planning.status,
-//   lastGhepKho,
-//   isSameSize,
-//   changeTime: `${changeTime} phút`,
-//   productionTime: `${productionMinutes} phút`,
-//   breakTime: `${extraBreak} phút`,
-//   predictedEndTime: formatTime(predictedEnd),
-//   endOfWorkTime: formatTime(endOfWork),
-//   hasOverFlow,
-//   overflowDayStart: hasOverFlow ? result.overflowDayStart : null,
-//   overflowTimeRunning: hasOverFlow ? result.overflowTimeRunning : null,
-//   timeRunningForPlanning: result.timeRunning,
-// });
 //==================== HỖ TRỢ ====================//
+// Lấy ngày YYYY-MM-DD theo giờ Local (Việt Nam) để tránh lỗi UTC
+const getLocalYYYYMMDD = (d) => {
+    const pad = (n) => n.toString().padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+const handleOverflow = async ({ hasOverFlow, predictedEnd, endOfWork, planningId, currentDay, timeStart, transaction, }) => {
+    if (!hasOverFlow) {
+        await planningHelper_1.planningHelper.deleteModelData({
+            model: timeOverflowPlanning_1.timeOverflowPlanning,
+            where: { planningId },
+            transaction,
+        });
+        return {
+            dayStart: getLocalYYYYMMDD(currentDay),
+            timeRunning: formatTime(predictedEnd),
+            nextTime: predictedEnd,
+            nextDay: currentDay,
+        };
+    }
+    const overflowMin = (predictedEnd.getTime() - endOfWork.getTime()) / 60000;
+    // Tính ngày tràn (Cộng thêm 1 ngày)
+    const overflowDay = new Date(currentDay);
+    overflowDay.setDate(overflowDay.getDate() + 1);
+    // Tạo startOverflow bám sát theo ngày tràn
+    const [h, m] = timeStart.split(":").map(Number);
+    const startOverflow = new Date(overflowDay);
+    startOverflow.setHours(h, m, 0, 0);
+    const overflowEnd = new Date(startOverflow);
+    overflowEnd.setMinutes(overflowEnd.getMinutes() + overflowMin);
+    await planningHelper_1.planningHelper.deleteModelData({
+        model: timeOverflowPlanning_1.timeOverflowPlanning,
+        where: { planningId },
+        transaction,
+    });
+    await planningHelper_1.planningHelper.createData({
+        model: timeOverflowPlanning_1.timeOverflowPlanning,
+        data: {
+            planningId,
+            overflowDayStart: new Date(getLocalYYYYMMDD(overflowDay)),
+            overflowTimeRunning: formatTime(overflowEnd),
+        },
+        transaction,
+    });
+    return {
+        dayStart: getLocalYYYYMMDD(currentDay),
+        timeRunning: formatTime(endOfWork), // Chốt ở cuối ca (ví dụ 18:00)
+        nextTime: overflowEnd,
+        nextDay: overflowDay, // Đẩy sang ngày mới
+    };
+};
 const getSpeed = (flute, machine, info) => {
     const layer = parseInt(flute?.[0] ?? "0", 10);
     if (machine === "Máy 2 Lớp")
@@ -221,48 +260,6 @@ const isDuringBreak = (start, end) => {
             e.setDate(e.getDate() + 1);
         return end > s && start < e ? total + b.duration : total;
     }, 0);
-};
-const handleOverflow = async ({ hasOverFlow, predictedEnd, endOfWork, planningId, currentDay, timeStart, transaction, }) => {
-    if (!hasOverFlow) {
-        await planningHelper_1.planningHelper.deleteModelData({
-            model: timeOverflowPlanning_1.timeOverflowPlanning,
-            where: { planningId },
-            transaction,
-        });
-        return {
-            dayStart: currentDay.toISOString().split("T")[0],
-            timeRunning: formatTime(predictedEnd),
-            nextTime: predictedEnd,
-            nextDay: currentDay,
-        };
-    }
-    const overflowMin = (predictedEnd.getTime() - endOfWork.getTime()) / 60000;
-    const overflowDay = new Date(currentDay);
-    overflowDay.setDate(overflowDay.getDate() + 1);
-    const startOverflow = parseTime(timeStart);
-    startOverflow.setDate(startOverflow.getDate() + 1);
-    const overflowEnd = new Date(startOverflow);
-    overflowEnd.setMinutes(overflowEnd.getMinutes() + overflowMin);
-    await planningHelper_1.planningHelper.deleteModelData({
-        model: timeOverflowPlanning_1.timeOverflowPlanning,
-        where: { planningId },
-        transaction,
-    });
-    await planningHelper_1.planningHelper.createData({
-        model: timeOverflowPlanning_1.timeOverflowPlanning,
-        data: {
-            planningId,
-            overflowDayStart: new Date(overflowDay.toISOString().split("T")[0]),
-            overflowTimeRunning: formatTime(overflowEnd),
-        },
-        transaction,
-    });
-    return {
-        dayStart: currentDay.toISOString().split("T")[0],
-        timeRunning: formatTime(endOfWork),
-        nextTime: overflowEnd,
-        nextDay: overflowDay,
-    };
 };
 const parseTime = (t) => {
     const [h, m] = t.split(":").map(Number);

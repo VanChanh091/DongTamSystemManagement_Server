@@ -5,7 +5,7 @@ import { Order } from "../models/order/order";
 import { Customer } from "../models/customer/customer";
 import { Product } from "../models/product/product";
 import { User } from "../models/user/user";
-import { Inventory } from "../models/warehouse/inventory";
+import { Inventory } from "../models/warehouse/inventory/inventory";
 import { PlanningBox } from "../models/planning/planningBox";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { DeliveryPlan } from "../models/delivery/deliveryPlan";

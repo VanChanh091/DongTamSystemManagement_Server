@@ -12,9 +12,9 @@ import { adminRepository } from "../../repository/adminRepository";
 import { getCloudinaryPublicId } from "../../utils/image/converToWebp";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import cloudinary from "../../assets/configs/connect/cloudinary.connect";
-import { Inventory } from "../../models/warehouse/inventory";
-import { warehouseRepository } from "../../repository/warehouseRepository";
+import { Inventory } from "../../models/warehouse/inventory/inventory";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
+import { inventoryRepository } from "../../repository/inventoryRepository";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 
@@ -202,7 +202,7 @@ export const adminService = {
               { transaction },
             );
 
-            const inventory = await warehouseRepository.syncInventory(orderId, transaction);
+            const inventory = await inventoryRepository.syncInventory(orderId, transaction);
 
             if (inventory) {
               const flattenData = meiliTransformer.inventory(inventory);

@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.authService = void 0;
-const redis_connect_1 = __importDefault(require("../assest/configs/connect/redis.connect"));
+const redis_connect_1 = __importDefault(require("../assets/configs/connect/redis.connect"));
 const jwtHelper_1 = __importDefault(require("../middlewares/jwtHelper"));
 const authRepository_1 = require("../repository/authRepository");
 const appError_1 = require("../utils/appError");

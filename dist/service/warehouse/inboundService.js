@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.inboundService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const redis_connect_1 = __importDefault(require("../../assest/configs/connect/redis.connect"));
+const redis_connect_1 = __importDefault(require("../../assets/configs/connect/redis.connect"));
 const appError_1 = require("../../utils/appError");
 const inboundHistory_1 = require("../../models/warehouse/inboundHistory");
 const warehouseRepository_1 = require("../../repository/warehouseRepository");
@@ -19,14 +19,15 @@ const dashboardRepository_1 = require("../../repository/dashboardRepository");
 const planningHelper_2 = require("../../utils/helper/modelHelper/planningHelper");
 const planningPaper_1 = require("../../models/planning/planningPaper");
 const inventoryService_1 = require("./inventoryService");
-const inventory_1 = require("../../models/warehouse/inventory");
+const inventory_1 = require("../../models/warehouse/inventory/inventory");
 const order_1 = require("../../models/order/order");
 const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
 const meiliService_1 = require("../meiliService");
-const meilisearch_connect_1 = require("../../assest/configs/connect/meilisearch.connect");
+const meilisearch_connect_1 = require("../../assets/configs/connect/meilisearch.connect");
 const sequelize_1 = require("sequelize");
-const meiliTransformer_1 = require("../../assest/configs/meilisearch/meiliTransformer");
-const labelFields_1 = require("../../assest/labelFields");
+const meiliTransformer_1 = require("../../assets/configs/meilisearch/meiliTransformer");
+const labelFields_1 = require("../../assets/labelFields");
+const inventoryRepository_1 = require("../../repository/inventoryRepository");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inbound } = cacheKey_1.CacheKey.warehouse;
 const { paper, box } = cacheKey_1.CacheKey.waitingCheck;
@@ -279,12 +280,20 @@ exports.inboundService = {
         try {
             const [inbound, inventory] = await Promise.all([
                 warehouseRepository_1.warehouseRepository.syncInbound(inboundId, transaction),
-                warehouseRepository_1.warehouseRepository.syncInventory(orderId, transaction),
+                inventoryRepository_1.inventoryRepository.syncInventory(orderId, transaction),
             ]);
             const flattenInbound = meiliTransformer_1.meiliTransformer.inbound(inbound);
             const flattenInventory = meiliTransformer_1.meiliTransformer.inventory(inventory);
-            meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.INBOUND, flattenInbound);
-            meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.INVENTORIES, flattenInventory);
+            await meiliService_1.meiliService.syncOrUpdateMeiliData({
+                indexKey: labelFields_1.MEILI_INDEX.INBOUND,
+                data: flattenInbound,
+                transaction,
+            });
+            await meiliService_1.meiliService.syncOrUpdateMeiliData({
+                indexKey: labelFields_1.MEILI_INDEX.INVENTORIES,
+                data: flattenInventory,
+                transaction,
+            });
         }
         catch (error) {
             console.error("Error sync inbound & inventory box:", error);

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const database_connect_1 = require("../assest/configs/connect/database.connect");
+const database_connect_1 = require("../assets/configs/connect/database.connect");
 const fluteRatio_1 = require("./admin/fluteRatio");
 const machineBox_1 = require("./admin/machineBox");
 const machinePaper_1 = require("./admin/machinePaper");
@@ -30,7 +30,8 @@ const reportPlanningBox_1 = require("./report/reportPlanningBox");
 const reportPlanningPaper_1 = require("./report/reportPlanningPaper");
 const user_1 = require("./user/user");
 const inboundHistory_1 = require("./warehouse/inboundHistory");
-const inventory_1 = require("./warehouse/inventory");
+const inventory_1 = require("./warehouse/inventory/inventory");
+const liquidationInventory_1 = require("./warehouse/inventory/liquidationInventory");
 const outboundDetail_1 = require("./warehouse/outboundDetail");
 const outboundHistory_1 = require("./warehouse/outboundHistory");
 //other
@@ -72,6 +73,7 @@ const OutboundHistory = (0, outboundHistory_1.initOutboundHistoryModel)(database
 const OutboundDetail = (0, outboundDetail_1.initOutboundDetailModel)(database_connect_1.sequelize);
 //inventory
 const Inventory = (0, inventory_1.initInventoryModel)(database_connect_1.sequelize);
+const LiquidationInv = (0, liquidationInventory_1.initLiquidationInventoryModel)(database_connect_1.sequelize);
 //delivery
 const DeliveryRequest = (0, deliveryRequest_1.initDeliveryRequestModel)(database_connect_1.sequelize);
 const DeliveryPlan = (0, deliveryPlan_1.initDeliveryPlanModel)(database_connect_1.sequelize);
@@ -105,7 +107,9 @@ const models = {
     InboundHistory,
     OutboundHistory,
     OutboundDetail,
+    //inventory
     Inventory,
+    LiquidationInv,
     //Delivery
     DeliveryRequest,
     DeliveryPlan,
@@ -236,6 +240,10 @@ OutboundDetail.belongsTo(Order, { foreignKey: "orderId" });
 //===============================INVENTORY=================================
 Order.hasOne(Inventory, { foreignKey: "orderId", onDelete: "CASCADE" });
 Inventory.belongsTo(Order, { foreignKey: "orderId" });
+Order.hasOne(LiquidationInv, { foreignKey: "orderId", onDelete: "CASCADE" });
+LiquidationInv.belongsTo(Order, { foreignKey: "orderId" });
+Inventory.hasOne(LiquidationInv, { foreignKey: "inventoryId", onDelete: "CASCADE" });
+LiquidationInv.belongsTo(Inventory, { foreignKey: "inventoryId" });
 //===============================DELIVERY=================================
 PlanningPaper.hasOne(DeliveryRequest, { foreignKey: "planningId", onDelete: "CASCADE" });
 DeliveryRequest.belongsTo(PlanningPaper, { foreignKey: "planningId" });

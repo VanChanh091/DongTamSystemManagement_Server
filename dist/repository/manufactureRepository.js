@@ -71,7 +71,7 @@ exports.manufactureRepo = {
             where: { planningId },
             include: [
                 { model: timeOverflowPlanning_1.timeOverflowPlanning, as: "timeOverFlow" },
-                { model: order_1.Order, attributes: ["quantityCustomer", "pricePaper"] },
+                { model: order_1.Order, attributes: ["quantityCustomer", "quantityManufacture", "pricePaper"] },
             ],
             transaction,
             lock: transaction?.LOCK.UPDATE,
@@ -104,7 +104,9 @@ exports.manufactureRepo = {
                 "hasBox",
                 "orderId",
             ],
-            include: [{ model: order_1.Order, attributes: ["orderId", "quantityCustomer"] }],
+            include: [
+                { model: order_1.Order, attributes: ["orderId", "quantityCustomer", "quantityManufacture"] },
+            ],
             transaction,
         });
     },

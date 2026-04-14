@@ -72,7 +72,7 @@ export const manufactureRepo = {
       where: { planningId },
       include: [
         { model: timeOverflowPlanning, as: "timeOverFlow" },
-        { model: Order, attributes: ["quantityCustomer", "pricePaper"] },
+        { model: Order, attributes: ["quantityCustomer", "quantityManufacture", "pricePaper"] },
       ],
       transaction,
       lock: transaction?.LOCK.UPDATE,
@@ -108,7 +108,9 @@ export const manufactureRepo = {
         "hasBox",
         "orderId",
       ],
-      include: [{ model: Order, attributes: ["orderId", "quantityCustomer"] }],
+      include: [
+        { model: Order, attributes: ["orderId", "quantityCustomer", "quantityManufacture"] },
+      ],
       transaction,
     });
   },

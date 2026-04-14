@@ -31,12 +31,14 @@ exports.planningBoxRepository = {
                     model: planningBoxMachineTime_1.PlanningBoxTime,
                     where: { machine: machine },
                     as: "boxTimes",
+                    required: true,
                     attributes: { exclude: ["createdAt", "updatedAt"] },
                 },
                 {
                     model: planningBoxMachineTime_1.PlanningBoxTime,
                     as: "allBoxTimes",
                     where: { machine: { [sequelize_1.Op.ne]: machine } },
+                    required: false,
                     attributes: {
                         exclude: [
                             "timeRunning",
@@ -173,6 +175,25 @@ exports.planningBoxRepository = {
     syncPlanningBoxToMeili: async ({ whereCondition, transaction, }) => {
         return await planningBox_1.PlanningBox.findAll({
             where: whereCondition,
+            attributes: ["planningBoxId"],
+            include: [
+                {
+                    model: planningBoxMachineTime_1.PlanningBoxTime,
+                    as: "boxTimes",
+                    attributes: { exclude: ["createdAt", "updatedAt"] },
+                },
+                {
+                    model: order_1.Order,
+                    attributes: ["orderId", "QC_box"],
+                    include: [{ model: customer_1.Customer, attributes: ["customerName"] }],
+                },
+            ],
+            transaction,
+        });
+    },
+    syncPlanningBoxByPlanningId: async (planningId, transaction) => {
+        return await planningBox_1.PlanningBox.findOne({
+            where: { planningId },
             attributes: ["planningBoxId"],
             include: [
                 {

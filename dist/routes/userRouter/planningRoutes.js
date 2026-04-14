@@ -21,6 +21,7 @@ router.put("/planning-stops", authMiddleware_1.default, (0, permissionMiddleware
 //=========================PLANNING PAPER=========================
 router.get("/planning-papers", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningPaperController_1.getPlanningPapers);
 router.post("/planning-papers", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningPaperController_1.updateIndex_TimeRunning);
+router.post("/export", authMiddleware_1.default, planningPaperController_1.exportExcelPlanningPaper);
 router.put("/planning-papers", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningPaperController_1.updatePlanningPapers);
 //=========================PLANNING BOX=========================
 router.get("/planning-boxes", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningBoxController_1.getPlanningBoxes);

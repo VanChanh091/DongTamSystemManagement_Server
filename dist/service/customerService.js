@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.customerService = void 0;
-const redis_connect_1 = __importDefault(require("../assest/configs/connect/redis.connect"));
+const redis_connect_1 = __importDefault(require("../assets/configs/connect/redis.connect"));
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const sequelize_1 = require("sequelize");
@@ -17,11 +17,11 @@ const excelExporter_1 = require("../utils/helper/excelExporter");
 const customerPayment_1 = require("../models/customer/customerPayment");
 const transactionHelper_1 = require("../utils/helper/transactionHelper");
 const customerRepository_1 = require("../repository/customerRepository");
-const meilisearch_connect_1 = require("../assest/configs/connect/meilisearch.connect");
+const meilisearch_connect_1 = require("../assets/configs/connect/meilisearch.connect");
 const customerRowAndColumn_1 = require("../utils/mapping/customerRowAndColumn");
 const orderHelpers_1 = require("../utils/helper/modelHelper/orderHelpers");
 const meiliService_1 = require("./meiliService");
-const labelFields_1 = require("../assest/labelFields");
+const labelFields_1 = require("../assets/labelFields");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { customer } = cacheKey_1.CacheKey;
 exports.customerService = {
@@ -142,10 +142,7 @@ exports.customerService = {
                     transaction,
                 });
                 //--------------------MEILISEARCH-----------------------
-                const customerCreated = await customerRepository_1.customerRepository.findCustomerForMeili(newCustomerId, transaction);
-                if (customerCreated) {
-                    meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.CUSTOMERS, customerCreated.toJSON());
-                }
+                await exports.customerService.syncCustomerForMeili(newCustomerId, transaction);
                 return { message: "Customer created successfully", data: newCustomer };
             });
         }
@@ -175,15 +172,30 @@ exports.customerService = {
                     transaction,
                 });
                 //--------------------MEILISEARCH-----------------------
-                const customerUpdated = await customerRepository_1.customerRepository.findCustomerForMeili(customerId, transaction);
-                if (customerUpdated) {
-                    meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.CUSTOMERS, customerUpdated.toJSON());
-                }
+                const customerUpdated = await exports.customerService.syncCustomerForMeili(customerId, transaction);
                 return { message: "Customer updated successfully", data: customerUpdated };
             });
         }
         catch (error) {
             console.error("❌ Update customer failed:", error);
+            if (error instanceof appError_1.AppError)
+                throw error;
+            throw appError_1.AppError.ServerError();
+        }
+    },
+    syncCustomerForMeili: async (customerId, transaction) => {
+        try {
+            const customer = await customerRepository_1.customerRepository.findCustomerForMeili(customerId, transaction);
+            if (customer) {
+                await meiliService_1.meiliService.syncOrUpdateMeiliData({
+                    indexKey: labelFields_1.MEILI_INDEX.CUSTOMERS,
+                    data: customer.toJSON(),
+                    transaction,
+                });
+            }
+        }
+        catch (error) {
+            console.error("❌ sync customer failed:", error);
             if (error instanceof appError_1.AppError)
                 throw error;
             throw appError_1.AppError.ServerError();
@@ -207,7 +219,7 @@ exports.customerService = {
                 }
                 await customer.destroy({ transaction });
                 //--------------------MEILISEARCH-----------------------
-                meiliService_1.meiliService.deleteMeiliData(labelFields_1.MEILI_INDEX.CUSTOMERS, customerId);
+                await meiliService_1.meiliService.deleteMeiliData(labelFields_1.MEILI_INDEX.CUSTOMERS, customerId, transaction);
                 return { message: "Customer deleted successfully" };
             });
         }

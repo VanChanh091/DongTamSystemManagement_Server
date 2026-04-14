@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mapReportBoxRow = exports.reportBoxColumns = void 0;
-const labelFields_1 = require("../../assest/labelFields");
+const labelFields_1 = require("../../assets/labelFields");
 const orderHelpers_1 = require("../helper/modelHelper/orderHelpers");
 exports.reportBoxColumns = [
     { header: "STT", key: "index" },

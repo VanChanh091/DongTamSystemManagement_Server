@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getCloudinaryPublicId = exports.uploadImageToCloudinary = exports.convertToWebp = void 0;
 const sharp_1 = __importDefault(require("sharp"));
 const streamifier_1 = __importDefault(require("streamifier"));
-const cloudinary_connect_1 = __importDefault(require("../../assest/configs/connect/cloudinary.connect"));
+const cloudinary_connect_1 = __importDefault(require("../../assets/configs/connect/cloudinary.connect"));
 const appError_1 = require("../appError");
 const convertToWebp = async (buffer, quality = 80) => {
     try {

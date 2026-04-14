@@ -23,10 +23,11 @@ router.put("/outbound", (0, permissionMiddleware_1.authorizeAnyPermission)(["del
 router.delete("/outbound", (0, permissionMiddleware_1.authorizeAnyPermission)(["delivery"]), authMiddleware_1.default, outboundHistoryController_1.deleteOutbound);
 //auto complete dialog
 router.get("/outbound/get-search", authMiddleware_1.default, outboundHistoryController_1.outboundAutoComplete);
-//========================INVENTORY===========================
+//========================INVENTORY & LIQUIDATION===========================
 router.get("/inventory", authMiddleware_1.default, inventoryController_1.getAllInventory);
 router.post("/inventory", authMiddleware_1.default, inventoryController_1.createNewInventory);
 router.post("/inventory/export", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), inventoryController_1.exportInventory);
+router.get("/liquidation", authMiddleware_1.default, inventoryController_1.getAllLiquidationInventory);
 //========================TEST CRASH===========================
 router.get("/test-crash", (req, res) => {
     throw new Error("Test lỗi 500 để bắn Telegram nè! 💣");

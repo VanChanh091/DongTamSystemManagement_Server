@@ -7,23 +7,24 @@ exports.outboundService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const sequelize_1 = require("sequelize");
+const meiliService_1 = require("../meiliService");
 const appError_1 = require("../../utils/appError");
 const order_1 = require("../../models/order/order");
-const meiliService_1 = require("../meiliService");
+const labelFields_1 = require("../../assets/labelFields");
+const inventory_1 = require("../../models/warehouse/inventory/inventory");
 const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
-const inventory_1 = require("../../models/warehouse/inventory");
 const exportPDF_1 = require("../../utils/helper/exportPDF");
-const redis_connect_1 = __importDefault(require("../../assest/configs/connect/redis.connect"));
+const redis_connect_1 = __importDefault(require("../../assets/configs/connect/redis.connect"));
 const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
 const outboundDetail_1 = require("../../models/warehouse/outboundDetail");
+const customerRepository_1 = require("../../repository/customerRepository");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
 const outboundHistory_1 = require("../../models/warehouse/outboundHistory");
 const planningHelper_1 = require("../../repository/planning/planningHelper");
 const warehouseRepository_1 = require("../../repository/warehouseRepository");
-const meilisearch_connect_1 = require("../../assest/configs/connect/meilisearch.connect");
-const meiliTransformer_1 = require("../../assest/configs/meilisearch/meiliTransformer");
-const labelFields_1 = require("../../assest/labelFields");
-const customerRepository_1 = require("../../repository/customerRepository");
+const inventoryRepository_1 = require("../../repository/inventoryRepository");
+const meilisearch_connect_1 = require("../../assets/configs/connect/meilisearch.connect");
+const meiliTransformer_1 = require("../../assets/configs/meilisearch/meiliTransformer");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { outbound } = cacheKey_1.CacheKey.warehouse;
 exports.outboundService = {
@@ -139,7 +140,7 @@ exports.outboundService = {
             if (!order) {
                 throw appError_1.AppError.NotFound("Order not found", "ORDER_NOT_FOUND");
             }
-            const inventory = await warehouseRepository_1.warehouseRepository.findInventoryByOrderId(orderId);
+            const inventory = await inventoryRepository_1.inventoryRepository.findInventoryByOrderId(orderId);
             const remainingQty = inventory?.qtyInventory ?? 0;
             return {
                 message: "Get all order inbound quantities successfully",
@@ -183,7 +184,7 @@ exports.outboundService = {
                         throw appError_1.AppError.BadRequest("customer missmatch", "CUSTOMER_MISMATCH");
                     }
                     // check inventory
-                    const inventory = await warehouseRepository_1.warehouseRepository.findByOrderId({
+                    const inventory = await inventoryRepository_1.inventoryRepository.findByOrderId({
                         orderId: item.orderId,
                         transaction,
                     });
@@ -199,9 +200,6 @@ exports.outboundService = {
                         transaction,
                     });
                     const deliveredQty = Number(exportedQty ?? 0);
-                    if (deliveredQty + item.outboundQty > order.quantityCustomer) {
-                        throw appError_1.AppError.BadRequest(`Xuất vượt số lượng bán cho order ${item.orderId}`, "OUTBOUND_QTY_EXCEED");
-                    }
                     //total price for outbound detail
                     const totalPriceOutbound = order.pricePaper * item.outboundQty;
                     // outbound history
@@ -221,10 +219,26 @@ exports.outboundService = {
                 }
                 // Generate slip code
                 const now = new Date();
-                const day = now.getDate().toString().padStart(2, "0");
                 const month = (now.getMonth() + 1).toString().padStart(2, "0");
                 const year = now.getFullYear().toString().slice(-2);
-                const slipCode = `XK${year}${month}${day}`;
+                let number = 1;
+                const prefix = `XKBH${year}${month}`;
+                const lastOutbound = await outboundHistory_1.OutboundHistory.findOne({
+                    where: {
+                        outboundSlipCode: { [sequelize_1.Op.like]: `${prefix}%` },
+                    },
+                    order: [["outboundId", "DESC"]],
+                    transaction,
+                });
+                if (lastOutbound && lastOutbound.outboundSlipCode) {
+                    const lastCode = lastOutbound.outboundSlipCode;
+                    const lastNumberStr = lastCode.replace(prefix, "");
+                    const lastNumber = parseInt(lastNumberStr, 10);
+                    if (!isNaN(lastNumber)) {
+                        number = lastNumber + 1;
+                    }
+                }
+                const slipCode = `${prefix}${number.toString().padStart(4, "0")}`; //XKBH26040001
                 // Tạo outbound
                 const outbound = await planningHelper_1.planningHelper.createData({
                     model: outboundHistory_1.OutboundHistory,
@@ -294,6 +308,7 @@ exports.outboundService = {
                     oldDetailMap.set(detail.orderId, detail);
                 }
                 let customerId = null;
+                let timePayment = null;
                 let totalPriceOrder = 0;
                 let totalPriceVAT = 0;
                 let totalPricePayment = 0;
@@ -308,11 +323,15 @@ exports.outboundService = {
                     // check customer
                     if (customerId === null) {
                         customerId = order.customerId;
+                        const customer = await customerRepository_1.customerRepository.findCusPaymentByPk(customerId, transaction);
+                        if (customer && customer.payment) {
+                            timePayment = customer.payment.timePayment;
+                        }
                     }
                     else if (customerId !== order.customerId) {
                         throw appError_1.AppError.BadRequest("Các đơn hàng không cùng khách hàng", "CUSTOMER_MISMATCH");
                     }
-                    const inventory = await warehouseRepository_1.warehouseRepository.findByOrderId({
+                    const inventory = await inventoryRepository_1.inventoryRepository.findByOrderId({
                         orderId: item.orderId,
                         transaction,
                     });
@@ -333,9 +352,6 @@ exports.outboundService = {
                         transaction,
                     });
                     const deliveredQty = Number(exportedQty ?? 0);
-                    if (deliveredQty + item.outboundQty > order.quantityCustomer) {
-                        throw appError_1.AppError.BadRequest(`Xuất vượt số lượng bán cho order ${item.orderId}`, "OUTBOUND_QTY_EXCEED");
-                    }
                     // cập nhật tồn kho theo delta
                     if (deltaQty !== 0) {
                         await inventory_1.Inventory.increment({
@@ -384,12 +400,14 @@ exports.outboundService = {
                         await oldDetail.destroy({ transaction });
                     }
                 }
+                const finalDueDate = timePayment || outbound.dueDate;
                 // Cập nhật outbound header
                 await outbound.update({
                     totalPriceOrder,
                     totalPriceVAT,
                     totalPricePayment,
                     totalOutboundQty,
+                    dueDate: finalDueDate,
                 }, { transaction });
                 //--------------------MEILISEARCH-----------------------
                 await exports.outboundService.syncDataOutbound(outboundId, transaction);
@@ -407,8 +425,11 @@ exports.outboundService = {
         try {
             const outboundData = await warehouseRepository_1.warehouseRepository.getOutboundForMeili(outboundId, transaction);
             const meiliFormatted = meiliTransformer_1.meiliTransformer.outbound(outboundData);
-            console.log(meiliFormatted);
-            meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.OUTBOUNDS, meiliFormatted);
+            await meiliService_1.meiliService.syncOrUpdateMeiliData({
+                indexKey: labelFields_1.MEILI_INDEX.OUTBOUNDS,
+                data: meiliFormatted,
+                transaction,
+            });
         }
         catch (error) {
             console.log("err to sync data outbound: ", error);
@@ -446,7 +467,7 @@ exports.outboundService = {
                 // Xóa outbound history
                 await outbound.destroy({ transaction });
                 //--------------------MEILISEARCH-----------------------
-                meiliService_1.meiliService.deleteMeiliData(labelFields_1.MEILI_INDEX.OUTBOUNDS, outboundId);
+                await meiliService_1.meiliService.deleteMeiliData(labelFields_1.MEILI_INDEX.OUTBOUNDS, outboundId, transaction);
                 return { message: "Hủy phiếu xuất kho thành công" };
             });
         }

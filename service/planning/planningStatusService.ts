@@ -493,7 +493,7 @@ export const planningStatusService = {
     action,
   }: {
     planningId: number | number[];
-    action: planningPaperStatus;
+    action: planningPaperStatus; //planning or cancel
   }) => {
     try {
       return await runInTransaction(async (transaction) => {
@@ -508,6 +508,17 @@ export const planningStatusService = {
           planningIds: ids,
           action: action,
         });
+
+        const orderIds = [...new Set(planningUpdated.map((p: any) => p.orderId))] as string[];
+        if (action === "planning") {
+          await Order.update(
+            { status: "planning" },
+            {
+              where: { orderId: { [Op.in]: orderIds } },
+              transaction,
+            },
+          );
+        }
 
         //--------------------MEILISEARCH-----------------------
         if (planningUpdated.length > 0) {

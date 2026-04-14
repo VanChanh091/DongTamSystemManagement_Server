@@ -13,15 +13,15 @@ const order_1 = require("../models/order/order");
 const orderImage_1 = require("../models/order/orderImage");
 const cacheKey_1 = require("../utils/helper/cache/cacheKey");
 const meiliService_1 = require("./meiliService");
-const redis_connect_1 = __importDefault(require("../assest/configs/connect/redis.connect"));
+const redis_connect_1 = __importDefault(require("../assets/configs/connect/redis.connect"));
 const orderRepository_1 = require("../repository/orderRepository");
 const cacheManager_1 = require("../utils/helper/cache/cacheManager");
 const transactionHelper_1 = require("../utils/helper/transactionHelper");
 const crud_helper_repository_1 = require("../repository/helper/crud.helper.repository");
-const meilisearch_connect_1 = require("../assest/configs/connect/meilisearch.connect");
+const meilisearch_connect_1 = require("../assets/configs/connect/meilisearch.connect");
 const orderHelpers_1 = require("../utils/helper/modelHelper/orderHelpers");
-const meiliTransformer_1 = require("../assest/configs/meilisearch/meiliTransformer");
-const labelFields_1 = require("../assest/labelFields");
+const meiliTransformer_1 = require("../assets/configs/meilisearch/meiliTransformer");
+const labelFields_1 = require("../assets/labelFields");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { order } = cacheKey_1.CacheKey;
 exports.orderService = {
@@ -241,9 +241,14 @@ exports.orderService = {
                 }
                 //--------------------MEILISEARCH-----------------------
                 const orderCreated = await orderRepository_1.orderRepository.findOrderForMeili(newOrderId, transaction);
+                console.log(orderCreated);
                 if (orderCreated) {
                     const flattenData = meiliTransformer_1.meiliTransformer.order(orderCreated);
-                    meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.ORDERS, flattenData);
+                    await meiliService_1.meiliService.syncOrUpdateMeiliData({
+                        indexKey: labelFields_1.MEILI_INDEX.ORDERS,
+                        data: flattenData,
+                        transaction,
+                    });
                 }
                 return { order: newOrder, orderId: newOrderId };
             });
@@ -313,9 +318,14 @@ exports.orderService = {
                 });
                 //--------------------MEILISEARCH-----------------------
                 const orderUpdated = await orderRepository_1.orderRepository.findOrderForMeili(orderId, transaction);
+                console.log(orderUpdated);
                 if (orderUpdated) {
                     const flattenData = meiliTransformer_1.meiliTransformer.order(orderUpdated);
-                    meiliService_1.meiliService.syncMeiliData(labelFields_1.MEILI_INDEX.ORDERS, flattenData);
+                    await meiliService_1.meiliService.syncOrUpdateMeiliData({
+                        indexKey: labelFields_1.MEILI_INDEX.ORDERS,
+                        data: flattenData,
+                        transaction,
+                    });
                 }
                 return { message: "Order updated successfully", data: order };
             });
@@ -339,7 +349,7 @@ exports.orderService = {
                 const orderValue = order.orderSortValue;
                 await order.destroy({ transaction });
                 //--------------------MEILISEARCH-----------------------
-                meiliService_1.meiliService.deleteMeiliData(labelFields_1.MEILI_INDEX.ORDERS, orderValue);
+                await meiliService_1.meiliService.deleteMeiliData(labelFields_1.MEILI_INDEX.ORDERS, orderValue, transaction);
                 return { message: "Order deleted successfully" };
             });
         }

@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CacheManager = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const redis_connect_1 = __importDefault(require("../../../assest/configs/connect/redis.connect"));
+const redis_connect_1 = __importDefault(require("../../../assets/configs/connect/redis.connect"));
 const cacheKey_1 = require("./cacheKey");
 const checkLastChangeHelper_1 = require("./checkLastChangeHelper");
 const devEnvironment = process.env.NODE_ENV !== "production";

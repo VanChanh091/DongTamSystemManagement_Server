@@ -9,7 +9,7 @@ const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const http_1 = __importDefault(require("http"));
 const path_1 = __importDefault(require("path"));
-const database_connect_1 = require("./assest/configs/connect/database.connect");
+const database_connect_1 = require("./assets/configs/connect/database.connect");
 const authMiddleware_1 = __importDefault(require("./middlewares/authMiddleware"));
 //routes
 const index_1 = require("./routes/index");
@@ -19,9 +19,9 @@ const socket_1 = require("./utils/socket/socket");
 const appError_1 = require("./utils/appError");
 const telegramSending_1 = require("./utils/telegram/telegramSending");
 //cron job auto delete image on Cloudinary
-require("./utils/autoDeleteImage");
-const meilisearch_connect_1 = require("./assest/configs/connect/meilisearch.connect");
-const configs_1 = require("./assest/configs/meilisearch/configs");
+require("./utils/cronJob/autoDeleteImage");
+const meilisearch_connect_1 = require("./assets/configs/connect/meilisearch.connect");
+const configs_1 = require("./assets/configs/meilisearch/configs");
 const app = (0, express_1.default)();
 const server = http_1.default.createServer(app);
 const io = (0, socket_1.initSocket)(server);
