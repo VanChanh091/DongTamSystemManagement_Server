@@ -1,9 +1,9 @@
 export const CacheKey = {
   order: {
     pendingReject: (role: string) => `orders:${role}:pending_reject`,
-    acceptPlanning: (role: string, page: number) => `orders:${role}:accept_planning:page:${page}`,
+    accept: (role: string, page: number) => `orders:${role}:accept:page:${page}`,
     lastUpdatedPending: "order:pending_reject:lastUpdated",
-    lastUpdatedAccept: "order:accept_planning:lastUpdated",
+    lastUpdatedAccept: "order:accept:lastUpdated",
   },
 
   customer: {

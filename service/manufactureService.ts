@@ -32,57 +32,37 @@ const { paper, box } = CacheKey.manufacture;
 
 export const manufactureService = {
   //====================================PAPER========================================
-  getPlanningPaper: async (machine: string) => {
+  getPlanningPaper: async (machine: string, filterType: string = "all") => {
     try {
-      const cacheKey = paper.machine(machine);
-      const { isChanged } = await CacheManager.check(
-        [
-          { model: PlanningPaper },
-          { model: timeOverflowPlanning, where: { planningId: { [Op.ne]: null } } },
-        ],
-        "manufacturePaper",
-      );
+      // const cacheKey = paper.machine(machine);
+      // const { isChanged } = await CacheManager.check(
+      //   [
+      //     { model: PlanningPaper },
+      //     { model: timeOverflowPlanning, where: { planningId: { [Op.ne]: null } } },
+      //   ],
+      //   "manufacturePaper",
+      // );
 
-      if (isChanged) {
-        await CacheManager.clear("manufacturePaper");
-        await CacheManager.clear("orderAccept");
-      } else {
-        const cachedData = await redisCache.get(cacheKey);
-        if (cachedData) {
-          if (devEnvironment) console.log("✅ Data manufacture paper from Redis");
-          return {
-            message: `get filtered cache planning:machine:${machine}`,
-            data: JSON.parse(cachedData),
-          };
-        }
-      }
+      // if (isChanged) {
+      //   await CacheManager.clear("manufacturePaper");
+      //   await CacheManager.clear("orderAccept");
+      // } else {
+      //   const cachedData = await redisCache.get(cacheKey);
+      //   if (cachedData) {
+      //     if (devEnvironment) console.log("✅ Data manufacture paper from Redis");
+      //     return {
+      //       message: `get filtered cache planning:machine:${machine}`,
+      //       data: JSON.parse(cachedData),
+      //     };
+      //   }
+      // }
 
-      const planning = await manufactureRepo.getManufacturePaper(machine);
-
-      // Lọc đơn complete chỉ giữ lại trong 1 ngày
-      const truncateToDate = (date: Date) =>
-        new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      const now = truncateToDate(new Date());
-
-      const validData = planning.filter((item) => {
-        if (["planning", "lackQty", "producing"].includes(item.status)) return true;
-
-        if (item.status === "complete") {
-          const dayCompleted = item.dayCompleted ? new Date(item.dayCompleted) : null;
-          if (!dayCompleted || isNaN(dayCompleted.getTime())) return false;
-
-          const expiredDate = truncateToDate(new Date(dayCompleted));
-          expiredDate.setDate(expiredDate.getDate() + 1);
-
-          return expiredDate >= now;
-        }
-        return false;
-      });
+      const planning = await manufactureRepo.getManufacturePaper(machine, filterType);
 
       const allPlannings: any[] = [];
       const overflowRemoveFields = ["runningPlan", "quantityManufacture"];
 
-      validData.forEach((planning) => {
+      planning.forEach((planning) => {
         const original = {
           ...planning.toJSON(),
           timeRunning: planning.timeRunning,
@@ -109,7 +89,7 @@ export const manufactureService = {
         }
       });
 
-      await redisCache.set(cacheKey, JSON.stringify(allPlannings), "EX", 1800);
+      // await redisCache.set(cacheKey, JSON.stringify(allPlannings), "EX", 1800);
 
       return {
         message: `get planning paper by machine: ${machine}`,

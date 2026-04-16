@@ -1,4 +1,4 @@
-import { Op, Transaction } from "sequelize";
+import { Op, Sequelize, Transaction } from "sequelize";
 import { Order } from "../models/order/order";
 import { PlanningPaper } from "../models/planning/planningPaper";
 import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
@@ -27,9 +27,27 @@ export const manufactureRepo = {
 
   //====================================PAPER========================================
 
-  getManufacturePaper: async (machine: string) => {
+  getManufacturePaper: async (machine: string, filterType: string = "all") => {
+    const whereCondition: any = {
+      chooseMachine: machine,
+      dayStart: { [Op.ne]: null },
+      status: { [Op.in]: ["planning", "lackQty", "producing"] },
+    };
+
+    if (filterType === "gtZero") {
+      // runningPlan - qtyProduced > 0
+      whereCondition[Op.and] = [
+        Sequelize.where(Sequelize.col("runningPlan"), ">", Sequelize.col("qtyProduced")),
+      ];
+    } else if (filterType === "ltZero") {
+      // runningPlan - qtyProduced < 0
+      whereCondition[Op.and] = [
+        Sequelize.where(Sequelize.col("runningPlan"), "<=", Sequelize.col("qtyProduced")),
+      ];
+    }
+
     return await PlanningPaper.findAll({
-      where: { chooseMachine: machine, dayStart: { [Op.ne]: null } },
+      where: whereCondition,
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {

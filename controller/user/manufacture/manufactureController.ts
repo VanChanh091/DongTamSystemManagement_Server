@@ -6,14 +6,14 @@ import { AppError } from "../../../utils/appError";
 
 //get planning machine paper
 export const getPlanningPaper = async (req: Request, res: Response, next: NextFunction) => {
-  const { machine } = req.query as { machine: string };
+  const { machine, filterType = "all" } = req.query as { machine: string; filterType: string };
 
   try {
     if (!machine) {
       throw AppError.BadRequest("Missing machine parameter", "MISSING_PARAMETERS");
     }
 
-    const response = await manufactureService.getPlanningPaper(machine);
+    const response = await manufactureService.getPlanningPaper(machine, filterType);
     return res.status(201).json(response);
   } catch (error) {
     next(error);

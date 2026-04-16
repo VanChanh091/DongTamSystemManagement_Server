@@ -67,16 +67,12 @@ export const orderRepository = {
         ],
       },
       include: [
-        {
-          model: Product,
-          attributes: ["maKhuon"],
-        },
+        { model: Customer, attributes: ["customerName"] },
+        { model: Product, attributes: ["maKhuon"] },
         {
           model: Box,
           as: "box",
-          attributes: {
-            exclude: ["boxId", "createdAt", "updatedAt", "orderId"],
-          },
+          attributes: { exclude: ["boxId", "createdAt", "updatedAt", "orderId"] },
         },
       ],
     });

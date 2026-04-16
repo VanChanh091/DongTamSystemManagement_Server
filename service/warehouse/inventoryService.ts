@@ -185,15 +185,6 @@ export const inventoryService = {
           );
         }
 
-        const isSpecsMatch =
-          sourceInv.Order.flute === order.flute &&
-          sourceInv.Order.lengthPaperCustomer === order.lengthPaperCustomer &&
-          sourceInv.Order.paperSizeCustomer === order.paperSizeCustomer;
-
-        if (!isSpecsMatch) {
-          throw AppError.BadRequest("Thông số kỹ thuật không khớp!", "SPECIFICATIONS_MISMATCH");
-        }
-
         //xử lý cho đơn hàng nguồn
         const sourcePrice = sourceInv.Order.pricePaper || 0;
         const remainingQty = sourceInv.qtyInventory - qtyTransfer;
@@ -293,6 +284,7 @@ export const inventoryService = {
           );
         }
 
+        // Check đủ số lượng để chuyển giao không
         if (inventory.qtyInventory < qtyTransfer) {
           throw AppError.BadRequest(`Insufficient quantity in inventory`, "INSUFFICIENT_QUANTITY");
         }

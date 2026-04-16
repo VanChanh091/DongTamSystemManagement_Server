@@ -37,19 +37,19 @@ export const orderService = {
 
     try {
       const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
-      const cacheKey = order.acceptPlanning(keyRole, page); //orders:all:accept_planning:page:1
+      const cacheKey = order.accept(keyRole, page); //orders:all:accept:page:1
 
       const { isChanged } = await CacheManager.check(
-        [{ model: Order, where: { status: ["accept", "planning"] } }],
+        [{ model: Order, where: { status: ["accept"] } }],
         "orderAccept",
       );
 
       if (isChanged) {
-        await CacheManager.clear("orderAcceptPlanning", keyRole);
+        await CacheManager.clear("orderAcceptted", keyRole);
       } else {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {
-          if (devEnvironment) console.log("✅ Data Order accept_planning from Redis");
+          if (devEnvironment) console.log("✅ Data Order accept from Redis");
           const parsed = JSON.parse(cachedData);
           return { message: "Get Order from cache", ...parsed };
         }
@@ -57,7 +57,7 @@ export const orderService = {
 
       // Lấy data đã lọc từ cachedStatus
       const result = await getOrderByStatus({
-        statusList: ["accept", "planning"],
+        statusList: ["accept"],
         userId,
         role,
         page: page,

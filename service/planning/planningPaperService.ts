@@ -75,76 +75,22 @@ export const planningPaperService = {
       const { rows: data } = await planningPaperRepository.getPlanningPaper({
         whereCondition: {
           chooseMachine: machine,
-          status: { [Op.ne]: "stop" },
+          status: { [Op.in]: ["planning", "lackQty", "producing"] },
         },
       });
 
-      //lọc đơn complete trong 1 ngày
-      const truncateToDate = (date: Date) =>
-        new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      const now = truncateToDate(new Date());
-
-      const validData = data.filter((planning) => {
-        if (["planning", "lackQty", "producing"].includes(planning.status)) return true;
-
-        if (planning.status === "complete") {
-          const dayCompleted = planning.dayCompleted ? new Date(planning.dayCompleted) : null;
-          if (!dayCompleted || isNaN(dayCompleted.getTime())) return false;
-
-          const expiredDate = truncateToDate(new Date(dayCompleted));
-          expiredDate.setDate(expiredDate.getDate() + 1);
-
-          return expiredDate >= now;
-        }
-
-        return false;
-      });
-
-      const withSort = validData.filter((item: any) => item.sortPlanning !== null);
-      const noSort = validData.filter((item: any) => item.sortPlanning === null);
+      const withSort = data.filter((item: any) => item.sortPlanning !== null);
+      const noSort = data.filter((item: any) => item.sortPlanning === null);
 
       // Sắp xếp đơn có sortPlanning theo thứ tự được lưu
       withSort.sort((a, b) => (a.sortPlanning ?? 0) - (b.sortPlanning ?? 0));
 
-      // Sắp xếp đơn chưa có sortPlanning theo logic yêu cầu
+      // Sắp xếp đơn chưa có sortPlanning theo logic
       noSort.sort((a, b) => {
-        // const wavePriorityMap: Record<"C" | "B" | "E", number> = {
-        //   C: 3,
-        //   B: 2,
-        //   E: 1,
-        // };
-
-        //5BC -> 5
-        // const getLayer = (flute: string) => {
-        //   if (!flute || flute.length < 1) return 0;
-        //   return parseInt(flute.trim()[0]) || 0;
-        // };
-
-        //5BC -> BC [2,3]
-        // const getWavePriorityList = (flute: string) => {
-        //   if (!flute || flute.length < 2) return [];
-        //   const waves = flute.trim().slice(1).toUpperCase().split("");
-        //   return waves.map((w) => wavePriorityMap[w as keyof typeof wavePriorityMap] || 0);
-        // };
-
         //compare ghepKho -> layer (5BC -> 5) -> letter (5BC -> BC)
         const ghepA = a.ghepKho ?? 0;
         const ghepB = b.ghepKho ?? 0;
         if (ghepB !== ghepA) return ghepB - ghepA;
-
-        // const layerA = getLayer(a.Order.flute ?? "");
-        // const layerB = getLayer(b.Order.flute ?? "");
-        // if (layerB !== layerA) return layerB - layerA;
-
-        // const waveA = getWavePriorityList(a.Order.flute ?? "");
-        // const waveB = getWavePriorityList(b.Order.flute ?? "");
-        // const maxLength = Math.max(waveA.length, waveB.length);
-
-        // for (let i = 0; i < maxLength; i++) {
-        //   const priA = waveA[i] ?? 0;
-        //   const priB = waveB[i] ?? 0;
-        //   if (priB !== priA) return priB - priA;
-        // }
 
         return 0;
       });

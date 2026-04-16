@@ -14,9 +14,7 @@ const CACHE_CONFIG = {
 
   //order
   orderPendingReject: (role: string) => [`orders:${role}:pending_reject`],
-  orderAcceptPlanning: (role: string) => ({
-    prefixes: [`orders:${role}:accept_planning:`],
-  }),
+  orderAcceptted: (role: string) => ({ prefixes: [`orders:${role}:accept:`] }),
 
   //planning
   orderAccept: ["orders:status:accept"],
