@@ -12,7 +12,7 @@ interface OutboundHistoryAttributes {
   totalPriceVAT?: number;
   totalPricePayment: number;
   totalOutboundQty: number;
-  dueDate: Date;
+  dueDate?: Date | null;
   paidAmount?: number;
   remainingAmount?: number;
   status: statusOutbound;
@@ -39,7 +39,7 @@ export class OutboundHistory
   declare totalPriceVAT?: number;
   declare totalPricePayment: number;
   declare totalOutboundQty: number;
-  declare dueDate: Date;
+  declare dueDate?: Date | null;
   declare paidAmount?: number;
   declare remainingAmount?: number;
   declare status: statusOutbound;
@@ -61,7 +61,7 @@ export function initOutboundHistoryModel(sequelize: Sequelize): typeof OutboundH
       totalPriceVAT: { type: DataTypes.DOUBLE },
       totalPricePayment: { type: DataTypes.DOUBLE, allowNull: false },
       totalOutboundQty: { type: DataTypes.INTEGER, allowNull: false },
-      dueDate: { type: DataTypes.DATE, allowNull: false }, //thời hạn thanh toán PXK
+      dueDate: { type: DataTypes.DATE }, //thời hạn thanh toán PXK
       paidAmount: { type: DataTypes.DOUBLE }, //số tiền đã thanh toán
       remainingAmount: { type: DataTypes.DOUBLE }, //số tiền còn lại phải thanh toán
       status: {

@@ -3,18 +3,15 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.1.0</title>
-            <sparkle:version>4.1.0</sparkle:version> 
-            <description>Thêm hướng dẫn đặc biệt vào duyệt đơn
-            Chỉnh sửa lại dịch vụ tìm kiếm để trả về dữ liệu chính xác
-            Thêm lọc đơn chờ đăng ký giao giữa tất cả và mỗi sale
-            Cho phép copy và dán ảnh vào đơn hàng
-            Thêm icon thể hiện trùng mã đơn hàng ở trang kế hoạch giao hàng
-            Sửa các đơn tràn giờ nhảy sai ngày
-            Khi duyệt các đơn là phí khác khi duyệt sẽ tự động lưu tồn kho
-            Thay đổi định dạng phiếu xuất kho
+            <title>Version 4.2.0</title>
+            <sparkle:version>4.2.0</sparkle:version> 
+            <description>Loại bỏ đơn hoàn thành ra khỏi trang kế hoạch sản xuất
+            Thêm xuất file excel kế hoạch sản xuất
+            Thêm bộ lọc theo số lượng đã sản xuất cho trang lịch sản xuất
+            Thêm chức năng chuyển giao số lượng tồn và thanh lý tồn 
+            Thêm trang tồn kho thanh lý            
             </description>
-            <pubDate>Wed, 1 April 2026</pubDate>
+            <pubDate>Thu, 16 April 2026</pubDate>
             <enclosure url="dongtam.exe" 
                     sparkle:os="windows" 
                     length="12345678" 
