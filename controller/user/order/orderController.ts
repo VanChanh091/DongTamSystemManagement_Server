@@ -62,38 +62,16 @@ export const getOrdersAcceptPlanning = async (req: Request, res: Response, next:
   const {
     field,
     keyword,
-    page = 1,
-    pageSize = 20,
     ownOnly = "false",
-  } = req.query as {
-    field?: string;
-    keyword?: string;
-    page?: string;
-    pageSize?: string;
-    ownOnly?: string;
-  };
+  } = req.query as { field?: string; keyword?: string; ownOnly?: string };
 
   try {
     let response;
 
-    // 1. Nhánh tìm kiếm theo field
     if (field && keyword) {
-      response = await orderService.getOrderByField({
-        field,
-        keyword,
-        page: Number(page),
-        pageSize: Number(pageSize),
-        user: req.user,
-      });
-    }
-    // 2. Nhánh lấy tất cả
-    else {
-      response = await orderService.getOrderAcceptAndPlanning(
-        Number(page),
-        Number(pageSize),
-        ownOnly,
-        req.user,
-      );
+      response = await orderService.getOrderByField({ field, keyword, user: req.user });
+    } else {
+      response = await orderService.getOrderAcceptAndPlanning(ownOnly, req.user);
     }
 
     return res.status(200).json(response);

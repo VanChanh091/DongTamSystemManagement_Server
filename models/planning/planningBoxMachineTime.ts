@@ -1,7 +1,13 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { PlanningBox } from "./planningBox";
 
-export type statusBoxType = "planning" | "lackOfQty" | "complete" | "producing" | "stop";
+export type statusBoxType =
+  | "planning"
+  | "lackOfQty"
+  | "producing"
+  | "complete"
+  | "requested"
+  | "stop";
 export type machineBoxType =
   | "Máy In"
   | "Máy Cấn Lằn"
@@ -118,7 +124,7 @@ export function initPlanningBoxTimeModel(sequelize: Sequelize): typeof PlanningB
       },
       shiftManagement: { type: DataTypes.STRING },
       status: {
-        type: DataTypes.ENUM("planning", "lackOfQty", "complete", "producing", "stop"),
+        type: DataTypes.ENUM("planning", "lackOfQty", "producing", "requested", "complete", "stop"),
         allowNull: false,
         defaultValue: "planning",
       },

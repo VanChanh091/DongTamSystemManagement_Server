@@ -27,15 +27,27 @@ export const getPlanningEstimateTime = async (req: Request, res: Response, next:
   }
 };
 
-export const registerQtyDelivery = async (req: Request, res: Response, next: NextFunction) => {
-  const { planningId, qtyRegistered } = req.body as { planningId: string; qtyRegistered: string };
+export const handlePutDelivery = async (req: Request, res: Response, next: NextFunction) => {
+  const { planningId, qtyRegistered } = req.body as {
+    planningId: number | number[];
+    qtyRegistered: string;
+  };
 
   try {
-    const response = await deliveryService.registerQtyDelivery({
-      planningId: Number(planningId),
-      qtyRegistered: Number(qtyRegistered),
-      userId: req.user.userId,
-    });
+    let response;
+
+    const planningIds = Array.isArray(planningId) ? planningId.map(Number) : [Number(planningId)];
+
+    if (qtyRegistered) {
+      response = await deliveryService.registerQtyDelivery({
+        planningId: Number(planningId),
+        qtyRegistered: Number(qtyRegistered),
+        userId: req.user.userId,
+      });
+    } else {
+      response = await deliveryService.closePlanning(planningIds);
+    }
+
     return res.status(200).json(response);
   } catch (error) {
     next(error);

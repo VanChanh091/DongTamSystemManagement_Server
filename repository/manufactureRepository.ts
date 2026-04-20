@@ -13,7 +13,7 @@ import { EmployeeCompanyInfo } from "../models/employee/employeeCompanyInfo";
 
 export const manufactureRepo = {
   //====================================HELPER=======================================
-  getEmployeeByCode: async (reportedBy: string) => {
+  getEmployeeByCode: async (reportedBy: string, transaction?: Transaction) => {
     return await EmployeeBasicInfo.findOne({
       attributes: ["fullName"],
       include: {
@@ -22,6 +22,7 @@ export const manufactureRepo = {
         where: { employeeCode: reportedBy },
         attributes: ["employeeCode"],
       },
+      transaction,
     });
   },
 
@@ -31,18 +32,23 @@ export const manufactureRepo = {
     const whereCondition: any = {
       chooseMachine: machine,
       dayStart: { [Op.ne]: null },
-      status: { [Op.in]: ["planning", "lackQty", "producing"] },
+      status: { [Op.in]: ["planning", "lackQty", "producing", "requested"] },
     };
 
-    if (filterType === "gtZero") {
-      // runningPlan - qtyProduced > 0
+    const operatorMap: Record<string, string> = {
+      gtZero: ">",
+      ltZero: "<=",
+    };
+
+    const operator = operatorMap[filterType];
+
+    if (operator) {
       whereCondition[Op.and] = [
-        Sequelize.where(Sequelize.col("runningPlan"), ">", Sequelize.col("qtyProduced")),
-      ];
-    } else if (filterType === "ltZero") {
-      // runningPlan - qtyProduced < 0
-      whereCondition[Op.and] = [
-        Sequelize.where(Sequelize.col("runningPlan"), "<=", Sequelize.col("qtyProduced")),
+        Sequelize.where(
+          Sequelize.col("runningPlan"),
+          operator,
+          Sequelize.fn("COALESCE", Sequelize.col("qtyProduced"), 0),
+        ),
       ];
     }
 
@@ -68,6 +74,7 @@ export const manufactureRepo = {
             "dateRequestShipping",
             "instructSpecial",
             "isBox",
+            "chongTham",
             "customerId",
             "productId",
           ],

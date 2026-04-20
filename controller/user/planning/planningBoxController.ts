@@ -67,30 +67,34 @@ export const updateIndex_TimeRunningBox = async (
 };
 
 export const updatePlanningBoxes = async (req: Request, res: Response, next: NextFunction) => {
-  const { planningBoxIds, machine, newStatus, isConfirm } = req.body as {
+  const { action, planningBoxIds, machine, newStatus } = req.body as {
+    action: string;
     planningBoxIds: number[];
     machine: string;
     newStatus?: statusBoxType;
-    isConfirm?: boolean;
   };
 
   try {
-    if (!Array.isArray(planningBoxIds) || planningBoxIds.length === 0) {
-      throw AppError.BadRequest("Missing planningBoxIds parameter", "MISSING_PARAMETERS");
+    if (!Array.isArray(planningBoxIds) || planningBoxIds.length === 0 || !action) {
+      throw AppError.BadRequest("Missing planningBoxIds or action parameter", "MISSING_PARAMETERS");
     }
 
     let response;
 
-    // 1. Xác nhận sản xuất
-    if (isConfirm) {
-      response = await planningBoxService.confirmCompletePlanningBox(planningBoxIds, machine);
-    }
-
-    // 2. Tạm dừng hoặc chấp nhận thiếu
-    else if (newStatus) {
-      response = await planningBoxService.acceptLackQtyBox(planningBoxIds, newStatus, machine);
-    } else {
-      throw AppError.BadRequest("No valid action provided", "INVALID_ACTION");
+    switch (action) {
+      case "REQUEST_COMPLETE":
+        response = await planningBoxService.requestCompletePlanningBox(planningBoxIds, machine);
+        break;
+      case "CONFIRM_COMPLETE":
+        response = await planningBoxService.confirmCompletePlanningBox(planningBoxIds, machine);
+        break;
+      case "ACCEPT_LACK_QTY":
+        if (newStatus) {
+          response = await planningBoxService.acceptLackQtyBox(planningBoxIds, newStatus, machine);
+        }
+        break;
+      default:
+        throw AppError.BadRequest("Invalid action parameter", "INVALID_ACTION");
     }
 
     return res.status(200).json(response);

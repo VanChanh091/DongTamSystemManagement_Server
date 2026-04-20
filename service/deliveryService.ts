@@ -1,21 +1,23 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { Op } from "sequelize";
+import { Op, Transaction } from "sequelize";
 import { Request, Response } from "express";
 import { AppError } from "../utils/appError";
+import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { DeliveryPlan } from "../models/delivery/deliveryPlan";
 import { DeliveryItem } from "../models/delivery/deliveryItem";
+import redisCache from "../assets/configs/connect/redis.connect";
 import { PlanningPaper } from "../models/planning/planningPaper";
+import { CacheManager } from "../utils/helper/cache/cacheManager";
 import { DeliveryRequest } from "../models/delivery/deliveryRequest";
 import { runInTransaction } from "../utils/helper/transactionHelper";
 import { deliveryRepository } from "../repository/deliveryRepository";
 import { calculateVolume } from "../utils/helper/modelHelper/orderHelpers";
 import { exportDeliveryExcelResponse } from "../utils/helper/excelExporter";
 import { deliveryColumns, mappingDeliveryRow } from "../utils/mapping/deliveryRowAndComlumn";
-import { CacheKey } from "../utils/helper/cache/cacheKey";
-import { CacheManager } from "../utils/helper/cache/cacheManager";
-import redisCache from "../assets/configs/connect/redis.connect";
+import { meiliService } from "./meiliService";
+import { MEILI_INDEX } from "../assets/labelFields";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { estimate, schedule } = CacheKey.delivery;
@@ -65,19 +67,17 @@ export const deliveryService = {
         throw AppError.BadRequest("estimateTime không hợp lệ", "INVALID_ESTIMATE_TIME");
       }
 
+      const plannings = await deliveryRepository.getPlanningEstimateTime(dayStart, userId, all);
+
       // mốc kết thúc NGÀY HÔM NAY
       const [estH, estM] = estimateTime.split(":").map(Number);
       const estimateMinutes = estH * 60 + estM;
 
-      const paperPlannings = await deliveryRepository.getPlanningEstimateTime(
-        dayStart,
-        userId,
-        all,
-      );
+      // console.log(`estimateMinutes: ${estimateMinutes}`);
 
       //filter
-      const filtered = paperPlannings.filter((paper) => {
-        if (paper.hasOverFlow) return false;
+      const filtered = plannings.filter((paper) => {
+        // if (paper.hasOverFlow) return false;
 
         if (paper.status === "complete") return true;
 
@@ -92,25 +92,25 @@ export const deliveryService = {
           // console.log(`compare paper: ${paperMinutes <= estimateMinutes}`);
 
           return paperMinutes <= estimateMinutes;
+        } else {
+          // CÓ BOX → so theo BOX
+          const boxTimes = paper.PlanningBox?.boxTimes ?? [];
+
+          if (boxTimes.length === 0) return false;
+
+          const latestBoxMinutes = Math.max(
+            ...boxTimes.map((t: any) => {
+              const [h, m, s = "0"] = t.timeRunning.split(":");
+
+              return Number(h) * 60 + Number(m) + Number(s) / 60;
+            }),
+          );
+
+          // console.log(`latest time box: ${latestBoxMinutes}`);
+          // console.log(`compare box: ${latestBoxMinutes <= estimateMinutes}`);
+
+          return latestBoxMinutes <= estimateMinutes;
         }
-
-        // CÓ BOX → so theo BOX
-        const boxTimes = paper.PlanningBox?.boxTimes ?? [];
-
-        if (boxTimes.length === 0) return false;
-
-        const latestBoxMinutes = Math.max(
-          ...boxTimes.map((t: any) => {
-            const [h, m, s = "0"] = t.timeRunning.split(":");
-
-            return Number(h) * 60 + Number(m) + Number(s) / 60;
-          }),
-        );
-
-        // console.log(`latest time box: ${latestBoxMinutes}`);
-        // console.log(`compare box: ${latestBoxMinutes <= estimateMinutes}`);
-
-        return latestBoxMinutes <= estimateMinutes;
       });
 
       //PAGING DATA
@@ -161,21 +161,10 @@ export const deliveryService = {
       }
 
       return await runInTransaction(async (transaction) => {
-        const planning = await deliveryRepository.getPaperDeliveryPlanned(planningId, transaction);
+        const planning = await deliveryRepository.getPaperWaitingRegister(planningId, transaction);
         if (!planning) {
           throw AppError.BadRequest("Planning không tồn tại", "PLANNING_NOT_FOUND");
         }
-
-        if (planning.hasOverFlow) {
-          throw AppError.BadRequest(`Planning ${planningId} bị overflow`, "PLANNING_OVERFLOW");
-        }
-
-        // if (qtyRegistered > planning.qtyProduced!) {
-        //   throw AppError.BadRequest(
-        //     `Số lượng đăng ký (${qtyRegistered}) vượt quá số lượng đã sản xuất (${planning.qtyProduced ?? 0})`,
-        //     "QTY_EXCEEDED",
-        //   );
-        // }
 
         const newDeliveryStatus = qtyRegistered === planning.qtyProduced ? "delivered" : "pending";
 
@@ -208,6 +197,40 @@ export const deliveryService = {
           message: "Xác nhận đăng ký giao hàng thành công",
           data: { statusPlanning: newDeliveryStatus, volume },
         };
+      });
+    } catch (error) {
+      console.error("❌ confirm ready delivery planning failed:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  closePlanning: async (planningId: number | number[]) => {
+    try {
+      return await runInTransaction(async (transaction) => {
+        const result = await deliveryRepository.getPaperWaitingClose(planningId, transaction);
+        const plannings = Array.isArray(result) ? result : result ? [result] : [];
+
+        if (plannings.length === 0) {
+          throw AppError.BadRequest("Không tìm thấy planning nào hợp lệ", "PLANNING_NOT_FOUND");
+        }
+
+        for (const p of plannings) {
+          if (p.qtyProduced === 0) {
+            throw AppError.BadRequest(
+              `Không thể đóng đơn hàng chưa sản xuất: ${p.orderId}`,
+              "CANNOT_CLOSE_EMPTY_PAPER",
+            );
+          }
+        }
+
+        const idToUpdate = plannings.map((p) => p.planningId);
+        await PlanningPaper.update(
+          { deliveryPlanned: "delivered" },
+          { where: { planningId: idToUpdate }, transaction },
+        );
+
+        return { message: "Đóng đơn hàng thành công" };
       });
     } catch (error) {
       console.error("❌ confirm ready delivery planning failed:", error);

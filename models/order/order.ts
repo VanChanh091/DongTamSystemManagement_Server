@@ -27,9 +27,11 @@ interface OrderAttributes {
   totalPrice: number;
   totalPriceVAT: number;
   volume: number;
-  isBox: boolean;
   status: OrderStatus;
   statusPriority: number;
+
+  isBox: boolean;
+  chongTham: boolean;
 
   flute?: string | null;
   QC_box?: string | null;
@@ -100,6 +102,7 @@ export type OrderCreationAttributes = Optional<
   | "rejectReason"
   | "volume"
   | "isBox"
+  | "chongTham"
   | "status"
   | "statusPriority"
   | "orderIdCustomer"
@@ -131,8 +134,10 @@ export class Order
   declare totalPrice: number;
   declare totalPriceVAT: number;
   declare volume: number;
-  declare isBox: boolean;
   declare status: OrderStatus;
+
+  declare isBox: boolean;
+  declare chongTham: boolean;
 
   declare statusPriority: number;
   declare orderSortValue: number;
@@ -190,6 +195,7 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
       QC_box: { type: DataTypes.STRING },
       canLan: { type: DataTypes.STRING },
       daoXa: { type: DataTypes.STRING },
+
       day: { type: DataTypes.STRING },
       matE: { type: DataTypes.STRING },
       matB: { type: DataTypes.STRING },
@@ -199,12 +205,14 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
       songB: { type: DataTypes.STRING },
       songC: { type: DataTypes.STRING },
       songE2: { type: DataTypes.STRING },
+
       lengthPaperCustomer: { type: DataTypes.DOUBLE, allowNull: false },
       lengthPaperManufacture: { type: DataTypes.DOUBLE, allowNull: false },
       paperSizeCustomer: { type: DataTypes.DOUBLE, allowNull: false },
       paperSizeManufacture: { type: DataTypes.DOUBLE, allowNull: false },
       quantityCustomer: { type: DataTypes.INTEGER, allowNull: false },
       quantityManufacture: { type: DataTypes.INTEGER, allowNull: false },
+
       numberChild: { type: DataTypes.INTEGER, allowNull: false },
       acreage: { type: DataTypes.DOUBLE, allowNull: false },
       dvt: { type: DataTypes.STRING, allowNull: false },
@@ -218,6 +226,7 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
       volume: { type: DataTypes.DOUBLE, allowNull: false },
       instructSpecial: { type: DataTypes.STRING },
       isBox: { type: DataTypes.BOOLEAN, defaultValue: false, allowNull: false },
+      chongTham: { type: DataTypes.BOOLEAN, defaultValue: false, allowNull: false },
       status: {
         type: DataTypes.ENUM("pending", "accept", "reject", "planning", "stop"), //1-2-3-4-5
         allowNull: false,

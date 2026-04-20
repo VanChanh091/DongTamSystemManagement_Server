@@ -10,8 +10,8 @@ import {
   getPlanningEstimateTime,
   getPlanningRequest,
   getRequestPrepareGoods,
+  handlePutDelivery,
   notifyPrepareGoods,
-  registerQtyDelivery,
   requestOrPrepareGoods,
 } from "../../controller/user/delivery/deliveryController";
 
@@ -25,12 +25,7 @@ router.get(
   authorizeAnyPermission(["plan", "sale"]),
   getPlanningEstimateTime,
 );
-router.put(
-  "/estimate",
-  authenticate,
-  authorizeAnyPermission(["plan", "sale"]),
-  registerQtyDelivery,
-);
+router.put("/estimate", authenticate, authorizeAnyPermission(["plan", "sale"]), handlePutDelivery);
 
 //=================================DELIVERY PLANNING=====================================
 

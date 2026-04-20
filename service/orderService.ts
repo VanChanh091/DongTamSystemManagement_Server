@@ -32,12 +32,12 @@ const devEnvironment = process.env.NODE_ENV !== "production";
 const { order } = CacheKey;
 
 export const orderService = {
-  getOrderAcceptAndPlanning: async (page: number, pageSize: number, ownOnly: string, user: any) => {
+  getOrderAcceptAndPlanning: async (ownOnly: string, user: any) => {
     const { userId, role } = user;
 
     try {
       const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
-      const cacheKey = order.accept(keyRole, page); //orders:all:accept:page:1
+      const cacheKey = order.accept(keyRole); //orders:all:accept:page:1
 
       const { isChanged } = await CacheManager.check(
         [{ model: Order, where: { status: ["accept"] } }],
@@ -60,10 +60,7 @@ export const orderService = {
         statusList: ["accept"],
         userId,
         role,
-        page: page,
-        pageSize: pageSize,
         ownOnly,
-        isPaging: true,
       });
 
       await redisCache.set(cacheKey, JSON.stringify(result), "EX", 3600);
@@ -107,7 +104,6 @@ export const orderService = {
         userId,
         role,
         ownOnly,
-        isPaging: false,
       });
 
       await redisCache.set(cacheKey, JSON.stringify(result), "EX", 3600);
@@ -120,7 +116,7 @@ export const orderService = {
     }
   },
 
-  getOrderByField: async ({ field, keyword, page, pageSize, user }: searchFieldAtribute) => {
+  getOrderByField: async ({ field, keyword, user }: searchFieldAtribute) => {
     const { userId, role } = user;
 
     try {
@@ -142,19 +138,11 @@ export const orderService = {
         filter: filters.join(" AND "),
         attributesToSearchOn: [field],
         attributesToRetrieve: ["orderId"], // Chỉ lấy orderId
-        page: Number(page) || 1,
-        hitsPerPage: Number(pageSize) || 25,
       });
 
       const orderIds = searchResult.hits.map((hit: any) => hit.orderId);
       if (orderIds.length === 0) {
-        return {
-          message: "No orders found",
-          data: [],
-          totalOrders: 0,
-          totalPages: 1,
-          currentPage: page,
-        };
+        return { message: "No orders found", data: [] };
       }
 
       // Truy vấn DB để lấy data dựa trên orderIds
@@ -169,9 +157,6 @@ export const orderService = {
       return {
         message: "Get orders from Meilisearch & DB successfully",
         data: finalData,
-        totalOrders: searchResult.totalHits,
-        totalPages: searchResult.totalPages,
-        currentPage: page,
       };
     } catch (error) {
       console.error(`❌ Failed to get orders by ${field}:`, error);
@@ -289,9 +274,6 @@ export const orderService = {
 
         //--------------------MEILISEARCH-----------------------
         const orderCreated = await orderRepository.findOrderForMeili(newOrderId, transaction);
-
-        console.log(orderCreated);
-
         if (orderCreated) {
           const flattenData = meiliTransformer.order(orderCreated);
           await meiliService.syncOrUpdateMeiliData({
@@ -375,9 +357,6 @@ export const orderService = {
 
         //--------------------MEILISEARCH-----------------------
         const orderUpdated = await orderRepository.findOrderForMeili(orderId, transaction);
-
-        console.log(orderUpdated);
-
         if (orderUpdated) {
           const flattenData = meiliTransformer.order(orderUpdated);
           await meiliService.syncOrUpdateMeiliData({

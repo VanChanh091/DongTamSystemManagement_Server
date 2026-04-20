@@ -1,6 +1,7 @@
-import { NextFunction, Request, Response } from "express";
-import { manufactureService } from "../../../service/manufactureService";
 import { AppError } from "../../../utils/appError";
+import { NextFunction, Request, Response } from "express";
+import { manuPaperService } from "../../../service/manufacture/manufacturePaperService";
+import { manuBoxService } from "../../../service/manufacture/manufactureBoxService";
 
 //===============================MANUFACTURE PAPER=====================================
 
@@ -13,7 +14,7 @@ export const getPlanningPaper = async (req: Request, res: Response, next: NextFu
       throw AppError.BadRequest("Missing machine parameter", "MISSING_PARAMETERS");
     }
 
-    const response = await manufactureService.getPlanningPaper(machine, filterType);
+    const response = await manuPaperService.getPlanningPaper(machine, filterType);
     return res.status(201).json(response);
   } catch (error) {
     next(error);
@@ -25,11 +26,7 @@ export const addReportPaper = async (req: Request, res: Response, next: NextFunc
   const { planningId } = req.query as { planningId: string };
 
   try {
-    const response = await manufactureService.addReportPaper(
-      Number(planningId),
-      req.body,
-      req.user,
-    );
+    const response = await manuPaperService.addReportPaper(Number(planningId), req.body, req.user);
     return res.status(201).json(response);
   } catch (error) {
     next(error);
@@ -40,7 +37,7 @@ export const updateReportPaper = async (req: Request, res: Response, next: NextF
   const { planningId } = req.query as { planningId: string };
 
   try {
-    const response = await manufactureService.updateReportPaper(
+    const response = await manuPaperService.updateReportPaper(
       Number(planningId),
       req.body,
       req.user,
@@ -60,7 +57,7 @@ export const confirmProducingPaper = async (req: Request, res: Response, next: N
       throw AppError.BadRequest("Missing planningId parameter", "MISSING_PARAMETERS");
     }
 
-    const response = await manufactureService.confirmProducingPaper(
+    const response = await manuPaperService.confirmProducingPaper(
       req,
       Number(planningId),
       req.user,
@@ -82,7 +79,7 @@ export const getPlanningBox = async (req: Request, res: Response, next: NextFunc
       throw AppError.BadRequest("Missing machine parameter", "MISSING_PARAMETERS");
     }
 
-    const response = await manufactureService.getPlanningBox(machine);
+    const response = await manuBoxService.getPlanningBox(machine);
     return res.status(201).json(response);
   } catch (error) {
     next(error);
@@ -94,11 +91,7 @@ export const addReportBox = async (req: Request, res: Response, next: NextFuncti
   const { planningBoxId, machine } = req.query as { planningBoxId: string; machine: string };
 
   try {
-    const response = await manufactureService.addReportBox(
-      Number(planningBoxId),
-      machine,
-      req.body,
-    );
+    const response = await manuBoxService.addReportBox(Number(planningBoxId), machine, req.body);
     return res.status(201).json(response);
   } catch (error) {
     next(error);
@@ -109,11 +102,7 @@ export const updateReportBox = async (req: Request, res: Response, next: NextFun
   const { planningBoxId, machine } = req.query as { planningBoxId: string; machine: string };
 
   try {
-    const response = await manufactureService.updateReportBox(
-      Number(planningBoxId),
-      machine,
-      req.body,
-    );
+    const response = await manuBoxService.updateReportBox(Number(planningBoxId), machine, req.body);
     return res.status(201).json(response);
   } catch (error) {
     next(error);
@@ -129,7 +118,7 @@ export const confirmProducingBox = async (req: Request, res: Response, next: Nex
       throw AppError.BadRequest("Missing planningBoxId parameter", "MISSING_PARAMETERS");
     }
 
-    const response = await manufactureService.confirmProducingBox(
+    const response = await manuBoxService.confirmProducingBox(
       req,
       Number(planningBoxId),
       machine,
@@ -150,10 +139,7 @@ export const updateRequestStockCheck = async (req: Request, res: Response, next:
       throw AppError.BadRequest("Missing planningBoxId parameter", "MISSING_PARAMETERS");
     }
 
-    const response = await manufactureService.updateRequestStockCheck(
-      Number(planningBoxId),
-      machine,
-    );
+    const response = await manuBoxService.updateRequestStockCheck(Number(planningBoxId), machine);
     return res.status(201).json(response);
   } catch (error) {
     next(error);

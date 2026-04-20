@@ -7,9 +7,10 @@ import { InboundHistory } from "../warehouse/inboundHistory";
 export type machinePaperType = "Máy 1350" | "Máy 1900" | "Máy 2 Lớp" | "Máy Quấn Cuồn";
 export type planningPaperStatus =
   | "planning"
-  | "complete"
   | "lackQty"
   | "producing"
+  | "requested"
+  | "complete"
   | "stop"
   | "cancel";
 export type statusRequestInbound = "none" | "requested" | "inbounded" | "finalize";
@@ -211,7 +212,15 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
         allowNull: false,
       },
       status: {
-        type: DataTypes.ENUM("planning", "complete", "lackQty", "producing", "stop", "cancel"),
+        type: DataTypes.ENUM(
+          "planning",
+          "lackQty",
+          "producing",
+          "requested",
+          "complete",
+          "stop",
+          "cancel",
+        ),
         allowNull: false,
         defaultValue: "planning",
       },

@@ -39,7 +39,7 @@ router.put(
 );
 
 //=========================PLANNING PAPER=========================
-router.get("/planning-papers", authenticate, authorizeAnyPermission(["plan"]), getPlanningPapers);
+router.get("/planning-papers", authenticate, getPlanningPapers);
 router.post(
   "/planning-papers",
   authenticate,
@@ -55,7 +55,7 @@ router.put(
 );
 
 //=========================PLANNING BOX=========================
-router.get("/planning-boxes", authenticate, authorizeAnyPermission(["plan"]), getPlanningBoxes);
+router.get("/planning-boxes", authenticate, getPlanningBoxes);
 router.post(
   "/planning-boxes",
   authenticate,

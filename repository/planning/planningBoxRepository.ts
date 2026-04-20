@@ -1,4 +1,4 @@
-import { Op } from "sequelize";
+import { Op, Transaction } from "sequelize";
 import { PlanningBox } from "../../models/planning/planningBox";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
@@ -33,7 +33,10 @@ export const planningBoxRepository = {
       include: [
         {
           model: PlanningBoxTime,
-          where: { machine: machine },
+          where: {
+            machine: machine,
+            status: { [Op.in]: ["planning", "lackOfQty", "producing", "requested"] },
+          },
           as: "boxTimes",
           required: true,
           attributes: { exclude: ["createdAt", "updatedAt"] },
@@ -135,19 +138,17 @@ export const planningBoxRepository = {
   }: {
     planningBoxIds: number | number[];
     machine: string;
-    options?: { attributes?: any; include?: any };
+    options?: { attributes?: any; include?: any; transaction?: Transaction };
   }) => {
-    const { attributes, include } = options;
     const ids = Array.isArray(planningBoxIds) ? planningBoxIds : [planningBoxIds];
 
     return await PlanningBoxTime.findAll({
-      attributes,
-      include,
       where: { planningBoxId: { [Op.in]: ids }, machine },
+      ...options,
     });
   },
 
-  getBoxesByUpdateIndex: async (updateIndex: any[], machine: string, transaction?: any) => {
+  getBoxesByUpdateIndex: async (updateIndex: any[], machine: string, transaction?: Transaction) => {
     return await PlanningBox.findAll({
       where: { planningBoxId: updateIndex.map((i) => i.planningBoxId) },
       include: [
@@ -167,7 +168,7 @@ export const planningBoxRepository = {
     });
   },
 
-  getTimeOverflowBox: async (machine: string, transaction?: any) => {
+  getTimeOverflowBox: async (machine: string, transaction?: Transaction) => {
     return await timeOverflowPlanning.findOne({
       include: [
         {
@@ -196,7 +197,7 @@ export const planningBoxRepository = {
     transaction,
   }: {
     whereCondition?: any;
-    transaction?: any;
+    transaction?: Transaction;
   }) => {
     return await PlanningBox.findAll({
       where: whereCondition,
@@ -217,7 +218,7 @@ export const planningBoxRepository = {
     });
   },
 
-  syncPlanningBoxByPlanningId: async (planningId: number, transaction: any) => {
+  syncPlanningBoxByPlanningId: async (planningId: number, transaction: Transaction) => {
     return await PlanningBox.findOne({
       where: { planningId },
       attributes: ["planningBoxId"],

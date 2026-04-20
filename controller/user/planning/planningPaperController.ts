@@ -1,8 +1,8 @@
-import { machinePaperType } from "../../../models/planning/planningPaper";
-import { NextFunction, Request, Response } from "express";
-import { planningPaperService } from "../../../service/planning/planningPaperService";
-import { OrderStatus } from "../../../models/order/order";
 import { AppError } from "../../../utils/appError";
+import { OrderStatus } from "../../../models/order/order";
+import { NextFunction, Request, Response } from "express";
+import { machinePaperType } from "../../../models/planning/planningPaper";
+import { planningPaperService } from "../../../service/planning/planningPaperService";
 
 export const getPlanningPapers = async (req: Request, res: Response, next: NextFunction) => {
   const { machine, field, keyword } = req.query as {
@@ -33,40 +33,44 @@ export const getPlanningPapers = async (req: Request, res: Response, next: NextF
 };
 
 export const updatePlanningPapers = async (req: Request, res: Response, next: NextFunction) => {
-  const { planningIds, newMachine, newStatus, rejectReason, isConfirm } = req.body as {
-    planningIds: number[];
+  const { action, planningIds, newMachine, newStatus, rejectReason } = req.body as {
+    action: string;
+    planningIds: number | number[];
     newMachine?: machinePaperType;
     newStatus?: OrderStatus;
     rejectReason?: string;
-    isConfirm?: boolean;
   };
 
   try {
-    if (!Array.isArray(planningIds) || planningIds.length === 0) {
-      throw AppError.BadRequest("Missing planningIds parameter", "MISSING_PARAMETERS");
+    if (!Array.isArray(planningIds) || planningIds.length === 0 || !action) {
+      throw AppError.BadRequest("Missing planningIds or action parameter", "MISSING_PARAMETERS");
     }
 
     let response;
 
-    // 1. Đổi máy
-    if (newMachine) {
-      response = await planningPaperService.changeMachinePlanning(planningIds, newMachine);
-    }
-
-    // 2. Xác nhận sản xuất
-    else if (isConfirm) {
-      response = await planningPaperService.confirmCompletePlanningPaper(planningIds);
-    }
-
-    // 3. Tạm dừng hoặc chấp nhận thiếu
-    else if (newStatus) {
-      response = await planningPaperService.pauseOrAcceptLackQtyPLanning(
-        planningIds,
-        newStatus,
-        rejectReason,
-      );
-    } else {
-      throw AppError.BadRequest("No valid action provided", "INVALID_ACTION");
+    switch (action) {
+      case "CHANGE_MACHINE":
+        if (newMachine) {
+          response = await planningPaperService.changeMachinePlanning(planningIds, newMachine);
+        }
+        break;
+      case "REQUEST_COMPLETE":
+        response = await planningPaperService.requestCompletePlanningPaper(planningIds);
+        break;
+      case "CONFIRM_COMPLETE":
+        response = await planningPaperService.confirmCompletePlanningPaper(planningIds);
+        break;
+      case "PAUSE_OR_ACCEPT_LACK":
+        if (newStatus) {
+          response = await planningPaperService.pauseOrAcceptLackQtyPLanning(
+            planningIds,
+            newStatus,
+            rejectReason,
+          );
+        }
+        break;
+      default:
+        throw AppError.BadRequest("Invalid action parameter", "INVALID_ACTION");
     }
 
     return res.status(200).json(response);

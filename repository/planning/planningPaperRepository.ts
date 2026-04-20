@@ -1,4 +1,4 @@
-import { Op, Transaction } from "sequelize";
+import { Op, Sequelize, Transaction } from "sequelize";
 import { Box } from "../../models/order/box";
 import { Order } from "../../models/order/order";
 import { Product } from "../../models/product/product";
@@ -121,9 +121,11 @@ export const planningPaperRepository = {
   getPapersById: async ({
     planningIds,
     options = {},
+    transaction,
   }: {
     planningIds: number[];
     options?: { attributes?: any; include?: any };
+    transaction: Transaction;
   }) => {
     const { attributes, include } = options;
 
@@ -133,12 +135,14 @@ export const planningPaperRepository = {
       where: {
         planningId: { [Op.in]: planningIds },
       },
+      transaction,
     });
   },
 
-  getBoxByPlanningId: async (paperId: number) => {
+  getBoxByPlanningId: async (paperId: number, transaction: Transaction) => {
     return PlanningBox.findAll({
       where: { planningId: paperId },
+      transaction,
     });
   },
 
@@ -166,6 +170,53 @@ export const planningPaperRepository = {
         ["overflowTimeRunning", "DESC"],
       ],
       transaction,
+    });
+  },
+
+  getPaperToExportFile: async (machine: string) => {
+    return PlanningPaper.findAll({
+      where: {
+        chooseMachine: machine,
+        status: { [Op.notIn]: ["complete", "stop", "cancel"] },
+        statusRequest: { [Op.in]: ["none", "requested"] },
+        sortPlanning: { [Op.ne]: null },
+
+        //qtyProduced < quantityManufacture
+        [Op.and]: [
+          Sequelize.where(
+            Sequelize.fn("COALESCE", Sequelize.col("qtyProduced"), 0),
+            "<",
+            Sequelize.col("Order.quantityManufacture"),
+          ),
+        ],
+      },
+      attributes: [
+        "planningId",
+        "dayStart",
+        "dayReplace",
+        "matEReplace",
+        "matBReplace",
+        "matCReplace",
+        "matE2Replace",
+        "songEReplace",
+        "songBReplace",
+        "songCReplace",
+        "songE2Replace",
+        "lengthPaperPlanning",
+        "sizePaperPLaning",
+        "numberChild",
+        "ghepKho",
+        "qtyProduced",
+        "sortPlanning",
+      ],
+      include: [
+        {
+          model: Order,
+          attributes: ["orderId", "flute", "quantityManufacture", "totalPrice", "instructSpecial"],
+          required: true,
+          include: [{ model: Customer, attributes: ["customerName"] }],
+        },
+      ],
     });
   },
 

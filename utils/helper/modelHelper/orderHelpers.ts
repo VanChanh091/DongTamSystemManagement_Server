@@ -237,18 +237,12 @@ export const getOrderByStatus = async ({
   statusList,
   userId,
   role,
-  page = 1,
-  pageSize = 30,
   ownOnly,
-  isPaging = true,
 }: {
   statusList: string[];
   userId: number;
   role: string;
-  page?: number;
-  pageSize?: number;
   ownOnly?: string;
-  isPaging?: boolean;
 }) => {
   let whereCondition: any = { status: { [Op.in]: statusList } };
 
@@ -257,20 +251,6 @@ export const getOrderByStatus = async ({
   }
 
   const queryOptions = orderRepository.buildQueryOptions(whereCondition);
-
-  if (isPaging) {
-    queryOptions.offset = (page - 1) * pageSize;
-    queryOptions.limit = pageSize;
-
-    const { count, rows } = await Order.findAndCountAll(queryOptions);
-
-    return {
-      data: rows,
-      totalOrders: count,
-      totalPages: Math.ceil(count / pageSize),
-      currentPage: page,
-    };
-  }
 
   const rows = await Order.findAll(queryOptions);
   return { data: rows };

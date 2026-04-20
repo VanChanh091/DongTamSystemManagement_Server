@@ -22,26 +22,21 @@ export const deliveryRepository = {
         dayStart: { [Op.lte]: dayStart },
         status: { [Op.notIn]: ["stop", "cancel"] },
       },
-      attributes: {
-        exclude: [
-          "createdAt",
-          "updatedAt",
-          "sortPlanning",
-          "statusRequest",
-          "hasOverFlow",
-          "bottom",
-          "fluteE",
-          "fluteB",
-          "fluteC",
-          "fluteE2",
-          "knife",
-          "totalLoss",
-          "qtyWasteNorm",
-          "chooseMachine",
-          "shiftProduction",
-          "shiftManagement",
-        ],
-      },
+      attributes: [
+        "planningId",
+        "dayReplace",
+        "matEReplace",
+        "matBReplace",
+        "matCReplace",
+        "matE2Replace",
+        "songEReplace",
+        "songBReplace",
+        "songCReplace",
+        "songE2Replace",
+        "hasBox",
+        "timeRunning",
+        "orderId",
+      ],
       include: [
         {
           model: timeOverflowPlanning,
@@ -50,38 +45,25 @@ export const deliveryRepository = {
         },
         {
           model: Order,
-          attributes: {
-            exclude: [
-              "rejectReason",
-              "createdAt",
-              "updatedAt",
-              "day",
-              "matE",
-              "matE2",
-              "matB",
-              "matC",
-              "songE",
-              "songB",
-              "songC",
-              "songE2",
-              "status",
-              "lengthPaperCustomer",
-              "paperSizeCustomer",
-              "quantityCustomer",
-              "lengthPaperManufacture",
-              "paperSizeManufacture",
-              "numberChild",
-              "isBox",
-              "canLan",
-              "daoXa",
-              "acreage",
-              "pricePaper",
-              "profit",
-            ],
-          },
+          attributes: [
+            "orderId",
+            "dayReceiveOrder",
+            "dateRequestShipping",
+            "QC_box",
+            "paperSizeManufacture",
+            "lengthPaperManufacture",
+            "quantityManufacture",
+            "dvt",
+            "isBox",
+            "volume",
+            "instructSpecial",
+            "customerId",
+            "productId",
+            "userId",
+          ],
           include: [
-            { model: Customer, attributes: ["customerName", "companyName"] },
-            { model: Product, attributes: ["typeProduct", "productName"] },
+            { model: Customer, attributes: ["customerName"] },
+            { model: Product, attributes: ["productName"] },
             { model: User, where: all === "true" ? {} : { userId }, attributes: ["fullName"] },
             { model: Inventory, attributes: ["qtyInventory"] },
           ],
@@ -123,8 +105,22 @@ export const deliveryRepository = {
     });
   },
 
-  getPaperDeliveryPlanned: async (planningId: number, transaction: Transaction) => {
+  getPaperWaitingRegister: async (planningId: number, transaction: Transaction) => {
     return await PlanningPaper.findOne({
+      where: { planningId, deliveryPlanned: { [Op.in]: ["none", "pending"] } },
+      include: [
+        {
+          model: Order,
+          attributes: ["quantityCustomer", "lengthPaperCustomer", "paperSizeCustomer", "flute"],
+        },
+      ],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+  },
+
+  getPaperWaitingClose: async (planningId: number | number[], transaction: Transaction) => {
+    return await PlanningPaper.findAll({
       where: { planningId, deliveryPlanned: { [Op.in]: ["none", "pending"] } },
       include: [
         {

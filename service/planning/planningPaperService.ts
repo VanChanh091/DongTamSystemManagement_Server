@@ -21,7 +21,6 @@ import { machinePaperType, PlanningPaper } from "../../models/planning/planningP
 import { planningPaperRepository } from "../../repository/planning/planningPaperRepository";
 import { MEILI_INDEX } from "../../assets/labelFields";
 import { exportExcelResponse } from "../../utils/helper/excelExporter";
-import { Customer } from "../../models/customer/customer";
 import { normalizeVN } from "../../utils/helper/normalizeVN";
 import {
   mapPlanningPaperRow,
@@ -30,6 +29,8 @@ import {
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper } = CacheKey.planning;
+
+const filterStatus = ["planning", "lackQty", "producing", "requested"];
 
 export const planningPaperService = {
   //====================================PLANNING PAPER========================================
@@ -75,64 +76,64 @@ export const planningPaperService = {
       const { rows: data } = await planningPaperRepository.getPlanningPaper({
         whereCondition: {
           chooseMachine: machine,
-          status: { [Op.in]: ["planning", "lackQty", "producing"] },
+          status: { [Op.in]: filterStatus },
         },
       });
 
-      const withSort = data.filter((item: any) => item.sortPlanning !== null);
-      const noSort = data.filter((item: any) => item.sortPlanning === null);
-
-      // Sắp xếp đơn có sortPlanning theo thứ tự được lưu
-      withSort.sort((a, b) => (a.sortPlanning ?? 0) - (b.sortPlanning ?? 0));
-
-      // Sắp xếp đơn chưa có sortPlanning theo logic
-      noSort.sort((a, b) => {
-        //compare ghepKho -> layer (5BC -> 5) -> letter (5BC -> BC)
-        const ghepA = a.ghepKho ?? 0;
-        const ghepB = b.ghepKho ?? 0;
-        if (ghepB !== ghepA) return ghepB - ghepA;
-
-        return 0;
-      });
-
-      const sortedPlannings = [...withSort, ...noSort];
-
-      //Gộp overflow vào liền sau đơn gốc
-      const allPlannings: any[] = [];
-      const overflowRemoveFields = ["runningPlan", "quantityManufacture"];
-
-      sortedPlannings.forEach((planning) => {
-        const original = {
-          ...planning.toJSON(),
-          timeRunning: planning.timeRunning,
-          dayStart: planning.dayStart,
-        };
-        allPlannings.push(original);
-
-        if (planning.timeOverFlow) {
-          const overflow: any = { ...planning.toJSON() };
-
-          overflow.isOverflow = true;
-          overflow.dayStart = planning.timeOverFlow.overflowDayStart;
-          overflow.timeRunning = planning.timeOverFlow.overflowTimeRunning;
-          overflow.dayCompleted = planning.timeOverFlow.overflowDayCompleted;
-
-          overflowRemoveFields.forEach((f) => delete overflow[f]);
-          if (overflow.Order) {
-            ["quantityManufacture", "totalPrice", "totalPriceVAT"].forEach(
-              (item) => delete overflow.Order[item],
-            );
-          }
-
-          allPlannings.push(overflow);
-        }
-      });
+      const allPlannings = planningPaperService.applyPlanningSortAndOverflow(data);
 
       return allPlannings;
     } catch (error) {
       console.error("Error fetching planning by machine:", error);
       throw AppError.ServerError();
     }
+  },
+
+  applyPlanningSortAndOverflow: (data: any[]) => {
+    // Phân loại
+    const withSort = data.filter((item: any) => item.sortPlanning !== null);
+    const noSort = data.filter((item: any) => item.sortPlanning === null);
+
+    // Sắp xếp đơn có sortPlanning (sắp tăng)
+    withSort.sort((a, b) => (a.sortPlanning ?? 0) - (b.sortPlanning ?? 0));
+
+    // Sắp xếp đơn chưa có sortPlanning (sắp giảm theo ghepKho)
+    noSort.sort((a, b) => (b.ghepKho ?? 0) - (a.ghepKho ?? 0));
+
+    const sortedPlannings = [...withSort, ...noSort];
+
+    // Gộp overflow vào liền sau đơn gốc
+    const allPlannings: any[] = [];
+    const overflowRemoveFields = ["runningPlan", "quantityManufacture"];
+
+    sortedPlannings.forEach((planning) => {
+      const planningJson = typeof planning.toJSON === "function" ? planning.toJSON() : planning;
+
+      const original = {
+        ...planningJson,
+        timeRunning: planning.timeRunning,
+        dayStart: planning.dayStart,
+      };
+      allPlannings.push(original);
+
+      if (planning.timeOverFlow) {
+        const overflow: any = { ...planningJson };
+        overflow.isOverflow = true;
+        overflow.dayStart = planning.timeOverFlow.overflowDayStart;
+        overflow.timeRunning = planning.timeOverFlow.overflowTimeRunning;
+        overflow.dayCompleted = planning.timeOverFlow.overflowDayCompleted;
+
+        overflowRemoveFields.forEach((f) => delete overflow[f]);
+        if (overflow.Order) {
+          ["quantityManufacture", "totalPrice", "totalPriceVAT"].forEach(
+            (item) => delete overflow.Order[item],
+          );
+        }
+        allPlannings.push(overflow);
+      }
+    });
+
+    return allPlannings;
   },
 
   getPlanningByField: async (machine: string, field: string, keyword: string) => {
@@ -147,7 +148,7 @@ export const planningPaperService = {
       const searchResult = await index.search(keyword, {
         attributesToSearchOn: [field],
         attributesToRetrieve: ["planningId"],
-        filter: `chooseMachine = "${machine}" AND status != "stop"`,
+        filter: `chooseMachine = "${machine}" AND status IN ${JSON.stringify(filterStatus)}`,
         limit: 100,
       });
 
@@ -180,7 +181,7 @@ export const planningPaperService = {
   changeMachinePlanning: async (planningIds: number[], newMachine: machinePaperType) => {
     try {
       return await runInTransaction(async (transaction) => {
-        const plannings = await planningPaperRepository.getPapersById({ planningIds });
+        const plannings = await planningPaperRepository.getPapersById({ planningIds, transaction });
 
         if (plannings.length === 0) {
           throw AppError.NotFound("planning not found", "PLANNING_NOT_FOUND");
@@ -189,7 +190,7 @@ export const planningPaperService = {
         for (const planning of plannings) {
           planning.chooseMachine = newMachine;
           planning.sortPlanning = null;
-          await planning.save();
+          await planning.save({ transaction });
         }
 
         //--------------------MEILISEARCH-----------------------
@@ -214,85 +215,112 @@ export const planningPaperService = {
     }
   },
 
-  confirmCompletePlanningPaper: async (planningId: number | number[]) => {
+  requestCompletePlanningPaper: async (planningId: number | number[]) => {
     try {
-      return await runInTransaction(async (transaction) => {
-        const ids = Array.isArray(planningId) ? planningId : [planningId];
-
-        const planningPaper = await planningPaperRepository.getPapersById({
-          planningIds: ids,
-          options: {
-            attributes: [
-              "planningId",
-              "runningPlan",
-              "qtyProduced",
-              "status",
-              "hasOverFlow",
-              "orderId",
-              "statusRequest",
-            ],
-          },
-        });
-        if (planningPaper.length !== ids.length) {
-          throw AppError.BadRequest("planning not found", "PLANNING_NOT_FOUND");
-        }
-
-        // Kiểm tra sl từng đơn
-        for (const paper of planningPaper) {
-          const { qtyProduced, runningPlan } = paper;
-
-          if ((qtyProduced ?? 0) < runningPlan) {
-            throw AppError.BadRequest("Lack quantity", "LACK_QUANTITY");
+      return await planningPaperService._updateStatusPaper(planningId, "requested", (papers) => {
+        for (const p of papers) {
+          if (p.status === "requested") {
+            throw AppError.BadRequest(
+              `Đơn hàng ${p.orderId} đã được yêu cầu hoàn thành rồi`,
+              "PLANNING_ALREADY_REQUESTED",
+            );
           }
 
-          //check đã nhập kho chưa
-          if (paper.statusRequest !== "finalize") {
+          if ((p.qtyProduced ?? 0) === 0) {
             throw AppError.BadRequest(
-              `Mã đơn ${paper.orderId} chưa được chốt nhập kho`,
-              "PLANNING_NOT_FINALIZED",
+              `Đơn hàng ${p.orderId} chưa có số lượng sản xuất`,
+              "PLANNING_NO_PRODUCED_QUANTITY",
             );
           }
         }
-
-        //cập nhật status planning
-        await planningHelper.updateDataModel({
-          model: PlanningPaper,
-          data: { status: "complete" },
-          options: { where: { planningId: ids } },
-        });
-
-        const overflowRows = await timeOverflowPlanning.findAll({
-          where: { planningId: ids },
-        });
-
-        if (overflowRows.length) {
-          await planningHelper.updateDataModel({
-            model: timeOverflowPlanning,
-            data: { status: "complete" },
-            options: { where: { planningId: ids } },
-          });
-        }
-
-        //--------------------MEILISEARCH-----------------------
-        const dataForMeili = planningPaper.map((p) => ({
-          planningId: p.planningId,
-          status: "complete",
-        }));
-
-        await meiliService.syncOrUpdateMeiliData({
-          indexKey: MEILI_INDEX.PLANNING_PAPERS,
-          data: dataForMeili,
-          transaction,
-          isUpdate: true,
-        });
-
-        return { message: "planning paper updated successfully" };
       });
     } catch (error) {
-      console.log(`error confirm complete planning`, error);
+      console.log(`error request complete planning paper`, error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
+  },
+
+  confirmCompletePlanningPaper: async (planningId: number | number[]) => {
+    return await planningPaperService._updateStatusPaper(planningId, "complete", (papers) => {
+      for (const p of papers) {
+        if (p.status !== "requested") {
+          throw AppError.BadRequest(
+            `Đơn ${p.orderId} chưa được yêu cầu hoàn thành`,
+            "PLANNING_NOT_REQUESTED",
+          );
+        }
+
+        if ((p.qtyProduced ?? 0) < p.runningPlan) {
+          throw AppError.BadRequest(`Đơn ${p.orderId} sản xuất thiếu số lượng`, "LACK_QUANTITY");
+        }
+      }
+    });
+  },
+
+  _updateStatusPaper: async (
+    planningId: number | number[],
+    targetStatus: "requested" | "complete",
+    extraValidator: (papers: PlanningPaper[]) => void,
+  ) => {
+    return await runInTransaction(async (transaction) => {
+      const ids = Array.isArray(planningId) ? planningId : [planningId];
+
+      const planningPapers = await planningPaperRepository.getPapersById({
+        planningIds: ids,
+        options: {
+          attributes: [
+            "planningId",
+            "runningPlan",
+            "qtyProduced",
+            "status",
+            "orderId",
+            "statusRequest",
+          ],
+        },
+        transaction,
+      });
+
+      if (planningPapers.length !== ids.length) {
+        throw AppError.BadRequest("Một hoặc nhiều planning không tồn tại", "PLANNING_NOT_FOUND");
+      }
+
+      // Thực thi validator riêng
+      extraValidator(planningPapers);
+
+      await planningHelper.updateDataModel({
+        model: PlanningPaper,
+        data: { status: targetStatus },
+        options: { where: { planningId: ids }, transaction },
+      });
+
+      const overflowRows = await timeOverflowPlanning.findAll({
+        where: { planningId: ids },
+      });
+
+      if (overflowRows.length > 0) {
+        await planningHelper.updateDataModel({
+          model: timeOverflowPlanning,
+          data: { status: targetStatus },
+          options: { where: { planningId: ids }, transaction },
+        });
+      }
+
+      //--------------------MEILISEARCH-----------------------
+      const dataForMeili = planningPapers.map((p) => ({
+        planningId: p.planningId,
+        status: targetStatus,
+      }));
+
+      await meiliService.syncOrUpdateMeiliData({
+        indexKey: MEILI_INDEX.PLANNING_PAPERS,
+        data: dataForMeili,
+        transaction,
+        isUpdate: true,
+      });
+
+      return { message: `Planning status updated to ${targetStatus}`, ids };
+    });
   },
 
   pauseOrAcceptLackQtyPLanning: async (
@@ -302,7 +330,7 @@ export const planningPaperService = {
   ) => {
     try {
       return await runInTransaction(async (transaction) => {
-        const plannings = await planningPaperRepository.getPapersById({ planningIds });
+        const plannings = await planningPaperRepository.getPapersById({ planningIds, transaction });
         if (plannings.length === 0) {
           throw AppError.NotFound("planning npt found", "PLANNING_NOT_FOUND");
         }
@@ -313,6 +341,7 @@ export const planningPaperService = {
               const order = await planningHelper.getModelById({
                 model: Order,
                 where: { orderId: planning.orderId },
+                options: { transaction },
               });
 
               if (order) {
@@ -333,9 +362,11 @@ export const planningPaperService = {
                       status: newStatus,
                       rejectReason,
                     },
+                    options: { transaction },
                   });
 
                   // Trừ công nợ khách hàng
+                  //thêm transaction vào đây
                   // const customer = await planningRepository.getModelById(
                   //   Customer,
                   //   { customerId: order.customerId },
@@ -353,20 +384,22 @@ export const planningPaperService = {
 
                   const dependents = await planningPaperRepository.getBoxByPlanningId(
                     planning.planningId,
+                    transaction,
                   );
 
                   for (const box of dependents) {
                     await planningHelper.deleteModelData({
                       model: PlanningBoxTime,
                       where: { planningBoxId: box.planningBoxId },
+                      transaction,
                     });
 
-                    await box.destroy();
+                    await box.destroy({ transaction });
                   }
 
                   //xóa planning paper
                   const deletedId = planning.planningId;
-                  await planning.destroy();
+                  await planning.destroy({ transaction });
 
                   //--------------------MEILISEARCH-----------------------
                   await meiliService.deleteMeiliData(
@@ -387,6 +420,7 @@ export const planningPaperService = {
                 else if (newStatus === "stop") {
                   const dependents = await planningPaperRepository.getBoxByPlanningId(
                     planning.planningId,
+                    transaction,
                   );
 
                   if ((planning.qtyProduced ?? 0) > 0) {
@@ -396,18 +430,20 @@ export const planningPaperService = {
                         status: newStatus,
                         rejectReason: rejectReason,
                       },
+                      options: { transaction },
                     });
 
                     await planningHelper.updateDataModel({
                       model: planning,
                       data: { status: newStatus },
+                      options: { transaction },
                     });
 
                     for (const box of dependents) {
                       await planningHelper.updateDataModel({
                         model: PlanningBoxTime,
                         data: { status: newStatus },
-                        options: { where: { planningBoxId: box.planningBoxId } },
+                        options: { where: { planningBoxId: box.planningBoxId }, transaction },
                       });
                     }
 
@@ -428,19 +464,21 @@ export const planningPaperService = {
                     await planningHelper.updateDataModel({
                       model: order,
                       data: { status: "accept" },
+                      options: { transaction },
                     });
 
                     for (const box of dependents) {
                       await planningHelper.deleteModelData({
                         model: PlanningBoxTime,
                         where: { planningBoxId: box.planningBoxId },
+                        transaction,
                       });
 
-                      await box.destroy();
+                      await box.destroy({ transaction });
                     }
 
                     const deletedId = planning.planningId;
-                    await planning.destroy();
+                    await planning.destroy({ transaction });
                     await CacheManager.clear("orderAccept");
 
                     //--------------------MEILISEARCH-----------------------
@@ -471,13 +509,13 @@ export const planningPaperService = {
             }
 
             planning.status = newStatus;
-            await planning.save();
+            await planning.save({ transaction });
 
             if (planning.hasOverFlow) {
               await planningHelper.updateDataModel({
                 model: timeOverflowPlanning,
                 data: { status: newStatus },
-                options: { where: { planningId: planning.planningId } },
+                options: { where: { planningId: planning.planningId }, transaction },
               });
             }
 
@@ -486,13 +524,14 @@ export const planningPaperService = {
               where: {
                 planningId: planning.planningId,
               },
+              options: { transaction },
             });
 
             if (planningBox) {
               await planningHelper.updateDataModel({
                 model: PlanningBoxTime,
                 data: { runningPlan: planning.qtyProduced ?? 0 },
-                options: { where: { planningBoxId: planningBox.planningBoxId } },
+                options: { where: { planningBoxId: planningBox.planningBoxId }, transaction },
               });
             }
 
@@ -545,6 +584,7 @@ export const planningPaperService = {
         const machineInfo = await planningHelper.getModelById({
           model: MachinePaper,
           where: { machineName: machine },
+          options: { transaction },
         });
         if (!machineInfo) throw AppError.NotFound("Machine not found", "MACHINE_NOT_FOUND");
 
@@ -611,43 +651,13 @@ export const planningPaperService = {
 
   exportExcelPlanningOrder: async (res: Response, machine: string) => {
     try {
-      const data = await PlanningPaper.findAll({
-        where: {
-          chooseMachine: machine,
-          status: { [Op.notIn]: ["complete", "stop", "cancel"] },
-          statusRequest: { [Op.in]: ["none", "requested"] },
-          sortPlanning: { [Op.ne]: null },
-        },
-        attributes: [
-          "planningId",
-          "dayStart",
-          "dayReplace",
-          "matEReplace",
-          "matBReplace",
-          "matCReplace",
-          "matE2Replace",
-          "songEReplace",
-          "songBReplace",
-          "songCReplace",
-          "songE2Replace",
-          "lengthPaperPlanning",
-          "sizePaperPLaning",
-          "numberChild",
-          "ghepKho",
-        ],
-        include: [
-          {
-            model: Order,
-            attributes: ["orderId", "flute", "totalPrice", "instructSpecial"],
-            include: [{ model: Customer, attributes: ["customerName"] }],
-          },
-        ],
-      });
+      const data = await planningPaperRepository.getPaperToExportFile(machine);
+      const finalData = planningPaperService.applyPlanningSortAndOverflow(data);
 
       const safeMachineName = machine.replace(/\s+/g, "-");
 
       await exportExcelResponse(res, {
-        data: data,
+        data: finalData,
         sheetName: "Kế hoạch sản xuất",
         fileName: `KHSX_${normalizeVN(safeMachineName)}`,
         columns: planningPaperColumns,

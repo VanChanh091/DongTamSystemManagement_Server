@@ -3,15 +3,15 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.2.0</title>
-            <sparkle:version>4.2.0</sparkle:version> 
-            <description>Loại bỏ đơn hoàn thành ra khỏi trang kế hoạch sản xuất
-            Thêm xuất file excel kế hoạch sản xuất
-            Thêm bộ lọc theo số lượng đã sản xuất cho trang lịch sản xuất
-            Thêm chức năng chuyển giao số lượng tồn và thanh lý tồn 
-            Thêm trang tồn kho thanh lý            
+            <title>Version 4.3.0</title>
+            <sparkle:version>4.3.0</sparkle:version> 
+            <description>Sắp xếp lại các cột hiển thị cho sản xuất
+            Thêm tìm kiếm cho trang lịch sản xuất
+            Thêm chức năng đóng đơn hàng ở trang đăng ký giao hàng
+            Cho phép hoàn thành đơn hàng mà không cần QC chốt nhập kho
+            Thêm chức năng mới cho sản xuất: Yêu cầu hoàn thành sản xuất
             </description>
-            <pubDate>Thu, 16 April 2026</pubDate>
+            <pubDate>Mon, 20 April 2026</pubDate>
             <enclosure url="dongtam.exe" 
                     sparkle:os="windows" 
                     length="12345678" 
