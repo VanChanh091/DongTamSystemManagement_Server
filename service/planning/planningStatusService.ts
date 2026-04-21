@@ -124,9 +124,7 @@ export const planningStatusService = {
 
         const waveCoeff = await planningHelper.getModelById({
           model: WaveCrestCoefficient,
-          where: {
-            machineName: chooseMachine,
-          },
+          where: { machineName: chooseMachine },
           transaction,
         });
 
@@ -408,7 +406,10 @@ export const planningStatusService = {
 
         //socket
         const ownerId = order.userId;
-        const badgeCount = await Order.count({ where: { status: "reject", userId: ownerId } });
+        const badgeCount = await Order.count({
+          where: { status: "reject", userId: ownerId },
+          transaction,
+        });
 
         const roomName = `reject-order-${ownerId}`;
         const sockets = await req.io?.in(roomName).fetchSockets();
@@ -499,7 +500,7 @@ export const planningStatusService = {
       return await runInTransaction(async (transaction) => {
         const ids = Array.isArray(planningId) ? planningId : [planningId];
 
-        const plannings = await planningStatusRepository.getStopByIds(ids);
+        const plannings = await planningStatusRepository.getStopByIds(ids, transaction);
         if (plannings.length == 0) {
           throw AppError.BadRequest("planning not found", "PLANNING_NOT_FOUND");
         }
@@ -507,16 +508,14 @@ export const planningStatusService = {
         const planningUpdated = await planningStatusRepository.updateStatusPlanning({
           planningIds: ids,
           action: action,
+          transaction,
         });
 
         const orderIds = [...new Set(planningUpdated.map((p: any) => p.orderId))] as string[];
         if (action === "planning") {
           await Order.update(
             { status: "planning" },
-            {
-              where: { orderId: { [Op.in]: orderIds } },
-              transaction,
-            },
+            { where: { orderId: { [Op.in]: orderIds } }, transaction },
           );
         }
 

@@ -229,7 +229,7 @@ const calculateTimeForOnePlanning = async ({
   // predictedEndTime: đã bao gồm productionMinutes + toàn bộ break
   const predictedEndTime = addMinutes(currentTime, productionMinutes);
 
-  console.log(predictedEndTime > endOfWorkTime);
+  // console.log(predictedEndTime > endOfWorkTime);
 
   if (predictedEndTime > endOfWorkTime) {
     hasOverFlow = true;
@@ -263,8 +263,8 @@ const calculateTimeForOnePlanning = async ({
     });
   }
 
-  console.log(`hasOverFlow: ${hasOverFlow}`);
-  console.log(`hasOverFlow && runningPlan > 0: ${hasOverFlow && runningPlan > 0}`);
+  // console.log(`hasOverFlow: ${hasOverFlow}`);
+  // console.log(`hasOverFlow && runningPlan > 0: ${hasOverFlow && runningPlan > 0}`);
 
   await planningHelper.updateDataModel({
     model: PlanningBox,

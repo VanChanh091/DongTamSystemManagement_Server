@@ -279,9 +279,7 @@ export const outboundService = {
         const prefix = `XKBH${year}${month}`;
 
         const lastOutbound = await OutboundHistory.findOne({
-          where: {
-            outboundSlipCode: { [Op.like]: `${prefix}%` },
-          },
+          where: { outboundSlipCode: { [Op.like]: `${prefix}%` } },
           order: [["outboundId", "DESC"]],
           transaction,
         });

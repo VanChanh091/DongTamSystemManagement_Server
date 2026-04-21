@@ -1,4 +1,4 @@
-import { col, fn, Op, Sequelize, Transaction, where } from "sequelize";
+import { col, fn, Op, Transaction, where } from "sequelize";
 import { Customer } from "../models/customer/customer";
 import { Box } from "../models/order/box";
 import { Order } from "../models/order/order";
@@ -13,8 +13,16 @@ export const adminRepository = {
     return await model.findAll({ attributes: { exclude: ["createdAt", "updatedAt"] } });
   },
 
-  getItemByPk: async ({ model, itemId }: { model: any; itemId: number }) => {
-    return await model.findByPk(itemId);
+  getItemByPk: async ({
+    model,
+    itemId,
+    transaction,
+  }: {
+    model: any;
+    itemId: number;
+    transaction?: Transaction;
+  }) => {
+    return await model.findByPk(itemId, { transaction });
   },
 
   createNewItem: async ({
@@ -24,7 +32,7 @@ export const adminRepository = {
   }: {
     model: any;
     data: any;
-    transaction?: any;
+    transaction?: Transaction;
   }) => {
     return await model.create(data, { transaction });
   },
@@ -36,7 +44,7 @@ export const adminRepository = {
   }: {
     model: any;
     dataUpdated: any;
-    transaction?: any;
+    transaction?: Transaction;
   }) => {
     return await model.update(dataUpdated, { transaction });
   },
@@ -124,7 +132,7 @@ export const adminRepository = {
     });
   },
 
-  getUserByPk: async (userId: number) => {
-    return await User.findByPk(userId);
+  getUserByPk: async (userId: number, transaction?: Transaction) => {
+    return await User.findByPk(userId, { transaction });
   },
 };

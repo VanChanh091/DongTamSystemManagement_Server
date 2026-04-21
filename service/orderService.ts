@@ -219,12 +219,12 @@ export const orderService = {
           throw AppError.BadRequest("Invalid userId parameter", "INVALID_FIELD");
         }
 
-        const validation = await validateCustomerAndProduct(customerId, productId);
+        const validation = await validateCustomerAndProduct(customerId, productId, transaction);
         if (!validation.success) throw AppError.NotFound(validation.message);
 
         //create id + number auto increase
-        const metrics = await calculateOrderMetrics(restOrderData);
-        const { newOrderId, existingCustomerId } = await generateOrderId(prefix);
+        const metrics = await calculateOrderMetrics(restOrderData, transaction);
+        const { newOrderId, existingCustomerId } = await generateOrderId(prefix, transaction);
 
         if (existingCustomerId && existingCustomerId !== customerId) {
           throw AppError.Conflict(
@@ -300,13 +300,17 @@ export const orderService = {
 
     try {
       return await runInTransaction(async (transaction) => {
-        const order = await CrudHelper.findOne({ model: Order, whereCondition: { orderId } });
+        const order = await CrudHelper.findOne({
+          model: Order,
+          whereCondition: { orderId },
+          options: { transaction },
+        });
         if (!order) {
           throw AppError.NotFound("Order not found");
         }
 
         const mergedData = { ...order.toJSON(), ...restOrderData };
-        const metrics = await calculateOrderMetrics(mergedData);
+        const metrics = await calculateOrderMetrics(mergedData, transaction);
 
         //Cập nhật thông tin hoặc xóa hình ảnh
         if (isDeleteImage) {
@@ -340,7 +344,7 @@ export const orderService = {
             transaction,
           });
         } else {
-          await Box.destroy({ where: { orderId } });
+          await Box.destroy({ where: { orderId }, transaction });
         }
 
         //update socket for reject order

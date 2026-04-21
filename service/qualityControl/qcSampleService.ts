@@ -42,19 +42,14 @@ export const qcSampleService = {
   }) => {
     try {
       const session = await qcRepository.findByPk(QcSession, qcSessionId, transaction);
+
       if (!session) {
         throw AppError.NotFound("QC session not found", "QC_SESSION_NOT_FOUND");
-      }
-
-      if (session.status == "finalized") {
+      } else if (session.status == "finalized") {
         throw AppError.BadRequest("QC session finalized", "QC_SESSION_FINALIZED");
-      }
-
-      if (!samples || samples.length === 0) {
+      } else if (!samples || samples.length === 0) {
         throw AppError.BadRequest("Samples is empty", "SAMPLES_EMPTY");
-      }
-
-      if (samples.length !== session.totalSample) {
+      } else if (samples.length !== session.totalSample) {
         throw AppError.BadRequest("Invalid number of samples", "INVALID_SAMPLE_COUNT");
       }
 

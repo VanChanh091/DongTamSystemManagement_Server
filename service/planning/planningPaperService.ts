@@ -215,32 +215,6 @@ export const planningPaperService = {
     }
   },
 
-  requestCompletePlanningPaper: async (planningId: number | number[]) => {
-    try {
-      return await planningPaperService._updateStatusPaper(planningId, "requested", (papers) => {
-        for (const p of papers) {
-          if (p.status === "requested") {
-            throw AppError.BadRequest(
-              `Đơn hàng ${p.orderId} đã được yêu cầu hoàn thành rồi`,
-              "PLANNING_ALREADY_REQUESTED",
-            );
-          }
-
-          if ((p.qtyProduced ?? 0) === 0) {
-            throw AppError.BadRequest(
-              `Đơn hàng ${p.orderId} chưa có số lượng sản xuất`,
-              "PLANNING_NO_PRODUCED_QUANTITY",
-            );
-          }
-        }
-      });
-    } catch (error) {
-      console.log(`error request complete planning paper`, error);
-      if (error instanceof AppError) throw error;
-      throw AppError.ServerError();
-    }
-  },
-
   confirmCompletePlanningPaper: async (planningId: number | number[]) => {
     return await planningPaperService._updateStatusPaper(planningId, "complete", (papers) => {
       for (const p of papers) {
@@ -296,6 +270,7 @@ export const planningPaperService = {
 
       const overflowRows = await timeOverflowPlanning.findAll({
         where: { planningId: ids },
+        transaction,
       });
 
       if (overflowRows.length > 0) {
@@ -410,8 +385,8 @@ export const planningPaperService = {
                   await meiliService.syncOrUpdateMeiliData({
                     indexKey: MEILI_INDEX.ORDERS,
                     data: { orderSortValue: order.orderSortValue, status: newStatus },
-                    transaction,
                     isUpdate: true,
+                    transaction,
                   });
                 }
                 //case pause planning -> status:accept or stop order
@@ -426,10 +401,7 @@ export const planningPaperService = {
                   if ((planning.qtyProduced ?? 0) > 0) {
                     await planningHelper.updateDataModel({
                       model: order,
-                      data: {
-                        status: newStatus,
-                        rejectReason: rejectReason,
-                      },
+                      data: { status: newStatus, rejectReason: rejectReason },
                       options: { transaction },
                     });
 

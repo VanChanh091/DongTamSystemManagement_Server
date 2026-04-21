@@ -127,6 +127,7 @@ export const productService = {
         // Check prefix đã tồn tại chưa
         const existedPrefix = await Product.count({
           where: { productId: { [Op.like]: `${sanitizedPrefix}%` } },
+          transaction,
         });
 
         if (existedPrefix > 0) {
@@ -197,7 +198,7 @@ export const productService = {
         );
 
         //--------------------MEILISEARCH-----------------------
-        const productUpdated = await productService.syncProductForMeili(producId, transaction);
+        await productService.syncProductForMeili(producId, transaction);
 
         return { message: "Product updated successfully", data: result };
       });
@@ -252,7 +253,7 @@ export const productService = {
           }
         }
 
-        await product.destroy();
+        await product.destroy({ transaction });
 
         //--------------------MEILISEARCH-----------------------
         await meiliService.deleteMeiliData(MEILI_INDEX.PRODUCTS, productId, transaction);

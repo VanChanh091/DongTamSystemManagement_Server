@@ -32,7 +32,11 @@ export const getPlanningPapers = async (req: Request, res: Response, next: NextF
   }
 };
 
-export const updatePlanningPapers = async (req: Request, res: Response, next: NextFunction) => {
+export const handleUpdatePlanningPapers = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   const { action, planningIds, newMachine, newStatus, rejectReason } = req.body as {
     action: string;
     planningIds: number | number[];
@@ -53,9 +57,6 @@ export const updatePlanningPapers = async (req: Request, res: Response, next: Ne
         if (newMachine) {
           response = await planningPaperService.changeMachinePlanning(planningIds, newMachine);
         }
-        break;
-      case "REQUEST_COMPLETE":
-        response = await planningPaperService.requestCompletePlanningPaper(planningIds);
         break;
       case "CONFIRM_COMPLETE":
         response = await planningPaperService.confirmCompletePlanningPaper(planningIds);

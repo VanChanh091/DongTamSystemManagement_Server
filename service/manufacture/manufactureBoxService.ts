@@ -23,6 +23,7 @@ import { createReportPlanning } from "../../utils/helper/modelHelper/reportHelpe
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
 import { planningBoxRepository } from "../../repository/planning/planningBoxRepository";
 import { aggregateReportFields } from "../../utils/helper/modelHelper/manufactureHelper";
+import { planningBoxService } from "../planning/planningBoxService";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { box } = CacheKey.manufacture;
@@ -187,8 +188,8 @@ export const manuBoxService = {
           shiftManagementBox: shiftManagement,
           machine: planning.machine,
           reportedBy: employee.fullName,
-          transaction,
           isBox: true,
+          transaction,
         });
 
         //--------------------MEILISEARCH-----------------------
@@ -226,9 +227,7 @@ export const manuBoxService = {
           throw AppError.BadRequest("Missing employee code", "MISSING_EMPLOYEE_CODE");
         }
 
-        console.log(reportedBy);
-
-        const employee = await manufactureRepo.getEmployeeByCode(reportedBy);
+        const employee = await manufactureRepo.getEmployeeByCode(reportedBy, transaction);
         if (!employee) {
           throw AppError.NotFound("employee not found", "EMPLOYEE_NOT_FOUND");
         }
@@ -382,7 +381,7 @@ export const manuBoxService = {
 
         // Check if already complete
         if (planning.status === "complete") {
-          throw AppError.Unauthorized("Planning already completed", "PLANNING_HAS_COMPLETED");
+          throw AppError.BadRequest("Planning already completed", "PLANNING_HAS_COMPLETED");
         }
 
         // Reset những thằng đang "producing"
@@ -469,5 +468,33 @@ export const manuBoxService = {
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
+  },
+
+  requestCompletePlanningBox: async (planningBoxId: number | number[], machine: string) => {
+    return await planningBoxService._updateStatusBox(
+      planningBoxId,
+      machine,
+      "requested",
+      (boxTimes) => {
+        // Kiểm tra sl từng đơn
+        for (const box of boxTimes) {
+          const { qtyProduced, status } = box;
+
+          if (status === "requested") {
+            throw AppError.BadRequest(
+              `Đơn hàng ${box.PlanningBox.orderId} đã được yêu cầu hoàn thành rồi`,
+              "PLANNING_ALREADY_REQUESTED",
+            );
+          }
+
+          if ((qtyProduced ?? 0) === 0) {
+            throw AppError.BadRequest(
+              `Đơn hàng ${box.PlanningBox.orderId} chưa có số lượng sản xuất`,
+              "PLANNING_NO_PRODUCED_QUANTITY",
+            );
+          }
+        }
+      },
+    );
   },
 };

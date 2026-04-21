@@ -209,7 +209,7 @@ export const manufactureRepo = {
     });
   },
 
-  getBoxById: async (planningBoxId: number, machine: string, transaction?: any) => {
+  getBoxById: async (planningBoxId: number, machine: string, transaction?: Transaction) => {
     return await PlanningBoxTime.findOne({
       where: { planningBoxId: planningBoxId, machine: machine },
       include: [
@@ -226,7 +226,7 @@ export const manufactureRepo = {
     });
   },
 
-  getAllBoxTimeById: async (planningBoxId: number, transaction: any) => {
+  getAllBoxTimeById: async (planningBoxId: number, transaction: Transaction) => {
     return await PlanningBoxTime.findAll({
       where: { planningBoxId },
       transaction,
@@ -262,7 +262,11 @@ export const manufactureRepo = {
     });
   },
 
-  updatePlanningBoxTime: async (planningBoxId: number, machine: string, transaction?: any) => {
+  updatePlanningBoxTime: async (
+    planningBoxId: number,
+    machine: string,
+    transaction?: Transaction,
+  ) => {
     return await PlanningBoxTime.update(
       { status: "planning" },
       {

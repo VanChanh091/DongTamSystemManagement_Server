@@ -352,7 +352,13 @@ export const warehouseRepository = {
     });
   },
 
-  sumOutboundQty: async ({ orderId, transaction }: { orderId: string; transaction: any }) => {
+  sumOutboundQty: async ({
+    orderId,
+    transaction,
+  }: {
+    orderId: string;
+    transaction: Transaction;
+  }) => {
     return await OutboundDetail.sum("outboundQty", {
       where: { orderId },
       transaction,
@@ -366,7 +372,7 @@ export const warehouseRepository = {
   }: {
     orderId: string;
     outboundId: number;
-    transaction?: any;
+    transaction?: Transaction;
   }) => {
     return await OutboundDetail.sum("outboundQty", {
       where: {

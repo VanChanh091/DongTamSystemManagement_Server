@@ -82,9 +82,6 @@ export const updatePlanningBoxes = async (req: Request, res: Response, next: Nex
     let response;
 
     switch (action) {
-      case "REQUEST_COMPLETE":
-        response = await planningBoxService.requestCompletePlanningBox(planningBoxIds, machine);
-        break;
       case "CONFIRM_COMPLETE":
         response = await planningBoxService.confirmCompletePlanningBox(planningBoxIds, machine);
         break;

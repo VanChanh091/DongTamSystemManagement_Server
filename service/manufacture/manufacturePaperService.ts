@@ -236,7 +236,7 @@ export const manuPaperService = {
           throw AppError.BadRequest("Missing employee code", "MISSING_EMPLOYEE_CODE");
         }
 
-        const employee = await manufactureRepo.getEmployeeByCode(reportedBy);
+        const employee = await manufactureRepo.getEmployeeByCode(reportedBy, transaction);
         if (!employee) {
           throw AppError.NotFound("employee not found", "EMPLOYEE_NOT_FOUND");
         }
@@ -460,6 +460,32 @@ export const manuPaperService = {
       return result;
     } catch (error) {
       console.error("Error confirming producing paper:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  requestCompletePlanningPaper: async (planningId: number | number[]) => {
+    try {
+      return await planningPaperService._updateStatusPaper(planningId, "requested", (papers) => {
+        for (const p of papers) {
+          if (p.status === "requested") {
+            throw AppError.BadRequest(
+              `Đơn hàng ${p.orderId} đã được yêu cầu hoàn thành rồi`,
+              "PLANNING_ALREADY_REQUESTED",
+            );
+          }
+
+          if ((p.qtyProduced ?? 0) === 0) {
+            throw AppError.BadRequest(
+              `Đơn hàng ${p.orderId} chưa có số lượng sản xuất`,
+              "PLANNING_NO_PRODUCED_QUANTITY",
+            );
+          }
+        }
+      });
+    } catch (error) {
+      console.log(`error request complete planning paper`, error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }

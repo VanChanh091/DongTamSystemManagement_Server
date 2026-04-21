@@ -100,15 +100,15 @@ export const employeeRepository = {
     });
   },
 
-  createEmployee: async (model: any, data: any, transaction?: any) => {
+  createEmployee: async (model: any, data: any, transaction?: Transaction) => {
     return await model.create(data, { transaction });
   },
 
-  updateEmployee: async (employee: any, data: any, transaction?: any) => {
+  updateEmployee: async (employee: any, data: any, transaction?: Transaction) => {
     return await employee.update(data, { transaction });
   },
 
-  deleteEmployee: async (employee: any, transaction?: any) => {
+  deleteEmployee: async (employee: any, transaction?: Transaction) => {
     return await employee.destroy(transaction);
   },
 

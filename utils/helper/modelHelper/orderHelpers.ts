@@ -4,13 +4,17 @@ import { Product } from "../../../models/product/product";
 import { Order } from "../../../models/order/order";
 import { orderRepository } from "../../../repository/orderRepository";
 
-export const validateCustomerAndProduct = async (customerId: string, productId: string) => {
-  const customer = await Customer.findOne({ where: { customerId } });
+export const validateCustomerAndProduct = async (
+  customerId: string,
+  productId: string,
+  transaction?: Transaction,
+) => {
+  const customer = await Customer.findOne({ where: { customerId }, transaction });
   if (!customer) {
     return { success: false, message: "Customer not found" };
   }
 
-  const product = await Product.findOne({ where: { productId } });
+  const product = await Product.findOne({ where: { productId }, transaction });
   if (!product) {
     return { success: false, message: "Product not found" };
   }
@@ -18,12 +22,13 @@ export const validateCustomerAndProduct = async (customerId: string, productId: 
   return { success: true };
 };
 
-export const generateOrderId = async (prefix: string) => {
+export const generateOrderId = async (prefix: string, transaction?: Transaction) => {
   const sanitizedPrefix = prefix.trim().replace(/\s+/g, "");
 
   const lastOrder = await Order.findOne({
     where: { orderId: { [Op.like]: `${sanitizedPrefix}%` } },
     order: [["orderId", "DESC"]],
+    transaction,
   });
 
   let number = 1;
@@ -72,7 +77,7 @@ const calculateFlutePaper = (fields: any) => {
   return `${layersCount}${sortedFlutes.join("")}`;
 };
 
-export const calculateOrderMetrics = async (data: any) => {
+export const calculateOrderMetrics = async (data: any, transaction: Transaction) => {
   const qty = parseInt(data.quantityCustomer) || 0;
   const length = parseFloat(data.lengthPaperCustomer) || 0;
   const size = parseFloat(data.paperSizeCustomer) || 0;
@@ -105,6 +110,7 @@ export const calculateOrderMetrics = async (data: any) => {
     lengthCustomer: length,
     sizeCustomer: size,
     quantity: qty,
+    transaction,
   });
 
   const responseData = {
@@ -124,13 +130,15 @@ export const calculateVolume = async ({
   lengthCustomer,
   sizeCustomer,
   quantity,
+  transaction,
 }: {
   flute: string;
   lengthCustomer: number;
   sizeCustomer: number;
   quantity: number;
+  transaction?: Transaction;
 }) => {
-  const ratioData = await orderRepository.findOneFluteRatio(flute);
+  const ratioData = await orderRepository.findOneFluteRatio(flute, transaction);
   const ratio = ratioData?.ratio ?? 1;
 
   const baseVolume = (lengthCustomer * sizeCustomer) / 10000;

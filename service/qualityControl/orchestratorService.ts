@@ -37,7 +37,7 @@ export const qcSubmitService = {
       // });
 
       return await runInTransaction(async (transaction) => {
-        // tạo session
+        // create session
         const { data: session } = await qcSessionService.createNewSession({
           processType,
           planningId,
@@ -47,7 +47,7 @@ export const qcSubmitService = {
           user,
         });
 
-        // tạo / upsert checklist
+        // create/upsert checklist
         const { sessionStatus } = await qcSampleService.createNewResult({
           qcSessionId: session.qcSessionId,
           samples,

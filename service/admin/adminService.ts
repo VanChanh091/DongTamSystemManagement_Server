@@ -90,7 +90,7 @@ export const adminService = {
   }) => {
     try {
       return await runInTransaction(async (transaction) => {
-        const existedItem = await adminRepository.getItemByPk({ model, itemId });
+        const existedItem = await adminRepository.getItemByPk({ model, itemId, transaction });
         if (!existedItem) {
           throw AppError.NotFound(errMessage, errCode);
         }
@@ -227,7 +227,10 @@ export const adminService = {
 
         //-------------------- SOCKET -----------------------
         const ownerId = order.userId;
-        const badgeCount = await Order.count({ where: { status: "reject", userId: ownerId } });
+        const badgeCount = await Order.count({
+          where: { status: "reject", userId: ownerId },
+          transaction,
+        });
 
         const roomName = `reject-order-${ownerId}`;
         const sockets = await req.io?.in(roomName).fetchSockets();
@@ -416,32 +419,34 @@ export const adminService = {
 
   updateUserRole: async (userId: number, newRole: userRole) => {
     try {
-      const validRoles = ["admin", "manager", "user"];
-      if (!validRoles.includes(newRole)) {
-        throw AppError.BadRequest("Invalid role provided", "INVALID_ROLE");
-      }
+      return await runInTransaction(async (transaction) => {
+        const validRoles = ["admin", "manager", "user"];
+        if (!validRoles.includes(newRole)) {
+          throw AppError.BadRequest("Invalid role provided", "INVALID_ROLE");
+        }
 
-      const user = await adminRepository.getUserByPk(userId);
-      if (!user) {
-        throw AppError.NotFound("User not found", "USER_NOT_FOUND");
-      }
+        const user = await adminRepository.getUserByPk(userId, transaction);
+        if (!user) {
+          throw AppError.NotFound("User not found", "USER_NOT_FOUND");
+        }
 
-      user.role = newRole as "admin" | "manager" | "user";
+        user.role = newRole as "admin" | "manager" | "user";
 
-      if (newRole === "admin") {
-        user.permissions = ["all"];
-      } else if (newRole === "manager") {
-        user.permissions = ["manager"];
-      } else {
-        user.permissions = ["read"];
-      }
+        if (newRole === "admin") {
+          user.permissions = ["all"];
+        } else if (newRole === "manager") {
+          user.permissions = ["manager"];
+        } else {
+          user.permissions = ["read"];
+        }
 
-      await user.save();
+        await user.save({ transaction });
 
-      const sanitizedData = user.toJSON() as Record<string, any>;
-      delete sanitizedData.password;
+        const sanitizedData = user.toJSON() as Record<string, any>;
+        delete sanitizedData.password;
 
-      return { message: "User role updated successfully", data: sanitizedData };
+        return { message: "User role updated successfully", data: sanitizedData };
+      });
     } catch (error) {
       console.error("Error updating user role:", error);
       if (error instanceof AppError) throw error;
@@ -451,34 +456,36 @@ export const adminService = {
 
   updatePermissions: async (userId: number, permissions: string | string[]) => {
     try {
-      // Validate permissions input
-      if (!Array.isArray(permissions) || permissions.length === 0) {
-        throw AppError.BadRequest("Invalid permissions format", "INVALID_PERMISSIONS_FORMAT");
-      }
+      return await runInTransaction(async (transaction) => {
+        // Validate permissions input
+        if (!Array.isArray(permissions) || permissions.length === 0) {
+          throw AppError.BadRequest("Invalid permissions format", "INVALID_PERMISSIONS_FORMAT");
+        }
 
-      // check valid permissions
-      const invalid = permissions.filter((p) => !validPermissions.includes(p));
-      if (invalid.length > 0) {
-        throw AppError.BadRequest(
-          `Invalid permissions: ${invalid.join(", ")}`,
-          "INVALID_PERMISSIONS",
-        );
-      }
+        // check valid permissions
+        const invalid = permissions.filter((p) => !validPermissions.includes(p));
+        if (invalid.length > 0) {
+          throw AppError.BadRequest(
+            `Invalid permissions: ${invalid.join(", ")}`,
+            "INVALID_PERMISSIONS",
+          );
+        }
 
-      const user = await adminRepository.getUserByPk(userId);
-      if (!user) {
-        throw AppError.NotFound("User not found", "USER_NOT_FOUND");
-      }
+        const user = await adminRepository.getUserByPk(userId, transaction);
+        if (!user) {
+          throw AppError.NotFound("User not found", "USER_NOT_FOUND");
+        }
 
-      // Update user's permissions
-      user.permissions = permissions;
-      await user.save();
+        // Update user's permissions
+        user.permissions = permissions;
+        await user.save({ transaction });
 
-      return {
-        message: "Permissions updated successfully",
-        userId: user.userId,
-        permissions: user.permissions,
-      };
+        return {
+          message: "Permissions updated successfully",
+          userId: user.userId,
+          permissions: user.permissions,
+        };
+      });
     } catch (error) {
       console.error("Error updating permissions:", error);
       if (error instanceof AppError) throw error;
@@ -488,31 +495,33 @@ export const adminService = {
 
   resetPassword: async (userIds: number | number[], newPassword: string) => {
     try {
-      if (!Array.isArray(userIds) || userIds.length === 0 || !newPassword) {
-        throw AppError.BadRequest(
-          "userIds must be a non-empty array and newPassword is required",
-          "INVALID_INPUT",
-        );
-      }
-      const saltPassword = 10;
-      const hashedPassword = await bcrypt.hash(newPassword, saltPassword);
-
-      // Tìm và cập nhật tất cả user
-      const updatedUserIds = [];
-      for (const id of userIds) {
-        const user = await adminRepository.getUserByPk(id);
-        if (user) {
-          user.password = hashedPassword;
-          await user.save();
-          updatedUserIds.push(user.userId);
+      return await runInTransaction(async (transaction) => {
+        if (!Array.isArray(userIds) || userIds.length === 0 || !newPassword) {
+          throw AppError.BadRequest(
+            "userIds must be a non-empty array and newPassword is required",
+            "INVALID_INPUT",
+          );
         }
-      }
+        const saltPassword = 10;
+        const hashedPassword = await bcrypt.hash(newPassword, saltPassword);
 
-      if (updatedUserIds.length === 0) {
-        throw AppError.NotFound("users not found to update", "USER_NOT_FOUND");
-      }
+        // Tìm và cập nhật tất cả user
+        const updatedUserIds = [];
+        for (const id of userIds) {
+          const user = await adminRepository.getUserByPk(id, transaction);
+          if (user) {
+            user.password = hashedPassword;
+            await user.save({ transaction });
+            updatedUserIds.push(user.userId);
+          }
+        }
 
-      return { message: "Passwords reset successfully" };
+        if (updatedUserIds.length === 0) {
+          throw AppError.NotFound("users not found to update", "USER_NOT_FOUND");
+        }
+
+        return { message: "Passwords reset successfully" };
+      });
     } catch (error) {
       console.error("Error resetting passwords:", error);
       if (error instanceof AppError) throw error;
@@ -522,23 +531,25 @@ export const adminService = {
 
   deleteUserById: async (userId: number) => {
     try {
-      const user = await adminRepository.getUserByPk(userId);
-      if (!user) {
-        throw AppError.NotFound("User not found", "USER_NOT_FOUND");
-      }
-
-      const imageName = user.avatar;
-
-      await user.destroy();
-
-      if (imageName && imageName.includes("cloudinary.com")) {
-        const publicId = getCloudinaryPublicId(imageName);
-        if (publicId) {
-          await cloudinary.uploader.destroy(publicId);
+      return await runInTransaction(async (transaction) => {
+        const user = await adminRepository.getUserByPk(userId, transaction);
+        if (!user) {
+          throw AppError.NotFound("User not found", "USER_NOT_FOUND");
         }
-      }
 
-      return { message: "User deleted successfully" };
+        const imageName = user.avatar;
+
+        await user.destroy({ transaction });
+
+        if (imageName && imageName.includes("cloudinary.com")) {
+          const publicId = getCloudinaryPublicId(imageName);
+          if (publicId) {
+            await cloudinary.uploader.destroy(publicId);
+          }
+        }
+
+        return { message: "User deleted successfully" };
+      });
     } catch (error) {
       console.error("Error deleting user:", error);
       if (error instanceof AppError) throw error;

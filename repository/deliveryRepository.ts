@@ -33,6 +33,7 @@ export const deliveryRepository = {
         "songBReplace",
         "songCReplace",
         "songE2Replace",
+        "qtyProduced",
         "hasBox",
         "timeRunning",
         "orderId",

@@ -174,6 +174,7 @@ export const deliveryService = {
           lengthCustomer: planning.Order.lengthPaperCustomer,
           sizeCustomer: planning.Order.paperSizeCustomer,
           quantity: qtyRegistered,
+          transaction,
         });
 
         await DeliveryRequest.create(

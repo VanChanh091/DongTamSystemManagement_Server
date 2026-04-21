@@ -41,7 +41,7 @@ export const adminCriteriaService = {
           throw AppError.NotFound("QcCriteria not found", "CRITERIA_NOT_FOUND");
         }
 
-        await existingCriteria.update({ ...data });
+        await existingCriteria.update({ ...data }, { transaction });
 
         return { message: "update Qc Criteria successfully" };
       });

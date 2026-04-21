@@ -6,7 +6,7 @@ import {
   getPlanningPapers,
   notifyUpdatePlanning,
   updateIndex_TimeRunning,
-  updatePlanningPapers,
+  handleUpdatePlanningPapers,
 } from "../../controller/user/planning/planningPaperController";
 import {
   getPlanningBoxes,
@@ -51,7 +51,7 @@ router.put(
   "/planning-papers",
   authenticate,
   authorizeAnyPermission(["plan"]),
-  updatePlanningPapers,
+  handleUpdatePlanningPapers,
 );
 
 //=========================PLANNING BOX=========================

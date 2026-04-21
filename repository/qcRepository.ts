@@ -1,3 +1,4 @@
+import { Transaction } from "sequelize";
 import { QcCriteria } from "../models/qualityControl/qcCriteria";
 import { QcSampleResult } from "../models/qualityControl/qcSampleResult";
 import { QcSession } from "../models/qualityControl/qcSession";
@@ -11,7 +12,7 @@ export const qcRepository = {
     });
   },
 
-  findByPk: async (model: any, id: number, transaction: any) => {
+  findByPk: async (model: any, id: number, transaction: Transaction) => {
     return await model.findByPk(id, { transaction });
   },
 
@@ -37,7 +38,7 @@ export const qcRepository = {
     });
   },
 
-  createNewSession: async (data: any, transaction: any) => {
+  createNewSession: async (data: any, transaction: Transaction) => {
     return await QcSession.create(data, { transaction });
   },
 
@@ -50,7 +51,7 @@ export const qcRepository = {
     });
   },
 
-  getAllSample: async (qcSessionId: number, transaction: any) => {
+  getAllSample: async (qcSessionId: number, transaction: Transaction) => {
     return await QcSampleResult.findAll({
       where: { qcSessionId },
       attributes: ["hasFail"],
@@ -58,7 +59,7 @@ export const qcRepository = {
     });
   },
 
-  getRequiredQcCriteria: async (processType: string, transaction: any) => {
+  getRequiredQcCriteria: async (processType: string, transaction: Transaction) => {
     return await QcCriteria.findAll({
       where: {
         processType: processType,

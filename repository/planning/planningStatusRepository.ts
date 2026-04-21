@@ -99,7 +99,7 @@ export const planningStatusRepository = {
 
   //====================================PLANNING STOP========================================
 
-  getStopByIds: async (planningIds: number[]) => {
+  getStopByIds: async (planningIds: number[], transaction?: Transaction) => {
     return PlanningPaper.findAll({
       where: { planningId: { [Op.in]: planningIds } },
       attributes: [
@@ -110,15 +110,18 @@ export const planningStatusRepository = {
         "status",
         "sortPlanning",
       ],
+      transaction,
     });
   },
 
   updateStatusPlanning: async ({
     planningIds,
     action,
+    transaction,
   }: {
     planningIds: number[];
     action: planningPaperStatus;
+    transaction: Transaction;
   }) => {
     const data =
       action === "planning"
@@ -134,7 +137,7 @@ export const planningStatusRepository = {
     return planningHelper.updateDataModel({
       model: PlanningPaper,
       data,
-      options: { where: { planningId: { [Op.in]: planningIds } } },
+      options: { where: { planningId: { [Op.in]: planningIds } }, transaction },
     });
   },
 };

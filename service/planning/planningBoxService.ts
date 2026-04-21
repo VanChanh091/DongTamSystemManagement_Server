@@ -188,34 +188,6 @@ export const planningBoxService = {
     }
   },
 
-  requestCompletePlanningBox: async (planningBoxId: number | number[], machine: string) => {
-    return await planningBoxService._updateStatusBox(
-      planningBoxId,
-      machine,
-      "requested",
-      (boxTimes) => {
-        // Kiểm tra sl từng đơn
-        for (const box of boxTimes) {
-          const { qtyProduced, status } = box;
-
-          if (status === "requested") {
-            throw AppError.BadRequest(
-              `Đơn hàng ${box.PlanningBox.orderId} đã được yêu cầu hoàn thành rồi`,
-              "PLANNING_ALREADY_REQUESTED",
-            );
-          }
-
-          if ((qtyProduced ?? 0) === 0) {
-            throw AppError.BadRequest(
-              `Đơn hàng ${box.PlanningBox.orderId} chưa có số lượng sản xuất`,
-              "PLANNING_NO_PRODUCED_QUANTITY",
-            );
-          }
-        }
-      },
-    );
-  },
-
   confirmCompletePlanningBox: async (planningBoxId: number | number[], machine: string) => {
     return await planningBoxService._updateStatusBox(
       planningBoxId,
@@ -275,18 +247,19 @@ export const planningBoxService = {
       await planningHelper.updateDataModel({
         model: PlanningBoxTime,
         data: { status: targetStatus },
-        options: { where: { planningBoxId: ids } },
+        options: { where: { planningBoxId: ids, machine }, transaction },
       });
 
       const overflowRows = await timeOverflowPlanning.findAll({
-        where: { planningBoxId: ids },
+        where: { planningBoxId: ids, machine },
+        transaction,
       });
 
       if (overflowRows.length > 0) {
         await planningHelper.updateDataModel({
           model: timeOverflowPlanning,
           data: { status: targetStatus },
-          options: { where: { planningBoxId: ids } },
+          options: { where: { planningBoxId: ids, machine }, transaction },
         });
       }
 
@@ -311,7 +284,11 @@ export const planningBoxService = {
   acceptLackQtyBox: async (planningBoxIds: number[], newStatus: statusBoxType, machine: string) => {
     try {
       return await runInTransaction(async (transaction) => {
-        const plannings = await planningBoxRepository.getBoxsById({ planningBoxIds, machine });
+        const plannings = await planningBoxRepository.getBoxsById({
+          planningBoxIds,
+          machine,
+          options: { transaction },
+        });
         if (plannings.length === 0) {
           throw AppError.NotFound("planning not found", "PLANNING_NOT_FOUND");
         }
@@ -326,18 +303,19 @@ export const planningBoxService = {
 
           planning.status = newStatus;
 
-          await planning.save();
+          await planning.save({ transaction });
 
           await planningHelper.updateDataModel({
             model: timeOverflowPlanning,
             data: { status: newStatus },
-            options: { where: { planningBoxId: planning.planningBoxId } },
+            options: { where: { planningBoxId: planning.planningBoxId, machine }, transaction },
           });
         }
 
         //--------------------MEILISEARCH-----------------------
         const fullBox = await planningBoxRepository.syncPlanningBoxToMeili({
           whereCondition: { planningBoxId: { [Op.in]: planningBoxIds } },
+          transaction,
         });
 
         if (fullBox.length > 0) {
@@ -414,6 +392,7 @@ export const planningBoxService = {
         const machineInfo = await planningHelper.getModelById({
           model: MachineBox,
           where: { machineName: machine },
+          options: { transaction },
         });
 
         if (!machineInfo) throw AppError.NotFound(`machine not found`, "MACHINE_NOT_FOUND");

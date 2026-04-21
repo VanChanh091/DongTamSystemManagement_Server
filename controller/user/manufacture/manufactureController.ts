@@ -34,14 +34,34 @@ export const addReportPaper = async (req: Request, res: Response, next: NextFunc
 };
 
 export const updateReportPaper = async (req: Request, res: Response, next: NextFunction) => {
-  const { planningId } = req.query as { planningId: string };
+  const { planningId, action } = req.query as { planningId: string | string[]; action: string };
 
   try {
-    const response = await manuPaperService.updateReportPaper(
-      Number(planningId),
-      req.body,
-      req.user,
-    );
+    if (!planningId || !action) {
+      throw AppError.BadRequest("Missing planningId or action parameter", "MISSING_PARAMETERS");
+    }
+
+    const idArray = (Array.isArray(planningId) ? planningId : [planningId])
+      .map((id) => Number(id))
+      .filter((id) => !isNaN(id));
+
+    if (idArray.length === 0) {
+      throw AppError.BadRequest("Invalid planningId format", "INVALID_PARAMETERS");
+    }
+
+    let response;
+
+    switch (action) {
+      case "EDIT_REPORT":
+        response = await manuPaperService.updateReportPaper(idArray[0], req.body, req.user);
+        break;
+      case "REQUEST_COMPLETE":
+        response = await manuPaperService.requestCompletePlanningPaper(idArray);
+        break;
+      default:
+        throw AppError.BadRequest("Invalid action parameter", "INVALID_ACTION");
+    }
+
     return res.status(201).json(response);
   } catch (error) {
     next(error);
@@ -99,10 +119,38 @@ export const addReportBox = async (req: Request, res: Response, next: NextFuncti
 };
 
 export const updateReportBox = async (req: Request, res: Response, next: NextFunction) => {
-  const { planningBoxId, machine } = req.query as { planningBoxId: string; machine: string };
+  const { planningBoxId, machine, action } = req.query as {
+    action: string;
+    planningBoxId: string | string[];
+    machine: string;
+  };
 
   try {
-    const response = await manuBoxService.updateReportBox(Number(planningBoxId), machine, req.body);
+    if (!planningBoxId || !action) {
+      throw AppError.BadRequest("Missing planningBoxId or action parameter", "MISSING_PARAMETERS");
+    }
+
+    const idArray = (Array.isArray(planningBoxId) ? planningBoxId : [planningBoxId])
+      .map((id) => Number(id))
+      .filter((id) => !isNaN(id));
+
+    if (idArray.length === 0) {
+      throw AppError.BadRequest("Invalid planningId format", "INVALID_PARAMETERS");
+    }
+
+    let response;
+
+    switch (action) {
+      case "EDIT_REPORT":
+        response = await manuBoxService.updateReportBox(idArray[0], machine, req.body);
+        break;
+      case "REQUEST_COMPLETE":
+        response = await manuBoxService.requestCompletePlanningBox(idArray, machine);
+        break;
+      default:
+        throw AppError.BadRequest("Invalid action parameter", "INVALID_ACTION");
+    }
+
     return res.status(201).json(response);
   } catch (error) {
     next(error);
