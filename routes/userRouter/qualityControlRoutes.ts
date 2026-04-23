@@ -1,7 +1,6 @@
 import { Router } from "express";
 import authenticate from "../../middlewares/authMiddleware";
 import {
-  confirmFinalizeSession,
   createNewResult,
   createNewSession,
   getAllQcResult,
@@ -23,7 +22,6 @@ router.put("/session", authenticate, authorizeAnyPermission(["QC"]), updateSessi
 router.get("/result", authenticate, getAllQcResult);
 router.post("/result", authorizeAnyPermission(["QC"]), authenticate, createNewResult);
 router.put("/result", authorizeAnyPermission(["QC"]), authenticate, updateResult);
-router.put("/result/confirm", authorizeAnyPermission(["QC"]), authenticate, confirmFinalizeSession);
 
 //==================ORCHESTRATOR=======================
 router.post("/submit", authenticate, authorizeAnyPermission(["QC"]), submitQC);

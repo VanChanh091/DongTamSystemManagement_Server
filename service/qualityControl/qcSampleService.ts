@@ -1,12 +1,9 @@
-import { PlanningBox } from "../../models/planning/planningBox";
-import { PlanningPaper } from "../../models/planning/planningPaper";
-import { qcChecklistData, QcSampleResult } from "../../models/qualityControl/qcSampleResult";
-import { QcSession } from "../../models/qualityControl/qcSession";
-import { planningHelper } from "../../repository/planning/planningHelper";
-import { qcRepository } from "../../repository/qcRepository";
-import { warehouseRepository } from "../../repository/warehouseRepository";
 import { AppError } from "../../utils/appError";
+import { qcRepository } from "../../repository/qcRepository";
+import { QcSession } from "../../models/qualityControl/qcSession";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
+import { planningHelper } from "../../repository/planning/planningHelper";
+import { qcChecklistData, QcSampleResult } from "../../models/qualityControl/qcSampleResult";
 
 export const qcSampleService = {
   getAllQcResult: async (qcSessionId: number) => {
@@ -214,104 +211,6 @@ export const qcSampleService = {
       console.error("update Qc Result failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
-    }
-  },
-
-  confirmFinalizeSession: async ({
-    planningId,
-    planningBoxId,
-    isPaper = true,
-  }: {
-    planningId?: number;
-    planningBoxId?: number;
-    isPaper: boolean;
-  }) => {
-    try {
-      return await runInTransaction(async (transaction) => {
-        const session = await planningHelper.getModelById({
-          model: QcSession,
-          where: isPaper ? { planningId } : { planningBoxId },
-          options: { transaction },
-        });
-        if (!session) {
-          throw AppError.NotFound("QC session not found", "QC_SESSION_NOT_FOUND");
-        }
-
-        // Check đã finalize chưa
-        if (session.status == "finalized") {
-          throw AppError.BadRequest("QC session already finalized", "QC_SESSION_ALREADY_FINALIZED");
-        }
-
-        // Validate loại session khớp với isPaper
-        if (isPaper && !session.planningId) {
-          throw AppError.BadRequest(
-            "QC session không thuộc planning giấy",
-            "INVALID_QC_SESSION_TYPE",
-          );
-        }
-
-        if (!isPaper && !session.planningBoxId) {
-          throw AppError.BadRequest(
-            "QC session không thuộc planning thùng",
-            "INVALID_QC_SESSION_TYPE",
-          );
-        }
-
-        //check inbound trước khi finalized
-        isPaper
-          ? await qcSampleService.assertHasInbound({ key: "planningId", id: session.planningId! })
-          : await qcSampleService.assertHasInbound({
-              key: "planningBoxId",
-              id: session.planningBoxId!,
-            });
-
-        await session.update({ status: "finalized" });
-
-        //update status request in planning
-        let planning: PlanningPaper | PlanningBox | null = null;
-
-        planning = isPaper
-          ? await PlanningPaper.findByPk(session.planningId!, { transaction })
-          : await PlanningBox.findByPk(session.planningBoxId!, { transaction });
-
-        if (!planning) {
-          throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
-        }
-
-        //update statusRequest
-        if (planning instanceof PlanningPaper) {
-          await planning.update({ statusRequest: "finalize" }, { transaction });
-        } else if (planning instanceof PlanningBox) {
-          await planning.update({ statusRequest: "finalize" }, { transaction });
-        }
-
-        //update statusRequest planning
-        if (!isPaper && planning instanceof PlanningBox) {
-          await planningHelper.updateDataModel({
-            model: PlanningPaper,
-            data: { statusRequest: "finalize" },
-            options: { where: { planningId: planning.planningId }, transaction },
-          });
-        }
-
-        return { message: "finalize QC session successfully", data: session };
-      });
-    } catch (error) {
-      console.error("create Qc Sample Result failed:", error);
-      if (error instanceof AppError) throw error;
-      throw AppError.ServerError();
-    }
-  },
-
-  assertHasInbound: async ({ key, id }: { key: "planningId" | "planningBoxId"; id: number }) => {
-    const inboundSums = await warehouseRepository.getInboundSumByPlanning(key, [id]);
-    const totalInbound = inboundSums.length > 0 ? Number(inboundSums[0].totalInbound) || 0 : 0;
-
-    if (totalInbound <= 0) {
-      throw AppError.BadRequest(
-        "Chưa có giá trị nhập kho, không thể hoàn thành phiên kiểm tra",
-        "NO_INBOUND_HISTORY",
-      );
     }
   },
 };

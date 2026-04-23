@@ -8,7 +8,7 @@ import { FluteRatio } from "../models/admin/fluteRatio";
 import { OrderImage } from "../models/order/orderImage";
 
 export const orderRepository = {
-  buildQueryOptions: (whereCondition: any = {}): FindOptions => {
+  buildQueryOptions: ({ whereCondition = {} }: { whereCondition: any }): FindOptions => {
     return {
       where: whereCondition,
       attributes: { exclude: ["createdAt", "updatedAt"] },

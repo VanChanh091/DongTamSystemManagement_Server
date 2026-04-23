@@ -35,7 +35,10 @@ export const inboundService = {
     const cacheKey = paper.all;
 
     try {
-      const { isChanged } = await CacheManager.check(PlanningPaper, "checkPaper");
+      const { isChanged } = await CacheManager.check(
+        [{ model: PlanningPaper }, { model: InboundHistory }],
+        "checkPaper",
+      );
 
       if (isChanged) {
         await CacheManager.clear("checkPaper");
@@ -116,6 +119,7 @@ export const inboundService = {
       }
 
       const planning = await warehouseRepository.getBoxWaitingChecked();
+
       const responseData = { message: `get planning box waiting check`, data: planning };
 
       await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
@@ -218,6 +222,9 @@ export const inboundService = {
       if (isFirstInbound) {
         await planning.update({ statusRequest: "inbounded" }, { transaction });
       }
+
+      //xóa cache
+      await CacheManager.clear("checkPaper");
 
       //--------------------MEILISEARCH-----------------------
       await inboundService.syncInboundAndInventoryToMeili({
@@ -324,6 +331,9 @@ export const inboundService = {
 
         await paper.update({ statusRequest: "inbounded" }, { transaction });
       }
+
+      //xóa cache
+      await CacheManager.clear("checkBox");
 
       //--------------------MEILISEARCH-----------------------
       await inboundService.syncInboundAndInventoryToMeili({

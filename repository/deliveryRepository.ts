@@ -37,6 +37,7 @@ export const deliveryRepository = {
         "hasBox",
         "timeRunning",
         "orderId",
+        "status",
       ],
       include: [
         {

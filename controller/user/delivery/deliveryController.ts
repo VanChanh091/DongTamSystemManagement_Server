@@ -28,9 +28,10 @@ export const getPlanningEstimateTime = async (req: Request, res: Response, next:
 };
 
 export const handlePutDelivery = async (req: Request, res: Response, next: NextFunction) => {
-  const { planningId, qtyRegistered } = req.body as {
+  const { planningId, qtyRegistered, isPaper } = req.body as {
     planningId: number | number[];
-    qtyRegistered: string;
+    qtyRegistered?: number;
+    isPaper?: boolean;
   };
 
   try {
@@ -44,8 +45,8 @@ export const handlePutDelivery = async (req: Request, res: Response, next: NextF
         qtyRegistered: Number(qtyRegistered),
         userId: req.user.userId,
       });
-    } else {
-      response = await deliveryService.closePlanning(planningIds);
+    } else if (isPaper) {
+      response = await deliveryService.closePlanning({ ids: planningIds, isPaper });
     }
 
     return res.status(200).json(response);

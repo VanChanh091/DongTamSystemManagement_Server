@@ -128,7 +128,7 @@ export const orderService = {
       const index = meiliClient.index("orders");
 
       // Phân quyền và Trạng thái
-      let filters = ["status IN [accept, planning]"];
+      let filters = ["status IN [accept]"];
       if (role !== "admin" && role !== "manager") {
         filters.push(`userId = ${userId}`);
       }
@@ -146,7 +146,9 @@ export const orderService = {
       }
 
       // Truy vấn DB để lấy data dựa trên orderIds
-      const query = orderRepository.buildQueryOptions({ orderId: { [Op.in]: orderIds } });
+      const query = orderRepository.buildQueryOptions({
+        whereCondition: { orderId: { [Op.in]: orderIds } },
+      });
       const fullOrders = await Order.findAll(query);
 
       // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch

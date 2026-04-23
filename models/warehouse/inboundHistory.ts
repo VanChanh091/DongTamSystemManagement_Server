@@ -10,6 +10,7 @@ interface InboundHistoryAttributes {
   dateInbound: Date;
   qtyPaper: number;
   qtyInbound: number;
+
   createdAt?: Date;
   updatedAt?: Date;
 
@@ -35,6 +36,7 @@ export class InboundHistory
   declare dateInbound: Date;
   declare qtyPaper: number;
   declare qtyInbound: number;
+
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
 

@@ -16,8 +16,9 @@ import { deliveryRepository } from "../repository/deliveryRepository";
 import { calculateVolume } from "../utils/helper/modelHelper/orderHelpers";
 import { exportDeliveryExcelResponse } from "../utils/helper/excelExporter";
 import { deliveryColumns, mappingDeliveryRow } from "../utils/mapping/deliveryRowAndComlumn";
-import { meiliService } from "./meiliService";
-import { MEILI_INDEX } from "../assets/labelFields";
+import { PlanningBox } from "../models/planning/planningBox";
+import { warehouseRepository } from "../repository/warehouseRepository";
+import { QcSession } from "../models/qualityControl/qcSession";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { estimate, schedule } = CacheKey.delivery;
@@ -206,41 +207,106 @@ export const deliveryService = {
     }
   },
 
-  closePlanning: async (planningId: number | number[]) => {
+  closePlanning: async ({ ids, isPaper = true }: { ids: number | number[]; isPaper: boolean }) => {
     try {
       return await runInTransaction(async (transaction) => {
-        const result = await deliveryRepository.getPaperWaitingClose(planningId, transaction);
-        const plannings = Array.isArray(result) ? result : result ? [result] : [];
+        const idArray = Array.isArray(ids) ? ids : [ids];
+        const keyId = isPaper ? "planningId" : "planningBoxId";
 
-        if (plannings.length === 0) {
-          throw AppError.BadRequest("Không tìm thấy planning nào hợp lệ", "PLANNING_NOT_FOUND");
+        // Lấy dữ liệu Planning
+        let plannings: any[] = [];
+        if (isPaper) {
+          plannings = await PlanningPaper.findAll({
+            where: { [keyId]: idArray },
+            transaction,
+          });
+        } else {
+          plannings = await PlanningBox.findAll({
+            where: { [keyId]: idArray },
+            transaction,
+          });
         }
 
+        if (plannings.length === 0) {
+          throw AppError.BadRequest("Không tìm thấy dữ liệu để đóng", "PLANNING_NOT_FOUND");
+        }
+
+        ///Không check inbound mà check inventory của đơn đó
+
+        // Kiểm tra tổng Inbound từ Warehouse
+        const inboundSums = await warehouseRepository.getInboundSumByPlanning(keyId, idArray);
+        const inboundMap = new Map(
+          inboundSums.map((item: any) => [item[keyId], Number(item.totalInbound) || 0]),
+        );
+
+        // Validation
         for (const p of plannings) {
-          if (p.qtyProduced === 0) {
+          const totalInbound = inboundMap.get(p[keyId]) || 0;
+          const qtyProduced = p.qtyProduced || 0;
+          const orderId = p.orderId;
+
+          ///cái này là của sx giấy tấm, nếu làm thùng chưa có số lượng thì sao?
+          // Kiểm tra đã sản xuất chưa
+          if (qtyProduced === 0) {
             throw AppError.BadRequest(
-              `Không thể đóng đơn hàng chưa sản xuất: ${p.orderId}`,
+              `Không thể đóng đơn hàng chưa sản xuất: ${orderId}`,
               "CANNOT_CLOSE_EMPTY_PAPER",
             );
           }
+
+          // Kiểm tra đã có nhập kho chưa
+          if (totalInbound <= 0) {
+            throw AppError.BadRequest(
+              `Đơn hàng: ${orderId} chưa được nhập kho.`,
+              "NO_INBOUND_HISTORY",
+            );
+          }
+
+          // CHỐT CHẶN TỰ ĐỘNG: Phải nhập đủ mới cho đóng
+          // if (totalInbound < qtyProduced) {
+          //   throw AppError.BadRequest(
+          //     `Đơn hàng: ${orderId} chưa nhập đủ hàng (Kho: ${totalInbound}/${qtyProduced})`,
+          //     "INSUFFICIENT_INBOUND_QUANTITY",
+          //   );
+          // }
         }
 
-        const idToUpdate = plannings.map((p) => p.planningId);
-        await PlanningPaper.update(
-          { deliveryPlanned: "delivered" },
-          { where: { planningId: idToUpdate }, transaction },
+        // cập nhật trạng thái (FINALIZED)
+        const query: any = { where: { [keyId]: idArray }, transaction };
+
+        if (isPaper) {
+          await PlanningPaper.update(
+            { statusRequest: "finalize", deliveryPlanned: "delivered" },
+            query,
+          );
+        } else {
+          await PlanningBox.update({ statusRequest: "finalize" }, query);
+
+          // Logic Master-Detail: Update Paper cha
+          const parentIds = [...new Set(plannings.map((p) => p.planningId))];
+          await PlanningPaper.update(
+            { statusRequest: "finalize" },
+            { where: { planningId: parentIds }, transaction },
+          );
+        }
+
+        // Kết thúc session QC
+        await QcSession.update(
+          { status: "finalized" },
+          { where: { [keyId]: idArray }, transaction },
         );
 
-        return { message: "Đóng đơn hàng thành công" };
+        return {
+          message: `Đóng đơn chờ giao thành công`,
+          affectedIds: idArray,
+        };
       });
     } catch (error) {
-      console.error("❌ confirm ready delivery planning failed:", error);
+      console.error("❌ Close planning failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
   },
-
-  //=================================PLANNING DELIVERY=====================================
 
   getDeliveryRequest: async () => {
     try {

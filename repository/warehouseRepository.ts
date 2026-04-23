@@ -20,8 +20,12 @@ export const warehouseRepository = {
 
   //paper
   getPaperWaitingChecked: async () => {
-    return await PlanningPaper.findAll({
-      where: { hasBox: false, statusRequest: { [Op.in]: ["requested", "inbounded"] } },
+    const paper = await PlanningPaper.findAll({
+      where: {
+        hasBox: false,
+        qtyProduced: { [Op.ne]: 0 },
+        statusRequest: { [Op.in]: ["requested", "inbounded"] },
+      },
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {
@@ -59,11 +63,16 @@ export const warehouseRepository = {
       ],
       order: [["sortPlanning", "ASC"]],
     });
+
+    return paper.filter((paper) => {
+      const totalInbound = paper.inbound.reduce((sum, inbound) => sum + inbound.qtyInbound, 0);
+      return (paper.qtyProduced ?? 0) > totalInbound;
+    });
   },
 
   //box
   getBoxWaitingChecked: async () => {
-    return await PlanningBox.findAll({
+    const box = await PlanningBox.findAll({
       where: { statusRequest: { [Op.in]: ["requested", "inbounded"] } },
       attributes: {
         exclude: [
@@ -107,8 +116,19 @@ export const warehouseRepository = {
             },
           ],
         },
+        { model: PlanningBoxTime, as: "boxTimes", attributes: ["machine", "qtyProduced"] },
         { model: InboundHistory, as: "inbound", attributes: ["dateInbound", "qtyInbound"] },
       ],
+    });
+
+    return box.filter((box) => {
+      const totalInbound = box.inbound.reduce((sum, inbound) => sum + inbound.qtyInbound, 0);
+
+      //tìm min qtyProduced của boxTimes
+      const qtyProduced = box.boxTimes?.map((bt) => bt.qtyProduced ?? 0) ?? [];
+      const minQtyProduced = qtyProduced.length > 0 ? Math.min(...qtyProduced) : 0;
+
+      return minQtyProduced > totalInbound;
     });
   },
 

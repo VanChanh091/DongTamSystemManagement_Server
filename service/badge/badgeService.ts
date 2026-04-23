@@ -5,6 +5,7 @@ import { AppError } from "../../utils/appError";
 import { PlanningBox } from "../../models/planning/planningBox";
 import { DeliveryRequest } from "../../models/delivery/deliveryRequest";
 import { DeliveryItem } from "../../models/delivery/deliveryItem";
+import { warehouseRepository } from "../../repository/warehouseRepository";
 
 export const badgeService = {
   //pending order (admin)
@@ -56,9 +57,8 @@ export const badgeService = {
   //waiting check paper & box
   countWaitingCheckPaper: async () => {
     try {
-      const count = await PlanningPaper.count({
-        where: { hasBox: false, statusRequest: { [Op.in]: ["requested", "inbounded"] } },
-      });
+      const data = await warehouseRepository.getPaperWaitingChecked();
+      const count = data.length;
 
       return { message: "Count waiting check paper successfully", data: count };
     } catch (error) {
@@ -69,9 +69,8 @@ export const badgeService = {
 
   countWaitingCheckBox: async () => {
     try {
-      const count = await PlanningBox.count({
-        where: { statusRequest: { [Op.in]: ["requested", "inbounded"] } },
-      });
+      const data = await warehouseRepository.getBoxWaitingChecked();
+      const count = data.length;
 
       return { message: "Count waiting check box successfully", data: count };
     } catch (error) {

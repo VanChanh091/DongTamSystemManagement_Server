@@ -125,30 +125,6 @@ export const updateResult = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
-// confirm Finalize Session
-export const confirmFinalizeSession = async (req: Request, res: Response, next: NextFunction) => {
-  const {
-    planningId,
-    planningBoxId,
-    isPaper = true,
-  } = req.body as {
-    planningId?: number;
-    planningBoxId?: number;
-    isPaper: boolean;
-  };
-
-  try {
-    const response = await qcSampleService.confirmFinalizeSession({
-      planningId,
-      planningBoxId,
-      isPaper,
-    });
-    return res.status(200).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
 //===============================QC RESULT=================================
 
 export const submitQC = async (req: Request, res: Response, next: NextFunction) => {

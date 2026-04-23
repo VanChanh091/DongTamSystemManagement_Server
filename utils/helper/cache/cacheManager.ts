@@ -1,12 +1,13 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import redisCache from "../../../assets/configs/connect/redis.connect";
 import { CacheKey } from "./cacheKey";
 import { checkLastChange } from "./checkLastChangeHelper";
+import redisCache from "../../../assets/configs/connect/redis.connect";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 
+//map cache để xóa cache theo module
 const CACHE_CONFIG = {
   customer: ["customers:"],
   product: ["products:"],
@@ -49,7 +50,7 @@ const CACHE_CONFIG = {
 };
 
 export const CacheManager = {
-  //Xóa toàn bộ cache theo prefix
+  //Xóa cache theo prefix
   async clearByPrefix(prefix: string) {
     const keys = await redisCache.keys(`${prefix}*`);
     //console.log(keys);
@@ -61,7 +62,6 @@ export const CacheManager = {
   },
 
   /**
-   * Hàm clear tổng quát thay thế cho tất cả các hàm clear đơn lẻ
    * @param module Tên module cần xóa (key trong CACHE_CONFIG)
    * @param args Tham số phụ (ví dụ: role)
    */
