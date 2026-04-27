@@ -9,6 +9,8 @@ import { OrderImage } from "../models/order/orderImage";
 
 export const orderRepository = {
   buildQueryOptions: ({ whereCondition = {} }: { whereCondition: any }): FindOptions => {
+    console.log(`where: ${whereCondition}`);
+
     return {
       where: whereCondition,
       attributes: { exclude: ["createdAt", "updatedAt"] },
@@ -22,10 +24,10 @@ export const orderRepository = {
       ],
 
       order: [
-        //1. sort theo accept -> planning | pending -> reject
-        ["statusPriority", "DESC"],
-        //2. sort theo orderId
+        // sort theo orderId
         ["orderSortValue", "ASC"],
+        // sort theo accept -> planning | pending -> reject
+        ["statusPriority", "DESC"],
       ],
     };
   },
@@ -81,6 +83,18 @@ export const orderRepository = {
   //meilisearch
   findOrderForMeili: async (orderId: string, transaction: Transaction) => {
     return await Order.findByPk(orderId, {
+      attributes: ["orderId", "flute", "QC_box", "price", "status", "userId", "orderSortValue"],
+      include: [
+        { model: Customer, attributes: ["customerName"] },
+        { model: Product, attributes: ["productName"] },
+      ],
+      transaction,
+    });
+  },
+
+  findOrdersForMeili: async (orderId: string[], transaction: Transaction) => {
+    return await Order.findAll({
+      where: { orderId: { [Op.in]: orderId } },
       attributes: ["orderId", "flute", "QC_box", "price", "status", "userId", "orderSortValue"],
       include: [
         { model: Customer, attributes: ["customerName"] },

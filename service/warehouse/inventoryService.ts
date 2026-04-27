@@ -164,20 +164,7 @@ export const inventoryService = {
         }
 
         //Lấy thông tin đơn hàng đích để có giá tấm
-        const order = await Order.findOne({
-          where: { orderId: targetOrderId },
-          attributes: [
-            "orderId",
-            "flute",
-            "status",
-            "pricePaper",
-            "lengthPaperCustomer",
-            "paperSizeCustomer",
-            "quantityCustomer",
-            "quantityManufacture",
-          ],
-          transaction,
-        });
+        const order = await inventoryRepository.getTargetOrder(targetOrderId, transaction);
         if (!order) {
           throw AppError.NotFound(
             `Target order with orderId ${targetOrderId} not found`,

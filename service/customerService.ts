@@ -19,6 +19,7 @@ import { createDataTable, updateChildTable } from "../utils/helper/modelHelper/o
 import { meiliService } from "./meiliService";
 import { searchFieldAtribute } from "../interface/types";
 import { MEILI_INDEX } from "../assets/labelFields";
+import { meiliTransformer } from "../assets/configs/meilisearch/meiliTransformer";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { customer } = CacheKey;
@@ -81,9 +82,22 @@ export const customerService = {
 
   getCustomerByFields: async ({ field, keyword, page, pageSize }: searchFieldAtribute) => {
     try {
-      const validFields = ["customerId", "customerName", "cskh", "phone"];
+      const validFields = ["customerId", "customerName", "cskh", "phone", "dayCreated"];
       if (!validFields.includes(field)) {
         throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
+      }
+
+      // console.log(`input keyword: ${keyword}`);
+
+      if (field === "dayCreated") {
+        const date = new Date(keyword);
+        // console.log(`date: ${date}`);
+
+        if (!isNaN(date.getTime())) {
+          keyword = Math.floor(date.setUTCHours(0, 0, 0, 0) / 1000).toString();
+
+          // console.log(`output keyword: ${keyword}`);
+        }
       }
 
       const index = meiliClient.index("customers");
@@ -229,9 +243,10 @@ export const customerService = {
       const customer = await customerRepository.findCustomerForMeili(customerId, transaction);
 
       if (customer) {
+        const flattenData = meiliTransformer.customer(customer);
         await meiliService.syncOrUpdateMeiliData({
           indexKey: MEILI_INDEX.CUSTOMERS,
-          data: customer.toJSON(),
+          data: flattenData,
           transaction,
         });
       }

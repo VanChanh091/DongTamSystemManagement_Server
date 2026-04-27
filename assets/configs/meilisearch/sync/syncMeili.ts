@@ -5,10 +5,10 @@ import { meiliTransformer } from "../meiliTransformer";
 import { Product } from "../../../../models/product/product";
 import { meiliClient } from "../../connect/meilisearch.connect";
 import { Customer } from "../../../../models/customer/customer";
-import { Inventory } from "../../../../models/warehouse/inventory/inventory";
 import { PlanningBox } from "../../../../models/planning/planningBox";
 import { QcSession } from "../../../../models/qualityControl/qcSession";
 import { PlanningPaper } from "../../../../models/planning/planningPaper";
+import { Inventory } from "../../../../models/warehouse/inventory/inventory";
 import { OutboundDetail } from "../../../../models/warehouse/outboundDetail";
 import { productRepository } from "../../../../repository/productRepository";
 import { InboundHistory } from "../../../../models/warehouse/inboundHistory";
@@ -80,12 +80,22 @@ export const resetMeiliIndex = async (indexName: string) => {
 //sync customer
 export const syncCustomerToMeili = async (isDeleteAll: boolean) => {
   const customers = await Customer.findAll({
-    attributes: ["customerId", "customerName", "companyName", "cskh", "phone", "customerSeq"],
+    attributes: [
+      "customerId",
+      "customerName",
+      "companyName",
+      "cskh",
+      "phone",
+      "dayCreated",
+      "customerSeq",
+    ],
     order: [["customerSeq", "ASC"]],
   });
 
+ const flattenData = customers.map(meiliTransformer.customer);
+
   return await syncMeiliData({
-    data: customers,
+    data: flattenData,
     indexName: "customers",
     displayName: "customers",
     primaryKey: "customerId",
@@ -218,7 +228,7 @@ export const syncInboundToMeili = async (isDeleteAll: boolean) => {
 
 export const syncOutboundToMeili = async (isDeleteAll: boolean) => {
   const outbounds = await OutboundHistory.findAll({
-    attributes: ["outboundId", "outboundSlipCode", "dateOutbound"],
+    attributes: ["outboundId", "outboundSlipCode", "dateOutbound", "status"],
     include: [
       {
         model: OutboundDetail,
@@ -289,9 +299,9 @@ export const syncReportPaperToMeili = async (isDeleteAll: boolean) => {
     ],
   });
 
-  const flattenData = papers.map(meiliTransformer.reportPaper);
+  // console.log(JSON.stringify(papers[0]));
 
-  console.log(flattenData[0]);
+  const flattenData = papers.map(meiliTransformer.reportPaper);
 
   return await syncMeiliData({
     data: flattenData,

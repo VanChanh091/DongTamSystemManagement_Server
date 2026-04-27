@@ -76,6 +76,13 @@ export const reportService = {
         throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
       }
 
+      if (field === "dayReported") {
+        const date = new Date(keyword);
+        if (!isNaN(date.getTime())) {
+          keyword = Math.floor(date.setUTCHours(0, 0, 0, 0) / 1000).toString();
+        }
+      }
+
       const index = meiliClient.index("reportPapers");
 
       const searchResult = await index.search(keyword, {
@@ -176,6 +183,13 @@ export const reportService = {
       const validFields = ["orderId", "customerName", "dayReported", "QC_box", "shiftManagement"];
       if (!validFields.includes(field)) {
         throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
+      }
+
+      if (field === "dayReported") {
+        const date = new Date(keyword);
+        if (!isNaN(date.getTime())) {
+          keyword = Math.floor(date.setUTCHours(0, 0, 0, 0) / 1000).toString();
+        }
       }
 
       const index = meiliClient.index("reportBoxes");

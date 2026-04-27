@@ -4,23 +4,40 @@ import { deliveryService } from "../../../service/deliveryService";
 //=================================PLANNING ESTIMATE TIME=====================================
 
 export const getPlanningEstimateTime = async (req: Request, res: Response, next: NextFunction) => {
-  const { page, pageSize, dayStart, estimateTime, all } = req.query as {
+  const { page, pageSize, dayStart, estimateTime, all, field, keyword } = req.query as {
     page: string;
     pageSize: string;
     dayStart: string;
     estimateTime: string;
     all: string;
+    field?: string;
+    keyword?: string;
   };
 
   try {
-    const response = await deliveryService.getPlanningEstimateTime({
+    let response;
+
+    const params = {
       page: Number(page),
       pageSize: Number(pageSize),
       dayStart: new Date(dayStart),
       estimateTime,
       userId: req.user.userId,
       all,
-    });
+    };
+
+    console.log(`field: ${field}, keyword: ${keyword}`);
+
+    if (field && keyword) {
+      response = await deliveryService.getPlanningEstimateByField({
+        ...params,
+        field,
+        keyword,
+      });
+    } else {
+      response = await deliveryService.getPlanningEstimateTime(params);
+    }
+
     return res.status(200).json(response);
   } catch (error) {
     next(error);

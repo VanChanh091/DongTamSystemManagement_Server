@@ -5,8 +5,10 @@
         <item>
             <title>Version 4.3.1</title>
             <sparkle:version>4.3.1</sparkle:version> 
-            <description>Sửa lại lỗi không yêu cầu hoàn thành được đối với các quyền liên quan đến sản xuất
-            Sửa lỗi nhảy cột giá trị của QC
+            <description>Thay đổi logic báo cáo cho QC
+            Thêm tìm kiếm cho trang đăng ký giao hàng và xuất kho
+            Thêm trạng thái cho đơn hàng
+            
             </description>
             <pubDate>Mon, 20 April 2026</pubDate>
             <enclosure url="dongtam.exe" 

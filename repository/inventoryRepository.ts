@@ -68,6 +68,23 @@ export const inventoryRepository = {
     return await Inventory.findAndCountAll(options);
   },
 
+  getTargetOrder: async (targetOrderId: string, transaction: Transaction) => {
+    return await Order.findOne({
+      where: { orderId: targetOrderId },
+      attributes: [
+        "orderId",
+        "flute",
+        "status",
+        "pricePaper",
+        "lengthPaperCustomer",
+        "paperSizeCustomer",
+        "quantityCustomer",
+        "quantityManufacture",
+      ],
+      transaction,
+    });
+  },
+
   inventoryTotals: async () => {
     const result = await Inventory.findAll({
       where: { valueInventory: { [Op.gt]: 0 } },

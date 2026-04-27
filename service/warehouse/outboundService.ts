@@ -94,9 +94,16 @@ export const outboundService = {
     pageSize: number;
   }) => {
     try {
-      const validFields = ["dateOutbound", "outboundSlipCode", "customerName"];
+      const validFields = ["dateOutbound", "customerName"];
       if (!validFields.includes(field)) {
         throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
+      }
+
+      if (field === "dateOutbound") {
+        const date = new Date(keyword);
+        if (!isNaN(date.getTime())) {
+          keyword = Math.floor(date.setUTCHours(0, 0, 0, 0) / 1000).toString();
+        }
       }
 
       const index = meiliClient.index("outbounds");
@@ -536,12 +543,14 @@ export const outboundService = {
     try {
       const outboundData = await warehouseRepository.getOutboundForMeili(outboundId, transaction);
 
-      const meiliFormatted = meiliTransformer.outbound(outboundData);
-      await meiliService.syncOrUpdateMeiliData({
-        indexKey: MEILI_INDEX.OUTBOUNDS,
-        data: meiliFormatted,
-        transaction,
-      });
+      if (outboundData) {
+        const meiliFormatted = meiliTransformer.outbound(outboundData);
+        await meiliService.syncOrUpdateMeiliData({
+          indexKey: MEILI_INDEX.OUTBOUNDS,
+          data: meiliFormatted,
+          transaction,
+        });
+      }
     } catch (error) {
       console.log("err to sync data outbound: ", error);
       throw AppError.ServerError();

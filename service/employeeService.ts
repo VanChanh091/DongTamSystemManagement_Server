@@ -18,6 +18,7 @@ import { meiliClient } from "../assets/configs/connect/meilisearch.connect";
 import { meiliService } from "./meiliService";
 import { searchFieldAtribute } from "../interface/types";
 import { MEILI_INDEX } from "../assets/labelFields";
+import { meiliTransformer } from "../assets/configs/meilisearch/meiliTransformer";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { employee } = CacheKey;
@@ -220,12 +221,9 @@ export const employeeService = {
         });
 
         //--------------------MEILISEARCH-----------------------
-        const updatedEmployee = await employeeRepository.findEmployeeForMeili(
-          employeeId,
-          transaction,
-        );
+        await employeeService.syncEmployeeForMeili(employeeId, transaction);
 
-        return { message: "Cập nhật nhân viên thành công", data: updatedEmployee };
+        return { message: "Cập nhật nhân viên thành công" };
       });
     } catch (error) {
       console.error("updated employees failed:", error);
@@ -239,9 +237,10 @@ export const employeeService = {
       const employee = await employeeRepository.findEmployeeForMeili(employeeId, transaction);
 
       if (employee) {
+        const flattenData = meiliTransformer.employee(employee);
         await meiliService.syncOrUpdateMeiliData({
           indexKey: MEILI_INDEX.EMPLOYEES,
-          data: employee.toJSON(),
+          data: flattenData,
           transaction,
         });
       }

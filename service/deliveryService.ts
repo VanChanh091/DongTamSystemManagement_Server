@@ -5,7 +5,9 @@ import { Op, Transaction } from "sequelize";
 import { Request, Response } from "express";
 import { AppError } from "../utils/appError";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
+import { PlanningBox } from "../models/planning/planningBox";
 import { DeliveryPlan } from "../models/delivery/deliveryPlan";
+import { QcSession } from "../models/qualityControl/qcSession";
 import { DeliveryItem } from "../models/delivery/deliveryItem";
 import redisCache from "../assets/configs/connect/redis.connect";
 import { PlanningPaper } from "../models/planning/planningPaper";
@@ -13,12 +15,16 @@ import { CacheManager } from "../utils/helper/cache/cacheManager";
 import { DeliveryRequest } from "../models/delivery/deliveryRequest";
 import { runInTransaction } from "../utils/helper/transactionHelper";
 import { deliveryRepository } from "../repository/deliveryRepository";
+import { warehouseRepository } from "../repository/warehouseRepository";
 import { calculateVolume } from "../utils/helper/modelHelper/orderHelpers";
 import { exportDeliveryExcelResponse } from "../utils/helper/excelExporter";
 import { deliveryColumns, mappingDeliveryRow } from "../utils/mapping/deliveryRowAndComlumn";
-import { PlanningBox } from "../models/planning/planningBox";
-import { warehouseRepository } from "../repository/warehouseRepository";
-import { QcSession } from "../models/qualityControl/qcSession";
+import { Order } from "../models/order/order";
+import { orderRepository } from "../repository/orderRepository";
+import { meiliTransformer } from "../assets/configs/meilisearch/meiliTransformer";
+import { meiliService } from "./meiliService";
+import { MEILI_INDEX } from "../assets/labelFields";
+import { meiliClient } from "../assets/configs/connect/meilisearch.connect";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { estimate, schedule } = CacheKey.delivery;
@@ -70,48 +76,11 @@ export const deliveryService = {
 
       const plannings = await deliveryRepository.getPlanningEstimateTime(dayStart, userId, all);
 
-      // mốc kết thúc NGÀY HÔM NAY
-      const [estH, estM] = estimateTime.split(":").map(Number);
-      const estimateMinutes = estH * 60 + estM;
-
-      // console.log(`estimateMinutes: ${estimateMinutes}`);
-
       //filter
-      const filtered = plannings.filter((paper) => {
-        // if (paper.hasOverFlow) return false;
-
-        if (paper.status === "complete") return true;
-
-        // KHÔNG CÓ BOX → so paper
-        if (!paper.hasBox) {
-          if (!paper.timeRunning) return false;
-
-          const [h, m, s = "0"] = paper.timeRunning.split(":");
-          const paperMinutes = Number(h) * 60 + Number(m) + Number(s) / 60;
-
-          // console.log(`time paper: ${paperMinutes}`);
-          // console.log(`compare paper: ${paperMinutes <= estimateMinutes}`);
-
-          return paperMinutes <= estimateMinutes;
-        } else {
-          // CÓ BOX → so theo BOX
-          const boxTimes = paper.PlanningBox?.boxTimes ?? [];
-
-          if (boxTimes.length === 0) return false;
-
-          const latestBoxMinutes = Math.max(
-            ...boxTimes.map((t: any) => {
-              const [h, m, s = "0"] = t.timeRunning.split(":");
-
-              return Number(h) * 60 + Number(m) + Number(s) / 60;
-            }),
-          );
-
-          // console.log(`latest time box: ${latestBoxMinutes}`);
-          // console.log(`compare box: ${latestBoxMinutes <= estimateMinutes}`);
-
-          return latestBoxMinutes <= estimateMinutes;
-        }
+      const filtered = deliveryService.filterPlanningEstimateTime({
+        plannings,
+        dayStart,
+        estimateTime,
       });
 
       //PAGING DATA
@@ -145,6 +114,148 @@ export const deliveryService = {
       console.error("❌ get planning estimate time failed:", error);
       throw AppError.ServerError();
     }
+  },
+
+  getPlanningEstimateByField: async ({
+    page = 1,
+    pageSize = 20,
+    dayStart,
+    estimateTime,
+    userId,
+    all = "false",
+    field,
+    keyword,
+  }: {
+    page?: number;
+    pageSize?: number;
+    dayStart: Date;
+    estimateTime: string;
+    userId: number;
+    all: string;
+    field: string;
+    keyword: string;
+  }) => {
+    const filterStatus = ["stop", "cancel"];
+    const index = meiliClient.index("planningPapers");
+
+    try {
+      const validFields = ["orderId", "customerName"];
+      if (!validFields.includes(field)) {
+        throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
+      }
+
+      const searchResult = await index.search(keyword, {
+        attributesToSearchOn: [field],
+        attributesToRetrieve: ["planningId"],
+        filter: `status NOT IN ${JSON.stringify(filterStatus)}`,
+        page: Number(page) || 1,
+        hitsPerPage: Number(pageSize) || 25, //pageSizes
+      });
+
+      const planningIds = searchResult.hits.map((hit: any) => hit.planningId);
+      if (planningIds.length === 0) {
+        return {
+          message: "No planning papers found",
+          data: [],
+          totalPlannings: 0,
+          totalPages: 0,
+          currentPage: page,
+        };
+      }
+
+      const plannings = await deliveryRepository.getPlanningEstimateTime(dayStart, userId, all);
+
+      const filtered = deliveryService.filterPlanningEstimateTime({
+        plannings,
+        dayStart,
+        estimateTime,
+      });
+
+      const data = planningIds
+        .map((id) => filtered.find((p) => p.planningId === id))
+        .filter(Boolean);
+
+      const finalData = data.map((p: any) => {
+        const plain = typeof p.get === "function" ? p.get({ plain: true }) : p;
+        delete plain.PlanningBox;
+        return plain;
+      });
+
+      return {
+        message: `Search by ${field} from Meilisearch & DB`,
+        data: finalData,
+        totalPlannings: searchResult.totalHits,
+        totalPages: searchResult.totalPages,
+        currentPage: searchResult.page,
+      };
+    } catch (error) {
+      console.error(`Failed to get planning estimate by ${field}`, error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  filterPlanningEstimateTime: ({
+    plannings,
+    dayStart,
+    estimateTime,
+  }: {
+    plannings: any[];
+    dayStart: Date;
+    estimateTime: string;
+  }) => {
+    // mốc kết thúc NGÀY HÔM NAY
+    const [estH, estM] = estimateTime.split(":").map(Number);
+    const estimateMinutes = estH * 60 + estM;
+
+    return plannings.filter((paper) => {
+      if (paper.status === "complete") return true;
+
+      //check day
+      if (!paper.dayStart) return false;
+      const paperDate = new Date(paper.dayStart).setHours(0, 0, 0, 0);
+      const targetDate = new Date(dayStart).setHours(0, 0, 0, 0);
+
+      // console.log(
+      //   `paperDate: ${paperDate} - targetDate: ${targetDate} - compare: ${paperDate < targetDate}`,
+      // );
+
+      //if paper date < target date → show
+      if (paperDate < targetDate) return true;
+
+      // console.log(`estimateMinutes: ${estimateMinutes}`);
+
+      // KHÔNG CÓ BOX → so paper
+      if (!paper.hasBox) {
+        if (!paper.timeRunning) return false;
+
+        const [h, m, s = "0"] = paper.timeRunning.split(":");
+        const paperMinutes = Number(h) * 60 + Number(m) + Number(s) / 60;
+
+        // console.log(`time paper: ${paperMinutes}`);
+        // console.log(`compare paper: ${paperMinutes <= estimateMinutes}`);
+
+        return paperMinutes <= estimateMinutes;
+      } else {
+        // CÓ BOX → so theo BOX
+        const boxTimes = paper.PlanningBox?.boxTimes ?? [];
+
+        if (boxTimes.length === 0) return false;
+
+        const latestBoxMinutes = Math.max(
+          ...boxTimes.map((t: any) => {
+            const [h, m, s = "0"] = t.timeRunning.split(":");
+
+            return Number(h) * 60 + Number(m) + Number(s) / 60;
+          }),
+        );
+
+        // console.log(`latest time box: ${latestBoxMinutes}`);
+        // console.log(`compare box: ${latestBoxMinutes <= estimateMinutes}`);
+
+        return latestBoxMinutes <= estimateMinutes;
+      }
+    });
   },
 
   registerQtyDelivery: async ({
@@ -231,8 +342,6 @@ export const deliveryService = {
           throw AppError.BadRequest("Không tìm thấy dữ liệu để đóng", "PLANNING_NOT_FOUND");
         }
 
-        ///Không check inbound mà check inventory của đơn đó
-
         // Kiểm tra tổng Inbound từ Warehouse
         const inboundSums = await warehouseRepository.getInboundSumByPlanning(keyId, idArray);
         const inboundMap = new Map(
@@ -240,12 +349,15 @@ export const deliveryService = {
         );
 
         // Validation
+        const orderIds = new Set<string>(); // Dùng Set để tránh trùng lặp ID
+
         for (const p of plannings) {
           const totalInbound = inboundMap.get(p[keyId]) || 0;
           const qtyProduced = p.qtyProduced || 0;
           const orderId = p.orderId;
 
-          ///cái này là của sx giấy tấm, nếu làm thùng chưa có số lượng thì sao?
+          if (orderId) orderIds.add(orderId);
+
           // Kiểm tra đã sản xuất chưa
           if (qtyProduced === 0) {
             throw AppError.BadRequest(
@@ -261,14 +373,6 @@ export const deliveryService = {
               "NO_INBOUND_HISTORY",
             );
           }
-
-          // CHỐT CHẶN TỰ ĐỘNG: Phải nhập đủ mới cho đóng
-          // if (totalInbound < qtyProduced) {
-          //   throw AppError.BadRequest(
-          //     `Đơn hàng: ${orderId} chưa nhập đủ hàng (Kho: ${totalInbound}/${qtyProduced})`,
-          //     "INSUFFICIENT_INBOUND_QUANTITY",
-          //   );
-          // }
         }
 
         // cập nhật trạng thái (FINALIZED)
@@ -295,6 +399,18 @@ export const deliveryService = {
           { status: "finalized" },
           { where: { [keyId]: idArray }, transaction },
         );
+
+        if (orderIds.size > 0) {
+          const listOrderIds = Array.from(orderIds);
+
+          await Order.update(
+            { status: "completed" },
+            { where: { orderId: listOrderIds }, transaction },
+          );
+
+          //--------------------MEILISEARCH-----------------------
+          await deliveryService._syncOrderForMeili(listOrderIds, transaction);
+        }
 
         return {
           message: `Đóng đơn chờ giao thành công`,
@@ -497,34 +613,119 @@ export const deliveryService = {
     action: "complete" | "cancel";
   }) => {
     try {
+      const STATUS_ERROR_MAP: Record<string, { message: string; code: string }> = {
+        cancelled: {
+          message: "Không thể hoàn thành đơn đã bị hủy.",
+          code: "ITEMS_ALREADY_CANCELLED",
+        },
+        planned: {
+          message: "Có đơn chưa gửi yêu cầu chuẩn bị hàng",
+          code: "ITEMS_STILL_REQUESTED",
+        },
+        requested: {
+          message: "Có đơn chưa chuẩn bị hàng xong",
+          code: "ITEMS_NOT_READY_PREPARED",
+        },
+      };
+
       return runInTransaction(async (transaction) => {
-        const items = await DeliveryItem.findAll({
-          where: { deliveryItemId: { [Op.in]: itemIds }, deliveryId },
-          include: [
-            {
-              model: DeliveryRequest,
-              attributes: ["requestId", "planningId"],
-            },
-          ],
+        const items = await deliveryRepository.getDeliveryItemToUpdateStatus(
+          itemIds,
+          deliveryId,
           transaction,
-        });
+        );
 
         if (items.length === 0) {
           throw AppError.BadRequest("Không tìm thấy item nào để cập nhật", "ITEMS_NOT_FOUND");
         }
 
-        const requestIds = items.map((i) => i.requestId);
-
         if (action === "complete") {
+          const invalidItem = items.find((i) => i.status in STATUS_ERROR_MAP);
+
+          if (invalidItem) {
+            const { message, code } = STATUS_ERROR_MAP[invalidItem.status];
+            throw AppError.BadRequest(message, code);
+          }
+
+          //update status delivery item
           await deliveryRepository.updateDeliveryItemById({
             statusUpdate: "completed",
             whereCondition: { deliveryItemId: { [Op.in]: itemIds }, deliveryId },
             transaction,
           });
+
+          //finalize QC session and status request
+          const paperIds = new Set<number>();
+          const boxIds = new Set<number>();
+          const orderIds = new Set<string>();
+
+          items.forEach((i) => {
+            const paper = i.DeliveryRequest?.PlanningPaper;
+            if (paper?.planningId) {
+              paperIds.add(paper.planningId);
+
+              if (paper.orderId) {
+                orderIds.add(paper.orderId);
+              }
+
+              // if hasBox, add boxId to set for update statusRequest
+              if (paper.hasBox && paper.PlanningBox?.planningBoxId) {
+                boxIds.add(paper.PlanningBox.planningBoxId);
+              }
+            }
+          });
+
+          const distinctPaperIds = Array.from(paperIds);
+          const distinctBoxIds = Array.from(boxIds);
+          const distinctOrderIds = Array.from(orderIds);
+
+          if (distinctPaperIds.length > 0) {
+            const updateTasks: Promise<any>[] = [
+              PlanningPaper.update(
+                { statusRequest: "finalize", deliveryPlanned: "delivered" },
+                { where: { planningId: { [Op.in]: distinctPaperIds } }, transaction },
+              ),
+              QcSession.update(
+                { status: "finalized" },
+                { where: { planningId: { [Op.in]: distinctPaperIds } }, transaction },
+              ),
+            ];
+
+            // Nếu có Box thì add vào updateTaskss
+            if (distinctBoxIds.length > 0) {
+              updateTasks.push(
+                PlanningBox.update(
+                  { statusRequest: "finalize" },
+                  { where: { planningBoxId: { [Op.in]: distinctBoxIds } }, transaction },
+                ),
+                QcSession.update(
+                  { status: "finalized" },
+                  { where: { planningBoxId: { [Op.in]: distinctBoxIds } }, transaction },
+                ),
+              );
+            }
+
+            if (distinctOrderIds.length > 0) {
+              updateTasks.push(
+                Order.update(
+                  { status: "completed" },
+                  { where: { orderId: { [Op.in]: distinctOrderIds } }, transaction },
+                ),
+              );
+            }
+
+            await Promise.all(updateTasks);
+
+            if (distinctOrderIds.length > 0) {
+              await deliveryService._syncOrderForMeili(distinctOrderIds, transaction);
+            }
+          }
         } else if (action === "cancel") {
           const itemsCancel = await deliveryRepository.getDeliveryItemByIds(itemIds, transaction);
           if (itemsCancel.length > 0) {
             //return delivery request to 'requested' for re-schedule
+            const requestIds = items.map((i) => i.requestId);
+
             await DeliveryRequest.update(
               { status: "requested" },
               { where: { requestId: { [Op.in]: requestIds } }, transaction },
@@ -556,6 +757,26 @@ export const deliveryService = {
           message: `${action == "complete" ? "Hoàn thành" : "Hủy"} kế hoạch giao hàng thành công`,
         };
       });
+    } catch (error) {
+      console.error("❌ get schedule delivery failed:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  _syncOrderForMeili: async (orderIds: string[], transaction: Transaction) => {
+    try {
+      const ordersForMeili = await orderRepository.findOrdersForMeili(orderIds, transaction);
+
+      if (ordersForMeili.length > 0) {
+        const dataToSync = ordersForMeili.map((o) => meiliTransformer.order(o));
+        await meiliService.syncOrUpdateMeiliData({
+          indexKey: MEILI_INDEX.ORDERS,
+          data: dataToSync,
+          transaction,
+          isUpdate: true,
+        });
+      }
     } catch (error) {
       console.error("❌ get schedule delivery failed:", error);
       if (error instanceof AppError) throw error;
@@ -605,36 +826,24 @@ export const deliveryService = {
           throw AppError.BadRequest("item not found", "ITEM_NOT_FOUND");
         }
 
-        // CHỨC NĂNG 1: Gửi yêu cầu (Chuyển từ planned -> requested)
         if (isRequest === "true") {
-          if (item.status === "planned") {
-            await item.update({ status: "requested" }, { transaction });
-
-            return { message: "Gửi yêu cầu xuất hàng thành công" };
-          }
-
+          // Gửi yêu cầu (Chuyển từ planned -> requested)
           if (item.status === "requested") {
             throw AppError.BadRequest("Đơn này đã được yêu cầu rồi", "ALREADY_REQUESTED");
           }
 
-          throw AppError.BadRequest(
-            "Trạng thái hiện tại không thể thực hiện yêu cầu",
-            "INVALID_STATUS",
-          );
-        }
-
-        // CHỨC NĂNG 2: Chuẩn bị hàng (Chuyển từ requested -> prepared)
-        else {
-          if (item.status === "requested") {
-            await item.update({ status: "prepared" }, { transaction });
-            return { message: "Xác nhận chuẩn bị hàng xong" };
+          if (item.status === "planned") {
+            await item.update({ status: "requested" }, { transaction });
           }
 
-          // Chặn nếu đơn chưa ở trạng thái requested
-          throw AppError.BadRequest(
-            "Chỉ có thể chuẩn bị hàng cho đơn đã được 'Yêu cầu'",
-            "NOT_REQUESTED_YET",
-          );
+          return { message: "Gửi yêu cầu xuất hàng thành công" };
+        } else {
+          // Chuẩn bị hàng (Chuyển từ requested -> prepared)
+          if (item.status === "requested") {
+            await item.update({ status: "prepared" }, { transaction });
+          }
+
+          return { message: "Xác nhận chuẩn bị hàng xong" };
         }
       });
     } catch (error) {

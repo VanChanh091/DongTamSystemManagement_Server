@@ -6,7 +6,7 @@ import {
   getOrderPendingAndReject,
   getOrderDetail,
   getOrderIdRaw,
-  getOrdersAcceptPlanning,
+  getOrderAcceptted,
   getCloudinarySignature,
 } from "../../controller/user/order/orderController";
 import authenticate from "../../middlewares/authMiddleware";
@@ -15,17 +15,8 @@ import upload from "../../utils/image/uploadImage";
 
 const router = Router();
 
-//===============================ACCEPT AND PLANNING=====================================
-
-router.get(
-  "/accept-planning",
-  authenticate,
-  authorizeAnyPermission(["sale"]),
-  getOrdersAcceptPlanning,
-);
-
-//===============================PENDING AND REJECT=====================================
-
+//===============================ORDERS=====================================
+router.get("/accept", authenticate, authorizeAnyPermission(["sale"]), getOrderAcceptted);
 router.get(
   "/pending-reject",
   authenticate,

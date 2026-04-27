@@ -4,7 +4,7 @@ const rule = ["words", "typo", "proximity", "attribute", "sort", "exactness"];
 
 //customer
 export const customersSettings: Settings = {
-  searchableAttributes: ["customerId", "customerName", "cskh", "phone"],
+  searchableAttributes: ["customerId", "customerName", "cskh", "phone", "dayCreated"],
   sortableAttributes: ["customerSeq"],
   rankingRules: rule,
 };
@@ -73,7 +73,8 @@ export const inventorySettings: Settings = {
 
 //outbound
 export const outboundSettings: Settings = {
-  searchableAttributes: ["dateOutbound", "outboundSlipCode", "customerName"],
+  searchableAttributes: ["dateOutbound", "outboundSlipCode", "customerName", "status"],
+  filterableAttributes: ["status"],
   rankingRules: rule,
 };
 

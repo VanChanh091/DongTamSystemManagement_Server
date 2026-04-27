@@ -6,7 +6,7 @@ import { Box } from "./box.js";
 import { OutboundHistory } from "../warehouse/outboundHistory.js";
 import { Inventory } from "../warehouse/inventory/inventory.js";
 
-export type OrderStatus = "pending" | "accept" | "reject" | "planning" | "stop";
+export type OrderStatus = "pending" | "accept" | "reject" | "planning" | "stop" | "completed";
 
 //định nghĩa trường trong bảng
 interface OrderAttributes {
@@ -184,6 +184,7 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
     reject: 3,
     planning: 4,
     stop: 5,
+    completed: 6,
   };
 
   Order.init(
@@ -228,7 +229,7 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
       isBox: { type: DataTypes.BOOLEAN, defaultValue: false, allowNull: false },
       chongTham: { type: DataTypes.BOOLEAN, defaultValue: false, allowNull: false },
       status: {
-        type: DataTypes.ENUM("pending", "accept", "reject", "planning", "stop"), //1-2-3-4-5
+        type: DataTypes.ENUM("pending", "accept", "reject", "planning", "stop", "completed"), //1-2-3-4-5-6
         allowNull: false,
         defaultValue: "pending",
       },

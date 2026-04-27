@@ -56,9 +56,10 @@ export const getCloudinarySignature = async (req: Request, res: Response) => {
   });
 };
 
-//===============================ACCEPT AND PLANNING=====================================
+//===============================ORDERS=====================================
 
-export const getOrdersAcceptPlanning = async (req: Request, res: Response, next: NextFunction) => {
+//get orders accept
+export const getOrderAcceptted = async (req: Request, res: Response, next: NextFunction) => {
   const {
     field,
     keyword,
@@ -71,7 +72,7 @@ export const getOrdersAcceptPlanning = async (req: Request, res: Response, next:
     if (field && keyword) {
       response = await orderService.getOrderByField({ field, keyword, user: req.user });
     } else {
-      response = await orderService.getOrderAcceptAndPlanning(ownOnly, req.user);
+      response = await orderService.getOrderAcceptted(ownOnly, req.user);
     }
 
     return res.status(200).json(response);
@@ -79,8 +80,6 @@ export const getOrdersAcceptPlanning = async (req: Request, res: Response, next:
     next(error);
   }
 };
-
-//===============================PENDING AND REJECT=====================================
 
 //get order pending and reject
 export const getOrderPendingAndReject = async (req: Request, res: Response, next: NextFunction) => {

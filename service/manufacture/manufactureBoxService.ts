@@ -8,7 +8,6 @@ import { AppError } from "../../utils/appError";
 import { MEILI_INDEX } from "../../assets/labelFields";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { PlanningBox } from "../../models/planning/planningBox";
-import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { reportRepository } from "../../repository/reportRepository";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
@@ -41,18 +40,18 @@ export const manuBoxService = {
         "manufactureBox",
       );
 
-      if (isChanged) {
-        await CacheManager.clear("manufactureBox");
-      } else {
-        const cachedData = await redisCache.get(cacheKey);
-        if (cachedData) {
-          if (devEnvironment) console.log("✅ Data manufacture box from Redis");
-          return {
-            message: `get filtered cached planning:box:machine:${machine}`,
-            data: JSON.parse(cachedData),
-          };
-        }
-      }
+      // if (isChanged) {
+      //   await CacheManager.clear("manufactureBox");
+      // } else {
+      //   const cachedData = await redisCache.get(cacheKey);
+      //   if (cachedData) {
+      //     if (devEnvironment) console.log("✅ Data manufacture box from Redis");
+      //     return {
+      //       message: `get filtered cached planning:box:machine:${machine}`,
+      //       data: JSON.parse(cachedData),
+      //     };
+      //   }
+      // }
 
       const planning = await manufactureRepo.getManufactureBox(machine);
 
@@ -88,7 +87,7 @@ export const manuBoxService = {
         return allPlannings;
       });
 
-      await redisCache.set(cacheKey, JSON.stringify(allPlannings), "EX", 1800);
+      // await redisCache.set(cacheKey, JSON.stringify(allPlannings), "EX", 1800);
 
       return { message: `get planning by machine: ${machine}`, data: allPlannings };
     } catch (error) {

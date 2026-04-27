@@ -32,7 +32,7 @@ const devEnvironment = process.env.NODE_ENV !== "production";
 const { order } = CacheKey;
 
 export const orderService = {
-  getOrderAcceptAndPlanning: async (ownOnly: string, user: any) => {
+  getOrderAcceptted: async (ownOnly: string, user: any) => {
     const { userId, role } = user;
 
     try {
@@ -65,9 +65,9 @@ export const orderService = {
 
       await redisCache.set(cacheKey, JSON.stringify(result), "EX", 3600);
 
-      return { message: "Get all orders from DB with status: accept and planning", ...result };
+      return { message: "Get all orders from DB with status: accept", ...result };
     } catch (error) {
-      console.error("Error in getOrderAcceptAndPlanning:", error);
+      console.error("Error get order acceptted:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
@@ -77,12 +77,9 @@ export const orderService = {
     const { userId, role } = user;
 
     try {
-      if (!userId) {
-        throw AppError.BadRequest("Invalid userId parameter", "INVALID_FIELD");
-      }
-
       const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
       const cacheKey = order.pendingReject(keyRole);
+
       const { isChanged } = await CacheManager.check(
         [{ model: Order, where: { status: ["pending", "reject"] } }],
         "orderPending",
@@ -363,12 +360,14 @@ export const orderService = {
 
         //--------------------MEILISEARCH-----------------------
         const orderUpdated = await orderRepository.findOrderForMeili(orderId, transaction);
+
         if (orderUpdated) {
           const flattenData = meiliTransformer.order(orderUpdated);
           await meiliService.syncOrUpdateMeiliData({
             indexKey: MEILI_INDEX.ORDERS,
             data: flattenData,
             transaction,
+            isUpdate: true,
           });
         }
 

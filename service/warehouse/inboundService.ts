@@ -434,6 +434,13 @@ export const inboundService = {
         throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
       }
 
+      if (field === "dateInbound") {
+        const date = new Date(keyword);
+        if (!isNaN(date.getTime())) {
+          keyword = Math.floor(date.setUTCHours(0, 0, 0, 0) / 1000).toString();
+        }
+      }
+
       const index = meiliClient.index("inboundHistories");
 
       const searchResult = await index.search(keyword, {

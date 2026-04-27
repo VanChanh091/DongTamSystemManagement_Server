@@ -162,7 +162,11 @@ export const manufactureRepo = {
       include: [
         {
           model: PlanningBoxTime,
-          where: { machine: machine, dayStart: { [Op.ne]: null } },
+          where: {
+            machine: machine,
+            dayStart: { [Op.ne]: null },
+            status: { [Op.notIn]: ["complete", "stop"] },
+          },
           as: "boxTimes",
           attributes: { exclude: ["createdAt", "updatedAt"] },
         },

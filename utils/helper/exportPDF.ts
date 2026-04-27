@@ -4,10 +4,10 @@ import { Response } from "express";
 import { AppError } from "../appError";
 import { warehouseRepository } from "../../repository/warehouseRepository";
 
-const FONT_REGULAR = path.join(process.cwd(), "assest/fonts/NotoSerif-Regular.ttf");
-const FONT_BOLD = path.join(process.cwd(), "assest/fonts/NotoSerif-Bold.ttf");
-const FONT_ITALIC = path.join(process.cwd(), "assest/fonts/NotoSerif-Italic.ttf");
-const FONT_BOLD_ITALIC = path.join(process.cwd(), "assest/fonts/NotoSerif-BoldItalic.ttf");
+const FONT_REGULAR = path.join(process.cwd(), "assets/fonts/NotoSerif-Regular.ttf");
+const FONT_BOLD = path.join(process.cwd(), "assets/fonts/NotoSerif-Bold.ttf");
+const FONT_ITALIC = path.join(process.cwd(), "assets/fonts/NotoSerif-Italic.ttf");
+const FONT_BOLD_ITALIC = path.join(process.cwd(), "assets/fonts/NotoSerif-BoldItalic.ttf");
 
 export async function exportWarehouse(res: Response, outboundId: number) {
   const outbound = await warehouseRepository.findOneForExportPDF(outboundId);

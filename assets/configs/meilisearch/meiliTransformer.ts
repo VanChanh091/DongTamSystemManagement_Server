@@ -1,4 +1,21 @@
 export const meiliTransformer = {
+  customer: (customer: any) => {
+    const raw = customer.get({ plain: true });
+
+    let dayCreatedTimestamp = null;
+
+    if (raw.dayCreated) {
+      const d = new Date(raw.dayCreated);
+      d.setUTCHours(0, 0, 0, 0);
+      dayCreatedTimestamp = Math.floor(d.getTime() / 1000);
+    }
+
+    return {
+      ...raw,
+      dayCreated: dayCreatedTimestamp,
+    };
+  },
+
   employee: (employee: any) => {
     const raw = employee.get({ plain: true });
 
@@ -63,9 +80,17 @@ export const meiliTransformer = {
   reportPaper: (db: any) => {
     const raw = db.get({ plain: true });
 
+    let dayReportTimestamp = null;
+
+    if (raw.dayReport) {
+      const d = new Date(raw.dayReport);
+      d.setUTCHours(0, 0, 0, 0);
+      dayReportTimestamp = Math.floor(d.getTime() / 1000);
+    }
+
     return {
       reportPaperId: raw.reportPaperId,
-      dayReported: raw.dayReport,
+      dayReported: dayReportTimestamp,
       shiftManagement: raw.shiftManagement,
       chooseMachine: raw.PlanningPaper?.chooseMachine,
       orderId: raw.PlanningPaper?.Order?.orderId,
@@ -76,9 +101,17 @@ export const meiliTransformer = {
   reportBox: (db: any) => {
     const raw = db.get({ plain: true });
 
+    let dayReportTimestamp = null;
+
+    if (raw.dayReport) {
+      const d = new Date(raw.dayReport);
+      d.setUTCHours(0, 0, 0, 0);
+      dayReportTimestamp = Math.floor(d.getTime() / 1000);
+    }
+
     return {
       reportBoxId: raw.reportBoxId,
-      dayReported: raw.dayReport,
+      dayReported: dayReportTimestamp,
       shiftManagement: raw.shiftManagement,
       machine: raw.machine,
       orderId: raw.PlanningBox?.Order?.orderId,
@@ -90,9 +123,17 @@ export const meiliTransformer = {
   inbound: (db: any) => {
     const raw = db.get({ plain: true });
 
+    let dateInboundTimestamp = null;
+
+    if (raw.dateInbound) {
+      const d = new Date(raw.dateInbound);
+      d.setUTCHours(0, 0, 0, 0);
+      dateInboundTimestamp = Math.floor(d.getTime() / 1000);
+    }
+
     return {
       inboundId: raw.inboundId,
-      dateInbound: raw.dateInbound,
+      dateInbound: dateInboundTimestamp,
       orderId: raw.Order?.orderId,
       customerName: raw.Order?.Customer?.customerName,
       checkedBy: raw.QcSession?.checkedBy,
@@ -102,10 +143,19 @@ export const meiliTransformer = {
   outbound: (db: any) => {
     const raw = db.get({ plain: true });
 
+    let dateOutboundTimestamp = null;
+
+    if (raw.dateOutbound) {
+      const d = new Date(raw.dateOutbound);
+      d.setUTCHours(0, 0, 0, 0);
+      dateOutboundTimestamp = Math.floor(d.getTime() / 1000);
+    }
+
     return {
       outboundId: raw.outboundId,
-      dateOutbound: raw.dateOutbound,
+      dateOutbound: dateOutboundTimestamp,
       outboundSlipCode: raw.outboundSlipCode,
+      status: raw.status,
       customerName: raw.detail?.[0]?.Order?.Customer?.customerName,
     };
   },
