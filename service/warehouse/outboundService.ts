@@ -172,10 +172,11 @@ export const outboundService = {
       const inventory = await inventoryRepository.findInventoryByOrderId(orderId);
 
       const remainingQty = inventory?.qtyInventory ?? 0;
+      const totalOutbound = inventory?.totalQtyOutbound ?? 0;
 
       return {
         message: "Get all order inbound quantities successfully",
-        data: { ...order.toJSON(), remainingQty },
+        data: { ...order.toJSON(), remainingQty, totalOutbound },
       };
     } catch (error) {
       if (error instanceof AppError) throw error;

@@ -3,14 +3,16 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.3.1</title>
-            <sparkle:version>4.3.1</sparkle:version> 
+            <title>Version 4.4.0</title>
+            <sparkle:version>4.4.0</sparkle:version> 
             <description>Thay đổi logic báo cáo cho QC
             Thêm tìm kiếm cho trang đăng ký giao hàng và xuất kho
             Thêm trạng thái cho đơn hàng
-            
+            Sửa lỗi tìm kiếm theo ngày trả về không chính xác
+            Thêm STT vào các trang màn hình
+            Sửa lỗi xuất excel cho kế hoạch sản xuất
             </description>
-            <pubDate>Mon, 20 April 2026</pubDate>
+            <pubDate>Tue, 27 April 2026</pubDate>
             <enclosure url="dongtam.exe" 
                     sparkle:os="windows" 
                     length="12345678" 

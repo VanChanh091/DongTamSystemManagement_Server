@@ -9,8 +9,6 @@ import { OrderImage } from "../models/order/orderImage";
 
 export const orderRepository = {
   buildQueryOptions: ({ whereCondition = {} }: { whereCondition: any }): FindOptions => {
-    console.log(`where: ${whereCondition}`);
-
     return {
       where: whereCondition,
       attributes: { exclude: ["createdAt", "updatedAt"] },

@@ -168,12 +168,14 @@ export const manufactureRepo = {
             status: { [Op.notIn]: ["complete", "stop"] },
           },
           as: "boxTimes",
+          required: true,
           attributes: { exclude: ["createdAt", "updatedAt"] },
         },
         {
           model: PlanningBoxTime,
           as: "allBoxTimes",
           where: { machine: { [Op.ne]: machine } },
+          required: false,
           attributes: ["boxTimeId", "qtyProduced", "machine"],
         },
         {

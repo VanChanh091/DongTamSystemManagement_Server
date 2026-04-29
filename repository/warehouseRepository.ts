@@ -303,8 +303,8 @@ export const warehouseRepository = {
             "dayReceiveOrder",
             "flute",
             "QC_box",
-            "lengthPaperCustomer",
-            "paperSizeCustomer",
+            "lengthPaperManufacture",
+            "paperSizeManufacture",
             "quantityCustomer",
             "dvt",
             "discount",
@@ -325,6 +325,7 @@ export const warehouseRepository = {
     });
   },
 
+  ///start autoComplete
   getOrderInboundQty: async (orderId: string) => {
     return await Order.findOne({
       where: { orderId },
@@ -339,6 +340,8 @@ export const warehouseRepository = {
         "vat",
         "lengthPaperManufacture",
         "paperSizeManufacture",
+        "lengthPaperCustomer",
+        "paperSizeCustomer",
       ],
       include: [
         { model: Customer, attributes: ["customerName"] },
@@ -351,26 +354,21 @@ export const warehouseRepository = {
   searchOrderIds: async (keyword: string) => {
     return await Order.findAll({
       where: { orderId: { [Op.startsWith]: keyword } },
-      attributes: ["orderId", "dayReceiveOrder"],
+      attributes: ["orderId", "dayReceiveOrder", "lengthPaperManufacture", "paperSizeManufacture"],
       include: [
         { model: Customer, attributes: ["customerName"] },
-        // {
-        //   model: InboundHistory,
-        //   attributes: ['qtyInbound'],
-        //   required: true,
-        //   where: { qtyInbound: { [Op.gt]: 0 } },
-        // },
         {
           model: Inventory,
           attributes: ["qtyInventory"],
           required: true,
-          where: { qtyInventory: { [Op.ne]: 0 } },
+          // where: { qtyInventory: { [Op.gt]: 0 } },
         },
       ],
       limit: 20,
       order: [["orderId", "ASC"]],
     });
   },
+  ///end autoComplete
 
   sumOutboundQty: async ({
     orderId,

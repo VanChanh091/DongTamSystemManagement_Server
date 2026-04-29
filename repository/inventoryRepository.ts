@@ -98,7 +98,7 @@ export const inventoryRepository = {
   findInventoryByOrderId: async (orderId: string) => {
     return await Inventory.findOne({
       where: { orderId },
-      attributes: ["qtyInventory"],
+      attributes: ["qtyInventory", "totalQtyOutbound"],
     });
   },
 
