@@ -19,7 +19,6 @@ import {
   planningRoutes,
   usersRoutes,
   manufactureRoutes,
-  dashboardRoutes,
   reportRoutes,
   employeeRoutes,
   warehouseRoutes,
@@ -28,6 +27,7 @@ import {
   badgeRoutes,
   processingRoutes,
   meilisearchRoutes,
+  syntheticRoutes,
 } from "./routes/index";
 
 //create table
@@ -79,7 +79,7 @@ app.use("/auth", authRoutes);
 //sau khi đi qua authenticate thì mới vào được các route dưới đây
 app.use(authenticate);
 app.use("/api/admin", adminRoutes);
-app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/synthetic", syntheticRoutes);
 app.use("/api/customer", customerRoutes);
 app.use("/api/order", orderRoutes);
 app.use("/api/product", productRoutes);

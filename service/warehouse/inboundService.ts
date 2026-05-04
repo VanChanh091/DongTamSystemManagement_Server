@@ -10,7 +10,7 @@ import { planningHelper } from "../../repository/planning/planningHelper";
 import { PlanningBox } from "../../models/planning/planningBox";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
-import { dashboardRepository } from "../../repository/dashboardRepository";
+import { syntheticRepository } from "../../repository/syntheticRepository";
 import { buildStagesDetails } from "../../utils/helper/modelHelper/planningHelper";
 import { PlanningPaper } from "../../models/planning/planningPaper";
 import { inventoryService } from "./inventoryService";
@@ -144,7 +144,7 @@ export const inboundService = {
         detail,
         getBoxTimes: (d) => d.boxTimes,
         getPlanningBoxId: (d) => d.planningBoxId,
-        getAllOverflow: (id) => dashboardRepository.getAllTimeOverflow(id),
+        getAllOverflow: (id) => syntheticRepository.getAllTimeOverflow(id),
       });
 
       return { message: "get db planning detail succesfully", data: stages };

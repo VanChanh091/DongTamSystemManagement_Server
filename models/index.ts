@@ -193,21 +193,6 @@ PlanningBox.hasMany(PlanningBoxTime, {
 });
 PlanningBoxTime.belongsTo(PlanningBox, { foreignKey: "planningBoxId" });
 
-//===============================REPORT=================================
-PlanningPaper.hasMany(ReportPlanningPaper, {
-  foreignKey: "planningId",
-  as: "reportPaper",
-  onDelete: "CASCADE",
-});
-ReportPlanningPaper.belongsTo(PlanningPaper, { foreignKey: "planningId" });
-
-PlanningBox.hasMany(ReportPlanningBox, {
-  foreignKey: "planningBoxId",
-  as: "reportBox",
-  onDelete: "CASCADE",
-});
-ReportPlanningBox.belongsTo(PlanningBox, { foreignKey: "planningBoxId" });
-
 //===============================TIME OVERFLOW=================================
 PlanningPaper.hasOne(timeOverflowPlanning, {
   foreignKey: "planningId",
@@ -224,6 +209,21 @@ PlanningBox.hasMany(timeOverflowPlanning, {
   constraints: false,
 });
 timeOverflowPlanning.belongsTo(PlanningBox, { foreignKey: "planningBoxId", constraints: false });
+
+//===============================REPORT=================================
+PlanningPaper.hasMany(ReportPlanningPaper, {
+  foreignKey: "planningId",
+  as: "reportPaper",
+  onDelete: "CASCADE",
+});
+ReportPlanningPaper.belongsTo(PlanningPaper, { foreignKey: "planningId" });
+
+PlanningBox.hasMany(ReportPlanningBox, {
+  foreignKey: "planningBoxId",
+  as: "reportBox",
+  onDelete: "CASCADE",
+});
+ReportPlanningBox.belongsTo(PlanningBox, { foreignKey: "planningBoxId" });
 
 //===============================EMPLOYEE=================================
 EmployeeBasicInfo.hasOne(EmployeeCompanyInfo, {

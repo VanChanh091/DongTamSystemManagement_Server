@@ -112,9 +112,11 @@ export class PlanningPaper
   implements PlanningPaperAttributes
 {
   declare planningId: number;
+
   declare dayStart?: Date | null;
   declare dayCompleted?: Date | null;
   declare timeRunning?: string | null;
+
   declare dayReplace?: string | null;
   declare matEReplace?: string | null;
   declare matBReplace?: string | null;
@@ -124,12 +126,16 @@ export class PlanningPaper
   declare songBReplace?: string | null;
   declare songCReplace?: string | null;
   declare songE2Replace?: string | null;
+
   declare lengthPaperPlanning: number;
   declare sizePaperPLaning: number;
+
   declare runningPlan: number;
   declare qtyProduced?: number | null;
+
   declare numberChild: number;
   declare ghepKho?: number | null;
+
   declare bottom?: number | null;
   declare fluteE?: number | null;
   declare fluteB?: number | null;
@@ -138,15 +144,19 @@ export class PlanningPaper
   declare knife?: number | null;
   declare totalLoss?: number | null;
   declare qtyWasteNorm?: number | null;
+
   declare chooseMachine: machinePaperType;
   declare shiftProduction?: string | null;
   declare shiftManagement?: string | null;
+
   declare status: planningPaperStatus;
   declare statusRequest: statusRequestInbound;
-  declare hasOverFlow?: boolean | null;
-  declare hasBox?: boolean | null;
   declare deliveryPlanned: statusDeliveryPlanned;
+
+  declare hasBox?: boolean | null;
+  declare hasOverFlow?: boolean | null;
   declare sortPlanning?: number | null;
+
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
 

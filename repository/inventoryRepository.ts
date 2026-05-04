@@ -17,7 +17,8 @@ export const inventoryRepository = {
     searching?: any;
   }) => {
     const whereClause: any = {
-      [Op.and]: [{ qtyInventory: { [Op.gt]: 0 } }],
+      // [Op.and]: [{ qtyInventory: { [Op.gt]: 0 } }],
+      [Op.and]: [],
     };
 
     if (searching && typeof searching === "object") {
@@ -33,6 +34,7 @@ export const inventoryRepository = {
           attributes: [
             "orderId",
             "dayReceiveOrder",
+            "QC_box",
             "flute",
             "day",
             "matE",
@@ -54,7 +56,7 @@ export const inventoryRepository = {
           ],
           include: [
             { model: Customer, attributes: ["customerName"] },
-            { model: Product, attributes: ["productName"] },
+            { model: Product, attributes: ["typeProduct", "productName"] },
           ],
         },
       ],
@@ -148,9 +150,9 @@ export const inventoryRepository = {
       [Op.and]: [{ qtyRemaining: { [Op.gt]: 0 } }],
     };
 
-    // if (searching && typeof searching === "object") {
-    //   whereClause[Op.and].push(searching);
-    // }
+    if (searching && typeof searching === "object") {
+      whereClause[Op.and].push(searching);
+    }
 
     const options: any = {
       where: whereClause,

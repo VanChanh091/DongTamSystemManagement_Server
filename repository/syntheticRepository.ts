@@ -1,15 +1,88 @@
-import { Customer } from "../models/customer/customer";
-import { Order } from "../models/order/order";
-import { PlanningBox } from "../models/planning/planningBox";
-import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
-import { PlanningPaper } from "../models/planning/planningPaper";
-import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
-import { Product } from "../models/product/product";
+import { Op } from "sequelize";
 import { User } from "../models/user/user";
+import { Order } from "../models/order/order";
+import { Product } from "../models/product/product";
+import { Customer } from "../models/customer/customer";
+import { PlanningBox } from "../models/planning/planningBox";
+import { PlanningPaper } from "../models/planning/planningPaper";
 import { Inventory } from "../models/warehouse/inventory/inventory";
+import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
+import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
 
-export const dashboardRepository = {
-  getAllDbPlanning: async ({
+export const syntheticRepository = {
+  //====================================ORDERS========================================
+  getAllOrderByStatus: async (status: string | string[], allOrders?: string) => {
+    let statusFilter: string[];
+
+    if (allOrders === "all") {
+      // Nếu là "all", ép cứng lấy 2 trạng thái này
+      statusFilter = ["planning", "complete"];
+    } else {
+      statusFilter = Array.isArray(status) ? status : [status];
+    }
+
+    const whereCondition = { status: { [Op.in]: statusFilter } };
+
+    return await Order.findAndCountAll({
+      where: whereCondition,
+      attributes: [
+        "orderId",
+        "dayReceiveOrder",
+        "lengthPaperCustomer",
+        "lengthPaperManufacture",
+        "paperSizeCustomer",
+        "paperSizeManufacture",
+        "quantityCustomer",
+        "dvt",
+        "flute",
+        "QC_box",
+        "day",
+        "matE",
+        "matB",
+        "matC",
+        "matE2",
+        "songE",
+        "songB",
+        "songC",
+        "songE2",
+        "instructSpecial",
+        "status",
+        "isBox",
+      ],
+
+      include: [
+        { model: Customer, attributes: ["customerName"] },
+        { model: Product, attributes: ["productName"] },
+        { model: Inventory, attributes: ["totalQtyOutbound", "qtyInventory"] },
+        { model: PlanningPaper, attributes: ["planningId", "qtyProduced", "qtyWasteNorm"] },
+        { model: User, attributes: ["fullName"] },
+      ],
+
+      order: [
+        // sort theo orderId
+        ["orderSortValue", "ASC"],
+        // sort theo accept -> planning | pending -> reject
+        ["statusPriority", "DESC"],
+      ],
+    });
+  },
+
+  getPlanningBoxDetail: async (orderId: string) => {
+    return await PlanningBox.findOne({
+      where: { orderId: orderId },
+      attributes: ["planningBoxId", "qtyPaper", "orderId"],
+      include: [
+        {
+          model: PlanningBoxTime,
+          as: "boxTimes",
+          attributes: ["qtyProduced", "machine", "rpWasteLoss"],
+        },
+      ],
+    });
+  },
+
+  //====================================PLANNING========================================
+  getAllSyntheticPlanning: async ({
     page = 1,
     pageSize = 20,
     whereCondition = {},
@@ -50,34 +123,26 @@ export const dashboardRepository = {
         },
         {
           model: Order,
-          attributes: {
-            exclude: [
-              "rejectReason",
-              "createdAt",
-              "updatedAt",
-              "day",
-              "matE",
-              "matE2",
-              "matB",
-              "matC",
-              "songE",
-              "songB",
-              "songC",
-              "songE2",
-              "status",
-              "lengthPaperCustomer",
-              "paperSizeCustomer",
-              "quantityCustomer",
-              "lengthPaperManufacture",
-              "paperSizeManufacture",
-              "numberChild",
-              "isBox",
-            ],
-          },
+          attributes: [
+            "orderId",
+            "dayReceiveOrder",
+            "flute",
+            "QC_box",
+            "canLan",
+            "daoXa",
+            "quantityManufacture",
+            "dvt",
+            "instructSpecial",
+            "chongTham",
+            "orderSortValue",
+            "statusPriority",
+            "isBox",
+            "customerId",
+            "productId",
+          ],
           include: [
-            { model: Customer, attributes: ["customerName", "companyName"] },
-            { model: Product, attributes: ["typeProduct", "productName", "maKhuon"] },
-            { model: User, attributes: ["fullName"] },
+            { model: Customer, attributes: ["customerName"] },
+            { model: Product, attributes: ["productName", "maKhuon"] },
             { model: Inventory, attributes: ["totalQtyOutbound"] },
           ],
         },
@@ -93,7 +158,7 @@ export const dashboardRepository = {
     return await PlanningPaper.findAndCountAll(query);
   },
 
-  getDBPlanningDetail: async (planningId: number) => {
+  getSyntheticPlanningDetail: async (planningId: number) => {
     return await PlanningPaper.findByPk(planningId, {
       attributes: ["planningId", "orderId"],
       include: [
@@ -131,7 +196,7 @@ export const dashboardRepository = {
     });
   },
 
-  getDbPlanningSearch: async (whereCondition: any = {}) => {
+  getSyntheticPlanningSearch: async (whereCondition: any = {}) => {
     return await PlanningPaper.findAll({
       where: whereCondition,
       attributes: ["planningId", "orderId", "chooseMachine", "ghepKho"],
@@ -148,7 +213,7 @@ export const dashboardRepository = {
     });
   },
 
-  exportExcelDbPlanning: async ({ whereCondition = {} }: { whereCondition?: any }) => {
+  exportExcelSyntheticPlanning: async ({ whereCondition = {} }: { whereCondition?: any }) => {
     return await PlanningPaper.findAll({
       where: whereCondition,
       attributes: { exclude: ["createdAt", "updatedAt"] },

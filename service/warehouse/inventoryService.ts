@@ -26,6 +26,7 @@ export const inventoryService = {
 
     try {
       const { isChanged } = await CacheManager.check(Inventory, "inventory");
+
       if (isChanged) {
         await CacheManager.clear("inventory");
       } else {

@@ -31,9 +31,18 @@ export const meiliTransformer = {
   order: (order: any) => {
     const raw = order.get({ plain: true });
 
+    let dayReceiveOrderTimestamp = null;
+
+    if (raw.dayReceiveOrder) {
+      const d = new Date(raw.dayReceiveOrder);
+      d.setUTCHours(0, 0, 0, 0);
+      dayReceiveOrderTimestamp = Math.floor(d.getTime() / 1000);
+    }
+
     return {
       //search
       orderId: raw.orderId,
+      dayReceiveOrder: dayReceiveOrderTimestamp,
       flute: raw.flute,
       QC_box: raw.QC_box,
       price: raw.price,

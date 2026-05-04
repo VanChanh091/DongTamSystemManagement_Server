@@ -7,7 +7,7 @@ import productRoutes from "./userRouter/productRoutes";
 import usersRoutes from "./userRouter/usersRoutes";
 import manufactureRoutes from "./userRouter/manufactureRoutes";
 import reportRoutes from "./userRouter/reportRoutes";
-import dashboardRoutes from "./dashboard/dashboardRoutes";
+import syntheticRoutes from "./synthetic/syntheticRoutes";
 import employeeRoutes from "./userRouter/employeeRoutes";
 import warehouseRoutes from "./userRouter/warehouseRoutes";
 import qcRoutes from "./userRouter/qualityControlRoutes";
@@ -26,7 +26,7 @@ export {
   usersRoutes,
   manufactureRoutes,
   reportRoutes,
-  dashboardRoutes,
+  syntheticRoutes,
   employeeRoutes,
   warehouseRoutes,
   qcRoutes,

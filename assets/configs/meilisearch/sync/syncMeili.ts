@@ -92,7 +92,7 @@ export const syncCustomerToMeili = async (isDeleteAll: boolean) => {
     order: [["customerSeq", "ASC"]],
   });
 
- const flattenData = customers.map(meiliTransformer.customer);
+  const flattenData = customers.map(meiliTransformer.customer);
 
   return await syncMeiliData({
     data: flattenData,
@@ -144,7 +144,16 @@ export const syncEmployeeToMeili = async (isDeleteAll: boolean) => {
 //sync order
 export const syncOrderToMeili = async (isDeleteAll: boolean) => {
   const orders = await Order.findAll({
-    attributes: ["orderId", "flute", "QC_box", "price", "status", "userId", "orderSortValue"],
+    attributes: [
+      "orderId",
+      "dayReceiveOrder",
+      "flute",
+      "QC_box",
+      "price",
+      "status",
+      "userId",
+      "orderSortValue",
+    ],
     include: [
       { model: Customer, attributes: ["customerName"] },
       { model: Product, attributes: ["productName"] },

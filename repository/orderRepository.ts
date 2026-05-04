@@ -81,7 +81,16 @@ export const orderRepository = {
   //meilisearch
   findOrderForMeili: async (orderId: string, transaction: Transaction) => {
     return await Order.findByPk(orderId, {
-      attributes: ["orderId", "flute", "QC_box", "price", "status", "userId", "orderSortValue"],
+      attributes: [
+        "orderId",
+        "flute",
+        "dayReceiveOrder",
+        "QC_box",
+        "price",
+        "status",
+        "userId",
+        "orderSortValue",
+      ],
       include: [
         { model: Customer, attributes: ["customerName"] },
         { model: Product, attributes: ["productName"] },
@@ -93,7 +102,16 @@ export const orderRepository = {
   findOrdersForMeili: async (orderId: string[], transaction: Transaction) => {
     return await Order.findAll({
       where: { orderId: { [Op.in]: orderId } },
-      attributes: ["orderId", "flute", "QC_box", "price", "status", "userId", "orderSortValue"],
+      attributes: [
+        "orderId",
+        "flute",
+        "dayReceiveOrder",
+        "QC_box",
+        "price",
+        "status",
+        "userId",
+        "orderSortValue",
+      ],
       include: [
         { model: Customer, attributes: ["customerName"] },
         { model: Product, attributes: ["productName"] },
