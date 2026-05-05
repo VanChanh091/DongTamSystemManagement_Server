@@ -11,7 +11,17 @@ import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
 
 export const syntheticRepository = {
   //====================================ORDERS========================================
-  getAllOrderByStatus: async (status: string | string[], allOrders?: string) => {
+  getAllOrderByStatus: async ({
+    page,
+    pageSize,
+    status,
+    allOrders,
+  }: {
+    page: number;
+    pageSize: number;
+    status: string | string[];
+    allOrders?: string;
+  }) => {
     let statusFilter: string[];
 
     if (allOrders === "all") {
@@ -48,6 +58,8 @@ export const syntheticRepository = {
         "instructSpecial",
         "status",
         "isBox",
+        "orderSortValue",
+        "statusPriority",
       ],
 
       include: [
@@ -57,6 +69,9 @@ export const syntheticRepository = {
         { model: PlanningPaper, attributes: ["planningId", "qtyProduced", "qtyWasteNorm"] },
         { model: User, attributes: ["fullName"] },
       ],
+
+      offset: (page - 1) * pageSize,
+      limit: pageSize,
 
       order: [
         // sort theo orderId

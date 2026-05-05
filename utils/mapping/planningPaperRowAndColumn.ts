@@ -5,11 +5,13 @@ import ExcelJS from "exceljs";
 export const planningPaperColumns: Partial<ExcelJS.Column>[] = [
   { header: "STT", key: "index" },
   { header: "Mã Đơn Hàng", key: "orderId" },
+  { header: "Ngày Dự Kiến", key: "dateRequestShip", style: { numFmt: "dd/mm/yyyy" } },
   { header: "Ngày Sản Xuất", key: "dayStart", style: { numFmt: "dd/mm/yyyy" } },
   { header: "Tên Khách Hàng", key: "customerName" },
   { header: "Kết Cấu Đặt Hàng", key: "structure" },
   { header: "Khổ Cấp Giấy", key: "khoCapGiay" },
   { header: "Sóng", key: "flute" },
+  { header: "Số Lượng", key: "quantityCustomer", style: { numFmt: "#,##0" } },
   { header: "Dài", key: "length", style: { numFmt: "#,##0" } },
   { header: "Khổ", key: "size", style: { numFmt: "#,##0" } },
   { header: "Số Con", key: "child" },
@@ -25,10 +27,12 @@ export const mapPlanningPaperRow = (item: PlanningPaper, index: number) => {
     orderId: orderCell.orderId,
     customerName: orderCell.Customer.customerName,
 
+    dateRequestShip: new Date(orderCell.dateRequestShipping ?? ""),
     dayStart: new Date(item.dayStart ?? ""),
 
     structure: formatterStructureOrder(item),
     flute: orderCell.flute,
+    quantityCustomer: orderCell.quantityCustomer,
 
     length: `${Number(item.lengthPaperPlanning)} cm`,
     size: `${Number(item.sizePaperPLaning)} cm`,

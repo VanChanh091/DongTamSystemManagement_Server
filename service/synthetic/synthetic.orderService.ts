@@ -15,7 +15,12 @@ export const syntheticOrderService = {
     allOrders?: string;
   }) => {
     try {
-      const { rows, count } = await syntheticRepository.getAllOrderByStatus(status, allOrders);
+      const { rows, count } = await syntheticRepository.getAllOrderByStatus({
+        page,
+        pageSize,
+        status,
+        allOrders,
+      });
 
       const responseData = {
         message: "Get all orders successfully",
@@ -76,7 +81,7 @@ export const syntheticOrderService = {
 
       let statusFilter: string[];
       if (allOrders === "all") {
-        statusFilter = ["planning", "complete"];
+        statusFilter = ["planning", "completed"];
       } else {
         statusFilter = Array.isArray(status) ? status : [status];
       }
@@ -128,7 +133,12 @@ export const syntheticOrderService = {
       }
 
       //query db
-      const { rows } = await syntheticRepository.getAllOrderByStatus(status, allOrders);
+      const { rows } = await syntheticRepository.getAllOrderByStatus({
+        page,
+        pageSize,
+        status,
+        allOrders,
+      });
 
       // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
       const finalData = orderIds.map((id) => rows.find((o) => o.orderId === id)).filter(Boolean);

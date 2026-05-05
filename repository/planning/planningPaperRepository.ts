@@ -212,7 +212,15 @@ export const planningPaperRepository = {
       include: [
         {
           model: Order,
-          attributes: ["orderId", "flute", "quantityManufacture", "totalPrice", "instructSpecial"],
+          attributes: [
+            "orderId",
+            "flute",
+            "quantityCustomer",
+            "dateRequestShipping",
+            "quantityManufacture",
+            "totalPrice",
+            "instructSpecial",
+          ],
           required: true,
           include: [{ model: Customer, attributes: ["customerName"] }],
         },

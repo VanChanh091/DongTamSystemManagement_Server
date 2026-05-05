@@ -4,18 +4,18 @@ dotenv.config();
 import { Op } from "sequelize";
 import { Response } from "express";
 import { AppError } from "../../utils/appError";
+import { Order } from "../../models/order/order";
 import { searchFieldAtribute } from "../../interface/types";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
-import { Inventory } from "../../models/warehouse/inventory/inventory";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
+import { Inventory } from "../../models/warehouse/inventory/inventory";
 import { exportExcelResponse } from "../../utils/helper/excelExporter";
+import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { inventoryRepository } from "../../repository/inventoryRepository";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
-import { inventoryColumns, mappingInventoryRow } from "../../utils/mapping/inventoryRowAndColumn";
-import { runInTransaction } from "../../utils/helper/transactionHelper";
-import { Order } from "../../models/order/order";
 import { LiquidationInventory } from "../../models/warehouse/inventory/liquidationInventory";
+import { inventoryColumns, mappingInventoryRow } from "../../utils/mapping/inventoryRowAndColumn";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inventory } = CacheKey.warehouse;
@@ -89,6 +89,9 @@ export const inventoryService = {
       const { rows } = await inventoryRepository.getInventoryByPage({
         searching: { inventoryId: { [Op.in]: inventoryIds } },
       });
+      const totals: any = await inventoryRepository.inventoryTotals({
+        inventoryId: { [Op.in]: rows.map((inv) => inv.inventoryId) },
+      });
 
       // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
       const finalData = inventoryIds
@@ -101,6 +104,7 @@ export const inventoryService = {
         totalInventory: searchResult.totalHits,
         totalPages: searchResult.totalPages,
         currentPage: searchResult.page,
+        totalValueInventory: totals?.totalValueInventory || 0,
       };
     } catch (error) {
       console.error("Failed to get inventory:", error);
