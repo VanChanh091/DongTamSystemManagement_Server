@@ -58,11 +58,11 @@ export class Box extends Model<BoxAttributes, BoxCreationAttributes> implements 
   declare Xa?: boolean | null;
   declare catKhe?: boolean | null;
   declare be?: boolean | null;
-  declare maKhuon?: string | null;
   declare dan_1_Manh?: boolean | null;
   declare dan_2_Manh?: boolean | null;
   declare dongGhim1Manh?: boolean | null;
   declare dongGhim2Manh?: boolean | null;
+  declare maKhuon?: string | null;
   declare dongGoi?: string | null;
 
   declare readonly createdAt?: Date;

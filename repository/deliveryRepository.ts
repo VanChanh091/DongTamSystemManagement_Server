@@ -196,7 +196,7 @@ export const deliveryRepository = {
           ],
         },
       ],
-      order: [["deliveryId", "ASC"]],
+      order: [[DeliveryItem, "idxOrder", "ASC"]],
     });
   },
 
@@ -254,7 +254,7 @@ export const deliveryRepository = {
 
   bulkUpsert: async (item: any, transaction: Transaction) => {
     return await DeliveryItem.bulkCreate(item, {
-      updateOnDuplicate: ["vehicleId", "sequence", "note", "status"],
+      updateOnDuplicate: ["vehicleId", "sequence", "note", "status", "idxOrder"],
       transaction,
     });
   },

@@ -70,6 +70,7 @@ export const inventoryService = {
       const searchResult = await index.search(keyword, {
         attributesToSearchOn: [field],
         attributesToRetrieve: ["inventoryId"],
+        filter: "qtyInventory > 0",
         page: Number(page) || 1,
         hitsPerPage: Number(pageSize) || 25, //pageSize
       });
@@ -153,6 +154,7 @@ export const inventoryService = {
             ],
           },
         });
+
         if (!sourceInv) {
           throw AppError.NotFound(
             `Source inventory with orderId ${sourceOrderId} not found`,

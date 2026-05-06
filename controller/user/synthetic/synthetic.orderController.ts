@@ -55,3 +55,14 @@ export const getAllSyntheticOrders = async (req: Request, res: Response, next: N
     next(error);
   }
 };
+
+//export excel
+export const exportExcelOrders = async (req: Request, res: Response, next: NextFunction) => {
+  const { fromDate, toDate } = req.body;
+
+  try {
+    await syntheticOrderService.exportExcelOrder(res, { fromDate, toDate });
+  } catch (error) {
+    next(error);
+  }
+};

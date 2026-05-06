@@ -4,11 +4,15 @@ dotenv.config();
 import { Op, Transaction } from "sequelize";
 import { Request, Response } from "express";
 import { AppError } from "../utils/appError";
+import { Order } from "../models/order/order";
+import { meiliService } from "./meiliService";
+import { MEILI_INDEX } from "../assets/labelFields";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { PlanningBox } from "../models/planning/planningBox";
 import { DeliveryPlan } from "../models/delivery/deliveryPlan";
 import { QcSession } from "../models/qualityControl/qcSession";
 import { DeliveryItem } from "../models/delivery/deliveryItem";
+import { orderRepository } from "../repository/orderRepository";
 import redisCache from "../assets/configs/connect/redis.connect";
 import { PlanningPaper } from "../models/planning/planningPaper";
 import { CacheManager } from "../utils/helper/cache/cacheManager";
@@ -18,13 +22,9 @@ import { deliveryRepository } from "../repository/deliveryRepository";
 import { warehouseRepository } from "../repository/warehouseRepository";
 import { calculateVolume } from "../utils/helper/modelHelper/orderHelpers";
 import { exportDeliveryExcelResponse } from "../utils/helper/excelExporter";
-import { deliveryColumns, mappingDeliveryRow } from "../utils/mapping/deliveryRowAndComlumn";
-import { Order } from "../models/order/order";
-import { orderRepository } from "../repository/orderRepository";
-import { meiliTransformer } from "../assets/configs/meilisearch/meiliTransformer";
-import { meiliService } from "./meiliService";
-import { MEILI_INDEX } from "../assets/labelFields";
 import { meiliClient } from "../assets/configs/connect/meilisearch.connect";
+import { meiliTransformer } from "../assets/configs/meilisearch/meiliTransformer";
+import { deliveryColumns, mappingDeliveryRow } from "../utils/mapping/deliveryRowAndComlumn";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { estimate, schedule } = CacheKey.delivery;
@@ -424,6 +424,8 @@ export const deliveryService = {
     }
   },
 
+  //================================DELIVERY PLANNING==================================
+
   getDeliveryRequest: async () => {
     try {
       const request = await deliveryRepository.getDeliveryRequest();
@@ -435,7 +437,7 @@ export const deliveryService = {
     }
   },
 
-  //using for re-order  when hasn't confirm delivery
+  //using for re-order when hasn't confirm delivery
   getDeliveryPlanDetailForEdit: async (deliveryDate: Date) => {
     try {
       const plan = await deliveryRepository.getDeliveryPlanByDate(deliveryDate);
@@ -464,12 +466,15 @@ export const deliveryService = {
       vehicleId: number;
       sequence: string;
       note?: string;
+      idxOrder: number;
     }[];
   }) => {
     try {
       if (!deliveryDate || !items) {
         throw AppError.BadRequest("Missing delivery data", "INVALID_PAYLOAD");
       }
+
+      // console.log(`item: ${JSON.stringify(items)}`);
 
       return await runInTransaction(async (transaction) => {
         // 1. get or create delivery plan
@@ -498,6 +503,7 @@ export const deliveryService = {
             sequence: item.sequence,
             note: item.note ?? "",
             status: "none",
+            idxOrder: item.idxOrder,
           };
         });
 

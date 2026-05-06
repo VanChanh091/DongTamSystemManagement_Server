@@ -26,8 +26,6 @@ export const getPlanningEstimateTime = async (req: Request, res: Response, next:
       all,
     };
 
-    console.log(`field: ${field}, keyword: ${keyword}`);
-
     if (field && keyword) {
       response = await deliveryService.getPlanningEstimateByField({
         ...params,
@@ -100,6 +98,7 @@ export const createDeliveryPlan = async (req: Request, res: Response, next: Next
       vehicleId: number;
       sequence: string;
       note?: string;
+      idxOrder: number;
     }[];
   };
 

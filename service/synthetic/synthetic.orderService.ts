@@ -1,6 +1,12 @@
 import { AppError } from "../../utils/appError";
 import { syntheticRepository } from "../../repository/syntheticRepository";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
+import { exportExcelResponse } from "../../utils/helper/excelExporter";
+import { Response } from "express";
+import { orderRepository } from "../../repository/orderRepository";
+import { Op } from "sequelize";
+import { Order } from "../../models/order/order";
+import { mappingOrderRow, orderColumns } from "../../utils/mapping/orderRowAndColumn";
 
 export const syntheticOrderService = {
   getAllOrderByStatus: async ({
@@ -152,6 +158,37 @@ export const syntheticOrderService = {
       };
     } catch (error) {
       console.error("Error get box detail:", error);
+      throw AppError.ServerError();
+    }
+  },
+
+  exportExcelOrder: async (res: Response, { fromDate, toDate }: any) => {
+    try {
+      let whereCondition: any = {
+        status: { [Op.in]: ["accept", "planning", "completed"] },
+      };
+
+      if (fromDate && toDate) {
+        const start = new Date(fromDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(toDate);
+        end.setHours(23, 59, 59, 999);
+
+        whereCondition.dayReceiveOrder = { [Op.between]: [start, end] };
+      }
+
+      const query = orderRepository.buildQueryOptions({ whereCondition });
+      const data = await Order.findAll(query);
+
+      await exportExcelResponse(res, {
+        data: data,
+        sheetName: "Danh sách đơn hàng",
+        fileName: "orders",
+        columns: orderColumns,
+        rows: mappingOrderRow,
+      });
+    } catch (error) {
+      console.error("❌ Export Excel error:", error);
       throw AppError.ServerError();
     }
   },

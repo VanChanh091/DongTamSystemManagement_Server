@@ -17,8 +17,8 @@ export const inventoryRepository = {
     searching?: any;
   }) => {
     const whereClause: any = {
-      // [Op.and]: [{ qtyInventory: { [Op.gt]: 0 } }],
-      [Op.and]: [],
+      [Op.and]: [{ qtyInventory: { [Op.gt]: 0 } }],
+      // [Op.and]: [],
     };
 
     if (searching && typeof searching === "object") {

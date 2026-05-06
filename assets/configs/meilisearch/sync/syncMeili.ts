@@ -268,7 +268,7 @@ export const syncOutboundToMeili = async (isDeleteAll: boolean) => {
 //sync inventory
 export const syncInventoryToMeili = async (isDeleteAll: boolean) => {
   const inventories = await Inventory.findAll({
-    attributes: ["inventoryId"],
+    attributes: ["inventoryId", "qtyInventory"],
     include: [
       {
         model: Order,

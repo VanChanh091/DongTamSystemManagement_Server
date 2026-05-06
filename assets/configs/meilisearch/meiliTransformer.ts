@@ -174,6 +174,7 @@ export const meiliTransformer = {
 
     return {
       inventoryId: raw.inventoryId,
+      qtyInventory: raw.qtyInventory,
       orderId: raw.Order?.orderId,
       customerName: raw.Order?.Customer?.customerName,
     };

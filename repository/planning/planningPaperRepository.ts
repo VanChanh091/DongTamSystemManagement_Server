@@ -207,6 +207,7 @@ export const planningPaperRepository = {
         "numberChild",
         "ghepKho",
         "qtyProduced",
+        "runningPlan",
         "sortPlanning",
       ],
       include: [
@@ -215,7 +216,6 @@ export const planningPaperRepository = {
           attributes: [
             "orderId",
             "flute",
-            "quantityCustomer",
             "dateRequestShipping",
             "quantityManufacture",
             "totalPrice",
