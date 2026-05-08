@@ -1,4 +1,4 @@
-import { Op, Transaction } from "sequelize";
+import { Op, Sequelize, Transaction } from "sequelize";
 import { Box } from "../../models/order/box";
 import { Order } from "../../models/order/order";
 import { planningHelper } from "./planningHelper";
@@ -12,6 +12,7 @@ export const planningStatusRepository = {
   getOrderAccept: async (type: string) => {
     const whereOrder: any = { status: "accept" };
 
+    //flag use to inner jion or left join with PlanningPaper
     let isPlanningRequired = false;
 
     //lọc theo planned/unplanned
@@ -20,6 +21,16 @@ export const planningStatusRepository = {
     } else if (type === "unplanned") {
       whereOrder["$PlanningPapers.planningId$"] = { [Op.is]: null };
       isPlanningRequired = false;
+    } else if (type === "partial") {
+      whereOrder[Op.and] = [
+        { "$PlanningPapers.planningId$": { [Op.ne]: null } },
+        Sequelize.where(
+          Sequelize.col("quantityManufacture"),
+          Op.gt,
+          Sequelize.col("PlanningPapers.runningPlan"),
+        ),
+      ];
+      isPlanningRequired = true;
     }
 
     return await Order.findAll({

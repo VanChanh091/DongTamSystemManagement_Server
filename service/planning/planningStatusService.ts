@@ -6,11 +6,11 @@ import { Request } from "express";
 import { User } from "../../models/user/user";
 import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
-import { machineMap, MEILI_INDEX } from "../../assets/labelFields";
 import { meiliService } from "../meiliService";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { PlanningBox } from "../../models/planning/planningBox";
 import { WasteNormPaper } from "../../models/admin/wasteNormPaper";
+import { machineMap, MEILI_INDEX } from "../../assets/labelFields";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
@@ -30,6 +30,7 @@ const { stop, order } = CacheKey.planning;
 export const planningStatusService = {
   //===============================PLANNING ORDER=====================================
 
+  //"unplanned" | "planned" | "partial"
   getOrderAccept: async (filter: string) => {
     const cacheKey = order.all;
 

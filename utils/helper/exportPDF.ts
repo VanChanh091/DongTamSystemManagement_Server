@@ -1,100 +1,171 @@
+import fs from "fs";
 import path from "path";
 import PDFDocument from "pdfkit";
 import { Response } from "express";
 import { AppError } from "../appError";
 import { warehouseRepository } from "../../repository/warehouseRepository";
 
-const FONT_REGULAR = path.join(process.cwd(), "assets/fonts/NotoSerif-Regular.ttf");
-const FONT_BOLD = path.join(process.cwd(), "assets/fonts/NotoSerif-Bold.ttf");
-const FONT_ITALIC = path.join(process.cwd(), "assets/fonts/NotoSerif-Italic.ttf");
-const FONT_BOLD_ITALIC = path.join(process.cwd(), "assets/fonts/NotoSerif-BoldItalic.ttf");
+let LOGO_BUFFER: Buffer;
+let FONT_REGULAR_BUFFER: Buffer;
+let FONT_BOLD_BUFFER: Buffer;
+let FONT_ITALIC_BUFFER: Buffer;
+let FONT_BOLD_ITALIC_BUFFER: Buffer;
 
-export async function exportWarehouse(res: Response, outboundId: number) {
+const header_1 = 13;
+const header_2 = 10;
+const normal = 9;
+
+try {
+  // 1. Load Logo
+  LOGO_BUFFER = fs.readFileSync(path.join(process.cwd(), "assets/images/logoDT.jpg"));
+
+  // 2. Load toàn bộ Fonts vào RAM
+  FONT_REGULAR_BUFFER = fs.readFileSync(
+    path.join(process.cwd(), "assets/fonts/NotoSerif-Regular.ttf"),
+  );
+  FONT_BOLD_BUFFER = fs.readFileSync(path.join(process.cwd(), "assets/fonts/NotoSerif-Bold.ttf"));
+  FONT_ITALIC_BUFFER = fs.readFileSync(
+    path.join(process.cwd(), "assets/fonts/NotoSerif-Italic.ttf"),
+  );
+  FONT_BOLD_ITALIC_BUFFER = fs.readFileSync(
+    path.join(process.cwd(), "assets/fonts/NotoSerif-BoldItalic.ttf"),
+  );
+
+  // console.log("✅ Tất cả Assets (Logo & Fonts) đã được nạp vào RAM.");
+} catch (error) {
+  console.error("❌ Không tìm thấy file logo tại đường dẫn:", error);
+}
+
+export async function exportWarehouse(res: Response, outboundId: number, hasMoney: boolean) {
   const outbound = await warehouseRepository.findOneForExportPDF(outboundId);
   if (!outbound) throw AppError.NotFound("Outbound not found", "OUTBOUND_NOT_FOUND");
 
   return buildWarehouseSalePDF({
     res,
     outbound,
+    hasMoney,
   });
 }
 
-function buildWarehouseSalePDF({ res, outbound }: { res: Response; outbound: any }) {
+function buildWarehouseSalePDF({
+  res,
+  outbound,
+  hasMoney,
+}: {
+  res: Response;
+  outbound: any;
+  hasMoney: boolean;
+}) {
   const now = new Date();
   const dateStr = now.toISOString().split("T")[0];
   const fileName = `phieu_xuat_kho_${dateStr}_${outbound.outboundId}.pdf`;
 
-  // ✅ HEADER GIỐNG EXCEL
+  // HEADER
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
 
-  const doc = new PDFDocument({ size: "A4", margin: 40, font: FONT_REGULAR });
+  const doc = new PDFDocument({ size: "A5", margin: 20, layout: "landscape" });
+
+  // Đăng ký các font từ Buffer với tên định danh
+  doc.registerFont("MainRegular", FONT_REGULAR_BUFFER);
+  doc.registerFont("MainBold", FONT_BOLD_BUFFER);
+  doc.registerFont("MainItalic", FONT_ITALIC_BUFFER);
+  doc.registerFont("MainBoldItalic", FONT_BOLD_ITALIC_BUFFER);
+
+  //thiết lập font mặc định
+  doc.font("MainRegular");
 
   doc.pipe(res);
 
   /* ===== HEADER ===== */
+
+  const marginX = 20;
+  const currentY = doc.y;
+  const pageWidth = doc.page.width;
+  const availableWidth = pageWidth - marginX * 2;
+
+  const logoY = currentY - 10; // Điều chỉnh để căn giữa logo với dòng text bên cạnh
+  doc.image(LOGO_BUFFER, marginX, logoY, { width: 60 });
   doc
-    .font(FONT_REGULAR)
-    .fontSize(12)
+    .font("MainRegular")
+    .fontSize(normal)
     .text(
       "CHI NHÁNH CÔNG TY CỔ PHẦN BAO BÌ GIẤY ĐỒNG TÂM\n" +
         "Ấp Rừng Sến, Xã Đức Lập, Tỉnh Tây Ninh, Việt Nam",
       {
-        align: "left",
+        width: availableWidth,
+        align: "right",
         lineGap: 4,
       },
     );
 
-  doc.moveDown(1);
+  doc.moveDown(0.6);
 
-  doc.font(FONT_BOLD).fontSize(16).text("PHIẾU XUẤT KHO BÁN HÀNG", { align: "center" });
-
+  doc.font("MainBold").fontSize(header_1).text("PHIẾU XUẤT KHO BÁN HÀNG", { align: "center" });
   doc
-    .font(FONT_BOLD_ITALIC)
-    .fontSize(11)
+    .font("MainBoldItalic")
+    .fontSize(normal)
     .text(`Ngày ${formatDate(outbound.dateOutbound)}`, { align: "center" });
+  doc
+    .font("MainBold")
+    .fontSize(normal)
+    .text(`Số: ${outbound.outboundSlipCode}`, { align: "center" });
 
-  doc.font(FONT_BOLD).fontSize(11).text(`Số: ${outbound.outboundSlipCode}`, { align: "center" });
+  doc.moveDown(0.6);
 
   /* ===== CUSTOMER INFO ===== */
 
   const firstDetail = outbound.detail?.[0];
   if (!firstDetail) {
-    throw new Error("Outbound has no detail");
+    throw AppError.BadRequest("Outbound has no detail", "OUTBOUND_NO_DETAIL");
   }
 
   const order = firstDetail.Order;
-
   const customer = order.Customer;
-  const saleUser = order.User;
 
-  doc.moveDown(1);
-  doc.font(FONT_REGULAR).fontSize(11).lineGap(6);
+  const infoY = doc.y + 10;
 
-  doc.text(`Người mua: ${customer.customerName}`);
+  doc.font("MainRegular").fontSize(normal).lineGap(5);
+
+  doc.text(`Người mua: ${customer.customerName}`, marginX, infoY, { width: 250 });
+  doc.text(
+    `Điện thoại: ${customer.phone} - MST: ${customer.mst || ".............."}`,
+    marginX,
+    infoY,
+    {
+      width: availableWidth,
+      align: "right",
+    },
+  );
+
+  doc.x = marginX;
+  doc.y = infoY + 18;
+
   doc.text(`Tên khách hàng: ${customer.companyName}`);
   doc.text(`Địa chỉ: ${customer.companyAddress}`);
-  doc.text(`Điện thoại: ${customer.phone}`);
-  doc.text(`Mã số thuế: ${customer.mst}`);
   doc.text(`Diễn giải: Bán hàng ${customer.companyName}`);
-  doc.text(`Nhân viên bán hàng: ${saleUser.fullName}`);
+
+  doc.moveDown(0.5);
 
   /* ===== TABLE ===== */
-  doc.moveDown(1);
-  drawItemTable(doc, outbound);
+  drawItemTable(doc, outbound, hasMoney);
 
   // ===== SỐ TIỀN BẰNG CHỮ =====
-  const amountInWords = numberToVietnamese(outbound.totalPricePayment ?? 0);
+  const amountInWords = hasMoney ? numberToVietnamese(outbound.totalPricePayment ?? 0) : "";
 
   const leftX = 40;
-  const rightX = doc.page.width - 40;
+  const rightX = doc.page.width - 45;
 
-  doc.font(FONT_REGULAR).fontSize(11);
-  doc.text("Số tiền viết bằng chữ:", leftX, doc.y).fontSize(11);
+  doc.font("MainRegular").fontSize(normal);
+  if (hasMoney) {
+    doc.text("Số tiền viết bằng chữ:", leftX, doc.y).fontSize(normal);
+  } else {
+    doc.moveDown(0.5);
+  }
 
   doc
-    .font(FONT_BOLD_ITALIC)
-    .fontSize(11)
+    .font("MainBoldItalic")
+    .fontSize(normal)
     .text(amountInWords, leftX + 120, doc.y - 21, {
       width: rightX - leftX - 140,
     });
@@ -126,9 +197,9 @@ function drawTableRow({
   isHeader?: boolean;
   bold?: boolean;
 }): number {
-  doc.font(bold ? FONT_BOLD : FONT_REGULAR).fontSize(10);
+  doc.font(bold ? "MainBold" : "MainRegular").fontSize(bold ? header_2 : normal);
 
-  const CELL_PADDING_X = 5;
+  const CELL_PADDING_X = 4; // Khoảng cách đệm trái phải
   const CELL_PADDING_Y = 10; // Khoảng cách đệm trên dưới
 
   let maxHeight = 0;
@@ -155,10 +226,18 @@ function drawTableRow({
     if (isHeader) {
       align = "center";
     } else {
-      // Cột 0(STT), 3(ĐVT) căn giữa. Cột 4,5,6 (Số lượng, giá, tiền) căn phải. Còn lại căn trái.
-      if (i === 0 || i === 3) align = "center";
-      else if (i >= 4) align = "right";
-      else align = "left";
+      const isNumeric = (val: any) => {
+        if (typeof val === "number") return true;
+        if (typeof val !== "string") return false;
+
+        // Xử lý trường hợp chuỗi số có dấu phân cách (1.000 hoặc 1,000)
+        const cleanStr = val.replace(/[.,\s]/g, "");
+        return cleanStr !== "" && !isNaN(Number(cleanStr));
+      };
+
+      align = isNumeric(text) ? "right" : "left";
+
+      if (i === 0) align = "center"; // Cột STT luôn căn giữa
     }
 
     // TẤT CẢ CÁC CỘT ĐỀU CĂN GIỮA THEO CHIỀU DỌC (Vertical Center)
@@ -207,7 +286,7 @@ function drawSummaryRow({
   const rowH = 24;
   const paddingX = 6;
 
-  doc.font(FONT_REGULAR).fontSize(10);
+  doc.font("MainRegular").fontSize(normal);
 
   // label
   doc.text(label, tableLeft + paddingX, y + 6, {
@@ -230,18 +309,56 @@ function drawSummaryRow({
   return rowH;
 }
 
-function drawItemTable(doc: PDFKit.PDFDocument, outbound: any) {
+function drawItemTable(doc: PDFKit.PDFDocument, outbound: any, hasMoney: boolean) {
   const items = Array.isArray(outbound.detail)
     ? outbound.detail
     : outbound.detail
       ? [outbound.detail]
       : [];
 
-  const startY = doc.y;
-  const startX = 40;
+  const hasPoData = items.some(
+    (item: any) => item.Order?.orderIdCustomer && item.Order.orderIdCustomer.trim() !== "",
+  );
 
-  const colW = [30, 85, 180, 40, 60, 55, 85];
-  const tableName = ["STT", "Mã Đơn hàng", "Tên Hàng", "ĐVT", "Số Lượng", "Đơn Giá", "Thành Tiền"];
+  // Định nghĩa cấu trúc cột gốc
+  let columnConfigs = [
+    { id: "stt", label: "STT", ratio: 6 },
+    { id: "po", label: "Số PO", ratio: 13 },
+    { id: "name", label: "Tên Sản Phẩm", ratio: 24 },
+    { id: "qc", label: "Quy Cách TT", ratio: 13 },
+    { id: "dvt", label: "ĐVT", ratio: 10 },
+    { id: "qty", label: "Số Lượng", ratio: 9 },
+    { id: "price", label: "Đơn Giá", ratio: 9 },
+    { id: "total", label: "Thành Tiền", ratio: 16 },
+  ];
+
+  if (!hasPoData) {
+    const poRatio = columnConfigs.find((c) => c.id === "po")?.ratio || 0;
+
+    // Lọc bỏ cột PO
+    columnConfigs = columnConfigs.filter((col) => col.id !== "po");
+
+    // Tính tổng tỷ lệ của các cột "linh hoạt" (tất cả trừ STT)
+    const fluidCols = columnConfigs.filter((col) => col.id !== "stt");
+    const totalFluidRatio = fluidCols.reduce((sum, col) => sum + col.ratio, 0);
+
+    columnConfigs = columnConfigs.map((col) => {
+      if (col.id === "stt") return col;
+
+      return {
+        ...col,
+        ratio: col.ratio + (col.ratio / totalFluidRatio) * poRatio,
+      };
+    });
+  }
+
+  const startY = doc.y;
+  const marginX = 20;
+  const startX = marginX;
+  const availableWidth = doc.page.width - marginX * 2; // Tổng độ rộng còn lại để vẽ bảng
+
+  const tableName = columnConfigs.map((c) => c.label);
+  const colW = columnConfigs.map((c) => (c.ratio * availableWidth) / 100);
 
   const colX = colW.reduce<number[]>((acc, w, i) => {
     acc.push(i === 0 ? startX : acc[i - 1] + colW[i - 1]);
@@ -274,22 +391,30 @@ function drawItemTable(doc: PDFKit.PDFDocument, outbound: any) {
   items.forEach((item: any, index: number) => {
     const order = item.Order;
 
-    const lengthCode = formatDimension(order.lengthPaperCustomer ?? 0);
-    const sizeCode = formatDimension(order.paperSizeCustomer ?? 0);
+    const lengthCustomer = formatDimension(order.lengthPaperCustomer ?? 0);
+    const sizeCustomer = formatDimension(order.paperSizeCustomer ?? 0);
+    const lengthManufacture = formatDimension(order.lengthPaperManufacture ?? 0);
+    const sizeManufacture = formatDimension(order.paperSizeManufacture ?? 0);
     const qcBox = order.QC_box != "" && order.QC_box != null ? `(${order.QC_box})` : "";
+
+    // Chuẩn bị dữ liệu cho tất cả các cột có thể có
+    const fullRowData: any = {
+      stt: String(index + 1),
+      po: order.orderIdCustomer || "",
+      name: `${order.Product.productName ?? ""}:${lengthManufacture}x${sizeManufacture} ${qcBox}`,
+      qc: `${lengthCustomer}x${sizeCustomer}`,
+      dvt: order.dvt || "",
+      qty: fmt(item.outboundQty),
+      price: hasMoney ? fmt(order.pricePaper) : "",
+      total: hasMoney ? fmt(item.totalPriceOutbound) : "",
+    };
+
+    const activeRow = columnConfigs.map((col) => fullRowData[col.id]);
 
     const rowH = drawTableRow({
       doc,
       y: currentY,
-      row: [
-        String(index + 1),
-        order.orderId,
-        `${order.Product.productName ?? ""}:${lengthCode}x${sizeCode} ${qcBox}`,
-        order.dvt,
-        fmt(item.outboundQty),
-        fmt(order.pricePaper),
-        fmt(item.totalPriceOutbound),
-      ],
+      row: activeRow,
       colX,
       colW,
       tableLeft,
@@ -308,7 +433,7 @@ function drawItemTable(doc: PDFKit.PDFDocument, outbound: any) {
     doc,
     y: currentY,
     label: "Cộng tiền hàng:",
-    value: fmt(outbound.totalPriceOrder ?? 0),
+    value: hasMoney ? fmt(outbound.totalPriceOrder ?? 0) : "",
     tableLeft,
     amountColX,
     tableRight,
@@ -322,6 +447,8 @@ function drawItemTable(doc: PDFKit.PDFDocument, outbound: any) {
   const col1 = leftBlockWidth * 0.4;
   const col2 = leftBlockWidth * 0.1;
   const col3 = leftBlockWidth * 0.3;
+
+  doc.fontSize(normal);
 
   // Label Thuế suất
   doc.text("Thuế suất GTGT:", tableLeft + paddingX, currentY + 6, {
@@ -342,7 +469,7 @@ function drawItemTable(doc: PDFKit.PDFDocument, outbound: any) {
   });
 
   // Giá trị tiền thuế (cột Thành tiền)
-  doc.text(fmt(outbound.totalPriceVAT ?? 0), amountColX + paddingX, currentY + 6, {
+  doc.text(hasMoney ? fmt(outbound.totalPriceVAT ?? 0) : "", amountColX + paddingX, currentY + 6, {
     width: tableRight - amountColX - paddingX * 2,
     align: "right",
   });
@@ -359,7 +486,7 @@ function drawItemTable(doc: PDFKit.PDFDocument, outbound: any) {
     doc,
     y: currentY,
     label: "Tổng tiền thanh toán:",
-    value: fmt(outbound.totalPricePayment ?? 0),
+    value: hasMoney ? fmt(outbound.totalPricePayment ?? 0) : "",
     tableLeft,
     amountColX,
     tableRight,
@@ -376,7 +503,6 @@ function drawItemTable(doc: PDFKit.PDFDocument, outbound: any) {
   });
 
   // Vẽ thêm đường kẻ dọc ngăn cách cột "Thành tiền" cho phần Summary
-  // Điều này giúp phần "Cộng tiền", "Thuế", "Tổng thanh toán" có khung rõ ràng
   doc.moveTo(amountColX, summaryStartY).lineTo(amountColX, tableBottom).lineWidth(0.5).stroke();
 
   // ===== BORDER NGOÀI (Hình chữ nhật bao quanh toàn bộ bảng) =====
@@ -452,79 +578,54 @@ function numberToVietnamese(num: number): string {
 }
 
 function drawSignArea(doc: PDFKit.PDFDocument) {
-  const startY = doc.y + 20;
-  const pageWidth = doc.page.width;
-  const margin = 40;
+  const SIGN_BLOCK_HEIGHT = 100; // Ước tính tổng chiều cao của cả cụm chữ ký
+  const bottomMargin = 20;
+  const pageHeight = doc.page.height;
 
+  if (doc.y + SIGN_BLOCK_HEIGHT > pageHeight - bottomMargin) {
+    doc.addPage({ size: "A5", layout: "landscape", margin: 20 });
+  }
+
+  const startY = doc.y + 10;
+  const pageWidth = doc.page.width;
+  const margin = 20;
   const usableWidth = pageWidth - margin * 2;
   const colWidth = usableWidth / 3;
-
   const colX = [margin, margin + colWidth, margin + colWidth * 2];
-
-  doc.fontSize(10);
 
   // ===== NGÀY THÁNG (CỘT GIÁM ĐỐC) =====
   doc
-    .font(FONT_ITALIC)
+    .font("MainItalic")
     .text("Ngày ..... tháng ..... năm ......", colX[2], startY, {
       width: colWidth,
       align: "center",
     })
-    .fontSize(11);
+    .fontSize(normal);
 
   const titleY = startY + 24;
   const signNoteY = titleY + 18;
 
+  const format = {
+    width: colWidth,
+    align: "center" as const,
+  };
+
   // ===== TIÊU ĐỀ =====
-  doc.font(FONT_BOLD);
+  doc.font("MainBold").fontSize(header_2);
 
-  doc
-    .text("Người mua hàng", colX[0], titleY, {
-      width: colWidth,
-      align: "center",
-    })
-    .fontSize(11);
-
-  doc
-    .text("Kế toán trưởng", colX[1], titleY, {
-      width: colWidth,
-      align: "center",
-    })
-    .fontSize(11);
-
-  doc
-    .text("Giám đốc", colX[2], titleY, {
-      width: colWidth,
-      align: "center",
-    })
-    .fontSize(11);
+  doc.text("Người mua hàng", colX[0], titleY, format);
+  doc.text("Kế toán trưởng", colX[1], titleY, format);
+  doc.text("Giám đốc", colX[2], titleY, format);
 
   // ===== GHI CHÚ KÝ =====
-  doc.font(FONT_ITALIC);
+  doc.font("MainItalic").fontSize(normal);
 
-  doc
-    .text("(Ký, họ tên)", colX[0], signNoteY, {
-      width: colWidth,
-      align: "center",
-    })
-    .fontSize(10);
-
-  doc
-    .text("(Ký, họ tên)", colX[1], signNoteY, {
-      width: colWidth,
-      align: "center",
-    })
-    .fontSize(10);
-
-  doc
-    .text("(Ký, họ tên, đóng dấu)", colX[2], signNoteY, {
-      width: colWidth,
-      align: "center",
-    })
-    .fontSize(10);
+  doc.text("(Ký, họ tên)", colX[0], signNoteY, format);
+  doc.text("(Ký, họ tên)", colX[1], signNoteY, format);
+  doc.text("(Ký, họ tên, đóng dấu)", colX[2], signNoteY, format);
 
   // đẩy con trỏ xuống để tránh đè nếu còn nội dung
-  doc.y = signNoteY + 80;
+  // doc.y = signNoteY + 80;
 }
 
 //======================HELPER===========================
@@ -533,7 +634,7 @@ function formatDate(date: Date | string) {
   return `${d.getDate()} tháng ${d.getMonth() + 1} năm ${d.getFullYear()}`;
 }
 
-function formatDimension(value?: number): string {
+export function formatDimension(value?: number): string {
   if (value == null) return "0000";
 
   const num = Math.round(value * 10); // 62.5 -> 625

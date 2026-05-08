@@ -3,13 +3,17 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.5.0</title>
-            <sparkle:version>4.5.0</sparkle:version> 
-            <description>Sửa lỗi nhảy giá trị VAT của đơn hàng
-            Thêm hiển thị cho xuất kho
-            Thêm màn hình tổng đơn hàng 
+            <title>Version 4.5.3</title>
+            <sparkle:version>4.5.3</sparkle:version> 
+            <description>Thêm tùy chọn xuất PXK có và không có tiền
+            Sửa lại đơn vị hiển thị cho phần duyệt đơn
+            Sửa lỗi up ảnh lên Cloud
+            Thay đổi logic check quyền truy cập các trang
+            Thêm mục note cho đơn hàng
+            Cảnh báo ngày dự kiến cho kế hoạch sản xuất
+            Thêm điều kiện lọc cho đơn chờ lên kế hoạch
             </description>
-            <pubDate>Mon, 04 May 2026</pubDate>
+            <pubDate>Fri, 08 May 2026</pubDate>
             <enclosure url="dongtam.exe" 
                     sparkle:os="windows" 
                     length="12345678" 

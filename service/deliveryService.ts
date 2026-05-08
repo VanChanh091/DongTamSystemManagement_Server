@@ -474,22 +474,20 @@ export const deliveryService = {
         throw AppError.BadRequest("Missing delivery data", "INVALID_PAYLOAD");
       }
 
-      // console.log(`item: ${JSON.stringify(items)}`);
-
       return await runInTransaction(async (transaction) => {
-        // 1. get or create delivery plan
+        // get or create delivery plan
         const [plan] = await deliveryRepository.findOrCreateDeliveryPlan(deliveryDate, transaction);
 
         const existingItems = plan.DeliveryItems ?? [];
         const incomingRequestIds = items.map((i) => i.requestId);
 
-        // 2. Xác định các Request bị loại khỏi kế hoạch
+        // Xác định các Request bị loại khỏi kế hoạch
         const itemsToDelete = existingItems.filter(
           (i) => !incomingRequestIds.includes(i.requestId),
         );
         const requestIdsToReset = itemsToDelete.map((i) => i.requestId);
 
-        // 3. Chuẩn bị dữ liệu để đồng bộ
+        // Chuẩn bị dữ liệu để đồng bộ
         const existingMap = new Map(existingItems.map((i) => [i.requestId, i]));
 
         const allItemsToSync = items.map((item) => {
@@ -502,7 +500,7 @@ export const deliveryService = {
             vehicleId: item.vehicleId,
             sequence: item.sequence,
             note: item.note ?? "",
-            status: "none",
+            status: existingItem ? existingItem.status : "none",
             idxOrder: item.idxOrder,
           };
         });

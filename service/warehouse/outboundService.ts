@@ -94,7 +94,7 @@ export const outboundService = {
     pageSize: number;
   }) => {
     try {
-      const validFields = ["dateOutbound", "customerName"];
+      const validFields = ["dateOutbound", "customerName", "outboundSlipCode"];
       if (!validFields.includes(field)) {
         throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
       }
@@ -609,9 +609,9 @@ export const outboundService = {
     }
   },
 
-  exportFileOutbound: async (res: Response, outboundId: number) => {
+  exportFileOutbound: async (res: Response, outboundId: number, hasMoney: boolean) => {
     try {
-      await exportWarehouse(res, outboundId);
+      await exportWarehouse(res, outboundId, hasMoney);
     } catch (error) {
       console.error("Error export file outbound:", error);
       if (error instanceof AppError) throw error;

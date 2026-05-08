@@ -118,10 +118,10 @@ export const outboundAutoComplete = async (req: Request, res: Response, next: Ne
 };
 
 export const exportFileOutbound = async (req: Request, res: Response, next: NextFunction) => {
-  const { outboundId } = req.query as { outboundId: string };
+  const { outboundId, hasMoney } = req.body as { outboundId: string; hasMoney: boolean };
 
   try {
-    await outboundService.exportFileOutbound(res, Number(outboundId));
+    await outboundService.exportFileOutbound(res, Number(outboundId), hasMoney);
   } catch (error) {
     next(error);
   }

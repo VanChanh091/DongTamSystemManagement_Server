@@ -418,11 +418,14 @@ export const warehouseRepository = {
                 "QC_box",
                 "quantityCustomer",
                 "lengthPaperCustomer",
+                "lengthPaperManufacture",
                 "paperSizeCustomer",
+                "paperSizeManufacture",
                 "dvt",
                 "discount",
                 "vat",
                 "pricePaper",
+                "orderIdCustomer",
               ],
               include: [
                 {
@@ -430,7 +433,6 @@ export const warehouseRepository = {
                   attributes: ["customerName", "companyName", "companyAddress", "mst", "phone"],
                 },
                 { model: Product, attributes: ["typeProduct", "productName"] },
-                { model: User, attributes: ["fullName"] },
               ],
             },
           ],

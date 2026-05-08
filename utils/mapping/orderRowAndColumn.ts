@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs";
 import { Order } from "../../models/order/order";
 import { formatterStructureOrder } from "../helper/modelHelper/orderHelpers";
+import { formatDimension } from "../helper/exportPDF";
 
 const centerStyle: Partial<ExcelJS.Style> = {
   alignment: { vertical: "middle", horizontal: "center" },
@@ -32,6 +33,8 @@ export const orderColumns: Partial<ExcelJS.Column>[] = [
   { header: "Tên SP", key: "productName" },
 
   { header: "Sóng", key: "flute" },
+  { header: "Mã Hàng", key: "productCode" },
+
   { header: "QC Thùng", key: "QC_box" },
   { header: "Kết Cấu Đặt Hàng", key: "structure" },
   { header: "Cấn Lằn", key: "canLan" },
@@ -78,12 +81,39 @@ export const orderColumns: Partial<ExcelJS.Column>[] = [
   { header: "Mã Khuôn", key: "maKhuon" },
 
   { header: "Nhân Viên", key: "staffOrder" },
+  { header: "Ghi chú", key: "note" },
   { header: "Trạng thái", key: "status" },
 ];
 
 export const mappingOrderRow = (item: Order, index: number) => {
   const box = item?.box;
   const user = item?.User;
+
+  const length = formatDimension(item.lengthPaperCustomer);
+  const size = formatDimension(item.paperSizeCustomer);
+
+  const productName: string = item.Product?.productName ?? "";
+  const typeProduct: string = item.Product?.typeProduct ?? "";
+  const flute: string = item.flute ?? "";
+  const qcBox: string = item.QC_box ?? "";
+
+  // lọc value cần lấy
+  const fluteNumber = flute.replace(/\D/g, "");
+
+  const regex = /\b\d[A-Z](?:[\/]\d[A-Z])*\b/g;
+  const matches = productName.match(regex);
+  const productCode = matches ? matches[matches.length - 1] : "";
+
+  let producCode;
+  if (typeProduct === "Thùng/hộp") {
+    producCode = `TH${fluteNumber}L:${qcBox}`;
+  } else if (typeProduct === "Giấy Quấn Cuồn") {
+    producCode = `${item.flute}-${productCode}:K${size}`;
+  } else if (typeProduct === "Phí Khác") {
+    producCode = "";
+  } else {
+    producCode = `${item.flute}-${productCode}:${length}x${size}`;
+  }
 
   return {
     index: index + 1,
@@ -95,10 +125,12 @@ export const mappingOrderRow = (item: Order, index: number) => {
     customerName: item.Customer?.customerName ?? "",
     companyName: item.Customer?.companyName ?? "",
     typeProduct: item.Product?.typeProduct ?? "",
-    productName: item.Product?.productName ?? "",
+    productName: productName,
 
-    flute: item.flute ?? "",
-    QC_box: item.QC_box ?? "",
+    flute: flute,
+    productCode: producCode,
+
+    QC_box: qcBox,
     structure: formatterStructureOrder(item),
     canLan: item.canLan ?? "",
     daoXaOrd: item.daoXa ?? "",
@@ -143,6 +175,7 @@ export const mappingOrderRow = (item: Order, index: number) => {
     maKhuon: box?.maKhuon ?? "",
 
     staffOrder: user?.fullName ?? "",
+    note: item.note ?? "",
     status: formattedStatus(item.status),
   };
 };

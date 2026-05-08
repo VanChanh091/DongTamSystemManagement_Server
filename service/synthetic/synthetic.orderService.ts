@@ -1,11 +1,11 @@
+import { Op } from "sequelize";
+import { Response } from "express";
 import { AppError } from "../../utils/appError";
+import { Order } from "../../models/order/order";
+import { orderRepository } from "../../repository/orderRepository";
+import { exportExcelResponse } from "../../utils/helper/excelExporter";
 import { syntheticRepository } from "../../repository/syntheticRepository";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
-import { exportExcelResponse } from "../../utils/helper/excelExporter";
-import { Response } from "express";
-import { orderRepository } from "../../repository/orderRepository";
-import { Op } from "sequelize";
-import { Order } from "../../models/order/order";
 import { mappingOrderRow, orderColumns } from "../../utils/mapping/orderRowAndColumn";
 
 export const syntheticOrderService = {
@@ -87,7 +87,7 @@ export const syntheticOrderService = {
 
       let statusFilter: string[];
       if (allOrders === "all") {
-        statusFilter = ["planning", "completed"];
+        statusFilter = ["accept", "planning", "completed"];
       } else {
         statusFilter = Array.isArray(status) ? status : [status];
       }

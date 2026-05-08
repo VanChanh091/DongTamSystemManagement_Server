@@ -68,7 +68,7 @@ export const deliveryRepository = {
             { model: Customer, attributes: ["customerName"] },
             { model: Product, attributes: ["productName"] },
             { model: User, where: all === "true" ? {} : { userId }, attributes: ["fullName"] },
-            { model: Inventory, attributes: ["qtyInventory"] },
+            { model: Inventory, attributes: ["qtyInventory", "totalQtyOutbound"] },
           ],
         },
         {

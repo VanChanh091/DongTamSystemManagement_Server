@@ -29,8 +29,7 @@ router.put("/estimate", authenticate, authorizeAnyPermission(["plan", "sale"]), 
 
 //=================================DELIVERY PLANNING=====================================
 
-// router.get("/planning", authenticate, authorizeAnyPermission(["plan"]), getPendingDelivery);
-router.get("/planning", authenticate, authorizeAnyPermission(["plan"]), getPlanningRequest);
+router.get("/planning", authenticate, getPlanningRequest);
 router.post("/planning", authenticate, authorizeAnyPermission(["plan"]), createDeliveryPlan);
 router.put("/planning", authenticate, authorizeAnyPermission(["plan"]), confirmForDeliveryPlanning);
 

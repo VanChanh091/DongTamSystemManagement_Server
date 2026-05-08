@@ -253,6 +253,7 @@ export const getOrderByStatus = async ({
   ownOnly?: string;
 }) => {
   let whereCondition: any = { status: { [Op.in]: statusList } };
+  whereCondition["$PlanningPapers.planningId$"] = { [Op.is]: null };
 
   if ((role !== "admin" && role !== "manager") || ownOnly === "true") {
     whereCondition.userId = userId;

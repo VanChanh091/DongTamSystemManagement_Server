@@ -6,6 +6,7 @@ import { User } from "../models/user/user";
 import { Order } from "../models/order/order";
 import { FluteRatio } from "../models/admin/fluteRatio";
 import { OrderImage } from "../models/order/orderImage";
+import { PlanningPaper } from "../models/planning/planningPaper";
 
 export const orderRepository = {
   buildQueryOptions: ({ whereCondition = {} }: { whereCondition: any }): FindOptions => {
@@ -19,13 +20,14 @@ export const orderRepository = {
         { model: Box, as: "box", attributes: { exclude: ["createdAt", "updatedAt"] } },
         { model: OrderImage, attributes: ["imageUrl"] },
         { model: User, attributes: ["fullName"] },
+        { model: PlanningPaper, attributes: ["planningId"], required: false },
       ],
 
       order: [
-        // sort theo orderId
-        ["orderSortValue", "ASC"],
         // sort theo accept -> planning | pending -> reject
         ["statusPriority", "DESC"],
+        // sort theo orderId
+        ["orderSortValue", "ASC"],
       ],
     };
   },

@@ -52,6 +52,7 @@ interface OrderAttributes {
   instructSpecial?: string | null;
   rejectReason?: string | null;
   orderIdCustomer?: string | null;
+  note?: string | null;
 
   orderSortValue: number;
 
@@ -106,6 +107,7 @@ export type OrderCreationAttributes = Optional<
   | "status"
   | "statusPriority"
   | "orderIdCustomer"
+  | "note"
   | "orderSortValue"
   | "createdAt"
   | "updatedAt"
@@ -160,6 +162,7 @@ export class Order
   declare instructSpecial?: string | null;
   declare rejectReason?: string | null;
   declare orderIdCustomer?: string | null;
+  declare note?: string | null;
 
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
@@ -235,6 +238,7 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
       },
       rejectReason: { type: DataTypes.STRING },
       orderIdCustomer: { type: DataTypes.STRING }, //PO khach hang cung cap
+      note: { type: DataTypes.STRING },
 
       //sort
       orderSortValue: { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 },

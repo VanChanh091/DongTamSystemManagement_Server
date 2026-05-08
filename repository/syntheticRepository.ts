@@ -26,7 +26,7 @@ export const syntheticRepository = {
 
     if (allOrders === "all") {
       // Nếu là "all", ép cứng lấy 2 trạng thái này
-      statusFilter = ["planning", "complete"];
+      statusFilter = ["accept", "planning", "completed"];
     } else {
       statusFilter = Array.isArray(status) ? status : [status];
     }
