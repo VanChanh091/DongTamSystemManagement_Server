@@ -57,6 +57,7 @@ const MEILI_INDEX = {
   REPORT_PAPERS: "reportPapers",
   REPORT_BOXES: "reportBoxes",
   DASHBOARD: "dashboard",
+  DELIVERY_REQUEST: "deliveryRequest",
 };
 
 export { machineLabels, MACHINE_FIELD_MAP, validPermissions, machineMap, MEILI_INDEX };

@@ -135,11 +135,15 @@ export const exportDeliveryExcelResponse = async <T>(
     const worksheet = workbook.addWorksheet(sheetName);
 
     // ĐƯA CỘT 'SEQUENCE' (TÀI) VỀ ĐẦU MẢNG COLUMNS
-    const sequenceColIndex = columns.findIndex((c) => c.key === "sequence");
-    if (sequenceColIndex > -1) {
-      const [sequenceCol] = columns.splice(sequenceColIndex, 1);
-      columns.unshift(sequenceCol); // Đẩy lên vị trí 0
-    }
+    const moveCol = (key: string, toIndex: number) => {
+      const idx = columns.findIndex((c) => c.key === key);
+      if (idx > -1) {
+        const [col] = columns.splice(idx, 1);
+        columns.splice(toIndex, 0, col);
+      }
+    };
+    moveCol("sequence", 0); // Cột 1
+    moveCol("vehicleName", 1); // Cột 2
 
     const rawDate = (data[0] as any)?.deliveryDate;
     const formattedDate = rawDate ? new Date(rawDate).toLocaleDateString("vi-VN") : "";
@@ -178,7 +182,28 @@ export const exportDeliveryExcelResponse = async <T>(
     });
 
     // sort theo sequence
-    allMappedRows.sort((a, b) => Number(a.sequence) - Number(b.sequence));
+    allMappedRows.sort((a, b) => {
+      const valA = a.sequence;
+      const valB = b.sequence;
+
+      // Kiểm tra xem có phải là số hay không (Tài 1, 2, 3...)
+      const isNumA = valA !== null && valA !== "" && !isNaN(Number(valA));
+      const isNumB = valB !== null && valB !== "" && !isNaN(Number(valB));
+
+      // TRƯỜNG HỢP 1: Một bên là số, một bên là chữ (Xe ngoài)
+      if (isNumA && !isNumB) return -1; // A là số -> lên trước
+      if (!isNumA && isNumB) return 1; // B là số -> A xuống sau
+
+      // TRƯỜNG HỢP 2: Cả hai đều là số -> So sánh số học
+      if (isNumA && isNumB) {
+        const numA = Number(valA);
+        const numB = Number(valB);
+        if (numA !== numB) return numA - numB;
+      }
+
+      // TRƯỜNG HỢP 3: Cùng số Tài hoặc cùng là "Xe ngoài" -> So sánh Tên Xe
+      return (a.vehicleName || "").localeCompare(b.vehicleName || "");
+    });
 
     // ĐỔ DỮ LIỆU VÀO BẢNG
     allMappedRows.forEach((rowData) => {
@@ -190,23 +215,42 @@ export const exportDeliveryExcelResponse = async <T>(
     });
 
     //MERGE DỌC CHO CỘT ĐẦU TIÊN (CỘT TÀI)
-    let startRow = 3;
+    const startDataRow = 3;
     const rowCount = worksheet.rowCount;
 
-    for (let i = startRow; i <= rowCount; i++) {
-      const currValue = worksheet.getRow(i).getCell(1).value;
-      const nextValue = i < rowCount ? worksheet.getRow(i + 1).getCell(1).value : null;
+    let seqStart = startDataRow;
+    let vehStart = startDataRow;
 
-      if (currValue !== nextValue || i === rowCount) {
-        if (i > startRow) {
-          worksheet.mergeCells(startRow, 1, i, 1);
-          const mergedCell = worksheet.getRow(startRow).getCell(1);
-          mergedCell.alignment = { vertical: "middle", horizontal: "center" };
-          mergedCell.font = { bold: true };
-          // Đổ màu xám nhẹ cho cột Tài để phân biệt nhóm
-          sytleFill(mergedCell, "FFF9F9F9");
+    for (let i = startDataRow; i <= rowCount; i++) {
+      const currRow = worksheet.getRow(i);
+      const nextRow = i < rowCount ? worksheet.getRow(i + 1) : null;
+
+      const currSeq = currRow.getCell(1).value;
+      const nextSeq = nextRow?.getCell(1).value;
+
+      const currVeh = currRow.getCell(2).value;
+      const nextVeh = nextRow?.getCell(2).value;
+
+      // Merge Cột Tài (Cột 1)
+      if (currSeq !== nextSeq || i === rowCount) {
+        const cell = worksheet.getRow(seqStart).getCell(1);
+        if (i > seqStart) {
+          worksheet.mergeCells(seqStart, 1, i, 1);
         }
-        startRow = i + 1;
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+        cell.font = { bold: true };
+        seqStart = i + 1;
+      }
+
+      // Merge Cột Tên Xe (Cột 2)
+      // Điều kiện gộp: Tên xe giống nhau VÀ Tài giống nhau
+      if (currVeh !== nextVeh || currSeq !== nextSeq || i === rowCount) {
+        const cell = worksheet.getRow(vehStart).getCell(2);
+        if (i > vehStart) {
+          worksheet.mergeCells(vehStart, 2, i, 2);
+        }
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+        vehStart = i + 1;
       }
     }
 
@@ -233,6 +277,7 @@ export const exportDeliveryExcelResponse = async <T>(
   }
 };
 
+//helper functions
 const headerStyleAndAutofitColumns = (worksheet: ExcelJS.Worksheet) => {
   // style main header
   worksheet.getRow(1).eachCell((cell) => {

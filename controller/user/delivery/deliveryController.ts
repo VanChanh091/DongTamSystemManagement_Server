@@ -1,5 +1,7 @@
 import { NextFunction, Request, Response } from "express";
-import { deliveryService } from "../../../service/deliveryService";
+import { deliveryEstimateService } from "../../../service/delivery/deliveryEstimateService";
+import { deliveryPlanningService } from "../../../service/delivery/deliveryPlanningService";
+import { deliveryScheduleService } from "../../../service/delivery/deliveryScheduleService";
 
 //=================================PLANNING ESTIMATE TIME=====================================
 
@@ -27,13 +29,13 @@ export const getPlanningEstimateTime = async (req: Request, res: Response, next:
     };
 
     if (field && keyword) {
-      response = await deliveryService.getPlanningEstimateByField({
+      response = await deliveryEstimateService.getPlanningEstimateByField({
         ...params,
         field,
         keyword,
       });
     } else {
-      response = await deliveryService.getPlanningEstimateTime(params);
+      response = await deliveryEstimateService.getPlanningEstimateTime(params);
     }
 
     return res.status(200).json(response);
@@ -55,13 +57,13 @@ export const handlePutDelivery = async (req: Request, res: Response, next: NextF
     const planningIds = Array.isArray(planningId) ? planningId.map(Number) : [Number(planningId)];
 
     if (qtyRegistered) {
-      response = await deliveryService.registerQtyDelivery({
+      response = await deliveryEstimateService.registerQtyDelivery({
         planningId: Number(planningId),
         qtyRegistered: Number(qtyRegistered),
         userId: req.user.userId,
       });
     } else if (isPaper) {
-      response = await deliveryService.closePlanning({ ids: planningIds, isPaper });
+      response = await deliveryEstimateService.closePlanning({ ids: planningIds, isPaper });
     }
 
     return res.status(200).json(response);
@@ -73,15 +75,21 @@ export const handlePutDelivery = async (req: Request, res: Response, next: NextF
 //=================================DELIVERY PLANNING=====================================
 
 export const getPlanningRequest = async (req: Request, res: Response, next: NextFunction) => {
-  const { deliveryDate } = req.query as { deliveryDate: string };
+  const { deliveryDate, field, keyword } = req.query as {
+    deliveryDate: string;
+    field?: string;
+    keyword?: string;
+  };
 
   try {
     let response;
 
     if (deliveryDate) {
-      response = await deliveryService.getDeliveryPlanDetailForEdit(new Date(deliveryDate));
+      response = await deliveryPlanningService.getDeliveryPlanDetailForEdit(new Date(deliveryDate));
+    } else if (field && keyword) {
+      response = await deliveryPlanningService.getDeliveryRequestByField(field, keyword);
     } else {
-      response = await deliveryService.getDeliveryRequest();
+      response = await deliveryPlanningService.getDeliveryRequest();
     }
 
     return res.status(200).json(response);
@@ -103,7 +111,7 @@ export const createDeliveryPlan = async (req: Request, res: Response, next: Next
   };
 
   try {
-    const response = await deliveryService.createDeliveryPlan({ deliveryDate, items });
+    const response = await deliveryPlanningService.createDeliveryPlan({ deliveryDate, items });
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -118,19 +126,21 @@ export const confirmForDeliveryPlanning = async (
   const { deliveryDate } = req.query as { deliveryDate: string };
 
   try {
-    const response = await deliveryService.confirmForDeliveryPlanning(new Date(deliveryDate));
+    const response = await deliveryPlanningService.confirmForDeliveryPlanning(
+      new Date(deliveryDate),
+    );
     return res.status(200).json(response);
   } catch (error) {
     next(error);
   }
 };
 
-//=================================SCHEDULE DELIVERY=====================================
+//=================================DELIVERY SCHEDULE=====================================
 export const getAllScheduleDelivery = async (req: Request, res: Response, next: NextFunction) => {
   const { deliveryDate } = req.query as { deliveryDate: string };
 
   try {
-    const response = await deliveryService.getAllScheduleDelivery(new Date(deliveryDate));
+    const response = await deliveryScheduleService.getAllScheduleDelivery(new Date(deliveryDate));
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -150,7 +160,7 @@ export const cancelOrCompleteDeliveryPlan = async (
   };
 
   try {
-    const response = await deliveryService.cancelOrCompleteDeliveryPlan({
+    const response = await deliveryScheduleService.cancelOrCompleteDeliveryPlan({
       deliveryId: Number(deliveryId),
       itemIds,
       action,
@@ -167,7 +177,7 @@ export const exportScheduleDelivery = async (req: Request, res: Response, next: 
   const { deliveryDate } = req.query as { deliveryDate: string };
 
   try {
-    await deliveryService.exportScheduleDelivery(res, new Date(deliveryDate));
+    await deliveryScheduleService.exportScheduleDelivery(res, new Date(deliveryDate));
   } catch (error) {
     next(error);
   }
@@ -178,7 +188,7 @@ export const getRequestPrepareGoods = async (req: Request, res: Response, next: 
   const { deliveryDate } = req.query as { deliveryDate: string };
 
   try {
-    const response = await deliveryService.getRequestPrepareGoods(new Date(deliveryDate));
+    const response = await deliveryScheduleService.getRequestPrepareGoods(new Date(deliveryDate));
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -192,7 +202,10 @@ export const requestOrPrepareGoods = async (req: Request, res: Response, next: N
   };
 
   try {
-    const response = await deliveryService.requestOrPrepareGoods(Number(deliveryItemId), isRequest);
+    const response = await deliveryScheduleService.requestOrPrepareGoods(
+      Number(deliveryItemId),
+      isRequest,
+    );
 
     return res.status(200).json(response);
   } catch (error) {
@@ -203,7 +216,7 @@ export const requestOrPrepareGoods = async (req: Request, res: Response, next: N
 //socket
 export const notifyPrepareGoods = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await deliveryService.notifyRequestPrepareGoods(req);
+    const response = await deliveryScheduleService.notifyRequestPrepareGoods(req);
     return res.status(201).json(response);
   } catch (error) {
     next(error);

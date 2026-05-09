@@ -3,15 +3,14 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.5.3</title>
-            <sparkle:version>4.5.3</sparkle:version> 
-            <description>Thêm tùy chọn xuất PXK có và không có tiền
-            Sửa lại đơn vị hiển thị cho phần duyệt đơn
-            Sửa lỗi up ảnh lên Cloud
-            Thay đổi logic check quyền truy cập các trang
+            <title>Version 4.5.4</title>
+            <sparkle:version>4.5.4</sparkle:version> 
+            <description>Thêm tìm kiếm cho đơn chờ xếp xe
+            Sắp xếp lại các đơn chờ xếp xe
+            Chỉnh sửa lại thông tin hiển thị chờ xếp xe 
+            Sửa lại dữ liệu khi xuất excel lịch giao hàng
             Thêm mục note cho đơn hàng
-            Cảnh báo ngày dự kiến cho kế hoạch sản xuất
-            Thêm điều kiện lọc cho đơn chờ lên kế hoạch
+            Đồng bộ đơn chờ xếp xe lên Cloud
             </description>
             <pubDate>Fri, 08 May 2026</pubDate>
             <enclosure url="dongtam.exe" 

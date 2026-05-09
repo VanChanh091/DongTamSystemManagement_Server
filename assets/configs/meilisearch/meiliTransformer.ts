@@ -45,7 +45,6 @@ export const meiliTransformer = {
       dayReceiveOrder: dayReceiveOrderTimestamp,
       flute: raw.flute,
       QC_box: raw.QC_box,
-      price: raw.price,
       customerName: raw.Customer?.customerName,
       productName: raw.Product?.productName,
 
@@ -177,6 +176,20 @@ export const meiliTransformer = {
       qtyInventory: raw.qtyInventory,
       orderId: raw.Order?.orderId,
       customerName: raw.Order?.Customer?.customerName,
+    };
+  },
+
+  deliveryRequest: (db: any) => {
+    const raw = db.get({ plain: true });
+
+    const order = raw.PlanningPaper?.Order;
+
+    return {
+      requestId: raw.requestId,
+      status: raw.status,
+      orderId: order?.orderId,
+      customerName: order?.Customer?.customerName,
+      fullName: raw.User?.fullName,
     };
   },
 

@@ -12,6 +12,7 @@ import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
 import { DeliveryItem, statusDeliveryItem } from "../models/delivery/deliveryItem";
 import { DeliveryRequest, statusDelivery } from "../models/delivery/deliveryRequest";
+import { DELIVERY_REQUEST_MEILI_OPTIONS } from "../assets/configs/meilisearch/sync/syncMeili";
 
 export const deliveryRepository = {
   //================================PLANNING ESTIMATE TIME==================================
@@ -138,28 +139,65 @@ export const deliveryRepository = {
 
   //=================================PLANNING DELIVERY=====================================
 
-  getDeliveryRequest: async () => {
+  getDeliveryRequest: async ({
+    isSearch,
+    requestId,
+  }: {
+    isSearch?: string;
+    requestId?: number[];
+  }) => {
+    const whereCondition: any = { status: "requested" };
+
+    if (requestId && isSearch === "true") {
+      whereCondition.requestId = { [Op.in]: requestId };
+    }
+
     return await DeliveryRequest.findAll({
-      where: { status: "requested" },
+      where: whereCondition,
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {
           model: PlanningPaper,
-          attributes: ["planningId", "orderId", "lengthPaperPlanning", "sizePaperPLaning"],
+          required: true,
+          attributes: [
+            "planningId",
+            "lengthPaperPlanning",
+            "sizePaperPLaning",
+            "dayStart",
+            "timeRunning",
+          ],
           include: [
             {
               model: Order,
-              attributes: ["orderId", "dayReceiveOrder", "flute", "QC_box"],
+              required: true,
+              attributes: [
+                "orderId",
+                "quantityCustomer",
+                "dayReceiveOrder",
+                "flute",
+                "QC_box",
+                "orderSortValue",
+              ],
               include: [
-                { model: Customer, attributes: ["customerName", "companyName"] },
-                { model: Product, attributes: ["typeProduct", "productName"] },
+                { model: Customer, required: true, attributes: ["customerName"] },
+                { model: Product, required: true, attributes: ["productName"] },
+                { model: Inventory, attributes: ["qtyInventory", "totalQtyOutbound"] },
               ],
             },
           ],
         },
-        { model: User, attributes: ["fullName"] },
+      ],
+      order: [
+        [PlanningPaper, Order, Customer, "customerName", "ASC"],
+        [PlanningPaper, Order, "orderSortValue", "ASC"],
       ],
     });
+  },
+
+  getDeliveryRequestForMeili: async (requestId: number, transaction: Transaction) => {
+    return await DeliveryRequest.findOne(
+      DELIVERY_REQUEST_MEILI_OPTIONS({ whereCondition: { requestId }, transaction }),
+    );
   },
 
   getDeliveryPlanByDate: async (deliveryDate: Date) => {
@@ -177,19 +215,31 @@ export const deliveryRepository = {
               include: [
                 {
                   model: PlanningPaper,
-                  attributes: ["planningId", "orderId", "lengthPaperPlanning", "sizePaperPLaning"],
+                  attributes: [
+                    "planningId",
+                    "lengthPaperPlanning",
+                    "sizePaperPLaning",
+                    "dayStart",
+                    "timeRunning",
+                  ],
                   include: [
                     {
                       model: Order,
-                      attributes: ["orderId", "dayReceiveOrder", "flute", "QC_box"],
+                      attributes: [
+                        "orderId",
+                        "dayReceiveOrder",
+                        "flute",
+                        "QC_box",
+                        "orderSortValue",
+                      ],
                       include: [
-                        { model: Customer, attributes: ["customerName", "companyName"] },
-                        { model: Product, attributes: ["typeProduct", "productName"] },
+                        { model: Customer, attributes: ["customerName"] },
+                        { model: Product, attributes: ["productName"] },
+                        { model: Inventory, attributes: ["qtyInventory", "totalQtyOutbound"] },
                       ],
                     },
                   ],
                 },
-                { model: User, attributes: ["fullName"] },
               ],
             },
             { model: Vehicle, attributes: ["vehicleName", "licensePlate"] },
@@ -254,7 +304,7 @@ export const deliveryRepository = {
 
   bulkUpsert: async (item: any, transaction: Transaction) => {
     return await DeliveryItem.bulkCreate(item, {
-      updateOnDuplicate: ["vehicleId", "sequence", "note", "status", "idxOrder"],
+      updateOnDuplicate: ["vehicleId", "sequence", "status", "idxOrder"],
       transaction,
     });
   },
@@ -284,6 +334,10 @@ export const deliveryRepository = {
     return await DeliveryPlan.findAll({
       attributes: { exclude: ["createdAt", "updatedAt"] },
       where: whereCondition,
+      order: [
+        [DeliveryItem, "sequence", "ASC"],
+        [DeliveryItem, "idxOrder", "ASC"],
+      ],
       include: [
         {
           model: DeliveryItem,
@@ -317,18 +371,19 @@ export const deliveryRepository = {
                         "lengthPaperManufacture",
                         "paperSizeManufacture",
                         "dvt",
+                        "note",
                       ],
                       include: [
                         { model: Customer, attributes: ["customerName", "companyName"] },
                         { model: Product, attributes: ["productName"] },
-                        { model: Inventory, attributes: ["qtyInventory"] },
+                        { model: Inventory, attributes: ["qtyInventory", "totalQtyOutbound"] },
                       ],
                     },
                   ],
                 },
               ],
             },
-            { model: Vehicle, attributes: { exclude: ["createdAt", "updatedAt"] } },
+            { model: Vehicle, attributes: ["vehicleId", "vehicleName", "vehicleHouse"] },
           ],
         },
       ],

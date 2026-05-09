@@ -15,7 +15,6 @@ export type statusDeliveryItem =
 interface DeliveryItemAttributes {
   deliveryItemId: number;
   sequence: string;
-  note?: string;
   idxOrder?: number;
   status: statusDeliveryItem;
 
@@ -31,7 +30,7 @@ interface DeliveryItemAttributes {
 //cho phép bỏ qua id khi tạo
 export type DeliveryItemCreationAttributes = Optional<
   DeliveryItemAttributes,
-  "deliveryItemId" | "note" | "status" | "createdAt" | "updatedAt" | "idxOrder"
+  "deliveryItemId" | "status" | "createdAt" | "updatedAt" | "idxOrder"
 >;
 
 //định nghĩa kiểu OOP
@@ -41,7 +40,6 @@ export class DeliveryItem
 {
   declare deliveryItemId: number;
   declare sequence: string;
-  declare note?: string;
   declare idxOrder?: number;
   declare status: statusDeliveryItem;
 
@@ -63,7 +61,6 @@ export function initDeliveryItemModel(sequelize: Sequelize): typeof DeliveryItem
     {
       deliveryItemId: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
       sequence: { type: DataTypes.STRING, allowNull: false },
-      note: { type: DataTypes.STRING },
       idxOrder: { type: DataTypes.INTEGER },
       status: {
         type: DataTypes.ENUM("none", "planned", "requested", "prepared", "cancelled", "completed"),

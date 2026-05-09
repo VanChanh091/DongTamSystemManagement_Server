@@ -12,12 +12,14 @@ import { Inventory } from "../../../../models/warehouse/inventory/inventory";
 import { OutboundDetail } from "../../../../models/warehouse/outboundDetail";
 import { productRepository } from "../../../../repository/productRepository";
 import { InboundHistory } from "../../../../models/warehouse/inboundHistory";
+import { DeliveryRequest } from "../../../../models/delivery/deliveryRequest";
 import { OutboundHistory } from "../../../../models/warehouse/outboundHistory";
 import { ReportPlanningBox } from "../../../../models/report/reportPlanningBox";
 import { EmployeeBasicInfo } from "../../../../models/employee/employeeBasicInfo";
 import { ReportPlanningPaper } from "../../../../models/report/reportPlanningPaper";
 import { EmployeeCompanyInfo } from "../../../../models/employee/employeeCompanyInfo";
 import { planningBoxRepository } from "../../../../repository/planning/planningBoxRepository";
+import { Transaction } from "sequelize";
 
 interface SyncMeiliData {
   data: any[];
@@ -149,7 +151,6 @@ export const syncOrderToMeili = async (isDeleteAll: boolean) => {
       "dayReceiveOrder",
       "flute",
       "QC_box",
-      "price",
       "status",
       "userId",
       "orderSortValue",
@@ -348,6 +349,48 @@ export const syncReportBoxToMeili = async (isDeleteAll: boolean) => {
     indexName: "reportBoxes",
     displayName: "reportBoxes",
     primaryKey: "reportBoxId",
+    isDeleteAll: isDeleteAll,
+  });
+};
+
+export const DELIVERY_REQUEST_MEILI_OPTIONS = ({
+  whereCondition,
+  transaction,
+}: {
+  whereCondition?: any;
+  transaction?: Transaction;
+}) => ({
+  where: whereCondition,
+  attributes: ["requestId", "status"],
+  include: [
+    {
+      model: PlanningPaper,
+      attributes: ["planningId"],
+      include: [
+        {
+          model: Order,
+          attributes: ["orderId"],
+          include: [{ model: Customer, attributes: ["customerName"] }],
+        },
+      ],
+    },
+    { model: User, attributes: ["fullName"] },
+  ],
+  transaction,
+});
+
+export const syncDeliveryRequestToMeili = async (isDeleteAll: boolean) => {
+  const requests = await DeliveryRequest.findAll(DELIVERY_REQUEST_MEILI_OPTIONS({}));
+
+  const flattenData = requests.map(meiliTransformer.deliveryRequest);
+
+  // console.log(flattenData[0]);
+
+  return await syncMeiliData({
+    data: flattenData,
+    indexName: "deliveryRequest",
+    displayName: "deliveryRequest",
+    primaryKey: "requestId",
     isDeleteAll: isDeleteAll,
   });
 };

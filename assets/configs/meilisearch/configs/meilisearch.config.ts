@@ -25,14 +25,7 @@ export const employeesSettings: Settings = {
 
 //order
 export const ordersSettings: Settings = {
-  searchableAttributes: [
-    "orderId",
-    "customerName",
-    "productName",
-    "QC_box",
-    "price",
-    "dayReceiveOrder",
-  ],
+  searchableAttributes: ["orderId", "customerName", "productName", "QC_box", "dayReceiveOrder"],
   sortableAttributes: ["orderSortValue"],
   filterableAttributes: ["status", "userId", "dayReceiveOrder"],
   rankingRules: rule,
@@ -82,6 +75,13 @@ export const inventorySettings: Settings = {
 //outbound
 export const outboundSettings: Settings = {
   searchableAttributes: ["dateOutbound", "outboundSlipCode", "customerName", "status"],
+  filterableAttributes: ["status"],
+  rankingRules: rule,
+};
+
+//delivery
+export const deliveryRequestSettings: Settings = {
+  searchableAttributes: ["orderId", "customerName", "status", "fullName"],
   filterableAttributes: ["status"],
   rankingRules: rule,
 };

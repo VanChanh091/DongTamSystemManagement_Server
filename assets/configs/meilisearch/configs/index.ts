@@ -2,6 +2,7 @@ import { meiliClient } from "../../connect/meilisearch.connect";
 import {
   customersSettings,
   dashboardSettings,
+  deliveryRequestSettings,
   employeesSettings,
   inboundSettings,
   inventorySettings,
@@ -27,6 +28,7 @@ export const setupMeilisearch = async () => {
     meiliClient.index("inventories").updateSettings(inventorySettings),
     meiliClient.index("reportPapers").updateSettings(reportPaperSettings),
     meiliClient.index("reportBoxes").updateSettings(reportBoxSettings),
+    meiliClient.index("deliveryRequest").updateSettings(deliveryRequestSettings),
     meiliClient.index("dashboard").updateSettings(dashboardSettings),
   ]);
 };

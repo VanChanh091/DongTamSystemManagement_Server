@@ -13,7 +13,7 @@ export const planningPaperColumns: Partial<ExcelJS.Column>[] = [
   { header: "Sóng", key: "flute" },
   { header: "Số Lượng SX", key: "quantityManu", style: { numFmt: "#,##0" } },
   { header: "Số Lượng Đã SX", key: "qtyProduced", style: { numFmt: "#,##0" } },
-  { header: "Số Lượng Còn Lại", key: "quantityRemaining", style: { numFmt: "#,##0" } },
+  { header: "Kế Hoạch Chạy", key: "runningPlan", style: { numFmt: "#,##0" } },
   { header: "Dài", key: "length", style: { numFmt: "#,##0" } },
   { header: "Khổ", key: "size", style: { numFmt: "#,##0" } },
   { header: "Số Con", key: "child" },
@@ -37,7 +37,7 @@ export const mapPlanningPaperRow = (item: PlanningPaper, index: number) => {
 
     quantityManu: orderCell.quantityManufacture,
     qtyProduced: item.qtyProduced ?? 0,
-    quantityRemaining: orderCell.quantityManufacture - (item.qtyProduced ?? 0),
+    runningPlan: item.runningPlan ?? 0,
 
     length: `${Number(item.lengthPaperPlanning)} cm`,
     size: `${Number(item.sizePaperPLaning)} cm`,
