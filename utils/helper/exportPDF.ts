@@ -15,6 +15,8 @@ const header_1 = 13;
 const header_2 = 10;
 const normal = 9;
 
+const page = { size: "A5", layout: "landscape" as const, margin: 20 };
+
 try {
   // 1. Load Logo
   LOGO_BUFFER = fs.readFileSync(path.join(process.cwd(), "assets/images/logoDT.jpg"));
@@ -64,7 +66,7 @@ function buildWarehouseSalePDF({
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
 
-  const doc = new PDFDocument({ size: "A5", margin: 20, layout: "landscape" });
+  const doc = new PDFDocument(page);
 
   // Đăng ký các font từ Buffer với tên định danh
   doc.registerFont("MainRegular", FONT_REGULAR_BUFFER);
@@ -320,7 +322,7 @@ function drawItemTable(doc: PDFKit.PDFDocument, outbound: any, hasMoney: boolean
     (item: any) => item.Order?.orderIdCustomer && item.Order.orderIdCustomer.trim() !== "",
   );
 
-  // Định nghĩa cấu trúc cột gốc
+  // --- GIỮ NGUYÊN LOGIC COLUMN CONFIG CỦA ÔNG ---
   let columnConfigs = [
     { id: "stt", label: "STT", ratio: 6 },
     { id: "po", label: "Số PO", ratio: 13 },
@@ -334,32 +336,20 @@ function drawItemTable(doc: PDFKit.PDFDocument, outbound: any, hasMoney: boolean
 
   if (!hasPoData) {
     const poRatio = columnConfigs.find((c) => c.id === "po")?.ratio || 0;
-
-    // Lọc bỏ cột PO
     columnConfigs = columnConfigs.filter((col) => col.id !== "po");
-
-    // Tính tổng tỷ lệ của các cột "linh hoạt" (tất cả trừ STT)
     const fluidCols = columnConfigs.filter((col) => col.id !== "stt");
     const totalFluidRatio = fluidCols.reduce((sum, col) => sum + col.ratio, 0);
-
     columnConfigs = columnConfigs.map((col) => {
       if (col.id === "stt") return col;
-
-      return {
-        ...col,
-        ratio: col.ratio + (col.ratio / totalFluidRatio) * poRatio,
-      };
+      return { ...col, ratio: col.ratio + (col.ratio / totalFluidRatio) * poRatio };
     });
   }
 
-  const startY = doc.y;
   const marginX = 20;
   const startX = marginX;
-  const availableWidth = doc.page.width - marginX * 2; // Tổng độ rộng còn lại để vẽ bảng
-
+  const availableWidth = doc.page.width - marginX * 2;
   const tableName = columnConfigs.map((c) => c.label);
   const colW = columnConfigs.map((c) => (c.ratio * availableWidth) / 100);
-
   const colX = colW.reduce<number[]>((acc, w, i) => {
     acc.push(i === 0 ? startX : acc[i - 1] + colW[i - 1]);
     return acc;
@@ -367,41 +357,55 @@ function drawItemTable(doc: PDFKit.PDFDocument, outbound: any, hasMoney: boolean
 
   const tableLeft = startX;
   const tableRight = colX[colX.length - 1] + colW[colW.length - 1];
-
-  doc.lineWidth(0.8);
-
   const fmt = (v: number) => Number(v || 0).toLocaleString("vi-VN");
+  const pageBottom = doc.page.height - 40; // Ngưỡng để ngắt trang
 
-  let currentY = startY;
+  let currentY = doc.y;
 
-  // ===== HEADER =====
-  currentY += drawTableRow({
-    doc,
-    y: currentY,
-    row: tableName,
-    colX,
-    colW,
-    tableLeft,
-    tableRight,
-    isHeader: true,
-    bold: true,
-  });
+  // --- HÀM VẼ HEADER (ĐỂ GỌI LẠI KHI QUA TRANG) ---
+  const drawHeader = (y: number) => {
+    // Kẻ đường ngang trên cùng của header
+    doc.moveTo(tableLeft, y).lineTo(tableRight, y).lineWidth(0.8).stroke();
 
-  // ===== BODY =====
+    const h = drawTableRow({
+      doc,
+      y,
+      row: tableName,
+      colX,
+      colW,
+      tableLeft,
+      tableRight,
+      isHeader: true,
+      bold: true,
+    });
+
+    // Kẻ các đường dọc cho header
+    [tableLeft, ...colX.slice(1), tableRight].forEach((x) => {
+      doc
+        .moveTo(x, y)
+        .lineTo(x, y + h)
+        .lineWidth(0.5)
+        .stroke();
+    });
+    return h;
+  };
+
+  // Vẽ Header lần đầu
+  currentY += drawHeader(currentY);
+
+  // --- VẼ BODY ---
   items.forEach((item: any, index: number) => {
     const order = item.Order;
-
     const lengthCustomer = formatDimension(order.lengthPaperCustomer ?? 0);
     const sizeCustomer = formatDimension(order.paperSizeCustomer ?? 0);
     const lengthManufacture = formatDimension(order.lengthPaperManufacture ?? 0);
     const sizeManufacture = formatDimension(order.paperSizeManufacture ?? 0);
-    const qcBox = order.QC_box != "" && order.QC_box != null ? `(${order.QC_box})` : "";
+    const qcBox = order.QC_box ? `(${order.QC_box})` : "";
 
-    // Chuẩn bị dữ liệu cho tất cả các cột có thể có
     const fullRowData: any = {
       stt: String(index + 1),
       po: order.orderIdCustomer || "",
-      name: `${order.Product.productName ?? ""}:${lengthManufacture}x${sizeManufacture} ${qcBox}`,
+      name: `${order.Product?.productName ?? ""}:${lengthManufacture}x${sizeManufacture} ${qcBox}`,
       qc: `${lengthCustomer}x${sizeCustomer}`,
       dvt: order.dvt || "",
       qty: fmt(item.outboundQty),
@@ -411,7 +415,23 @@ function drawItemTable(doc: PDFKit.PDFDocument, outbound: any, hasMoney: boolean
 
     const activeRow = columnConfigs.map((col) => fullRowData[col.id]);
 
-    const rowH = drawTableRow({
+    // Tính toán chiều cao dòng trước khi vẽ để xem có tràn trang không
+    let maxHeight = 0;
+    activeRow.forEach((text, i) => {
+      const h = doc.heightOfString(String(text ?? ""), { width: colW[i] - 8, lineGap: 2 });
+      maxHeight = Math.max(maxHeight, h);
+    });
+    const rowH = Math.max(26, maxHeight + 10);
+
+    // NẾU TRÀN TRANG: Thêm trang mới, reset Y, vẽ lại Header
+    if (currentY + rowH > pageBottom) {
+      doc.addPage(page);
+      currentY = 20;
+      doc.moveTo(tableLeft, currentY).lineTo(tableRight, currentY).lineWidth(0.5).stroke();
+    }
+
+    // Vẽ nội dung dòng
+    drawTableRow({
       doc,
       y: currentY,
       row: activeRow,
@@ -421,14 +441,29 @@ function drawItemTable(doc: PDFKit.PDFDocument, outbound: any, hasMoney: boolean
       tableRight,
     });
 
+    // Vẽ các đường kẻ dọc cho dòng này
+    [tableLeft, ...colX.slice(1), tableRight].forEach((x) => {
+      doc
+        .moveTo(x, currentY)
+        .lineTo(x, currentY + rowH)
+        .lineWidth(0.5)
+        .stroke();
+    });
+
     currentY += rowH;
   });
 
-  //sumary
-  const summaryStartY = currentY;
+  // --- VẼ SUMMARY (CỘT TỔNG TIỀN) ---
+  const summaryHeight = 72; // Khoảng 3 dòng summary x 24
+  if (currentY + summaryHeight > pageBottom) {
+    doc.addPage(page);
+    currentY = 20;
+    doc.moveTo(tableLeft, currentY).lineTo(tableRight, currentY).lineWidth(0.5).stroke();
+  }
 
   const amountColX = colX[colW.length - 1];
 
+  // Cộng tiền hàng
   currentY += drawSummaryRow({
     doc,
     y: currentY,
@@ -440,48 +475,53 @@ function drawItemTable(doc: PDFKit.PDFDocument, outbound: any, hasMoney: boolean
     alignLeft: true,
   });
 
-  const rowH = 24;
+  // Thuế suất & Tiền thuế
+  const rowH_VAT = 24;
   const paddingX = 6;
-
   const leftBlockWidth = amountColX - tableLeft;
   const col1 = leftBlockWidth * 0.4;
   const col2 = leftBlockWidth * 0.1;
   const col3 = leftBlockWidth * 0.3;
 
-  doc.fontSize(normal);
-
-  // Label Thuế suất
+  doc.font("MainRegular").fontSize(9);
   doc.text("Thuế suất GTGT:", tableLeft + paddingX, currentY + 6, {
     width: col1 - paddingX,
     align: "left",
   });
-
-  // Giá trị %
   doc.text(`${outbound.detail?.[0]?.Order?.vat ?? 0}%`, tableLeft + col1, currentY + 6, {
     width: col2 - paddingX,
     align: "right",
   });
-
-  // Label Tiền thuế
   doc.text("Tiền thuế GTGT:", tableLeft + col1 + col2 + paddingX, currentY + 6, {
     width: col3 - paddingX * 2,
     align: "left",
   });
-
-  // Giá trị tiền thuế (cột Thành tiền)
   doc.text(hasMoney ? fmt(outbound.totalPriceVAT ?? 0) : "", amountColX + paddingX, currentY + 6, {
     width: tableRight - amountColX - paddingX * 2,
     align: "right",
   });
 
-  // Line ngang
   doc
-    .moveTo(tableLeft, currentY + rowH)
-    .lineTo(tableRight, currentY + rowH)
+    .moveTo(tableLeft, currentY + rowH_VAT)
+    .lineTo(tableRight, currentY + rowH_VAT)
+    .stroke();
+  // Kẻ dọc cho hàng VAT
+  doc
+    .moveTo(tableLeft, currentY)
+    .lineTo(tableLeft, currentY + rowH_VAT)
+    .stroke();
+  doc
+    .moveTo(amountColX, currentY)
+    .lineTo(amountColX, currentY + rowH_VAT)
+    .stroke();
+  doc
+    .moveTo(tableRight, currentY)
+    .lineTo(tableRight, currentY + rowH_VAT)
     .stroke();
 
-  currentY += rowH;
+  currentY += rowH_VAT;
 
+  // Tổng tiền thanh toán
   currentY += drawSummaryRow({
     doc,
     y: currentY,
@@ -493,25 +533,21 @@ function drawItemTable(doc: PDFKit.PDFDocument, outbound: any, hasMoney: boolean
     alignLeft: true,
   });
 
-  const tableBottom = currentY;
-
-  // ===== BORDER DỌC CHO BODY TABLE =====
-  colX.forEach((x, i) => {
-    if (i === 0) return;
-    // Vẽ từ đỉnh Header (startY) xuống tận đáy của danh sách hàng hóa (summaryStartY)
-    doc.moveTo(x, startY).lineTo(x, summaryStartY).lineWidth(0.5).stroke();
-  });
-
-  // Vẽ thêm đường kẻ dọc ngăn cách cột "Thành tiền" cho phần Summary
-  doc.moveTo(amountColX, summaryStartY).lineTo(amountColX, tableBottom).lineWidth(0.5).stroke();
-
-  // ===== BORDER NGOÀI (Hình chữ nhật bao quanh toàn bộ bảng) =====
+  // Kẻ đường dọc cuối cùng cho phần Summary
   doc
-    .rect(tableLeft, startY, tableRight - tableLeft, tableBottom - startY)
-    .lineWidth(0.8)
+    .moveTo(tableLeft, currentY - 72)
+    .lineTo(tableLeft, currentY)
+    .stroke();
+  doc
+    .moveTo(tableRight, currentY - 72)
+    .lineTo(tableRight, currentY)
+    .stroke();
+  doc
+    .moveTo(amountColX, currentY - 72)
+    .lineTo(amountColX, currentY)
     .stroke();
 
-  doc.y = tableBottom + 10;
+  doc.y = currentY + 10;
 }
 
 function numberToVietnamese(num: number): string {
@@ -583,7 +619,7 @@ function drawSignArea(doc: PDFKit.PDFDocument) {
   const pageHeight = doc.page.height;
 
   if (doc.y + SIGN_BLOCK_HEIGHT > pageHeight - bottomMargin) {
-    doc.addPage({ size: "A5", layout: "landscape", margin: 20 });
+    doc.addPage(page);
   }
 
   const startY = doc.y + 10;
