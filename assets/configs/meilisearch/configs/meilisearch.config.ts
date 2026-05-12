@@ -62,6 +62,7 @@ export const reportBoxSettings: Settings = {
 //inbound history
 export const inboundSettings: Settings = {
   searchableAttributes: ["orderId", "customerName", "dateInbound", "checkedBy"],
+  filterableAttributes: ["dateInbound"],
   rankingRules: rule,
 };
 

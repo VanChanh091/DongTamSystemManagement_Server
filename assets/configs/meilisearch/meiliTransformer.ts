@@ -135,8 +135,16 @@ export const meiliTransformer = {
 
     if (raw.dateInbound) {
       const d = new Date(raw.dateInbound);
+
+      // console.log(`date 1: ${d}`);
+
       d.setUTCHours(0, 0, 0, 0);
+
+      // console.log(`date 2: ${d}`);
+
       dateInboundTimestamp = Math.floor(d.getTime() / 1000);
+
+      // console.log(`dateInbound: ${dateInboundTimestamp}`);
     }
 
     return {

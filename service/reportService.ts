@@ -9,8 +9,11 @@ import { ReportPlanningPaper } from "../models/report/reportPlanningPaper";
 import { reportRepository } from "../repository/reportRepository";
 import { ReportPlanningBox } from "../models/report/reportPlanningBox";
 import { exportExcelResponse } from "../utils/helper/excelExporter";
-import { mapReportPaperRow, reportPaperColumns } from "../utils/mapping/reportPaperRowAndColumn";
-import { mapReportBoxRow, reportBoxColumns } from "../utils/mapping/reportBoxRowAndColumn";
+import {
+  mapReportPaperRow,
+  reportPaperColumns,
+} from "../utils/mapping/report/reportPaperRowAndColumn";
+import { mapReportBoxRow, reportBoxColumns } from "../utils/mapping/report/reportBoxRowAndColumn";
 import redisCache from "../assets/configs/connect/redis.connect";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { normalizeVN } from "../utils/helper/normalizeVN";

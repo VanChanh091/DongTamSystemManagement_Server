@@ -19,7 +19,7 @@ import { syntheticRepository } from "../../repository/syntheticRepository";
 dotenv.config();
 
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { planning, details } = CacheKey.dashboard;
+const { planning } = CacheKey.dashboard;
 
 export const syntheticPlanningService = {
   getAllSyntheticPlanning: async (page: number, pageSize: number, status: string) => {
@@ -64,23 +64,7 @@ export const syntheticPlanningService = {
   },
 
   getSyntheticPlanningDetail: async (planningId: number) => {
-    const cacheKey = details.all(planningId);
-
     try {
-      const { isChanged } = await CacheManager.check(PlanningBoxTime, "dbDetail");
-
-      if (isChanged) {
-        await CacheManager.clear("dbPlanningDetail");
-      } else {
-        const cachedData = await redisCache.get(cacheKey);
-        if (cachedData) {
-          if (devEnvironment) console.log("📦 Get Planning STAGES from cache");
-          const parsed = JSON.parse(cachedData);
-          return { message: "Get PlanningPaper from cache", data: parsed };
-        }
-      }
-
-      //get data detail
       const detail = await syntheticRepository.getSyntheticPlanningDetail(planningId);
       if (!detail) {
         throw AppError.NotFound("detail not found", "DETAIL_NOT_FOUND");
@@ -95,8 +79,6 @@ export const syntheticPlanningService = {
         getPlanningBoxId: (d) => d.planningBoxId,
         getAllOverflow: (id) => syntheticRepository.getAllTimeOverflow(id),
       });
-
-      await redisCache.set(cacheKey, JSON.stringify(stages), "EX", 1800);
 
       return { message: "get db planning detail succesfully", data: stages };
     } catch (error) {

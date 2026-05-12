@@ -210,6 +210,24 @@ export const deliveryScheduleService = {
           );
         }
 
+        //--------------------MEILISEARCH-----------------------
+        const requestIds = items.map((i) => i.requestId);
+        const requestData = await deliveryRepository.getManyDeliveryRequestForMeili(
+          requestIds,
+          transaction,
+        );
+
+        if (requestData.length > 0) {
+          const flattenData = requestData.map((item) => meiliTransformer.deliveryRequest(item));
+
+          await meiliService.syncOrUpdateMeiliData({
+            indexKey: MEILI_INDEX.DELIVERY_REQUEST,
+            data: flattenData,
+            transaction,
+            isUpdate: true,
+          });
+        }
+
         return {
           message: `${action == "complete" ? "Hoàn thành" : "Hủy"} kế hoạch giao hàng thành công`,
         };

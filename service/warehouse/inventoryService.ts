@@ -15,7 +15,10 @@ import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { inventoryRepository } from "../../repository/inventoryRepository";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { LiquidationInventory } from "../../models/warehouse/inventory/liquidationInventory";
-import { inventoryColumns, mappingInventoryRow } from "../../utils/mapping/inventoryRowAndColumn";
+import {
+  inventoryColumns,
+  mappingInventoryRow,
+} from "../../utils/mapping/warehouse/inventoryRowAndColumn";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inventory } = CacheKey.warehouse;

@@ -2,15 +2,17 @@ import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { PlanningPaper } from "./planningPaper";
 import { PlanningBox } from "./planningBox";
 
+export type statusTimeOverflow = "planning" | "lackOfQty" | "requested" | "complete";
+
 //định nghĩa trường trong bảng
 interface TimeOverflowPlanningAttributes {
   overflowId: number;
   overflowDayStart?: Date | null;
   overflowDayCompleted?: Date | null;
   overflowTimeRunning?: string | null;
-  machine?: string | null;
 
-  status: "planning" | "lackOfQty" | "complete";
+  machine?: string | null;
+  status: statusTimeOverflow;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -42,8 +44,10 @@ export class timeOverflowPlanning
   declare overflowDayStart?: Date | null;
   declare overflowDayCompleted?: Date | null;
   declare overflowTimeRunning?: string | null;
+
   declare machine?: string | null;
-  declare status: "planning" | "lackOfQty" | "complete";
+  declare status: statusTimeOverflow;
+
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
 
@@ -75,7 +79,7 @@ export function initTimeOverflowPlanningModel(sequelize: Sequelize): typeof time
       overflowTimeRunning: { type: DataTypes.TIME },
       machine: { type: DataTypes.STRING },
       status: {
-        type: DataTypes.ENUM("planning", "lackOfQty", "complete"),
+        type: DataTypes.ENUM("planning", "lackOfQty", "requested", "complete"),
         allowNull: false,
         defaultValue: "planning",
       },

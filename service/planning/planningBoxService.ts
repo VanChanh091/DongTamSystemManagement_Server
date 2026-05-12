@@ -199,7 +199,7 @@ export const planningBoxService = {
           const { qtyProduced, runningPlan } = box;
 
           if ((qtyProduced ?? 0) < (runningPlan ?? 0)) {
-            throw AppError.BadRequest("Lack quantity", "LACK_QUANTITY");
+            throw AppError.BadRequest("Thiếu số lượng sản xuất", "LACK_QUANTITY");
           }
 
           if (box.status !== "requested") {

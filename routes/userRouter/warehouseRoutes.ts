@@ -3,6 +3,7 @@ import authenticate from "../../middlewares/authMiddleware";
 import {
   getPlanningWaitingCheck,
   getInboundHistory,
+  exportExcelInbounds,
 } from "../../controller/user/warehouse/inboundHistoryController";
 import {
   createOutbound,
@@ -30,6 +31,7 @@ router.get("/waiting-check", authenticate, getPlanningWaitingCheck);
 //========================INBOUND HISTORY===========================
 
 router.get("/inbound", authenticate, getInboundHistory);
+router.post("/inbound/export", authenticate, exportExcelInbounds);
 
 //========================OUTBOUND HISTORY===========================
 

@@ -101,9 +101,5 @@ export const CacheKey = {
       all: (status: string, page: number) => `dashboard:planning:${status}:${page}`,
       lastUpdated: "db:planning:lastUpdated", //planning paper
     },
-    details: {
-      all: (planningId: number) => `dashboard:detail:${planningId}`,
-      lastUpdated: "db:detail:lastUpdated", //box time machine
-    },
   },
 };

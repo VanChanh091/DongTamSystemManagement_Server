@@ -102,7 +102,7 @@ export const syntheticOrderService = {
       if (field === "dayReceiveOrder") {
         searchKeyword = "";
 
-        console.log(`start: ${startDate} - end: ${endDate}`);
+        // console.log(`start: ${startDate} - end: ${endDate}`);
 
         if (startDate) {
           const dStart = new Date(startDate);

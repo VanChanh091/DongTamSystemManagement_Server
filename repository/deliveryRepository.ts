@@ -200,6 +200,18 @@ export const deliveryRepository = {
     );
   },
 
+  getManyDeliveryRequestForMeili: async (
+    requestIds: number | number[],
+    transaction: Transaction,
+  ) => {
+    return await DeliveryRequest.findAll(
+      DELIVERY_REQUEST_MEILI_OPTIONS({
+        whereCondition: { requestId: { [Op.in]: requestIds } },
+        transaction,
+      }),
+    );
+  },
+
   getDeliveryPlanByDate: async (deliveryDate: Date) => {
     return await DeliveryPlan.findOne({
       where: { deliveryDate },
@@ -247,6 +259,21 @@ export const deliveryRepository = {
         },
       ],
       order: [[DeliveryItem, "idxOrder", "ASC"]],
+    });
+  },
+
+  getDeliveryPlanByIds: async ({
+    requestId,
+    transaction,
+  }: {
+    requestId: number | number[];
+    transaction: Transaction;
+  }) => {
+    return await DeliveryRequest.findAll({
+      where: { requestId, status: { [Op.ne]: "scheduled" } },
+      attributes: ["requestId", "status", "planningId"],
+      include: [{ model: PlanningPaper, attributes: ["planningId", "deliveryPlanned"] }],
+      transaction,
     });
   },
 
@@ -372,6 +399,7 @@ export const deliveryRepository = {
                         "paperSizeManufacture",
                         "dvt",
                         "note",
+                        "orderIdCustomer",
                       ],
                       include: [
                         { model: Customer, attributes: ["customerName", "companyName"] },

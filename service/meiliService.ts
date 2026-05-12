@@ -41,11 +41,21 @@ export const meiliService = {
     return await performSyncOrUpdate();
   },
 
-  deleteMeiliData: async (indexKey: string, id: number | string, transaction?: Transaction) => {
+  deleteMeiliData: async (
+    indexKey: string,
+    idOrIds: number | string | (number | string)[],
+    transaction?: Transaction,
+  ) => {
     const performDelete = async () => {
       try {
         const index = meiliClient.index(indexKey);
-        return await index.deleteDocument(id);
+
+        if (Array.isArray(idOrIds)) {
+          const stringIds = idOrIds.map((id) => String(id));
+          return await index.deleteDocuments(stringIds);
+        }
+
+        return await index.deleteDocument(idOrIds);
       } catch (error) {
         console.error(`[Meili] Delete error for ${indexKey}:`, error);
         throw error;

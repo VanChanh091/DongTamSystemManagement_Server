@@ -3,16 +3,13 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.5.4</title>
-            <sparkle:version>4.5.4</sparkle:version> 
-            <description>Thêm tìm kiếm cho đơn chờ xếp xe
-            Sắp xếp lại các đơn chờ xếp xe
-            Chỉnh sửa lại thông tin hiển thị chờ xếp xe 
-            Sửa lại dữ liệu khi xuất excel lịch giao hàng
-            Thêm mục note cho đơn hàng
-            Đồng bộ đơn chờ xếp xe lên Cloud
+            <title>Version 4.5.5</title>
+            <sparkle:version>4.5.5</sparkle:version> 
+            <description>Thêm chức năng hủy đơn đăng ký giao
+            Thêm chức năng xuất file excel lịch sử nhập kho
+            Chỉnh sửa lại giao diện cho xếp xe giao hàng
             </description>
-            <pubDate>Fri, 08 May 2026</pubDate>
+            <pubDate>Tue, 12 May 2026</pubDate>
             <enclosure url="dongtam.exe" 
                     sparkle:os="windows" 
                     length="12345678" 

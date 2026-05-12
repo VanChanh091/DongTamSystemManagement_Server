@@ -121,7 +121,6 @@ export const CacheManager = {
 
       //dashboard
       dbPlanning: CacheKey.dashboard.planning.lastUpdated,
-      dbDetail: CacheKey.dashboard.details.lastUpdated,
 
       //waiting check
       checkPaper: CacheKey.waitingCheck.paper.lastUpdated,

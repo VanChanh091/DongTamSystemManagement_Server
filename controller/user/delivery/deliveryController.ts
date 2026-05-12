@@ -72,7 +72,7 @@ export const handlePutDelivery = async (req: Request, res: Response, next: NextF
   }
 };
 
-//=================================DELIVERY PLANNING=====================================
+//=================================DELIVERY REQUEST=====================================
 
 export const getPlanningRequest = async (req: Request, res: Response, next: NextFunction) => {
   const { deliveryDate, field, keyword } = req.query as {
@@ -98,8 +98,12 @@ export const getPlanningRequest = async (req: Request, res: Response, next: Next
   }
 };
 
-export const createDeliveryPlan = async (req: Request, res: Response, next: NextFunction) => {
-  const { deliveryDate, items } = req.body as {
+export const handlePostDeliveryRequest = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { deliveryDate, items, requestIds } = req.body as {
     deliveryDate: Date;
     items: {
       requestId: number;
@@ -108,10 +112,19 @@ export const createDeliveryPlan = async (req: Request, res: Response, next: Next
       note?: string;
       idxOrder: number;
     }[];
+    requestIds: number | number[];
   };
 
   try {
-    const response = await deliveryPlanningService.createDeliveryPlan({ deliveryDate, items });
+    let response;
+
+    if (deliveryDate && items) {
+      response = await deliveryPlanningService.createDeliveryPlan({ deliveryDate, items });
+    } else {
+      const ids = Array.isArray(requestIds) ? requestIds.map(Number) : [Number(requestIds)];
+      response = await deliveryPlanningService.backDeliveryRequest(ids);
+    }
+
     return res.status(200).json(response);
   } catch (error) {
     next(error);

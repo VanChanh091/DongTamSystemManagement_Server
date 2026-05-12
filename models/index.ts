@@ -294,7 +294,7 @@ Inventory.hasOne(LiquidationInv, { foreignKey: "inventoryId", onDelete: "CASCADE
 LiquidationInv.belongsTo(Inventory, { foreignKey: "inventoryId" });
 
 //===============================DELIVERY=================================
-PlanningPaper.hasOne(DeliveryRequest, { foreignKey: "planningId", onDelete: "CASCADE" });
+PlanningPaper.hasMany(DeliveryRequest, { foreignKey: "planningId", onDelete: "CASCADE" });
 DeliveryRequest.belongsTo(PlanningPaper, { foreignKey: "planningId" });
 
 User.hasOne(DeliveryRequest, { foreignKey: "userId" });

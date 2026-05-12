@@ -1,5 +1,5 @@
-import { ReportPlanningPaper } from "../../models/report/reportPlanningPaper";
-import { formatterStructureOrder } from "../helper/modelHelper/orderHelpers";
+import { ReportPlanningPaper } from "../../../models/report/reportPlanningPaper";
+import { formatterStructureOrder } from "../../helper/modelHelper/orderHelpers";
 import ExcelJS from "exceljs";
 
 export const reportPaperColumns: Partial<ExcelJS.Column>[] = [

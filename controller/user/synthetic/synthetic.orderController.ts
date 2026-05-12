@@ -20,15 +20,14 @@ export const getAllSyntheticOrders = async (req: Request, res: Response, next: N
     // hoặc là mảng có sẵn từ query của Express
     let response;
     let statusArray: string | string[] = [];
+
     if (status) {
       if (typeof status === "string" && status.includes(",")) {
         statusArray = status.split(",");
       } else {
         statusArray = status as string | string[];
       }
-    }
-
-    if (orderId) {
+    } else if (orderId) {
       response = await syntheticOrderService.getPlanningBoxDetail(orderId);
     } else if (field && keyword) {
       response = await syntheticOrderService.getSyntheticOrderByField({

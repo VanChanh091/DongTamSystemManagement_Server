@@ -25,11 +25,13 @@ export const getPlanningWaitingCheck = async (req: Request, res: Response, next:
 
 //===============================INBOUND HISTORY=====================================
 export const getInboundHistory = async (req: Request, res: Response, next: NextFunction) => {
-  const { field, keyword, page, pageSize } = req.query as {
-    field?: string;
-    keyword?: string;
+  const { page, pageSize, field, keyword, startDate, endDate } = req.query as {
     page: string;
     pageSize: string;
+    field?: string;
+    keyword?: string;
+    startDate?: string;
+    endDate?: string;
   };
 
   try {
@@ -40,12 +42,25 @@ export const getInboundHistory = async (req: Request, res: Response, next: NextF
         keyword,
         page: Number(page),
         pageSize: Number(pageSize),
+        startDate,
+        endDate,
       });
     } else {
       response = await inboundService.getAllInboundHistory(Number(page), Number(pageSize));
     }
 
     return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+//export excel
+export const exportExcelInbounds = async (req: Request, res: Response, next: NextFunction) => {
+  const { fromDate, toDate } = req.body;
+
+  try {
+    await inboundService.exportExcelInboundHistory(res, { fromDate, toDate });
   } catch (error) {
     next(error);
   }

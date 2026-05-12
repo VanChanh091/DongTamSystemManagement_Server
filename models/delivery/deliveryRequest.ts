@@ -1,6 +1,7 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { PlanningPaper } from "../planning/planningPaper";
 import { User } from "../user/user";
+import { Order } from "../order/order";
 
 export type statusDelivery = "requested" | "scheduled" | "cancelled";
 
@@ -60,7 +61,7 @@ export function initDeliveryRequestModel(sequelize: Sequelize): typeof DeliveryR
 
       //FK
       userId: { type: DataTypes.INTEGER, allowNull: false },
-      planningId: { type: DataTypes.INTEGER, allowNull: false },
+      planningId: { type: DataTypes.INTEGER },
     },
     {
       sequelize,
@@ -68,8 +69,8 @@ export function initDeliveryRequestModel(sequelize: Sequelize): typeof DeliveryR
       timestamps: true,
       indexes: [
         //FK
-        { fields: ["planningId"] },
         { fields: ["userId"] },
+        { fields: ["planningId"] },
 
         //indexes
         { fields: ["status"] },

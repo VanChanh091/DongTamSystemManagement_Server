@@ -1,29 +1,35 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import redisCache from "../../assets/configs/connect/redis.connect";
+import { Op, Transaction } from "sequelize";
+import { meiliService } from "../meiliService";
 import { AppError } from "../../utils/appError";
+import { Order } from "../../models/order/order";
+import { inventoryService } from "./inventoryService";
+import { MEILI_INDEX } from "../../assets/labelFields";
+import { searchFieldAtribute } from "../../interface/types";
+import { CacheKey } from "../../utils/helper/cache/cacheKey";
+import { PlanningBox } from "../../models/planning/planningBox";
+import { PlanningPaper } from "../../models/planning/planningPaper";
+import redisCache from "../../assets/configs/connect/redis.connect";
+import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { InboundHistory } from "../../models/warehouse/inboundHistory";
-import { warehouseRepository } from "../../repository/warehouseRepository";
+import { Inventory } from "../../models/warehouse/inventory/inventory";
 import { manufactureRepo } from "../../repository/manufactureRepository";
 import { planningHelper } from "../../repository/planning/planningHelper";
-import { PlanningBox } from "../../models/planning/planningBox";
-import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
-import { CacheManager } from "../../utils/helper/cache/cacheManager";
-import { syntheticRepository } from "../../repository/syntheticRepository";
-import { buildStagesDetails } from "../../utils/helper/modelHelper/planningHelper";
-import { PlanningPaper } from "../../models/planning/planningPaper";
-import { inventoryService } from "./inventoryService";
-import { Inventory } from "../../models/warehouse/inventory/inventory";
-import { Order } from "../../models/order/order";
-import { CacheKey } from "../../utils/helper/cache/cacheKey";
-import { meiliService } from "../meiliService";
-import { searchFieldAtribute } from "../../interface/types";
-import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
-import { Op, Transaction } from "sequelize";
-import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
-import { MEILI_INDEX } from "../../assets/labelFields";
+import { warehouseRepository } from "../../repository/warehouseRepository";
 import { inventoryRepository } from "../../repository/inventoryRepository";
+import { syntheticRepository } from "../../repository/syntheticRepository";
+import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
+import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
+import { buildStagesDetails } from "../../utils/helper/modelHelper/planningHelper";
+import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
+import { exportExcelResponse } from "../../utils/helper/excelExporter";
+import { Response } from "express";
+import {
+  inboundColumns,
+  mappingInboundRow,
+} from "../../utils/mapping/warehouse/inboundRowAndColumn";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inbound } = CacheKey.warehouse;
@@ -427,30 +433,75 @@ export const inboundService = {
     }
   },
 
-  getInboundByField: async ({ field, keyword, page, pageSize }: searchFieldAtribute) => {
+  getInboundByField: async ({
+    field,
+    keyword,
+    page,
+    pageSize,
+    startDate,
+    endDate,
+  }: {
+    field: string;
+    keyword: string;
+    page: number;
+    pageSize: number;
+    startDate?: string;
+    endDate?: string;
+  }) => {
     try {
       const validFields = ["orderId", "customerName", "dateInbound", "checkedBy"];
       if (!validFields.includes(field)) {
         throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
       }
 
-      if (field === "dateInbound") {
-        const date = new Date(keyword);
-        if (!isNaN(date.getTime())) {
-          keyword = Math.floor(date.setUTCHours(0, 0, 0, 0) / 1000).toString();
-        }
-      }
-
       const index = meiliClient.index("inboundHistories");
 
-      const searchResult = await index.search(keyword, {
-        attributesToSearchOn: [field],
+      let searchKeyword = keyword;
+      let filter = [];
+
+      if (field === "dateInbound") {
+        searchKeyword = "";
+
+        // console.log(`start: ${startDate} - end: ${endDate}`);
+
+        if (startDate) {
+          const dStart = new Date(startDate);
+
+          dStart.setUTCHours(0, 0, 0, 0);
+
+          // console.log(`dStart: ${dStart}`);
+          // console.log(`date: ${dStart.getTime()}`);
+
+          const startTimestamp = Math.floor(dStart.getTime() / 1000).toString();
+          filter.push(`dateInbound >= ${startTimestamp}`);
+        }
+
+        if (endDate) {
+          const dEnd = new Date(endDate);
+
+          dEnd.setUTCHours(23, 59, 59, 99);
+
+          // console.log(`dEnd: ${dEnd}`);
+
+          const endTimestamp = Math.floor(dEnd.getTime() / 1000).toString();
+          filter.push(`dateInbound <= ${endTimestamp}`);
+        }
+
+        // console.log(`filter: ${filter.join(" AND ")}`);
+      }
+
+      const searchResult = await index.search(searchKeyword, {
+        filter: filter.join(" AND "),
+        attributesToSearchOn: searchKeyword ? [field] : [],
         attributesToRetrieve: ["inboundId"],
         page: Number(page) || 1,
         hitsPerPage: Number(pageSize) || 25, //pageSize
       });
 
       const inboundIds = searchResult.hits.map((hit: any) => hit.inboundId);
+
+      // console.log(`result: ${inboundIds.join(", ")}`);
+
       if (inboundIds.length === 0) {
         return {
           message: "No inbound histories found",
@@ -481,6 +532,36 @@ export const inboundService = {
     } catch (error) {
       console.error(`get inbound history by ${field} failed:`, error);
       if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  exportExcelInboundHistory: async (res: Response, { fromDate, toDate }: any) => {
+    try {
+      let whereCondition: any = {};
+
+      if (fromDate && toDate) {
+        const start = new Date(fromDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(toDate);
+        end.setHours(23, 59, 59, 999);
+
+        whereCondition.dateInbound = { [Op.between]: [start, end] };
+      }
+
+      const { rows } = await warehouseRepository.findInboundByPage({
+        whereCondition,
+      });
+
+      await exportExcelResponse(res, {
+        data: rows,
+        sheetName: "Lịch Sử Nhập Kho",
+        fileName: "inbound_histories",
+        columns: inboundColumns,
+        rows: mappingInboundRow,
+      });
+    } catch (error) {
+      console.error("❌ Export Excel error:", error);
       throw AppError.ServerError();
     }
   },

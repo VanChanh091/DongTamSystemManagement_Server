@@ -1,5 +1,7 @@
+import { meiliService } from "../meiliService";
 import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
+import { MEILI_INDEX } from "../../assets/labelFields";
 import { PlanningBox } from "../../models/planning/planningBox";
 import { QcSession } from "../../models/qualityControl/qcSession";
 import { PlanningPaper } from "../../models/planning/planningPaper";
@@ -11,8 +13,6 @@ import { warehouseRepository } from "../../repository/warehouseRepository";
 import { calculateVolume } from "../../utils/helper/modelHelper/orderHelpers";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
-import { meiliService } from "../meiliService";
-import { MEILI_INDEX } from "../../assets/labelFields";
 
 export const deliveryEstimateService = {
   getPlanningEstimateTime: async ({
@@ -252,11 +252,11 @@ export const deliveryEstimateService = {
     userId: number;
   }) => {
     try {
-      if (!planningId || !qtyRegistered || qtyRegistered <= 0) {
-        throw AppError.BadRequest("missing parameters", "MISSING_PARAMETERS");
-      }
-
       return await runInTransaction(async (transaction) => {
+        if (!planningId || !qtyRegistered || qtyRegistered <= 0) {
+          throw AppError.BadRequest("missing parameters", "MISSING_PARAMETERS");
+        }
+
         const planning = await deliveryRepository.getPaperWaitingRegister(planningId, transaction);
         if (!planning) {
           throw AppError.BadRequest("Planning không tồn tại", "PLANNING_NOT_FOUND");

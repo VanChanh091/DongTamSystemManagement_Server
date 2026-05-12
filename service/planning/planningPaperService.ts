@@ -3,12 +3,12 @@ dotenv.config();
 
 import { Op } from "sequelize";
 import { Request, Response } from "express";
+import { meiliService } from "../meiliService";
 import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
-import { meiliService } from "../meiliService";
 import { MEILI_INDEX } from "../../assets/labelFields";
-import { normalizeVN } from "../../utils/helper/normalizeVN";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
+import { normalizeVN } from "../../utils/helper/normalizeVN";
 import { MachinePaper } from "../../models/admin/machinePaper";
 import { PlanningBox } from "../../models/planning/planningBox";
 import redisCache from "../../assets/configs/connect/redis.connect";

@@ -2,6 +2,12 @@ import { AppError } from "../../utils/appError";
 import { deliveryRepository } from "../../repository/deliveryRepository";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
+import { planningPaperRepository } from "../../repository/planning/planningPaperRepository";
+import { Op } from "sequelize";
+import { PlanningPaper } from "../../models/planning/planningPaper";
+import { DeliveryRequest } from "../../models/delivery/deliveryRequest";
+import { meiliService } from "../meiliService";
+import { MEILI_INDEX } from "../../assets/labelFields";
 
 export const deliveryPlanningService = {
   getDeliveryRequest: async () => {
@@ -188,6 +194,55 @@ export const deliveryPlanningService = {
       });
     } catch (error) {
       console.error("❌ confirm delivery planning failed:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  backDeliveryRequest: async (requestIds: number | number[]) => {
+    try {
+      return runInTransaction(async (transaction) => {
+        const idArray = Array.isArray(requestIds) ? requestIds : [requestIds];
+        const requests = await deliveryRepository.getDeliveryPlanByIds({
+          requestId: idArray,
+          transaction,
+        });
+
+        if (requests.length === 0) {
+          throw AppError.NotFound(
+            "Không tìm thấy yêu cầu giao hàng để trả về",
+            "DELIVERY_REQUEST_NOT_FOUND",
+          );
+        }
+
+        const planningIds = [...new Set(requests.map((r) => r.planningId))];
+
+        await DeliveryRequest.destroy({
+          where: { requestId: { [Op.in]: idArray } },
+          transaction,
+        });
+
+        for (const pId of planningIds) {
+          const remainingCount = await DeliveryRequest.count({
+            where: { planningId: pId },
+            transaction,
+          });
+
+          const newStatus = remainingCount === 0 ? "none" : "pending";
+
+          await PlanningPaper.update(
+            { deliveryPlanned: newStatus },
+            { where: { planningId: pId }, transaction },
+          );
+        }
+
+        //--------------------MEILISEARCH-----------------------
+        await meiliService.deleteMeiliData(MEILI_INDEX.DELIVERY_REQUEST, idArray, transaction);
+
+        return { message: "Trả yêu cầu giao hàng thành công" };
+      });
+    } catch (error) {
+      console.error("❌ Back delivery request to planning failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }

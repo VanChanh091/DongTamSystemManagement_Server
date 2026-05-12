@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
-import { Inventory } from "../../models/warehouse/inventory/inventory";
-import { formatterStructureOrder } from "../helper/modelHelper/orderHelpers";
+import { Inventory } from "../../../models/warehouse/inventory/inventory";
+import { formatterStructureOrder } from "../../helper/modelHelper/orderHelpers";
 
 export const inventoryColumns: Partial<ExcelJS.Column>[] = [
   { key: "orderId", header: "Mã Đơn Hàng" },

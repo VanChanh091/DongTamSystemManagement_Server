@@ -1,6 +1,6 @@
-import { MACHINE_FIELD_MAP } from "../../assets/labelFields";
-import { ReportPlanningBox } from "../../models/report/reportPlanningBox";
-import { formatterStructureOrder } from "../helper/modelHelper/orderHelpers";
+import { MACHINE_FIELD_MAP } from "../../../assets/labelFields";
+import { ReportPlanningBox } from "../../../models/report/reportPlanningBox";
+import { formatterStructureOrder } from "../../helper/modelHelper/orderHelpers";
 import ExcelJS from "exceljs";
 
 export const reportBoxColumns: Partial<ExcelJS.Column>[] = [

@@ -4,7 +4,7 @@ import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 import {
   cancelOrCompleteDeliveryPlan,
   confirmForDeliveryPlanning,
-  createDeliveryPlan,
+  handlePostDeliveryRequest,
   exportScheduleDelivery,
   getAllScheduleDelivery,
   getPlanningEstimateTime,
@@ -27,10 +27,10 @@ router.get(
 );
 router.put("/estimate", authenticate, authorizeAnyPermission(["plan", "sale"]), handlePutDelivery);
 
-//=================================DELIVERY PLANNING=====================================
+//=================================DELIVERY REQUEST=====================================
 
 router.get("/planning", authenticate, getPlanningRequest);
-router.post("/planning", authenticate, authorizeAnyPermission(["plan"]), createDeliveryPlan);
+router.post("/planning", authenticate, authorizeAnyPermission(["plan"]), handlePostDeliveryRequest);
 router.put("/planning", authenticate, authorizeAnyPermission(["plan"]), confirmForDeliveryPlanning);
 
 //=================================SCHEDULE DELIVERY=====================================

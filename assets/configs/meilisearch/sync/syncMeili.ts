@@ -37,11 +37,13 @@ const syncMeiliData = async ({
   isDeleteAll,
 }: SyncMeiliData) => {
   try {
-    if (!data || data.length === 0) {
-      throw AppError.NotFound(
-        `No ${displayName} found to sync`,
-        `SYNC_${indexName.toUpperCase()}_NOT_FOUND`,
-      );
+    if (!isDeleteAll) {
+      if (!data || data.length === 0) {
+        throw AppError.NotFound(
+          `No ${displayName} found to sync`,
+          `SYNC_${indexName.toUpperCase()}_NOT_FOUND`,
+        );
+      }
     }
 
     const index = meiliClient.index(indexName);
