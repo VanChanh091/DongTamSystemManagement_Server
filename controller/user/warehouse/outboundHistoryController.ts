@@ -4,11 +4,13 @@ import { AppError } from "../../../utils/appError";
 
 //===============================OUTBOUND HISTORY=====================================
 export const getOutboundHistory = async (req: Request, res: Response, next: NextFunction) => {
-  const { field, keyword, page, pageSize } = req.query as {
+  const { field, keyword, page, pageSize, startDate, endDate } = req.query as {
     field?: string;
     keyword?: string;
     page: string;
     pageSize: string;
+    startDate?: string;
+    endDate?: string;
   };
 
   try {
@@ -20,6 +22,8 @@ export const getOutboundHistory = async (req: Request, res: Response, next: Next
         keyword,
         page: Number(page),
         pageSize: Number(pageSize),
+        startDate,
+        endDate,
       });
     } else {
       response = await outboundService.getAllOutboundHistory(Number(page), Number(pageSize));

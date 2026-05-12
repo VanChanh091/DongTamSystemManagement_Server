@@ -1,14 +1,12 @@
+import { dayjsUtc } from "../dayjs/dayjs.config";
+
 export const meiliTransformer = {
   customer: (customer: any) => {
     const raw = customer.get({ plain: true });
 
-    let dayCreatedTimestamp = null;
-
-    if (raw.dayCreated) {
-      const d = new Date(raw.dayCreated);
-      d.setUTCHours(0, 0, 0, 0);
-      dayCreatedTimestamp = Math.floor(d.getTime() / 1000);
-    }
+    const dayCreatedTimestamp = raw.dayCreated
+      ? dayjsUtc.utc(raw.dayCreated).startOf("day").unix()
+      : null;
 
     return {
       ...raw,
@@ -31,13 +29,9 @@ export const meiliTransformer = {
   order: (order: any) => {
     const raw = order.get({ plain: true });
 
-    let dayReceiveOrderTimestamp = null;
-
-    if (raw.dayReceiveOrder) {
-      const d = new Date(raw.dayReceiveOrder);
-      d.setUTCHours(0, 0, 0, 0);
-      dayReceiveOrderTimestamp = Math.floor(d.getTime() / 1000);
-    }
+    const dayReceiveOrderTimestamp = raw.dayReceiveOrder
+      ? dayjsUtc.utc(raw.dayReceiveOrder).startOf("day").unix()
+      : null;
 
     return {
       //search
@@ -88,13 +82,9 @@ export const meiliTransformer = {
   reportPaper: (db: any) => {
     const raw = db.get({ plain: true });
 
-    let dayReportTimestamp = null;
-
-    if (raw.dayReport) {
-      const d = new Date(raw.dayReport);
-      d.setUTCHours(0, 0, 0, 0);
-      dayReportTimestamp = Math.floor(d.getTime() / 1000);
-    }
+    const dayReportTimestamp = raw.dayReport
+      ? dayjsUtc.utc(raw.dayReport).startOf("day").unix()
+      : null;
 
     return {
       reportPaperId: raw.reportPaperId,
@@ -109,13 +99,9 @@ export const meiliTransformer = {
   reportBox: (db: any) => {
     const raw = db.get({ plain: true });
 
-    let dayReportTimestamp = null;
-
-    if (raw.dayReport) {
-      const d = new Date(raw.dayReport);
-      d.setUTCHours(0, 0, 0, 0);
-      dayReportTimestamp = Math.floor(d.getTime() / 1000);
-    }
+    const dayReportTimestamp = raw.dayReport
+      ? dayjsUtc.utc(raw.dayReport).startOf("day").unix()
+      : null;
 
     return {
       reportBoxId: raw.reportBoxId,
@@ -131,21 +117,9 @@ export const meiliTransformer = {
   inbound: (db: any) => {
     const raw = db.get({ plain: true });
 
-    let dateInboundTimestamp = null;
-
-    if (raw.dateInbound) {
-      const d = new Date(raw.dateInbound);
-
-      // console.log(`date 1: ${d}`);
-
-      d.setUTCHours(0, 0, 0, 0);
-
-      // console.log(`date 2: ${d}`);
-
-      dateInboundTimestamp = Math.floor(d.getTime() / 1000);
-
-      // console.log(`dateInbound: ${dateInboundTimestamp}`);
-    }
+    const dateInboundTimestamp = raw.dateInbound
+      ? dayjsUtc.utc(raw.dateInbound).startOf("day").unix()
+      : null;
 
     return {
       inboundId: raw.inboundId,
@@ -159,13 +133,9 @@ export const meiliTransformer = {
   outbound: (db: any) => {
     const raw = db.get({ plain: true });
 
-    let dateOutboundTimestamp = null;
-
-    if (raw.dateOutbound) {
-      const d = new Date(raw.dateOutbound);
-      d.setUTCHours(0, 0, 0, 0);
-      dateOutboundTimestamp = Math.floor(d.getTime() / 1000);
-    }
+    const dateOutboundTimestamp = raw.dateOutbound
+      ? dayjsUtc.utc(raw.dateOutbound).startOf("day").unix()
+      : null;
 
     return {
       outboundId: raw.outboundId,

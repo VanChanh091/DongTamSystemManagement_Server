@@ -20,6 +20,7 @@ import { meiliService } from "./meiliService";
 import { searchFieldAtribute } from "../interface/types";
 import { MEILI_INDEX } from "../assets/labelFields";
 import { meiliTransformer } from "../assets/configs/meilisearch/meiliTransformer";
+import { dayjsUtc } from "../assets/configs/dayjs/dayjs.config";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { customer } = CacheKey;
@@ -87,17 +88,9 @@ export const customerService = {
         throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
       }
 
-      // console.log(`input keyword: ${keyword}`);
-
       if (field === "dayCreated") {
         const date = new Date(keyword);
-        // console.log(`date: ${date}`);
-
-        if (!isNaN(date.getTime())) {
-          keyword = Math.floor(date.setUTCHours(0, 0, 0, 0) / 1000).toString();
-
-          // console.log(`output keyword: ${keyword}`);
-        }
+        keyword = dayjsUtc.utc(date).startOf("day").unix().toString();
       }
 
       const index = meiliClient.index("customers");

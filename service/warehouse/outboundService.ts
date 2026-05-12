@@ -21,6 +21,7 @@ import { warehouseRepository } from "../../repository/warehouseRepository";
 import { inventoryRepository } from "../../repository/inventoryRepository";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
+import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { outbound } = CacheKey.warehouse;
@@ -87,11 +88,15 @@ export const outboundService = {
     keyword,
     page,
     pageSize,
+    startDate,
+    endDate,
   }: {
     field: string;
     keyword: string;
     page: number;
     pageSize: number;
+    startDate?: string;
+    endDate?: string;
   }) => {
     try {
       const validFields = ["dateOutbound", "customerName", "outboundSlipCode"];
@@ -99,17 +104,29 @@ export const outboundService = {
         throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
       }
 
-      if (field === "dateOutbound") {
-        const date = new Date(keyword);
-        if (!isNaN(date.getTime())) {
-          keyword = Math.floor(date.setUTCHours(0, 0, 0, 0) / 1000).toString();
-        }
-      }
-
       const index = meiliClient.index("outbounds");
 
-      const searchResult = await index.search(keyword, {
-        attributesToSearchOn: [field],
+      let searchKeyword = keyword;
+      let filter = [];
+
+      if (field === "dateOutbound") {
+        searchKeyword = "";
+
+        if (startDate && endDate) {
+          const startTimestamp = dayjsUtc.utc(startDate).startOf("day").unix();
+          filter.push(`dateOutbound >= ${startTimestamp}`);
+
+          const endTimestamp = dayjsUtc.utc(endDate).endOf("day").unix();
+          filter.push(`dateOutbound <= ${endTimestamp}`);
+        }
+
+        // console.log(`start: ${startDate} - end: ${endDate}`);
+        // console.log(`filter: ${filter.join(" AND ")}`);
+      }
+
+      const searchResult = await index.search(searchKeyword, {
+        filter: filter.join(" AND "),
+        attributesToSearchOn: searchKeyword ? [field] : [],
         attributesToRetrieve: ["outboundId"],
         page: Number(page) || 1,
         hitsPerPage: Number(pageSize) || 25, //pageSize

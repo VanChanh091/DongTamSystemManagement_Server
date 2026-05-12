@@ -48,14 +48,14 @@ export const planningBoxSettings: Settings = {
 //report paper
 export const reportPaperSettings: Settings = {
   searchableAttributes: ["orderId", "customerName", "dayReported", "shiftManagement"],
-  filterableAttributes: ["chooseMachine"],
+  filterableAttributes: ["chooseMachine", "dayReported"],
   rankingRules: rule,
 };
 
 //report box
 export const reportBoxSettings: Settings = {
   searchableAttributes: ["orderId", "customerName", "dayReported", "QC_box", "shiftManagement"],
-  filterableAttributes: ["machine"],
+  filterableAttributes: ["machine", "dayReported"],
   rankingRules: rule,
 };
 
@@ -76,7 +76,7 @@ export const inventorySettings: Settings = {
 //outbound
 export const outboundSettings: Settings = {
   searchableAttributes: ["dateOutbound", "outboundSlipCode", "customerName", "status"],
-  filterableAttributes: ["status"],
+  filterableAttributes: ["status", "dateOutbound"],
   rankingRules: rule,
 };
 

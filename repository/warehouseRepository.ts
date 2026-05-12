@@ -166,8 +166,8 @@ export const warehouseRepository = {
   },
 
   findInboundByPage: async ({
-    page = 1,
-    pageSize = 20,
+    page,
+    pageSize,
     whereCondition,
   }: {
     page?: number;

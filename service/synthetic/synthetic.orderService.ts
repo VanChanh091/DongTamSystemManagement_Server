@@ -7,6 +7,7 @@ import { exportExcelResponse } from "../../utils/helper/excelExporter";
 import { syntheticRepository } from "../../repository/syntheticRepository";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { mappingOrderRow, orderColumns } from "../../utils/mapping/orderRowAndColumn";
+import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
 
 export const syntheticOrderService = {
   getAllOrderByStatus: async ({
@@ -102,21 +103,16 @@ export const syntheticOrderService = {
       if (field === "dayReceiveOrder") {
         searchKeyword = "";
 
-        // console.log(`start: ${startDate} - end: ${endDate}`);
-
-        if (startDate) {
-          const dStart = new Date(startDate);
-          dStart.setUTCHours(0, 0, 0, 0); // Đưa về đầu ngày theo chuẩn UTC
-          const startTimestamp = Math.floor(dStart.getTime() / 1000);
+        if (startDate && endDate) {
+          const startTimestamp = dayjsUtc.utc(startDate).startOf("day").unix();
           filters.push(`dayReceiveOrder >= ${startTimestamp}`);
-        }
 
-        if (endDate) {
-          const dEnd = new Date(endDate);
-          dEnd.setUTCHours(23, 59, 59, 999); // Đưa về cuối ngày theo chuẩn UTC
-          const endTimestamp = Math.floor(dEnd.getTime() / 1000);
+          const endTimestamp = dayjsUtc.utc(endDate).endOf("day").unix();
           filters.push(`dayReceiveOrder <= ${endTimestamp}`);
         }
+
+        // console.log(`start: ${startDate} - end: ${endDate}`);
+        // console.log(`filter: ${filters.join(" AND ")}`);
       }
 
       const searchResult = await index.search(searchKeyword, {
@@ -169,12 +165,13 @@ export const syntheticOrderService = {
       };
 
       if (fromDate && toDate) {
-        const start = new Date(fromDate);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(toDate);
-        end.setHours(23, 59, 59, 999);
+        const startTimestamp = dayjsUtc(fromDate).startOf("day").toDate();
+        const endTimestamp = dayjsUtc(toDate).endOf("day").toDate();
 
-        whereCondition.dayReceiveOrder = { [Op.between]: [start, end] };
+        // console.log(`start: ${fromDate} - end: ${toDate}`);
+        // console.log(`startTimestamp: ${startTimestamp} - endTimestamp: ${endTimestamp}`);
+
+        whereCondition.dayReceiveOrder = { [Op.between]: [startTimestamp, endTimestamp] };
       }
 
       const query = orderRepository.buildQueryOptions({ whereCondition });

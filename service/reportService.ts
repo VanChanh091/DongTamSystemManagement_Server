@@ -18,6 +18,7 @@ import redisCache from "../assets/configs/connect/redis.connect";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { normalizeVN } from "../utils/helper/normalizeVN";
 import { meiliClient } from "../assets/configs/connect/meilisearch.connect";
+import { dayjsUtc } from "../assets/configs/dayjs/dayjs.config";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper, box } = CacheKey.report;
@@ -66,32 +67,51 @@ export const reportService = {
     }
   },
 
-  getReportPaperByField: async (
-    field: string,
-    keyword: string,
-    machine: string,
-    page: number,
-    pageSize: number,
-  ) => {
+  getReportPaperByField: async ({
+    field,
+    keyword,
+    machine,
+    page,
+    pageSize,
+    startDate,
+    endDate,
+  }: {
+    field: string;
+    keyword: string;
+    machine: string;
+    page: number;
+    pageSize: number;
+    startDate?: string;
+    endDate?: string;
+  }) => {
     try {
       const validFields = ["orderId", "customerName", "dayReported", "shiftManagement"];
       if (!validFields.includes(field)) {
         throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
       }
 
+      // Lọc theo ngày nếu có
+      let searchKeyword = keyword;
+      let filters = [`chooseMachine = "${machine}"`];
+
       if (field === "dayReported") {
-        const date = new Date(keyword);
-        if (!isNaN(date.getTime())) {
-          keyword = Math.floor(date.setUTCHours(0, 0, 0, 0) / 1000).toString();
+        searchKeyword = "";
+
+        if (startDate && endDate) {
+          const startTimestamp = dayjsUtc.utc(startDate).startOf("day").unix();
+          filters.push(`dayReported >= ${startTimestamp}`);
+
+          const endTimestamp = dayjsUtc.utc(endDate).endOf("day").unix();
+          filters.push(`dayReported <= ${endTimestamp}`);
         }
       }
 
       const index = meiliClient.index("reportPapers");
 
-      const searchResult = await index.search(keyword, {
-        attributesToSearchOn: [field],
-        attributesToRetrieve: ["reportPaperId"], // Chỉ lấy reportPaperId
-        filter: `chooseMachine = "${machine}"`,
+      const searchResult = await index.search(searchKeyword, {
+        filter: filters.join(" AND "),
+        attributesToSearchOn: searchKeyword ? [field] : [],
+        attributesToRetrieve: ["reportPaperId"],
         page: Number(page) || 1,
         hitsPerPage: Number(pageSize) || 25,
       });
@@ -175,32 +195,51 @@ export const reportService = {
     }
   },
 
-  getReportBoxByField: async (
-    field: string,
-    keyword: string,
-    machine: string,
-    page: number,
-    pageSize: number,
-  ) => {
+  getReportBoxByField: async ({
+    field,
+    keyword,
+    machine,
+    page,
+    pageSize,
+    startDate,
+    endDate,
+  }: {
+    field: string;
+    keyword: string;
+    machine: string;
+    page: number;
+    pageSize: number;
+    startDate?: string;
+    endDate?: string;
+  }) => {
     try {
       const validFields = ["orderId", "customerName", "dayReported", "QC_box", "shiftManagement"];
       if (!validFields.includes(field)) {
         throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
       }
 
+      // Lọc theo ngày nếu có
+      let searchKeyword = keyword;
+      let filters = [`machine = "${machine}"`];
+
       if (field === "dayReported") {
-        const date = new Date(keyword);
-        if (!isNaN(date.getTime())) {
-          keyword = Math.floor(date.setUTCHours(0, 0, 0, 0) / 1000).toString();
+        searchKeyword = "";
+
+        if (startDate && endDate) {
+          const startTimestamp = dayjsUtc.utc(startDate).startOf("day").unix();
+          filters.push(`dayReported >= ${startTimestamp}`);
+
+          const endTimestamp = dayjsUtc.utc(endDate).endOf("day").unix();
+          filters.push(`dayReported <= ${endTimestamp}`);
         }
       }
 
       const index = meiliClient.index("reportBoxes");
 
-      const searchResult = await index.search(keyword, {
-        attributesToSearchOn: [field],
-        attributesToRetrieve: ["reportBoxId"], // Chỉ lấy reportBoxId
-        filter: `machine = "${machine}"`,
+      const searchResult = await index.search(searchKeyword, {
+        filter: filters.join(" AND "),
+        attributesToSearchOn: searchKeyword ? [field] : [],
+        attributesToRetrieve: ["reportBoxId"],
         page: Number(page) || 1,
         hitsPerPage: Number(pageSize) || 25,
       });
@@ -258,12 +297,13 @@ export const reportService = {
       if (reportPaperId && reportPaperId.length > 0) {
         whereCondition.reportPaperId = reportPaperId;
       } else if (fromDate && toDate) {
-        const start = new Date(fromDate);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(toDate);
-        end.setHours(23, 59, 59, 999);
+        const startTimestamp = dayjsUtc(fromDate).startOf("day").toDate();
+        const endTimestamp = dayjsUtc(toDate).endOf("day").toDate();
 
-        whereCondition.dayReport = { [Op.between]: [start, end] };
+        // console.log(`start: ${fromDate} - end: ${toDate}`);
+        // console.log(`startTimestamp: ${startTimestamp} - endTimestamp: ${endTimestamp}`);
+
+        whereCondition.dayReport = { [Op.between]: [startTimestamp, endTimestamp] };
       }
 
       const data = await reportRepository.exportReportPaper(whereCondition, machine);
@@ -297,12 +337,13 @@ export const reportService = {
       if (reportBoxId && reportBoxId.length > 0) {
         whereCondition.reportBoxId = reportBoxId;
       } else if (fromDate && toDate) {
-        const start = new Date(fromDate);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(toDate);
-        end.setHours(23, 59, 59, 999);
+        const startTimestamp = dayjsUtc(fromDate).startOf("day").toDate();
+        const endTimestamp = dayjsUtc(toDate).endOf("day").toDate();
 
-        whereCondition.dayReport = { [Op.between]: [start, end] };
+        // console.log(`start: ${fromDate} - end: ${toDate}`);
+        // console.log(`startTimestamp: ${startTimestamp} - endTimestamp: ${endTimestamp}`);
+
+        whereCondition.dayReport = { [Op.between]: [startTimestamp, endTimestamp] };
       }
 
       const data = await reportRepository.exportReportBox(whereCondition, machine);

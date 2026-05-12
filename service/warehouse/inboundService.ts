@@ -1,13 +1,13 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+import dayjs from "dayjs";
 import { Op, Transaction } from "sequelize";
 import { meiliService } from "../meiliService";
 import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
 import { inventoryService } from "./inventoryService";
 import { MEILI_INDEX } from "../../assets/labelFields";
-import { searchFieldAtribute } from "../../interface/types";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { PlanningBox } from "../../models/planning/planningBox";
 import { PlanningPaper } from "../../models/planning/planningPaper";
@@ -30,6 +30,7 @@ import {
   inboundColumns,
   mappingInboundRow,
 } from "../../utils/mapping/warehouse/inboundRowAndColumn";
+import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inbound } = CacheKey.warehouse;
@@ -462,31 +463,15 @@ export const inboundService = {
       if (field === "dateInbound") {
         searchKeyword = "";
 
-        // console.log(`start: ${startDate} - end: ${endDate}`);
-
-        if (startDate) {
-          const dStart = new Date(startDate);
-
-          dStart.setUTCHours(0, 0, 0, 0);
-
-          // console.log(`dStart: ${dStart}`);
-          // console.log(`date: ${dStart.getTime()}`);
-
-          const startTimestamp = Math.floor(dStart.getTime() / 1000).toString();
+        if (startDate && endDate) {
+          const startTimestamp = dayjsUtc.utc(startDate).startOf("day").unix();
           filter.push(`dateInbound >= ${startTimestamp}`);
-        }
 
-        if (endDate) {
-          const dEnd = new Date(endDate);
-
-          dEnd.setUTCHours(23, 59, 59, 99);
-
-          // console.log(`dEnd: ${dEnd}`);
-
-          const endTimestamp = Math.floor(dEnd.getTime() / 1000).toString();
+          const endTimestamp = dayjsUtc.utc(endDate).endOf("day").unix();
           filter.push(`dateInbound <= ${endTimestamp}`);
         }
 
+        // console.log(`start: ${startDate} - end: ${endDate}`);
         // console.log(`filter: ${filter.join(" AND ")}`);
       }
 
@@ -541,12 +526,13 @@ export const inboundService = {
       let whereCondition: any = {};
 
       if (fromDate && toDate) {
-        const start = new Date(fromDate);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(toDate);
-        end.setHours(23, 59, 59, 999);
+        const startTimestamp = dayjsUtc(fromDate).startOf("day").toDate();
+        const endTimestamp = dayjsUtc(toDate).endOf("day").toDate();
 
-        whereCondition.dateInbound = { [Op.between]: [start, end] };
+        // console.log(`start: ${fromDate} - end: ${toDate}`);
+        // console.log(`startTimestamp: ${startTimestamp} - endTimestamp: ${endTimestamp}`);
+
+        whereCondition.dateInbound = { [Op.between]: [startTimestamp, endTimestamp] };
       }
 
       const { rows } = await warehouseRepository.findInboundByPage({

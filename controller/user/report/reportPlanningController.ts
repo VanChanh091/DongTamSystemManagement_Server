@@ -12,12 +12,16 @@ export const getReportPapers = async (req: Request, res: Response, next: NextFun
     machine,
     page = 1,
     pageSize = 20,
+    startDate,
+    endDate,
   } = req.query as {
     field: string;
     keyword: string;
     machine: string;
     page: string;
     pageSize: string;
+    startDate?: string;
+    endDate?: string;
   };
 
   try {
@@ -25,13 +29,15 @@ export const getReportPapers = async (req: Request, res: Response, next: NextFun
 
     // 1. Nhánh tìm kiếm theo field
     if (field && keyword && machine) {
-      response = await reportService.getReportPaperByField(
+      response = await reportService.getReportPaperByField({
         field,
         keyword,
         machine,
-        Number(page),
-        Number(pageSize),
-      );
+        page: Number(page),
+        pageSize: Number(pageSize),
+        startDate,
+        endDate,
+      });
     }
     // 2. Nhánh lấy tất cả
     else {
@@ -52,12 +58,16 @@ export const getReportBoxes = async (req: Request, res: Response, next: NextFunc
     machine,
     page = 1,
     pageSize = 20,
+    startDate,
+    endDate,
   } = req.query as {
     field: string;
     keyword: string;
     machine: string;
     page: string;
     pageSize: string;
+    startDate?: string;
+    endDate?: string;
   };
 
   try {
@@ -65,13 +75,15 @@ export const getReportBoxes = async (req: Request, res: Response, next: NextFunc
 
     // 1. Nhánh tìm kiếm theo field
     if (field && keyword && machine) {
-      response = await reportService.getReportBoxByField(
+      response = await reportService.getReportBoxByField({
         field,
         keyword,
         machine,
-        Number(page),
-        Number(pageSize),
-      );
+        page: Number(page),
+        pageSize: Number(pageSize),
+        startDate,
+        endDate,
+      });
     }
     // 2. Nhánh lấy tất cả
     else {
