@@ -397,14 +397,6 @@ export const planningStatusService = {
 
         await order.update({ status: "reject" }, { transaction });
 
-        //--------------------MEILISEARCH-----------------------
-        await meiliService.syncOrUpdateMeiliData({
-          indexKey: MEILI_INDEX.ORDERS,
-          data: { orderSortValue: order.orderSortValue, status: "reject" },
-          transaction,
-          isUpdate: true,
-        });
-
         //socket
         const ownerId = order.userId;
         const badgeCount = await Order.count({
@@ -432,6 +424,14 @@ export const planningStatusService = {
         req.io?.to(roomName).emit("updateBadgeCount", {
           type: "REJECTED_ORDER",
           count: badgeCount,
+        });
+
+        //--------------------MEILISEARCH-----------------------
+        await meiliService.syncOrUpdateMeiliData({
+          indexKey: MEILI_INDEX.ORDERS,
+          data: { orderSortValue: order.orderSortValue, status: "reject" },
+          transaction,
+          isUpdate: true,
         });
       });
     } catch (error) {

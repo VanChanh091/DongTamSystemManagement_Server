@@ -9,10 +9,8 @@ import { DeliveryPlan } from "../models/delivery/deliveryPlan";
 import { PlanningPaper } from "../models/planning/planningPaper";
 import { Inventory } from "../models/warehouse/inventory/inventory";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
-import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
 import { DeliveryItem, statusDeliveryItem } from "../models/delivery/deliveryItem";
 import { DeliveryRequest, statusDelivery } from "../models/delivery/deliveryRequest";
-import { DELIVERY_REQUEST_MEILI_OPTIONS } from "../assets/configs/meilisearch/sync/syncMeili";
 
 export const deliveryRepository = {
   //================================PLANNING ESTIMATE TIME==================================
@@ -42,11 +40,6 @@ export const deliveryRepository = {
         "status",
       ],
       include: [
-        {
-          model: timeOverflowPlanning,
-          as: "timeOverFlow",
-          attributes: ["overflowDayStart", "overflowTimeRunning", "status"],
-        },
         {
           model: Order,
           attributes: [
@@ -78,21 +71,9 @@ export const deliveryRepository = {
           attributes: ["planningBoxId"],
           include: [
             {
-              model: timeOverflowPlanning,
-              as: "timeOverFlow",
-              attributes: ["overflowDayStart", "overflowTimeRunning", "status"],
-            },
-            {
               model: PlanningBoxTime,
               as: "boxTimes",
-              attributes: [
-                "runningPlan",
-                "timeRunning",
-                "dayStart",
-                "qtyProduced",
-                "machine",
-                "status",
-              ],
+              attributes: ["timeRunning", "dayStart", "qtyProduced", "machine"],
               required: false,
               where: {
                 dayStart: { [Op.lte]: dayStart },
@@ -194,18 +175,47 @@ export const deliveryRepository = {
     });
   },
 
+  DELIVERY_REQUEST_MEILI_OPTIONS: ({
+    whereCondition,
+    transaction,
+  }: {
+    whereCondition?: any;
+    transaction?: Transaction;
+  }) => ({
+    where: whereCondition,
+    attributes: ["requestId", "status"],
+    include: [
+      {
+        model: PlanningPaper,
+        attributes: ["planningId"],
+        include: [
+          {
+            model: Order,
+            attributes: ["orderId"],
+            include: [{ model: Customer, attributes: ["customerName"] }],
+          },
+        ],
+      },
+      { model: User, attributes: ["fullName"] },
+    ],
+    transaction,
+  }),
+
   getDeliveryRequestForMeili: async (requestId: number, transaction: Transaction) => {
     return await DeliveryRequest.findOne(
-      DELIVERY_REQUEST_MEILI_OPTIONS({ whereCondition: { requestId }, transaction }),
+      deliveryRepository.DELIVERY_REQUEST_MEILI_OPTIONS({
+        whereCondition: { requestId },
+        transaction,
+      }),
     );
   },
 
   getManyDeliveryRequestForMeili: async (
     requestIds: number | number[],
-    transaction: Transaction,
+    transaction?: Transaction,
   ) => {
     return await DeliveryRequest.findAll(
-      DELIVERY_REQUEST_MEILI_OPTIONS({
+      deliveryRepository.DELIVERY_REQUEST_MEILI_OPTIONS({
         whereCondition: { requestId: { [Op.in]: requestIds } },
         transaction,
       }),
@@ -436,13 +446,9 @@ export const deliveryRepository = {
     });
   },
 
-  getDeliveryItemToUpdateStatus: async (
-    itemIds: number[],
-    deliveryId: number,
-    transaction: Transaction,
-  ) => {
+  getDeliveryItemToUpdateStatus: async (itemIds: number[], transaction: Transaction) => {
     return await DeliveryItem.findAll({
-      where: { deliveryItemId: { [Op.in]: itemIds }, deliveryId },
+      where: { deliveryItemId: { [Op.in]: itemIds } },
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {

@@ -86,11 +86,7 @@ export const deliveryScheduleService = {
       };
 
       return runInTransaction(async (transaction) => {
-        const items = await deliveryRepository.getDeliveryItemToUpdateStatus(
-          itemIds,
-          deliveryId,
-          transaction,
-        );
+        const items = await deliveryRepository.getDeliveryItemToUpdateStatus(itemIds, transaction);
 
         if (items.length === 0) {
           throw AppError.BadRequest("Không tìm thấy item nào để cập nhật", "ITEMS_NOT_FOUND");
@@ -107,7 +103,7 @@ export const deliveryScheduleService = {
           //update status delivery item
           await deliveryRepository.updateDeliveryItemById({
             statusUpdate: "completed",
-            whereCondition: { deliveryItemId: { [Op.in]: itemIds }, deliveryId },
+            whereCondition: { deliveryItemId: { [Op.in]: itemIds } },
             transaction,
           });
 
@@ -212,6 +208,7 @@ export const deliveryScheduleService = {
 
         //--------------------MEILISEARCH-----------------------
         const requestIds = items.map((i) => i.requestId);
+
         const requestData = await deliveryRepository.getManyDeliveryRequestForMeili(
           requestIds,
           transaction,

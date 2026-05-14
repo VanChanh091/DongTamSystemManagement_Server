@@ -202,7 +202,7 @@ export const adminService = {
               { transaction },
             );
 
-            const inventory = await inventoryRepository.syncInventory(orderId, transaction);
+            const inventory = await inventoryRepository.syncInventoryToMeili(orderId, transaction);
 
             if (inventory) {
               const flattenData = meiliTransformer.inventory(inventory);

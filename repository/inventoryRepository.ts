@@ -121,19 +121,38 @@ export const inventoryRepository = {
     });
   },
 
-  syncInventory: async (orderId: string, transaction: Transaction) => {
-    return await Inventory.findOne({
-      where: { orderId },
-      attributes: ["inventoryId"],
-      include: [
-        {
-          model: Order,
-          attributes: ["orderId"],
-          include: [{ model: Customer, attributes: ["customerName"] }],
-        },
-      ],
-      transaction,
-    });
+  INVENTORY_MEILI_OPTIONS: ({
+    whereCondition,
+    transaction,
+  }: {
+    whereCondition?: any;
+    transaction?: Transaction;
+  }) => ({
+    where: whereCondition,
+    attributes: ["inventoryId", "qtyInventory"],
+    include: [
+      {
+        model: Order,
+        attributes: ["orderId"],
+        include: [{ model: Customer, attributes: ["customerName"] }],
+      },
+    ],
+    transaction,
+  }),
+
+  syncInventoryToMeili: async (orderId: string, transaction: Transaction) => {
+    return await Inventory.findOne(
+      inventoryRepository.INVENTORY_MEILI_OPTIONS({ whereCondition: { orderId }, transaction }),
+    );
+  },
+
+  syncManyInventoryToMeili: async (orderId: string | string[], transaction: Transaction) => {
+    return await Inventory.findAll(
+      inventoryRepository.INVENTORY_MEILI_OPTIONS({
+        whereCondition: { orderId: { [Op.in]: orderId } },
+        transaction,
+      }),
+    );
   },
 
   //====================================LIQUIDATION INVENTORY========================================

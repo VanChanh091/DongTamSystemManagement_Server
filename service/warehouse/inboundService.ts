@@ -372,7 +372,7 @@ export const inboundService = {
     try {
       const [inbound, inventory] = await Promise.all([
         warehouseRepository.syncInbound(inboundId, transaction),
-        inventoryRepository.syncInventory(orderId, transaction),
+        inventoryRepository.syncInventoryToMeili(orderId, transaction),
       ]);
 
       const flattenInbound = meiliTransformer.inbound(inbound);

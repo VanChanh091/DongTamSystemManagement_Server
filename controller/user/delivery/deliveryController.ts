@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { deliveryEstimateService } from "../../../service/delivery/deliveryEstimateService";
 import { deliveryPlanningService } from "../../../service/delivery/deliveryPlanningService";
 import { deliveryScheduleService } from "../../../service/delivery/deliveryScheduleService";
+import { AppError } from "../../../utils/appError";
 
 //=================================PLANNING ESTIMATE TIME=====================================
 
@@ -45,25 +46,36 @@ export const getPlanningEstimateTime = async (req: Request, res: Response, next:
 };
 
 export const handlePutDelivery = async (req: Request, res: Response, next: NextFunction) => {
-  const { planningId, qtyRegistered, isPaper } = req.body as {
+  const { planningId, qtyRegistered, isPaper, action } = req.body as {
     planningId: number | number[];
     qtyRegistered?: number;
     isPaper?: boolean;
+    action: string;
   };
 
   try {
     let response;
 
-    const planningIds = Array.isArray(planningId) ? planningId.map(Number) : [Number(planningId)];
+    switch (action) {
+      case "REGISTER_QTY":
+        response = await deliveryEstimateService.registerQtyDelivery({
+          planningId: Number(planningId),
+          qtyRegistered: Number(qtyRegistered),
+          userId: req.user.userId,
+        });
+        break;
+      case "CLOSE_PLANNING":
+        const planningIds = Array.isArray(planningId)
+          ? planningId.map(Number)
+          : [Number(planningId)];
 
-    if (qtyRegistered) {
-      response = await deliveryEstimateService.registerQtyDelivery({
-        planningId: Number(planningId),
-        qtyRegistered: Number(qtyRegistered),
-        userId: req.user.userId,
-      });
-    } else if (isPaper) {
-      response = await deliveryEstimateService.closePlanning({ ids: planningIds, isPaper });
+        response = await deliveryEstimateService.closePlanning({
+          planningIds: planningIds,
+          isPaper: isPaper || false,
+        });
+        break;
+      default:
+        throw AppError.BadRequest("Invalid action parameter", "INVALID_ACTION");
     }
 
     return res.status(200).json(response);

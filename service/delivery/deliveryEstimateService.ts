@@ -13,6 +13,7 @@ import { warehouseRepository } from "../../repository/warehouseRepository";
 import { calculateVolume } from "../../utils/helper/modelHelper/orderHelpers";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
+import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
 
 export const deliveryEstimateService = {
   getPlanningEstimateTime: async ({
@@ -77,15 +78,15 @@ export const deliveryEstimateService = {
       const pageData = filtered.slice(startIndex, endIndex);
 
       //remove Planning box for UI
-      const data = pageData.map((p: any) => {
-        const plain = p.get({ plain: true });
-        delete plain.PlanningBox;
-        return plain;
-      });
+      // const data = pageData.map((p: any) => {
+      //   const plain = p.get({ plain: true });
+      //   delete plain.PlanningBox;
+      //   return plain;
+      // });
 
       const responseData = {
         message: "get all data paper from db",
-        data,
+        data: pageData,
         totalPlannings,
         totalPages,
         currentPage: page,
@@ -317,52 +318,95 @@ export const deliveryEstimateService = {
     }
   },
 
-  closePlanning: async ({ ids, isPaper = true }: { ids: number | number[]; isPaper: boolean }) => {
+  closePlanning: async ({
+    planningIds,
+    isPaper = true,
+  }: {
+    planningIds: number | number[];
+    isPaper: boolean;
+  }) => {
     try {
       return await runInTransaction(async (transaction) => {
-        const idArray = Array.isArray(ids) ? ids : [ids];
-        const keyId = isPaper ? "planningId" : "planningBoxId";
+        const idArray = Array.isArray(planningIds) ? planningIds : [planningIds];
 
         // Lấy dữ liệu Planning
-        let plannings: any[] = [];
+        let papers: any[] = [];
+        let boxes: any[] = [];
+
         if (isPaper) {
-          plannings = await PlanningPaper.findAll({
-            where: { [keyId]: idArray },
+          papers = await PlanningPaper.findAll({
+            where: { planningId: idArray },
             transaction,
           });
         } else {
-          plannings = await PlanningBox.findAll({
-            where: { [keyId]: idArray },
+          boxes = await PlanningBox.findAll({
+            where: { planningId: idArray },
+            include: [
+              {
+                model: PlanningBoxTime,
+                as: "boxTimes",
+                attributes: ["qtyProduced", "machine"],
+              },
+            ],
             transaction,
           });
         }
 
-        if (plannings.length === 0) {
+        const records = isPaper ? papers : boxes;
+
+        if (records.length === 0) {
           throw AppError.BadRequest("Không tìm thấy dữ liệu để đóng", "PLANNING_NOT_FOUND");
         }
 
+        // Nếu là Paper: check theo planningId
+        // Nếu là Box: check theo planningBoxId (PK của bảng Box)
+        const checkKey = isPaper ? "planningId" : "planningBoxId";
+        const targetIds = records.map((r) => r[checkKey]);
+
         // Kiểm tra tổng Inbound từ Warehouse
-        const inboundSums = await warehouseRepository.getInboundSumByPlanning(keyId, idArray);
+        const inboundSums = await warehouseRepository.getInboundSumByPlanning(checkKey, targetIds);
+
         const inboundMap = new Map(
-          inboundSums.map((item: any) => [item[keyId], Number(item.totalInbound) || 0]),
+          inboundSums.map((item: any) => [item[checkKey], Number(item.totalInbound) || 0]),
         );
 
         // Validation
         const orderIds = new Set<string>(); // Dùng Set để tránh trùng lặp ID
 
-        for (const p of plannings) {
-          const totalInbound = inboundMap.get(p[keyId]) || 0;
-          const qtyProduced = p.qtyProduced || 0;
-          const orderId = p.orderId;
+        for (const record of records) {
+          const totalInbound = inboundMap.get(record[checkKey]) || 0;
 
+          const qtyProduced = record.qtyProduced || 0;
+
+          const orderId = record.orderId;
           if (orderId) orderIds.add(orderId);
 
           // Kiểm tra đã sản xuất chưa
-          if (qtyProduced === 0) {
-            throw AppError.BadRequest(
-              `Không thể đóng đơn hàng chưa sản xuất: ${orderId}`,
-              "CANNOT_CLOSE_EMPTY_PAPER",
-            );
+          if (isPaper) {
+            if (qtyProduced === 0) {
+              throw AppError.BadRequest(
+                `Không thể đóng đơn hàng chưa sản xuất: ${orderId}`,
+                "CANNOT_CLOSE_EMPTY_PAPER",
+              );
+            }
+          } else {
+            const stages = record.boxTimes || [];
+
+            if (stages.length === 0) {
+              throw AppError.BadRequest(
+                `Đơn hàng ${orderId} có công đoạn chưa có công đoạn sản xuất`,
+                "NO_STAGES_FOUND",
+              );
+            }
+
+            for (const stage of stages) {
+              if ((stage.qtyProduced || 0) <= 0) {
+                throw AppError.BadRequest(
+                  `Đơn ${orderId}: Công đoạn ${stage.machine} chưa có sản lượng sản xuất.`,
+                  "STAGE_NOT_PRODUCED",
+                );
+              }
+            }
           }
 
           // Kiểm tra đã có nhập kho chưa
@@ -375,7 +419,7 @@ export const deliveryEstimateService = {
         }
 
         // cập nhật trạng thái (FINALIZED)
-        const query: any = { where: { [keyId]: idArray }, transaction };
+        const query: any = { where: { planningId: planningIds }, transaction };
 
         if (isPaper) {
           await PlanningPaper.update(
@@ -386,17 +430,16 @@ export const deliveryEstimateService = {
           await PlanningBox.update({ statusRequest: "finalize" }, query);
 
           // Logic Master-Detail: Update Paper cha
-          const parentIds = [...new Set(plannings.map((p) => p.planningId))];
           await PlanningPaper.update(
-            { statusRequest: "finalize" },
-            { where: { planningId: parentIds }, transaction },
+            { statusRequest: "finalize", deliveryPlanned: "delivered" },
+            query,
           );
         }
 
         // Kết thúc session QC
         await QcSession.update(
           { status: "finalized" },
-          { where: { [keyId]: idArray }, transaction },
+          { where: { [checkKey]: targetIds }, transaction },
         );
 
         if (orderIds.size > 0) {

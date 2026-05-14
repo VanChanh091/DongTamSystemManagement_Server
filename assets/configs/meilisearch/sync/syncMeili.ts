@@ -20,6 +20,7 @@ import { ReportPlanningPaper } from "../../../../models/report/reportPlanningPap
 import { EmployeeCompanyInfo } from "../../../../models/employee/employeeCompanyInfo";
 import { planningBoxRepository } from "../../../../repository/planning/planningBoxRepository";
 import { Transaction } from "sequelize";
+import { deliveryRepository } from "../../../../repository/deliveryRepository";
 
 interface SyncMeiliData {
   data: any[];
@@ -355,34 +356,10 @@ export const syncReportBoxToMeili = async (isDeleteAll: boolean) => {
   });
 };
 
-export const DELIVERY_REQUEST_MEILI_OPTIONS = ({
-  whereCondition,
-  transaction,
-}: {
-  whereCondition?: any;
-  transaction?: Transaction;
-}) => ({
-  where: whereCondition,
-  attributes: ["requestId", "status"],
-  include: [
-    {
-      model: PlanningPaper,
-      attributes: ["planningId"],
-      include: [
-        {
-          model: Order,
-          attributes: ["orderId"],
-          include: [{ model: Customer, attributes: ["customerName"] }],
-        },
-      ],
-    },
-    { model: User, attributes: ["fullName"] },
-  ],
-  transaction,
-});
-
 export const syncDeliveryRequestToMeili = async (isDeleteAll: boolean) => {
-  const requests = await DeliveryRequest.findAll(DELIVERY_REQUEST_MEILI_OPTIONS({}));
+  const requests = await DeliveryRequest.findAll(
+    deliveryRepository.DELIVERY_REQUEST_MEILI_OPTIONS({}),
+  );
 
   const flattenData = requests.map(meiliTransformer.deliveryRequest);
 

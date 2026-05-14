@@ -365,7 +365,8 @@ export const outboundService = {
         }
 
         //--------------------MEILISEARCH-----------------------
-        await outboundService.syncDataOutbound(outbound.outboundId, transaction);
+        const orderIds = preparedDetails.map((item) => item.orderId);
+        await outboundService.syncDataOutbound(outbound.outboundId, orderIds, transaction);
 
         return outbound;
       });
@@ -546,7 +547,14 @@ export const outboundService = {
         );
 
         //--------------------MEILISEARCH-----------------------
-        await outboundService.syncDataOutbound(outboundId, transaction);
+        // Thu thập TẤT CẢ orderId bị ảnh hưởng (bao gồm đơn hàng trong đợt update này VÀ đơn hàng cũ có thể đã bị xóa)
+        const currentOrderIds = outboundDetails.map((item) => item.orderId);
+        const oldOrderIds = oldDetails.map((detail) => detail.orderId);
+
+        // Gộp mảng và sử dụng Set để loại bỏ các orderId trùng lặp
+        const affectedOrderIds = [...new Set([...currentOrderIds, ...oldOrderIds])];
+
+        await outboundService.syncDataOutbound(outboundId, affectedOrderIds, transaction);
 
         return outbound;
       });
@@ -557,18 +565,33 @@ export const outboundService = {
     }
   },
 
-  syncDataOutbound: async (outboundId: number, transaction: Transaction) => {
+  syncDataOutbound: async (
+    outboundId: number,
+    orderIds: string | string[],
+    transaction: Transaction,
+  ) => {
     try {
-      const outboundData = await warehouseRepository.getOutboundForMeili(outboundId, transaction);
-
-      if (outboundData) {
-        const meiliFormatted = meiliTransformer.outbound(outboundData);
-        await meiliService.syncOrUpdateMeiliData({
-          indexKey: MEILI_INDEX.OUTBOUNDS,
-          data: meiliFormatted,
+      const [outbound, inventories] = await Promise.all([
+        warehouseRepository.getOutboundForMeili(outboundId, transaction),
+        inventoryRepository.syncManyInventoryToMeili(
+          Array.isArray(orderIds) ? orderIds : [orderIds],
           transaction,
-        });
-      }
+        ),
+      ]);
+
+      const meiliFormatted = meiliTransformer.outbound(outbound);
+      const flattenInventory = inventories.map(meiliTransformer.inventory);
+
+      await meiliService.syncOrUpdateMeiliData({
+        indexKey: MEILI_INDEX.OUTBOUNDS,
+        data: meiliFormatted,
+        transaction,
+      });
+      await meiliService.syncOrUpdateMeiliData({
+        indexKey: MEILI_INDEX.INVENTORIES,
+        data: flattenInventory,
+        transaction,
+      });
     } catch (error) {
       console.log("err to sync data outbound: ", error);
       throw AppError.ServerError();
@@ -616,6 +639,23 @@ export const outboundService = {
 
         //--------------------MEILISEARCH-----------------------
         await meiliService.deleteMeiliData(MEILI_INDEX.OUTBOUNDS, outboundId, transaction);
+
+        //update inventory in meilisearch
+        const orderIds = details.map((d) => d.orderId);
+
+        if (orderIds.length > 0) {
+          const updatedInvs = await inventoryRepository.syncManyInventoryToMeili(
+            orderIds,
+            transaction,
+          );
+
+          const flattenInventory = updatedInvs.map(meiliTransformer.inventory);
+          await meiliService.syncOrUpdateMeiliData({
+            indexKey: MEILI_INDEX.INVENTORIES,
+            data: flattenInventory,
+            transaction,
+          });
+        }
 
         return { message: "Hủy phiếu xuất kho thành công" };
       });
