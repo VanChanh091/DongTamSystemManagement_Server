@@ -77,13 +77,6 @@ export const deliveryEstimateService = {
 
       const pageData = filtered.slice(startIndex, endIndex);
 
-      //remove Planning box for UI
-      // const data = pageData.map((p: any) => {
-      //   const plain = p.get({ plain: true });
-      //   delete plain.PlanningBox;
-      //   return plain;
-      // });
-
       const responseData = {
         message: "get all data paper from db",
         data: pageData,
@@ -263,8 +256,6 @@ export const deliveryEstimateService = {
           throw AppError.BadRequest("Planning không tồn tại", "PLANNING_NOT_FOUND");
         }
 
-        const newDeliveryStatus = qtyRegistered === planning.qtyProduced ? "delivered" : "pending";
-
         //calculate volume
         const volume = await calculateVolume({
           flute: planning.Order.flute ?? "",
@@ -287,7 +278,7 @@ export const deliveryEstimateService = {
 
         // Cập nhật trạng thái PlanningPaper
         await PlanningPaper.update(
-          { deliveryPlanned: newDeliveryStatus },
+          { deliveryPlanned: "pending" },
           { where: { planningId }, transaction },
         );
 
@@ -306,10 +297,7 @@ export const deliveryEstimateService = {
           });
         }
 
-        return {
-          message: "Xác nhận đăng ký giao hàng thành công",
-          data: { statusPlanning: newDeliveryStatus, volume },
-        };
+        return { message: "Xác nhận đăng ký giao hàng thành công" };
       });
     } catch (error) {
       console.error("❌ confirm ready delivery planning failed:", error);

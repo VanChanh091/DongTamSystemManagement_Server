@@ -24,7 +24,7 @@ import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransfor
 import { deliveryColumns, mappingDeliveryRow } from "../../utils/mapping/deliveryRowAndComlumn";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { estimate, schedule } = CacheKey.delivery;
+const { schedule } = CacheKey.delivery;
 
 export const deliveryScheduleService = {
   //=================================SCHEDULE DELIVERY=====================================
@@ -75,14 +75,14 @@ export const deliveryScheduleService = {
           message: "Không thể hoàn thành đơn đã bị hủy.",
           code: "ITEMS_ALREADY_CANCELLED",
         },
-        planned: {
-          message: "Có đơn chưa gửi yêu cầu chuẩn bị hàng",
-          code: "ITEMS_STILL_REQUESTED",
-        },
-        requested: {
-          message: "Có đơn chưa chuẩn bị hàng xong",
-          code: "ITEMS_NOT_READY_PREPARED",
-        },
+        // planned: {
+        //   message: "Có đơn chưa gửi yêu cầu chuẩn bị hàng",
+        //   code: "ITEMS_STILL_REQUESTED",
+        // },
+        // requested: {
+        //   message: "Có đơn chưa chuẩn bị hàng xong",
+        //   code: "ITEMS_NOT_READY_PREPARED",
+        // },
       };
 
       return runInTransaction(async (transaction) => {

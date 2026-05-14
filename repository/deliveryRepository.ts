@@ -19,7 +19,7 @@ export const deliveryRepository = {
       where: {
         dayStart: { [Op.lte]: dayStart },
         status: { [Op.notIn]: ["stop", "cancel"] },
-        deliveryPlanned: { [Op.in]: ["none", "pending"] },
+        deliveryPlanned: { [Op.ne]: "delivered" },
       },
       attributes: [
         "planningId",
@@ -38,6 +38,7 @@ export const deliveryRepository = {
         "timeRunning",
         "orderId",
         "status",
+        "deliveryPlanned",
       ],
       include: [
         {
@@ -92,7 +93,7 @@ export const deliveryRepository = {
 
   getPaperWaitingRegister: async (planningId: number, transaction: Transaction) => {
     return await PlanningPaper.findOne({
-      where: { planningId, deliveryPlanned: { [Op.in]: ["none", "pending"] } },
+      where: { planningId, deliveryPlanned: { [Op.ne]: "delivered" } },
       include: [
         {
           model: Order,
@@ -106,7 +107,7 @@ export const deliveryRepository = {
 
   getPaperWaitingClose: async (planningId: number | number[], transaction: Transaction) => {
     return await PlanningPaper.findAll({
-      where: { planningId, deliveryPlanned: { [Op.in]: ["none", "pending"] } },
+      where: { planningId, deliveryPlanned: { [Op.ne]: "delivered" } },
       include: [
         {
           model: Order,
@@ -298,7 +299,13 @@ export const deliveryRepository = {
   findOrCreateDeliveryPlan: async (deliveryDate: Date, transaction: Transaction) => {
     return await DeliveryPlan.findOrCreate({
       where: { deliveryDate: new Date(deliveryDate) },
-      include: [{ model: DeliveryItem }],
+      include: [
+        {
+          model: DeliveryItem,
+          attributes: { exclude: ["createdAt", "updatedAt"] },
+          include: [{ model: DeliveryRequest, attributes: ["requestId", "planningId"] }],
+        },
+      ],
       transaction,
     });
   },
@@ -325,7 +332,7 @@ export const deliveryRepository = {
     );
   },
 
-  updateDeliveryRequestStatus: async (
+  updateRequestStatus: async (
     requestIds: number[],
     status: statusDelivery,
     transaction?: Transaction,

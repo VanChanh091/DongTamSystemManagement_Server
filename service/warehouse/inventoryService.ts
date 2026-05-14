@@ -19,6 +19,8 @@ import {
   inventoryColumns,
   mappingInventoryRow,
 } from "../../utils/mapping/warehouse/inventoryRowAndColumn";
+import { meiliService } from "../meiliService";
+import { MEILI_INDEX } from "../../assets/labelFields";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inventory } = CacheKey.warehouse;
@@ -244,6 +246,34 @@ export const inventoryService = {
           { quantityManufacture: newQtyManufacture, status: newStatus },
           { transaction },
         );
+
+        //--------------------MEILISEARCH-----------------------
+        const [source, target] = await Promise.all([
+          inventoryRepository.findByOrderId({ orderId: sourceOrderId, transaction }),
+          inventoryRepository.findByOrderId({ orderId: targetOrderId, transaction }),
+        ]);
+
+        const meiliUpdate = async (data: any) =>
+          await meiliService.syncOrUpdateMeiliData({
+            indexKey: MEILI_INDEX.INVENTORIES,
+            data: data,
+            transaction,
+            isUpdate: true,
+          });
+
+        if (source) {
+          await meiliUpdate({
+            inventoryId: source.inventoryId,
+            qtyInventory: source.qtyInventory,
+          });
+        }
+
+        if (target) {
+          await meiliUpdate({
+            inventoryId: target.inventoryId,
+            qtyInventory: target.qtyInventory,
+          });
+        }
 
         return {
           message: "Transfer quantity successfully",

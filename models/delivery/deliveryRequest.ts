@@ -1,7 +1,6 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { PlanningPaper } from "../planning/planningPaper";
 import { User } from "../user/user";
-import { Order } from "../order/order";
 
 export type statusDelivery = "requested" | "scheduled" | "cancelled";
 
