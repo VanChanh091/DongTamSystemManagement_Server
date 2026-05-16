@@ -1,6 +1,7 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { Order } from "../order/order";
 import { OutboundHistory } from "./outboundHistory";
+import { DeliveryItem } from "../delivery/deliveryItem";
 
 //định nghĩa trường trong bảng
 interface OutboundDetailAttributes {
@@ -15,6 +16,7 @@ interface OutboundDetailAttributes {
   //FK
   orderId: string;
   outboundId: number;
+  deliveryItemId?: number;
 }
 
 //cho phép bỏ qua id khi tạo
@@ -43,6 +45,9 @@ export class OutboundDetail
 
   declare outboundId: number;
   declare outbound: OutboundHistory;
+
+  declare deliveryItemId?: number;
+  declare DeliveryItem: DeliveryItem;
 }
 
 export function initOutboundDetailModel(sequelize: Sequelize): typeof OutboundDetail {
@@ -57,6 +62,7 @@ export function initOutboundDetailModel(sequelize: Sequelize): typeof OutboundDe
       //FK
       orderId: { type: DataTypes.STRING, allowNull: false },
       outboundId: { type: DataTypes.INTEGER, allowNull: false },
+      deliveryItemId: { type: DataTypes.INTEGER },
     },
     {
       sequelize,
@@ -66,6 +72,7 @@ export function initOutboundDetailModel(sequelize: Sequelize): typeof OutboundDe
         //FK
         { fields: ["orderId"] },
         { fields: ["outboundId"] },
+        { fields: ["deliveryItemId"] },
 
         //indexes
         { fields: ["orderId", "outboundId"] },

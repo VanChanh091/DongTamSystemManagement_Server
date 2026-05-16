@@ -204,12 +204,14 @@ export const outboundService = {
   createOutbound: async ({
     outboundDetails,
   }: {
-    outboundDetails: { orderId: string; outboundQty: number }[];
+    outboundDetails: { orderId: string; outboundQty: number; deliveryItemId?: number }[];
   }) => {
+    console.log(`outboundDetails: ${JSON.stringify(outboundDetails)}`);
+
     try {
       return await runInTransaction(async (transaction) => {
         if (!outboundDetails || outboundDetails.length === 0) {
-          throw AppError.BadRequest("empty order list", "EMPTY_ORDER_LIST");
+          throw AppError.BadRequest("Phải chọn ít nhất 1 đơn hàng", "EMPTY_ORDER_LIST");
         }
 
         let customerId: string | null = null;
@@ -225,6 +227,7 @@ export const outboundService = {
           price: number;
           totalPriceOutbound: number;
           deliveredQty: number;
+          deliveryItemId?: number;
         }[] = [];
 
         for (const item of outboundDetails) {
@@ -243,7 +246,7 @@ export const outboundService = {
               timePayment = customer.payment.timePayment;
             }
           } else if (customerId !== order.customerId) {
-            throw AppError.BadRequest("customer missmatch", "CUSTOMER_MISMATCH");
+            throw AppError.BadRequest("Các đơn hàng không cùng khách hàng", "CUSTOMER_MISMATCH");
           }
 
           // check inventory
@@ -265,7 +268,19 @@ export const outboundService = {
             );
           }
 
-          // check xuất vượt số lượng order
+          //check delivery item is existed
+          // const outboundDetail = await OutboundDetail.findOne({
+          //   where: { deliveryItemId: item.deliveryItemId },
+          //   transaction,
+          // });
+
+          // if (outboundDetail) {
+          //   throw AppError.BadRequest(
+          //     `Xuất kho cho lịch giao hàng này đã được xuất ở phiếu khác`,
+          //     "DELIVERY_ITEM_ALREADY_EXISTS",
+          //   );
+          // }
+
           const exportedQty = await warehouseRepository.sumOutboundQty({
             orderId: item.orderId,
             transaction,
@@ -291,6 +306,7 @@ export const outboundService = {
             price: order.pricePaper,
             totalPriceOutbound,
             deliveredQty,
+            deliveryItemId: item.deliveryItemId,
           });
         }
 
@@ -347,6 +363,7 @@ export const outboundService = {
               price: item.price,
               totalPriceOutbound: item.totalPriceOutbound,
               deliveredQty: item.deliveredQty,
+              deliveryItemId: item.deliveryItemId,
             },
             transaction,
           });
@@ -382,12 +399,12 @@ export const outboundService = {
     outboundDetails,
   }: {
     outboundId: number;
-    outboundDetails: { orderId: string; outboundQty: number }[];
+    outboundDetails: { orderId: string; outboundQty: number; deliveryItemId?: number }[];
   }) => {
     try {
       return await runInTransaction(async (transaction) => {
         if (!outboundDetails || outboundDetails.length === 0) {
-          throw AppError.BadRequest("Danh sách đơn hàng trống", "EMPTY_ORDER_LIST");
+          throw AppError.BadRequest("Phải chọn ít nhất 1 đơn hàng", "EMPTY_ORDER_LIST");
         }
 
         const outbound = await OutboundHistory.findByPk(outboundId, {
@@ -422,6 +439,23 @@ export const outboundService = {
             throw AppError.NotFound(`Order ${item.orderId} không tồn tại`, "ORDER_NOT_FOUND");
           }
 
+          // check delivery item is existed
+          // if (item.deliveryItemId) {
+          //   const duplicateCheck = await OutboundDetail.findOne({
+          //     where: {
+          //       deliveryItemId: item.deliveryItemId,
+          //       outboundId: { [Op.ne]: outboundId }, // Không phải phiếu hiện tại
+          //     },
+          //     transaction,
+          //   });
+          //   if (duplicateCheck) {
+          //     throw AppError.BadRequest(
+          //       `Xuất kho cho lịch giao hàng này đã được xuất ở phiếu khác`,
+          //       "DELIVERY_ITEM_ALREADY_EXISTS",
+          //     );
+          //   }
+          // }
+
           // check customer
           if (customerId === null) {
             customerId = order.customerId;
@@ -434,6 +468,7 @@ export const outboundService = {
             throw AppError.BadRequest("Các đơn hàng không cùng khách hàng", "CUSTOMER_MISMATCH");
           }
 
+          //check tồn kho
           const inventory = await inventoryRepository.findByOrderId({
             orderId: item.orderId,
             transaction,
@@ -494,6 +529,7 @@ export const outboundService = {
                 outboundQty: item.outboundQty,
                 price: order.pricePaper,
                 totalPriceOutbound,
+                deliveryItemId: item.deliveryItemId,
               },
               { transaction },
             );
@@ -507,6 +543,7 @@ export const outboundService = {
                 price: order.pricePaper,
                 totalPriceOutbound,
                 deliveredQty,
+                deliveryItemId: item.deliveryItemId,
               },
               { transaction },
             );

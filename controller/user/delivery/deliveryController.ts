@@ -1,8 +1,8 @@
+import { AppError } from "../../../utils/appError";
 import { NextFunction, Request, Response } from "express";
 import { deliveryEstimateService } from "../../../service/delivery/deliveryEstimateService";
 import { deliveryPlanningService } from "../../../service/delivery/deliveryPlanningService";
 import { deliveryScheduleService } from "../../../service/delivery/deliveryScheduleService";
-import { AppError } from "../../../utils/appError";
 
 //=================================PLANNING ESTIMATE TIME=====================================
 
@@ -166,6 +166,28 @@ export const getAllScheduleDelivery = async (req: Request, res: Response, next: 
 
   try {
     const response = await deliveryScheduleService.getAllScheduleDelivery(new Date(deliveryDate));
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getDeliveryItemsByOrderId = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { orderId, all } = req.query as { orderId: string; all: string };
+
+  try {
+    let response;
+
+    if (all === "true") {
+      response = await deliveryScheduleService.getDeliveryItemsByOrderId(orderId);
+    } else {
+      response = await deliveryScheduleService.getOneItemByOrderId(orderId);
+    }
+
     return res.status(200).json(response);
   } catch (error) {
     next(error);

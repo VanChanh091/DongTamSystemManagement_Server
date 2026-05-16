@@ -48,7 +48,7 @@ export const getOutboundDetail = async (req: Request, res: Response, next: NextF
 
 export const createOutbound = async (req: Request, res: Response, next: NextFunction) => {
   let { outboundDetails } = req.body as {
-    outboundDetails: { orderId: string; outboundQty: number }[] | any;
+    outboundDetails: { orderId: string; outboundQty: number; deliveryItemId?: number }[] | any;
   };
 
   try {

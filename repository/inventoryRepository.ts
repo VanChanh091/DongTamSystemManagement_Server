@@ -47,6 +47,8 @@ export const inventoryRepository = {
             "songE2",
             "lengthPaperCustomer",
             "paperSizeCustomer",
+            "lengthPaperManufacture",
+            "paperSizeManufacture",
             "quantityCustomer",
             "dvt",
             "pricePaper",
@@ -59,6 +61,10 @@ export const inventoryRepository = {
             { model: Product, attributes: ["typeProduct", "productName"] },
           ],
         },
+      ],
+      order: [
+        [Order, Customer, "customerName", "ASC"],
+        [Order, "orderSortValue", "ASC"],
       ],
     };
 

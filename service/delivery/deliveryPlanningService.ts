@@ -7,7 +7,6 @@ import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { DeliveryRequest } from "../../models/delivery/deliveryRequest";
 import { deliveryRepository } from "../../repository/deliveryRepository";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
-import { DeliveryItem } from "../../models/delivery/deliveryItem";
 
 export const deliveryPlanningService = {
   getDeliveryRequest: async () => {

@@ -14,8 +14,8 @@ import { DeliveryPlan } from "../../models/delivery/deliveryPlan";
 import { DeliveryItem } from "../../models/delivery/deliveryItem";
 import { orderRepository } from "../../repository/orderRepository";
 import redisCache from "../../assets/configs/connect/redis.connect";
-import { PlanningPaper } from "../../models/planning/planningPaper";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
+import { PlanningPaper } from "../../models/planning/planningPaper";
 import { DeliveryRequest } from "../../models/delivery/deliveryRequest";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { deliveryRepository } from "../../repository/deliveryRepository";
@@ -55,6 +55,32 @@ export const deliveryScheduleService = {
       return { message: "get schedule delivery successfully", data: finalData };
     } catch (error) {
       console.error("❌ get schedule delivery failed:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  //auto complete
+  getDeliveryItemsByOrderId: async (orderId: string) => {
+    try {
+      const options = await deliveryRepository.getDeliveryItemsByOrderId(orderId);
+      const items = await DeliveryItem.findAll(options);
+
+      return { message: "get delivery items by orderId successfully", data: items };
+    } catch (error) {
+      console.error("❌ get delivery items by orderId failed:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+  getOneItemByOrderId: async (orderId: string) => {
+    try {
+      const options = await deliveryRepository.getDeliveryItemsByOrderId(orderId);
+      const items = await DeliveryItem.findOne(options);
+
+      return { message: "get delivery items by orderId successfully", data: items };
+    } catch (error) {
+      console.error("❌ get delivery items by orderId failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }

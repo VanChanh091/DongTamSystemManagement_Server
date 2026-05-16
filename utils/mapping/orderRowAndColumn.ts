@@ -23,6 +23,7 @@ const formattedStatus = (status: string) => {
 export const orderColumns: Partial<ExcelJS.Column>[] = [
   { header: "STT", key: "index" },
   { header: "Mã Đơn Hàng", key: "orderId" },
+  { header: "PO Khách", key: "orderIdCustomer" },
 
   { header: "Ngày Nhận", key: "dayReceive", style: { numFmt: "dd/mm/yyyy" } },
   { header: "Ngày Dự Kiến", key: "dateShipping", style: { numFmt: "dd/mm/yyyy" } },
@@ -119,6 +120,7 @@ export const mappingOrderRow = (item: Order, index: number) => {
     index: index + 1,
 
     orderId: item.orderId,
+    orderIdCustomer: item.orderIdCustomer ?? "",
     dayReceive: item.dayReceiveOrder ? new Date(String(item.dayReceiveOrder)) : null,
     dateShipping: item.dateRequestShipping ? new Date(String(item.dateRequestShipping)) : null,
 

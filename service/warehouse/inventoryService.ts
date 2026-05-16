@@ -261,14 +261,12 @@ export const inventoryService = {
             isUpdate: true,
           });
 
-        if (source) {
+        if (source && target) {
           await meiliUpdate({
             inventoryId: source.inventoryId,
             qtyInventory: source.qtyInventory,
           });
-        }
 
-        if (target) {
           await meiliUpdate({
             inventoryId: target.inventoryId,
             qtyInventory: target.qtyInventory,

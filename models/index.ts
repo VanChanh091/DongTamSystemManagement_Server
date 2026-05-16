@@ -283,6 +283,9 @@ OutboundDetail.belongsTo(OutboundHistory, { foreignKey: "outboundId" });
 Order.hasMany(OutboundDetail, { foreignKey: "orderId", onDelete: "CASCADE" });
 OutboundDetail.belongsTo(Order, { foreignKey: "orderId" });
 
+DeliveryItem.hasOne(OutboundDetail, { foreignKey: "deliveryItemId", onDelete: "CASCADE" });
+OutboundDetail.belongsTo(DeliveryItem, { foreignKey: "deliveryItemId" });
+
 //===============================INVENTORY=================================
 Order.hasOne(Inventory, { foreignKey: "orderId", onDelete: "CASCADE" });
 Inventory.belongsTo(Order, { foreignKey: "orderId" });

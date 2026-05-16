@@ -11,6 +11,7 @@ import { Inventory } from "../models/warehouse/inventory/inventory";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { DeliveryItem, statusDeliveryItem } from "../models/delivery/deliveryItem";
 import { DeliveryRequest, statusDelivery } from "../models/delivery/deliveryRequest";
+import { OutboundDetail } from "../models/warehouse/outboundDetail";
 
 export const deliveryRepository = {
   //================================PLANNING ESTIMATE TIME==================================
@@ -412,6 +413,8 @@ export const deliveryRepository = {
                         "songB",
                         "songC",
                         "songE2",
+                        "lengthPaperCustomer",
+                        "paperSizeCustomer",
                         "lengthPaperManufacture",
                         "paperSizeManufacture",
                         "dvt",
@@ -420,14 +423,14 @@ export const deliveryRepository = {
                       ],
                       include: [
                         { model: Customer, attributes: ["customerName", "companyName"] },
-                        { model: Product, attributes: ["productName"] },
-                        { model: Inventory, attributes: ["qtyInventory", "totalQtyOutbound"] },
+                        { model: Product, attributes: ["typeProduct", "productName"] },
                       ],
                     },
                   ],
                 },
               ],
             },
+            { model: OutboundDetail, attributes: ["outboundQty"] },
             { model: Vehicle, attributes: ["vehicleId", "vehicleName", "vehicleHouse"] },
           ],
         },
@@ -473,4 +476,33 @@ export const deliveryRepository = {
       transaction,
     });
   },
+
+  getDeliveryItemsByOrderId: async (orderId: string) => ({
+    where: { status: { [Op.notIn]: ["cancelled", "completed"] } },
+    attributes: { exclude: ["createdAt", "updatedAt", "sequence", "idxOrder"] },
+    include: [
+      {
+        model: DeliveryRequest,
+        required: true,
+        attributes: { exclude: ["createdAt", "updatedAt", "status", "userId", "volume"] },
+        include: [
+          {
+            model: PlanningPaper,
+            attributes: ["planningId", "orderId"],
+            required: true,
+            include: [
+              {
+                model: Order,
+                where: { orderId },
+                required: true,
+                attributes: ["orderId", "lengthPaperManufacture", "paperSizeManufacture"],
+                include: [{ model: Customer, attributes: ["companyName"] }],
+              },
+            ],
+          },
+        ],
+      },
+      { model: Vehicle, attributes: ["vehicleName"] },
+    ],
+  }),
 };

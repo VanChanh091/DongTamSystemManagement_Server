@@ -13,6 +13,7 @@ import {
   handlePutDelivery,
   notifyPrepareGoods,
   requestOrPrepareGoods,
+  getDeliveryItemsByOrderId,
 } from "../../controller/user/delivery/deliveryController";
 
 const router = Router();
@@ -35,6 +36,7 @@ router.put("/planning", authenticate, authorizeAnyPermission(["plan"]), confirmF
 
 //=================================SCHEDULE DELIVERY=====================================
 router.get("/schedule", authenticate, getAllScheduleDelivery);
+router.get("/schedule/get-search", authenticate, getDeliveryItemsByOrderId);
 router.put(
   "/schedule",
   authenticate,
