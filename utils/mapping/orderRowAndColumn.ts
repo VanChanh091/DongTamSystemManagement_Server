@@ -2,6 +2,7 @@ import ExcelJS from "exceljs";
 import { Order } from "../../models/order/order";
 import { formatterStructureOrder } from "../helper/modelHelper/orderHelpers";
 import { formatDimension } from "../helper/exportPDF";
+import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
 
 const centerStyle: Partial<ExcelJS.Style> = {
   alignment: { vertical: "middle", horizontal: "center" },
@@ -41,10 +42,10 @@ export const orderColumns: Partial<ExcelJS.Column>[] = [
   { header: "Cấn Lằn", key: "canLan" },
   { header: "Dao Xả", key: "daoXaOrd" },
 
-  { header: "Khổ TT", key: "sizeCustomer" },
-  { header: "Khổ (SX)", key: "sizeManufacture" },
   { header: "Dài TT", key: "lengthCus" },
   { header: "Dài (SX)", key: "lengthMf" },
+  { header: "Khổ TT", key: "sizeCustomer" },
+  { header: "Khổ (SX)", key: "sizeManufacture" },
   { header: "Số Lượng TT", key: "quantityCustomer", style: { numFmt: "#,##0" } },
   { header: "Số Lượng (SX)", key: "qtyManufacture", style: { numFmt: "#,##0" } },
 
@@ -90,8 +91,8 @@ export const mappingOrderRow = (item: Order, index: number) => {
   const box = item?.box;
   const user = item?.User;
 
-  const length = formatDimension(item.lengthPaperCustomer);
-  const size = formatDimension(item.paperSizeCustomer);
+  const length = formatDimension(item.lengthPaperManufacture);
+  const size = formatDimension(item.paperSizeManufacture);
 
   const productName: string = item.Product?.productName ?? "";
   const typeProduct: string = item.Product?.typeProduct ?? "";
@@ -121,8 +122,11 @@ export const mappingOrderRow = (item: Order, index: number) => {
 
     orderId: item.orderId,
     orderIdCustomer: item.orderIdCustomer ?? "",
-    dayReceive: item.dayReceiveOrder ? new Date(String(item.dayReceiveOrder)) : null,
-    dateShipping: item.dateRequestShipping ? new Date(String(item.dateRequestShipping)) : null,
+
+    dayReceive: item.dayReceiveOrder ? dayjsUtc(item.dayReceiveOrder).format("DD/MM/YYYY") : "",
+    dateShipping: item.dateRequestShipping
+      ? dayjsUtc(item.dateRequestShipping).format("DD/MM/YYYY")
+      : "",
 
     customerName: item.Customer?.customerName ?? "",
     companyName: item.Customer?.companyName ?? "",
@@ -137,10 +141,10 @@ export const mappingOrderRow = (item: Order, index: number) => {
     canLan: item.canLan ?? "",
     daoXaOrd: item.daoXa ?? "",
 
-    sizeCustomer: item.paperSizeCustomer ?? 0,
-    sizeManufacture: item.paperSizeManufacture ?? 0,
     lengthCus: item.lengthPaperCustomer ?? 0,
     lengthMf: item.lengthPaperManufacture ?? 0,
+    sizeCustomer: item.paperSizeCustomer ?? 0,
+    sizeManufacture: item.paperSizeManufacture ?? 0,
     quantityCustomer: item.quantityCustomer ?? 0,
     qtyManufacture: item.quantityManufacture ?? 0,
 

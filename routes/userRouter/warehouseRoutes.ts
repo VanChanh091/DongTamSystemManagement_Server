@@ -6,13 +6,12 @@ import {
   exportExcelInbounds,
 } from "../../controller/user/warehouse/inboundHistoryController";
 import {
-  createOutbound,
   deleteOutbound,
   exportFileOutbound,
   getOutboundDetail,
   getOutboundHistory,
+  handleAddOrUpdateOutbound,
   outboundAutoComplete,
-  updateOutbound,
 } from "../../controller/user/warehouse/outboundHistoryController";
 import {
   createNewInventory,
@@ -38,8 +37,18 @@ router.post("/inbound/export", authenticate, exportExcelInbounds);
 router.get("/outbound", authenticate, getOutboundHistory);
 router.get("/outbound/detail", authenticate, getOutboundDetail);
 router.post("/outbound/export", authenticate, exportFileOutbound);
-router.post("/outbound", authorizeAnyPermission(["delivery"]), authenticate, createOutbound);
-router.put("/outbound", authorizeAnyPermission(["delivery"]), authenticate, updateOutbound);
+router.post(
+  "/outbound",
+  authorizeAnyPermission(["delivery", "accountant"]),
+  authenticate,
+  handleAddOrUpdateOutbound,
+);
+router.put(
+  "/outbound",
+  authorizeAnyPermission(["delivery", "accountant"]),
+  authenticate,
+  handleAddOrUpdateOutbound,
+);
 router.delete("/outbound", authorizeAnyPermission(["delivery"]), authenticate, deleteOutbound);
 
 //auto complete dialog

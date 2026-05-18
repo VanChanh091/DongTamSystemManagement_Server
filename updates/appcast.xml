@@ -3,11 +3,14 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.5.5</title>
-            <sparkle:version>4.5.5</sparkle:version> 
-            <description>Thêm chức năng hủy đơn đăng ký giao
-            Thêm chức năng xuất file excel lịch sử nhập kho
-            Chỉnh sửa lại giao diện cho xếp xe giao hàng
+            <title>Version 4.5.6</title>
+            <sparkle:version>4.5.6</sparkle:version> 
+            <description>Fix lại PXK khi có nhiều đơn bên trong
+            Fix lỗi không đóng có làm thùng được
+            Các tìm kiếm theo ngày có thể tìm theo khoảng thời gian
+            Fix lại hiển thị dữ liệu lên form xuất kho
+            Fix lệch múi giờ khi tìm kiếm và xuất file theo khoảng thời gian
+            Fix đồng bộ dữ liệu lên cloud khi nhập và xuất kho
             </description>
             <pubDate>Tue, 12 May 2026</pubDate>
             <enclosure url="dongtam.exe" 

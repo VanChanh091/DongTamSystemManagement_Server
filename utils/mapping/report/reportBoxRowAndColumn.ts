@@ -1,3 +1,4 @@
+import { dayjsUtc } from "../../../assets/configs/dayjs/dayjs.config";
 import { MACHINE_FIELD_MAP } from "../../../assets/labelFields";
 import { ReportPlanningBox } from "../../../models/report/reportPlanningBox";
 import { formatterStructureOrder } from "../../helper/modelHelper/orderHelpers";
@@ -7,9 +8,11 @@ export const reportBoxColumns: Partial<ExcelJS.Column>[] = [
   { header: "STT", key: "index" },
   { header: "Mã Đơn Hàng", key: "orderId" },
   { header: "Tên Khách Hàng", key: "customerName" },
+
   { header: "Ngày YC Giao", key: "dateShipping", style: { numFmt: "dd/mm/yyyy" } },
   { header: "Ngày Sản Xuất", key: "dayStartProduction", style: { numFmt: "dd/mm/yyyy" } },
   { header: "Ngày Báo Cáo", key: "dayReported", style: { numFmt: "dd/mm/yyyy hh:mm" } },
+
   { header: "Kết Cấu Đặt Hàng", key: "structure" },
   { header: "Sóng", key: "flute" },
   { header: "QC Thùng", key: "QcBox" },
@@ -91,12 +94,18 @@ export const mapReportBoxRow = (item: ReportPlanningBox, index: number) => {
     // Thông tin đơn hàng
     orderId: order.orderId,
     customerName: customer.customerName || "",
-    dateShipping: order.dateRequestShipping,
-    dayStartProduction: planningBox.boxTimes?.[0]?.dayStart || null,
-    dayReported: new Date(item.dayReport),
-    structure: formatterStructureOrder(planningBox), //
+
+    dateShipping: order.dateRequestShipping
+      ? dayjsUtc(order.dateRequestShipping).format("DD/MM/YYYY")
+      : "",
+    dayStartProduction:
+      planningBox.boxTimes?.[0]?.dayStart || null
+        ? dayjsUtc(planningBox.boxTimes?.[0]?.dayStart).format("DD/MM/YYYY")
+        : "",
+    dayReported: item.dayReport ? dayjsUtc(item.dayReport).format("DD/MM/YYYY HH:mm") : "",
 
     // Thông số sản xuất
+    structure: formatterStructureOrder(planningBox),
     flute: order.flute,
     QcBox: order.QC_box,
     length: Number(planningBox.length),

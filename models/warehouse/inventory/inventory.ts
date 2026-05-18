@@ -6,8 +6,10 @@ interface InventoryAttributes {
   inventoryId: number;
   totalQtyInbound: number;
   totalQtyOutbound: number;
+  qtyLoan?: number;
   qtyInventory: number;
   valueInventory: number;
+
   createdAt?: Date;
   updatedAt?: Date;
 
@@ -21,6 +23,7 @@ export type InventoryCreationAttributes = Optional<
   | "inventoryId"
   | "totalQtyInbound"
   | "totalQtyOutbound"
+  | "qtyLoan"
   | "qtyInventory"
   | "valueInventory"
   | "createdAt"
@@ -35,8 +38,10 @@ export class Inventory
   declare inventoryId: number;
   declare totalQtyInbound: number;
   declare totalQtyOutbound: number;
+  declare qtyLoan?: number;
   declare qtyInventory: number;
   declare valueInventory: number;
+
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
 
@@ -51,6 +56,7 @@ export function initInventoryModel(sequelize: Sequelize): typeof Inventory {
       inventoryId: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
       totalQtyInbound: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
       totalQtyOutbound: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+      qtyLoan: { type: DataTypes.INTEGER, defaultValue: 0 },
       qtyInventory: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
       valueInventory: { type: DataTypes.DOUBLE, allowNull: false, defaultValue: 0 },
 

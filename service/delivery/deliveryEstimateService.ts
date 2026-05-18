@@ -238,12 +238,14 @@ export const deliveryEstimateService = {
 
   registerQtyDelivery: async ({
     planningId,
-    qtyRegistered,
     userId,
+    qtyRegistered,
+    note,
   }: {
     planningId: number;
     qtyRegistered: number;
     userId: number;
+    note?: string;
   }) => {
     try {
       return await runInTransaction(async (transaction) => {
@@ -271,6 +273,7 @@ export const deliveryEstimateService = {
             userId,
             qtyRegistered,
             volume,
+            note,
             status: "requested",
           },
           { transaction },

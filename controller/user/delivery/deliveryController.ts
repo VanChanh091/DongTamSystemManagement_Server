@@ -46,9 +46,10 @@ export const getPlanningEstimateTime = async (req: Request, res: Response, next:
 };
 
 export const handlePutDelivery = async (req: Request, res: Response, next: NextFunction) => {
-  const { planningId, qtyRegistered, isPaper, action } = req.body as {
+  const { planningId, qtyRegistered, note, isPaper, action } = req.body as {
     planningId: number | number[];
     qtyRegistered?: number;
+    note?: string;
     isPaper?: boolean;
     action: string;
   };
@@ -60,8 +61,9 @@ export const handlePutDelivery = async (req: Request, res: Response, next: NextF
       case "REGISTER_QTY":
         response = await deliveryEstimateService.registerQtyDelivery({
           planningId: Number(planningId),
-          qtyRegistered: Number(qtyRegistered),
           userId: req.user.userId,
+          qtyRegistered: Number(qtyRegistered),
+          note: note,
         });
         break;
       case "CLOSE_PLANNING":
@@ -177,15 +179,15 @@ export const getDeliveryItemsByOrderId = async (
   res: Response,
   next: NextFunction,
 ) => {
-  const { orderId, all } = req.query as { orderId: string; all: string };
+  const { orderId, deliveryItemId } = req.query as { orderId: string; deliveryItemId: string };
 
   try {
     let response;
 
-    if (all === "true") {
+    if (orderId) {
       response = await deliveryScheduleService.getDeliveryItemsByOrderId(orderId);
     } else {
-      response = await deliveryScheduleService.getOneItemByOrderId(orderId);
+      response = await deliveryScheduleService.getDeliveryItemsById(Number(deliveryItemId));
     }
 
     return res.status(200).json(response);

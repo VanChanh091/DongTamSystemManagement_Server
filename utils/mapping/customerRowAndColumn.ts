@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import { Customer } from "../../models/customer/customer";
+import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
 
 export const customerColumns: Partial<ExcelJS.Column>[] = [
   { header: "STT", key: "index" },
@@ -34,11 +35,11 @@ export const mappingCustomerRow = (item: Customer, index: number) => {
     customerName: item.customerName,
     phone: item.phone,
     contactPerson: item.contactPerson,
-    dayCreated: item.dayCreated ? new Date(String(item.dayCreated)) : null,
+    dayCreated: item.dayCreated ? dayjsUtc(item.dayCreated).format("DD/MM/YYYY") : "",
 
     debtLimit: Number(payment?.debtLimit ?? 0),
     debtCurrent: Number(payment?.debtCurrent ?? 0),
-    timePayment: payment?.timePayment ? new Date(String(payment.timePayment)) : null,
+    timePayment: payment?.timePayment ? dayjsUtc(payment.timePayment).format("DD/MM/YYYY") : "",
     paymentType: payment?.paymentType === "daily" ? "Ngày" : "Tháng",
     closingDate: Number(payment?.closingDate ?? 0),
 

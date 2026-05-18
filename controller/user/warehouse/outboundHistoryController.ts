@@ -46,32 +46,19 @@ export const getOutboundDetail = async (req: Request, res: Response, next: NextF
   }
 };
 
-export const createOutbound = async (req: Request, res: Response, next: NextFunction) => {
-  let { outboundDetails } = req.body as {
-    outboundDetails: { orderId: string; outboundQty: number; deliveryItemId?: number }[] | any;
-  };
-
-  try {
-    if (!Array.isArray(outboundDetails)) {
-      if (!outboundDetails) {
-        throw AppError.BadRequest(
-          "outboundDetails phải là mảng hoặc giá trị hợp lệ",
-          "INVALID_ORDER_IDS",
-        );
-      }
-      outboundDetails = [outboundDetails];
-    }
-    const response = await outboundService.createOutbound({ outboundDetails });
-    return res.status(200).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const updateOutbound = async (req: Request, res: Response, next: NextFunction) => {
+export const handleAddOrUpdateOutbound = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   let { outboundId, outboundDetails } = req.body as {
-    outboundId: number;
-    outboundDetails: { orderId: string; outboundQty: number }[] | any;
+    outboundId?: number;
+    outboundDetails: {
+      orderId: string;
+      outboundQty: number;
+      deliveryItemId?: number;
+      isPromotion?: boolean;
+    }[];
   };
 
   try {
@@ -84,7 +71,14 @@ export const updateOutbound = async (req: Request, res: Response, next: NextFunc
       }
       outboundDetails = [outboundDetails];
     }
-    const response = await outboundService.updateOutbound({ outboundId, outboundDetails });
+
+    let response;
+
+    if (outboundId) {
+      response = await outboundService.updateOutbound({ outboundId, outboundDetails });
+    } else {
+      response = await outboundService.createOutbound({ outboundDetails });
+    }
     return res.status(200).json(response);
   } catch (error) {
     next(error);

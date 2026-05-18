@@ -1,3 +1,4 @@
+import { dayjsUtc } from "../../../assets/configs/dayjs/dayjs.config";
 import { ReportPlanningPaper } from "../../../models/report/reportPlanningPaper";
 import { formatterStructureOrder } from "../../helper/modelHelper/orderHelpers";
 import ExcelJS from "exceljs";
@@ -45,9 +46,13 @@ export const mapReportPaperRow = (item: ReportPlanningPaper, index: number) => {
     orderId: orderCell.orderId,
     customerName: orderCell.Customer.customerName,
 
-    dateShipping: new Date(orderCell.dateRequestShipping),
-    dayStartProduction: new Date(planningCell.dayStart ?? ""),
-    dayReported: new Date(item.dayReport),
+    dateShipping: orderCell.dateRequestShipping
+      ? dayjsUtc(orderCell.dateRequestShipping).format("DD/MM/YYYY")
+      : "",
+    dayStartProduction: planningCell.dayStart
+      ? dayjsUtc(planningCell.dayStart).format("DD/MM/YYYY")
+      : "",
+    dayReported: item.dayReport ? dayjsUtc(item.dayReport).format("DD/MM/YYYY HH:mm") : "",
 
     structure: formatterStructureOrder(planningCell),
     flute: orderCell.flute,

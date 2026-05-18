@@ -10,6 +10,8 @@ interface OutboundDetailAttributes {
   price: number;
   totalPriceOutbound: number;
   deliveredQty: number;
+  isPromotion: boolean;
+
   createdAt?: Date;
   updatedAt?: Date;
 
@@ -22,7 +24,7 @@ interface OutboundDetailAttributes {
 //cho phép bỏ qua id khi tạo
 export type OutboundDetailCreationAttributes = Optional<
   OutboundDetailAttributes,
-  "outboundDetailId" | "createdAt" | "updatedAt"
+  "outboundDetailId" | "createdAt" | "updatedAt" | "isPromotion"
 >;
 
 //định nghĩa kiểu OOP
@@ -35,6 +37,7 @@ export class OutboundDetail
   declare price: number;
   declare totalPriceOutbound: number;
   declare deliveredQty: number;
+  declare isPromotion: boolean;
 
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
@@ -58,6 +61,7 @@ export function initOutboundDetailModel(sequelize: Sequelize): typeof OutboundDe
       price: { type: DataTypes.DOUBLE, allowNull: false },
       totalPriceOutbound: { type: DataTypes.DOUBLE, allowNull: false },
       deliveredQty: { type: DataTypes.INTEGER, allowNull: false },
+      isPromotion: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
 
       //FK
       orderId: { type: DataTypes.STRING, allowNull: false },

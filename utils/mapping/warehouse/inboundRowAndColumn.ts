@@ -1,3 +1,4 @@
+import { dayjsUtc } from "../../../assets/configs/dayjs/dayjs.config";
 import { InboundHistory } from "../../../models/warehouse/inboundHistory";
 import { formatterStructureOrder } from "../../helper/modelHelper/orderHelpers";
 import ExcelJS from "exceljs";
@@ -27,7 +28,7 @@ export const mappingInboundRow = (item: InboundHistory, index: number) => {
 
   return {
     index: index + 1,
-    dateInbound: item.dateInbound ?? "",
+    dateInbound: item.dateInbound ? dayjsUtc(item.dateInbound).format("DD/MM/YYYY") : "",
     orderId: item.orderId ?? "",
     customerName: order.Customer.customerName ?? "",
     companyName: order.Customer.companyName ?? "",

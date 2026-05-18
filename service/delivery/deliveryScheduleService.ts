@@ -60,12 +60,10 @@ export const deliveryScheduleService = {
     }
   },
 
-  //auto complete
+  //start auto complete
   getDeliveryItemsByOrderId: async (orderId: string) => {
     try {
-      const options = await deliveryRepository.getDeliveryItemsByOrderId(orderId);
-      const items = await DeliveryItem.findAll(options);
-
+      const items = await deliveryRepository.searchOrderIdInDeliveryItem(orderId);
       return { message: "get delivery items by orderId successfully", data: items };
     } catch (error) {
       console.error("❌ get delivery items by orderId failed:", error);
@@ -73,18 +71,17 @@ export const deliveryScheduleService = {
       throw AppError.ServerError();
     }
   },
-  getOneItemByOrderId: async (orderId: string) => {
+  getDeliveryItemsById: async (deliveryItemId: number) => {
     try {
-      const options = await deliveryRepository.getDeliveryItemsByOrderId(orderId);
-      const items = await DeliveryItem.findOne(options);
-
-      return { message: "get delivery items by orderId successfully", data: items };
+      const items = await deliveryRepository.getDeliveryItemsById(deliveryItemId);
+      return { message: "get delivery items by deliveryItemId successfully", data: items };
     } catch (error) {
-      console.error("❌ get delivery items by orderId failed:", error);
+      console.error("❌ get delivery items by deliveryItemId failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
   },
+  //end auto complete
 
   cancelOrCompleteDeliveryPlan: async ({
     deliveryId,

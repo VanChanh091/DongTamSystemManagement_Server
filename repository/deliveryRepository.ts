@@ -477,32 +477,75 @@ export const deliveryRepository = {
     });
   },
 
-  getDeliveryItemsByOrderId: async (orderId: string) => ({
-    where: { status: { [Op.notIn]: ["cancelled", "completed"] } },
-    attributes: { exclude: ["createdAt", "updatedAt", "sequence", "idxOrder"] },
-    include: [
-      {
-        model: DeliveryRequest,
-        required: true,
-        attributes: { exclude: ["createdAt", "updatedAt", "status", "userId", "volume"] },
-        include: [
-          {
-            model: PlanningPaper,
-            attributes: ["planningId", "orderId"],
-            required: true,
-            include: [
-              {
-                model: Order,
-                where: { orderId },
-                required: true,
-                attributes: ["orderId", "lengthPaperManufacture", "paperSizeManufacture"],
-                include: [{ model: Customer, attributes: ["companyName"] }],
-              },
-            ],
-          },
-        ],
-      },
-      { model: Vehicle, attributes: ["vehicleName"] },
-    ],
-  }),
+  //start auto complete
+  getDeliveryItemsById: async (deliveryItemId: number) => {
+    return await DeliveryItem.findOne({
+      where: { deliveryItemId, status: { [Op.notIn]: ["cancelled", "completed"] } },
+      attributes: { exclude: ["createdAt", "updatedAt", "sequence", "idxOrder"] },
+      include: [
+        {
+          model: DeliveryRequest,
+          required: true,
+          attributes: { exclude: ["createdAt", "updatedAt", "status", "userId", "volume"] },
+          include: [
+            {
+              model: PlanningPaper,
+              attributes: ["planningId", "orderId"],
+              required: true,
+              include: [
+                {
+                  model: Order,
+                  required: true,
+                  attributes: [
+                    "orderId",
+                    "dayReceiveOrder",
+                    "lengthPaperManufacture",
+                    "paperSizeManufacture",
+                  ],
+                  include: [{ model: Customer, attributes: ["companyName"] }],
+                },
+              ],
+            },
+          ],
+        },
+        { model: Vehicle, attributes: ["vehicleName"] },
+      ],
+    });
+  },
+
+  searchOrderIdInDeliveryItem: async (keyword: string) => {
+    return await DeliveryItem.findAll({
+      where: { status: { [Op.notIn]: ["cancelled", "completed"] } },
+      attributes: ["deliveryItemId"],
+      include: [
+        {
+          model: DeliveryRequest,
+          required: true,
+          attributes: ["requestId"],
+          include: [
+            {
+              model: PlanningPaper,
+              attributes: ["planningId", "orderId"],
+              required: true,
+              include: [
+                {
+                  model: Order,
+                  where: { orderId: { [Op.startsWith]: keyword } },
+                  required: true,
+                  attributes: [
+                    "orderId",
+                    "dayReceiveOrder",
+                    "lengthPaperManufacture",
+                    "paperSizeManufacture",
+                  ],
+                  include: [{ model: Customer, attributes: ["companyName"] }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+  },
+  //end auto complete
 };

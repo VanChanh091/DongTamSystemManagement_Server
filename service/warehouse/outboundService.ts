@@ -7,12 +7,13 @@ import { meiliService } from "../meiliService";
 import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
 import { MEILI_INDEX } from "../../assets/labelFields";
-import { Inventory } from "../../models/warehouse/inventory/inventory";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { exportWarehouse } from "../../utils/helper/exportPDF";
+import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { OutboundDetail } from "../../models/warehouse/outboundDetail";
+import { Inventory } from "../../models/warehouse/inventory/inventory";
 import { customerRepository } from "../../repository/customerRepository";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { OutboundHistory } from "../../models/warehouse/outboundHistory";
@@ -21,7 +22,6 @@ import { warehouseRepository } from "../../repository/warehouseRepository";
 import { inventoryRepository } from "../../repository/inventoryRepository";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
-import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { outbound } = CacheKey.warehouse;
@@ -204,10 +204,13 @@ export const outboundService = {
   createOutbound: async ({
     outboundDetails,
   }: {
-    outboundDetails: { orderId: string; outboundQty: number; deliveryItemId?: number }[];
+    outboundDetails: {
+      orderId: string;
+      outboundQty: number;
+      deliveryItemId?: number;
+      isPromotion?: boolean;
+    }[];
   }) => {
-    console.log(`outboundDetails: ${JSON.stringify(outboundDetails)}`);
-
     try {
       return await runInTransaction(async (transaction) => {
         if (!outboundDetails || outboundDetails.length === 0) {
@@ -219,6 +222,7 @@ export const outboundService = {
         let totalPriceVAT = 0;
         let totalPricePayment = 0;
         let totalOutboundQty = 0;
+        let loanQtyIncrement = 0;
         let timePayment: Date | null = null;
 
         const preparedDetails: {
@@ -228,6 +232,8 @@ export const outboundService = {
           totalPriceOutbound: number;
           deliveredQty: number;
           deliveryItemId?: number;
+          isPromotion: boolean;
+          loanQtyIncrement: number;
         }[] = [];
 
         for (const item of outboundDetails) {
@@ -261,39 +267,42 @@ export const outboundService = {
             );
           }
 
-          if (inventory.qtyInventory < item.outboundQty) {
-            throw AppError.BadRequest(
-              `Xuất vượt tồn kho cho order ${item.orderId}`,
-              "OUTBOUND_EXCEED_INVENTORY",
-            );
+          //LOAN QTY
+          // Nếu xuất > tồn hiện tại, phần chênh lệch sẽ tính vào qtyLoan
+          if (item.outboundQty > inventory.qtyInventory) {
+            // xuất 10, kho còn 4 -> mượn thêm 6.
+            // Nếu kho đang âm sẵn (vd -2), xuất 10 -> mượn thêm đúng 10.
+            const currentAvailable = Math.max(0, inventory.qtyInventory);
+            loanQtyIncrement = item.outboundQty - currentAvailable;
           }
 
           //check delivery item is existed
-          // const outboundDetail = await OutboundDetail.findOne({
-          //   where: { deliveryItemId: item.deliveryItemId },
-          //   transaction,
-          // });
+          if (item.deliveryItemId) {
+            const outboundDetail = await OutboundDetail.findOne({
+              where: { deliveryItemId: item.deliveryItemId },
+              transaction,
+            });
 
-          // if (outboundDetail) {
-          //   throw AppError.BadRequest(
-          //     `Xuất kho cho lịch giao hàng này đã được xuất ở phiếu khác`,
-          //     "DELIVERY_ITEM_ALREADY_EXISTS",
-          //   );
-          // }
+            if (outboundDetail) {
+              throw AppError.BadRequest(
+                `Đơn hàng cho lịch giao hàng này đã được xuất ở phiếu khác`,
+                "DELIVERY_ITEM_ALREADY_EXISTS",
+              );
+            }
+          }
+
+          //calculate price
+          const isPromotion = !!item.isPromotion;
+          const price = isPromotion ? 0 : order.pricePaper;
+          const totalPriceOutbound = price * item.outboundQty;
+
+          const vatRate = isPromotion ? 0 : (order?.vat ?? 0) / 100;
+          const vatAmount = totalPriceOutbound * vatRate;
 
           const exportedQty = await warehouseRepository.sumOutboundQty({
             orderId: item.orderId,
             transaction,
           });
-
-          const deliveredQty = Number(exportedQty ?? 0);
-
-          //total price for outbound detail
-          const totalPriceOutbound = order.pricePaper * item.outboundQty;
-
-          // outbound history
-          const vatRate = (order?.vat ?? 0) / 100;
-          const vatAmount = totalPriceOutbound * vatRate;
 
           totalPriceOrder += totalPriceOutbound;
           totalPriceVAT += vatAmount;
@@ -303,10 +312,12 @@ export const outboundService = {
           preparedDetails.push({
             orderId: item.orderId,
             outboundQty: item.outboundQty,
-            price: order.pricePaper,
+            price,
             totalPriceOutbound,
-            deliveredQty,
+            deliveredQty: Number(exportedQty ?? 0),
             deliveryItemId: item.deliveryItemId,
+            isPromotion,
+            loanQtyIncrement,
           });
         }
 
@@ -364,6 +375,7 @@ export const outboundService = {
               totalPriceOutbound: item.totalPriceOutbound,
               deliveredQty: item.deliveredQty,
               deliveryItemId: item.deliveryItemId,
+              isPromotion: item.isPromotion,
             },
             transaction,
           });
@@ -372,6 +384,7 @@ export const outboundService = {
             {
               totalQtyOutbound: item.outboundQty,
               qtyInventory: -item.outboundQty,
+              qtyLoan: item.loanQtyIncrement,
               valueInventory: -(item.outboundQty * item.price),
             },
             {
@@ -399,7 +412,12 @@ export const outboundService = {
     outboundDetails,
   }: {
     outboundId: number;
-    outboundDetails: { orderId: string; outboundQty: number; deliveryItemId?: number }[];
+    outboundDetails: {
+      orderId: string;
+      outboundQty: number;
+      deliveryItemId?: number;
+      isPromotion?: boolean;
+    }[];
   }) => {
     try {
       return await runInTransaction(async (transaction) => {
@@ -417,7 +435,6 @@ export const outboundService = {
         }
 
         const oldDetails = outbound.detail ?? [];
-
         const oldDetailMap = new Map<string, OutboundDetail>();
         for (const detail of oldDetails) {
           oldDetailMap.set(detail.orderId, detail);
@@ -439,23 +456,6 @@ export const outboundService = {
             throw AppError.NotFound(`Order ${item.orderId} không tồn tại`, "ORDER_NOT_FOUND");
           }
 
-          // check delivery item is existed
-          // if (item.deliveryItemId) {
-          //   const duplicateCheck = await OutboundDetail.findOne({
-          //     where: {
-          //       deliveryItemId: item.deliveryItemId,
-          //       outboundId: { [Op.ne]: outboundId }, // Không phải phiếu hiện tại
-          //     },
-          //     transaction,
-          //   });
-          //   if (duplicateCheck) {
-          //     throw AppError.BadRequest(
-          //       `Xuất kho cho lịch giao hàng này đã được xuất ở phiếu khác`,
-          //       "DELIVERY_ITEM_ALREADY_EXISTS",
-          //     );
-          //   }
-          // }
-
           // check customer
           if (customerId === null) {
             customerId = order.customerId;
@@ -466,6 +466,23 @@ export const outboundService = {
             }
           } else if (customerId !== order.customerId) {
             throw AppError.BadRequest("Các đơn hàng không cùng khách hàng", "CUSTOMER_MISMATCH");
+          }
+
+          // check delivery item is existed
+          if (item.deliveryItemId) {
+            const duplicateCheck = await OutboundDetail.findOne({
+              where: {
+                deliveryItemId: item.deliveryItemId,
+                outboundId: { [Op.ne]: outboundId }, // Không phải phiếu hiện tại
+              },
+              transaction,
+            });
+            if (duplicateCheck) {
+              throw AppError.BadRequest(
+                `Đơn hàng cho lịch giao hàng này đã được xuất ở phiếu khác`,
+                "DELIVERY_ITEM_ALREADY_EXISTS",
+              );
+            }
           }
 
           //check tồn kho
@@ -481,45 +498,41 @@ export const outboundService = {
           }
 
           const oldDetail = oldDetailMap.get(item.orderId);
+
+          // Logic giá & khuyến mãi
+          const isPromotion = !!item.isPromotion;
+          const currentPrice = isPromotion ? 0 : order.pricePaper;
+          const currentTotalPrice = currentPrice * item.outboundQty;
+
+          // Tính delta kho
           const oldQty = oldDetail ? oldDetail.outboundQty : 0;
+          const oldPrice = oldDetail ? oldDetail.price : 0;
           const deltaQty = item.outboundQty - oldQty;
+          const deltaValue = currentTotalPrice - oldPrice * oldQty;
 
-          // check tồn kho nếu xuất thêm
-          if (deltaQty > 0 && inventory.qtyInventory < deltaQty) {
-            throw AppError.BadRequest(
-              `Xuất vượt tồn kho cho order ${item.orderId}`,
-              "OUTBOUND_EXCEED_INVENTORY",
-            );
-          }
-
-          // check vượt số lượng bán
-          const exportedQty = await warehouseRepository.sumOutboundQtyExcludeOutbound({
-            orderId: item.orderId,
-            outboundId,
-            transaction,
-          });
-
-          const deliveredQty = Number(exportedQty ?? 0);
+          //LOGIC LOAN QTY
+          // Giả định: qtyLoan = abs(qtyInventory) nếu qtyInventory < 0, ngược lại = 0.
+          const newQtyInventory = inventory.qtyInventory - deltaQty;
+          const targetLoan = newQtyInventory < 0 ? -newQtyInventory : 0;
+          const deltaLoan = targetLoan - (inventory.qtyLoan || 0);
 
           // cập nhật tồn kho theo delta
-          if (deltaQty !== 0) {
-            await Inventory.increment(
-              {
-                totalQtyOutbound: deltaQty,
-                qtyInventory: -deltaQty,
-                valueInventory: -(deltaQty * order.pricePaper),
-              },
-              { where: { orderId: item.orderId }, transaction },
-            );
-          }
+          await Inventory.increment(
+            {
+              totalQtyOutbound: deltaQty,
+              qtyInventory: -deltaQty,
+              qtyLoan: deltaLoan,
+              valueInventory: -deltaValue,
+            },
+            { where: { orderId: item.orderId }, transaction },
+          );
 
-          const totalPriceOutbound = order.pricePaper * item.outboundQty;
-          const vatRate = (order.vat ?? 0) / 100;
-          const vatAmount = totalPriceOutbound * vatRate;
+          const vatRate = isPromotion ? 0 : (order.vat ?? 0) / 100;
+          const vatAmount = currentTotalPrice * vatRate;
 
-          totalPriceOrder += totalPriceOutbound;
+          totalPriceOrder += currentTotalPrice;
           totalPriceVAT += vatAmount;
-          totalPricePayment += totalPriceOutbound + vatAmount;
+          totalPricePayment += currentTotalPrice + vatAmount;
           totalOutboundQty += item.outboundQty;
 
           if (oldDetail) {
@@ -527,23 +540,30 @@ export const outboundService = {
             await oldDetail.update(
               {
                 outboundQty: item.outboundQty,
-                price: order.pricePaper,
-                totalPriceOutbound,
+                price: currentPrice,
+                totalPriceOutbound: currentTotalPrice,
                 deliveryItemId: item.deliveryItemId,
+                isPromotion: isPromotion,
               },
               { transaction },
             );
           } else {
             // ADD
+            const exportedQty = await warehouseRepository.sumOutboundQtyExcludeOutbound({
+              orderId: item.orderId,
+              outboundId,
+              transaction,
+            });
             await OutboundDetail.create(
               {
                 outboundId,
                 orderId: item.orderId,
                 outboundQty: item.outboundQty,
-                price: order.pricePaper,
-                totalPriceOutbound,
-                deliveredQty,
+                price: currentPrice,
+                totalPriceOutbound: currentTotalPrice,
+                deliveredQty: Number(exportedQty ?? 0),
                 deliveryItemId: item.deliveryItemId,
+                isPromotion: isPromotion,
               },
               { transaction },
             );
@@ -555,23 +575,35 @@ export const outboundService = {
         // XỬ LÝ DELETE đơn bị xóa khỏi phiếu
         for (const oldDetail of oldDetails) {
           if (!handledOrderIds.has(oldDetail.orderId)) {
+            const inv = await inventoryRepository.findByOrderId({
+              orderId: oldDetail.orderId,
+              transaction,
+            });
+
             // hoàn kho
-            await Inventory.increment(
-              {
-                totalQtyOutbound: -oldDetail.outboundQty,
-                qtyInventory: oldDetail.outboundQty,
-                valueInventory: oldDetail.outboundQty * oldDetail.price,
-              },
-              { where: { orderId: oldDetail.orderId }, transaction },
-            );
+            if (inv) {
+              const newQtyInventory = inv.qtyInventory + oldDetail.outboundQty;
+              const targetLoan = newQtyInventory < 0 ? -newQtyInventory : 0;
+              const deltaLoan = targetLoan - (inv.qtyLoan || 0);
+
+              await Inventory.increment(
+                {
+                  totalQtyOutbound: -oldDetail.outboundQty,
+                  qtyInventory: oldDetail.outboundQty,
+                  qtyLoan: deltaLoan,
+                  valueInventory: oldDetail.outboundQty * oldDetail.price,
+                },
+                { where: { orderId: oldDetail.orderId }, transaction },
+              );
+            }
 
             await oldDetail.destroy({ transaction });
           }
         }
 
+        // Cập nhật outbound header
         const finalDueDate = timePayment || outbound.dueDate;
 
-        // Cập nhật outbound header
         await outbound.update(
           {
             totalPriceOrder,
