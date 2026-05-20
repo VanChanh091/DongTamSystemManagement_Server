@@ -148,12 +148,14 @@ export const meiliTransformer = {
 
   inventory: (db: any) => {
     const raw = db.get({ plain: true });
+    const order = raw.Order;
 
     return {
       inventoryId: raw.inventoryId,
       qtyInventory: raw.qtyInventory,
-      orderId: raw.Order?.orderId,
-      customerName: raw.Order?.Customer?.customerName,
+      orderId: order?.orderId,
+      customerName: order?.Customer?.customerName,
+      fullName: order?.User?.fullName,
     };
   },
 

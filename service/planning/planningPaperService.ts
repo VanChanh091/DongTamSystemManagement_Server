@@ -52,17 +52,27 @@ export const planningPaperService = {
         if (cachedData) {
           if (devEnvironment) console.log("✅ Data PlanningPaper from Redis");
           return {
+            ...JSON.parse(cachedData),
             message: `get all cache planning:machine:${machine}`,
-            data: JSON.parse(cachedData),
           };
         }
       }
 
       const data = await planningPaperService.getPlanningPaperSorted(machine);
+      const totals: any = await planningPaperRepository.planningPaperTotals({
+        chooseMachine: machine,
+        status: { [Op.in]: filterStatus },
+      });
 
-      await redisCache.set(cacheKey, JSON.stringify(data), "EX", 1800);
+      const responseData = {
+        message: `get planning by machine: ${machine}`,
+        totalPrice: totals.totalPrice,
+        data,
+      };
 
-      return { message: `get planning by machine: ${machine}`, data };
+      await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 1800);
+
+      return responseData;
     } catch (error) {
       console.error("❌ get planning paper by machine failed:", error);
       if (error instanceof AppError) throw error;

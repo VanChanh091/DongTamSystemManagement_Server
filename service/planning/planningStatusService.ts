@@ -263,6 +263,7 @@ export const planningStatusService = {
           data: {
             orderId,
             status: "planning",
+            totalPrice: order.pricePaper * planningData.runningPlan,
             ...planningData,
           },
           transaction,

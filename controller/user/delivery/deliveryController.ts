@@ -245,15 +245,17 @@ export const getRequestPrepareGoods = async (req: Request, res: Response, next: 
 };
 
 export const requestOrPrepareGoods = async (req: Request, res: Response, next: NextFunction) => {
-  const { deliveryItemId, isRequest } = req.query as {
+  const { deliveryItemId, isRequest, empCode } = req.query as {
     deliveryItemId: string;
     isRequest: string;
+    empCode?: string;
   };
 
   try {
     const response = await deliveryScheduleService.requestOrPrepareGoods(
       Number(deliveryItemId),
       isRequest,
+      empCode!,
     );
 
     return res.status(200).json(response);

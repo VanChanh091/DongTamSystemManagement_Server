@@ -68,9 +68,13 @@ export const CacheKey = {
       page: (page: number) => `outboundHistory:page:${page}`,
       lastUpdated: "outbound:lastUpdated",
     },
-    inventory: {
-      page: (page: number) => `inventory:page:${page}`,
-      lastUpdated: "inventories:lastUpdated",
+    inventory_gt: {
+      page: (page: number) => `inventory:gt:page:${page}`,
+      lastUpdated: "inventories:gt:lastUpdated",
+    },
+    inventory_lt: {
+      page: (page: number) => `inventory:lt:page:${page}`,
+      lastUpdated: "inventories:lt:lastUpdated",
     },
   },
 

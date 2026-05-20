@@ -1,7 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import dayjs from "dayjs";
 import { Op, Transaction } from "sequelize";
 import { meiliService } from "../meiliService";
 import { AppError } from "../../utils/appError";

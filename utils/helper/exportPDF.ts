@@ -405,11 +405,11 @@ function drawItemTable(doc: PDFKit.PDFDocument, outbound: any, hasMoney: boolean
     const fullRowData: any = {
       stt: String(index + 1),
       po: order.orderIdCustomer || "",
-      name: `${order.Product?.productName ?? ""}:${lengthManufacture}x${sizeManufacture} ${qcBox}`,
+      name: `${order.Product?.productName ?? ""}:${lengthManufacture}x${sizeManufacture} ${qcBox} ${item.isPromotion ? "(KM)" : ""}`,
       qc: `${lengthCustomer}x${sizeCustomer}`,
       dvt: order.dvt || "",
       qty: fmt(item.outboundQty),
-      price: hasMoney ? fmt(order.pricePaper) : "",
+      price: hasMoney ? fmt(item.price) : "",
       total: hasMoney ? fmt(item.totalPriceOutbound) : "",
     };
 

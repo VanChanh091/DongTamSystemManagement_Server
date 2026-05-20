@@ -42,7 +42,10 @@ const CACHE_CONFIG = {
   //warehouse
   inbound: ["inboundHistory:"],
   outbound: ["outboundHistory:"],
-  inventory: ["inventory:"],
+
+  //inventory
+  inventory_gt: ["inventory:gt:"],
+  inventory_lt: ["inventory:lt:"],
 
   //delivery
   estimate: ["estimate:"],
@@ -129,7 +132,10 @@ export const CacheManager = {
       //warehouse
       inbound: CacheKey.warehouse.inbound.lastUpdated,
       outbound: CacheKey.warehouse.outbound.lastUpdated,
-      inventory: CacheKey.warehouse.inventory.lastUpdated,
+
+      //inventory
+      inventory_gt: CacheKey.warehouse.inventory_gt.lastUpdated,
+      inventory_lt: CacheKey.warehouse.inventory_lt.lastUpdated,
 
       //delivery
       estimate: CacheKey.delivery.estimate.lastUpdated,

@@ -42,7 +42,6 @@ export const planningPaperRepository = {
             "daoXa",
             "matE2",
             "quantityManufacture",
-            "totalPrice",
             "instructSpecial",
             "isBox",
             "chongTham",
@@ -64,6 +63,16 @@ export const planningPaperRepository = {
     }
 
     return await PlanningPaper.findAndCountAll(query);
+  },
+
+  planningPaperTotals: async (whereCondition?: any) => {
+    const result = await PlanningPaper.findAll({
+      where: { ...whereCondition, totalPrice: { [Op.gt]: 0 } },
+      attributes: [[Sequelize.fn("SUM", Sequelize.col("totalPrice")), "totalPrice"]],
+      raw: true,
+    });
+
+    return result[0];
   },
 
   getPapersByOrderId: async (orderId: string) => {

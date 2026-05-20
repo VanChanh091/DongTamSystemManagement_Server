@@ -13,14 +13,14 @@ import { OutboundDetail } from "../../../../models/warehouse/outboundDetail";
 import { productRepository } from "../../../../repository/productRepository";
 import { InboundHistory } from "../../../../models/warehouse/inboundHistory";
 import { DeliveryRequest } from "../../../../models/delivery/deliveryRequest";
+import { deliveryRepository } from "../../../../repository/deliveryRepository";
 import { OutboundHistory } from "../../../../models/warehouse/outboundHistory";
 import { ReportPlanningBox } from "../../../../models/report/reportPlanningBox";
 import { EmployeeBasicInfo } from "../../../../models/employee/employeeBasicInfo";
 import { ReportPlanningPaper } from "../../../../models/report/reportPlanningPaper";
 import { EmployeeCompanyInfo } from "../../../../models/employee/employeeCompanyInfo";
 import { planningBoxRepository } from "../../../../repository/planning/planningBoxRepository";
-import { Transaction } from "sequelize";
-import { deliveryRepository } from "../../../../repository/deliveryRepository";
+import { inventoryRepository } from "../../../../repository/inventoryRepository";
 
 interface SyncMeiliData {
   data: any[];
@@ -271,17 +271,7 @@ export const syncOutboundToMeili = async (isDeleteAll: boolean) => {
 
 //sync inventory
 export const syncInventoryToMeili = async (isDeleteAll: boolean) => {
-  const inventories = await Inventory.findAll({
-    attributes: ["inventoryId", "qtyInventory"],
-    include: [
-      {
-        model: Order,
-        attributes: ["orderId"],
-        include: [{ model: Customer, attributes: ["customerName"] }],
-      },
-    ],
-  });
-
+  const inventories = await Inventory.findAll(inventoryRepository.INVENTORY_MEILI_OPTIONS({}));
   const flattenData = inventories.map(meiliTransformer.inventory);
 
   return await syncMeiliData({

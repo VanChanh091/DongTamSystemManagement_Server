@@ -35,9 +35,12 @@ interface PlanningPaperAttributes {
 
   lengthPaperPlanning: number;
   sizePaperPLaning: number;
+
   runningPlan: number;
-  numberChild: number;
   qtyProduced?: number | null;
+  totalPrice: number;
+
+  numberChild: number;
   ghepKho?: number | null;
 
   bottom?: number | null;
@@ -85,6 +88,7 @@ export type PlanningPaperCreationAttributes = Optional<
   | "songCReplace"
   | "songE2Replace"
   | "qtyProduced"
+  | "totalPrice"
   | "ghepKho"
   | "bottom"
   | "fluteE"
@@ -132,6 +136,7 @@ export class PlanningPaper
 
   declare runningPlan: number;
   declare qtyProduced?: number | null;
+  declare totalPrice: number;
 
   declare numberChild: number;
   declare ghepKho?: number | null;
@@ -177,6 +182,8 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
         primaryKey: true,
         autoIncrement: true,
       },
+
+      //date & time
       dayStart: { type: DataTypes.DATE },
       dayCompleted: {
         type: DataTypes.DATE,
@@ -188,6 +195,7 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
       },
       timeRunning: { type: DataTypes.TIME },
 
+      //structure replace
       dayReplace: { type: DataTypes.STRING },
       matEReplace: { type: DataTypes.STRING },
       matBReplace: { type: DataTypes.STRING },
@@ -200,11 +208,15 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
 
       lengthPaperPlanning: { type: DataTypes.DOUBLE, allowNull: false },
       sizePaperPLaning: { type: DataTypes.DOUBLE, allowNull: false },
+
       runningPlan: { type: DataTypes.INTEGER, allowNull: false },
       qtyProduced: { type: DataTypes.INTEGER },
+      totalPrice: { type: DataTypes.DOUBLE, allowNull: false, defaultValue: 0 },
+
       numberChild: { type: DataTypes.INTEGER, allowNull: false },
       ghepKho: { type: DataTypes.INTEGER },
 
+      //waste norm
       bottom: { type: DataTypes.DOUBLE },
       fluteE: { type: DataTypes.DOUBLE },
       fluteB: { type: DataTypes.DOUBLE },
@@ -214,6 +226,7 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
       totalLoss: { type: DataTypes.DOUBLE },
       qtyWasteNorm: { type: DataTypes.DOUBLE },
 
+      //other info
       shiftProduction: { type: DataTypes.STRING },
       shiftManagement: { type: DataTypes.STRING },
 

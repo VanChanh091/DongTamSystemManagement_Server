@@ -211,6 +211,8 @@ export const outboundService = {
       isPromotion?: boolean;
     }[];
   }) => {
+    console.log(`detail: ${JSON.stringify(outboundDetails)}`);
+
     try {
       return await runInTransaction(async (transaction) => {
         if (!outboundDetails || outboundDetails.length === 0) {
@@ -222,7 +224,6 @@ export const outboundService = {
         let totalPriceVAT = 0;
         let totalPricePayment = 0;
         let totalOutboundQty = 0;
-        let loanQtyIncrement = 0;
         let timePayment: Date | null = null;
 
         const preparedDetails: {
@@ -233,7 +234,6 @@ export const outboundService = {
           deliveredQty: number;
           deliveryItemId?: number;
           isPromotion: boolean;
-          loanQtyIncrement: number;
         }[] = [];
 
         for (const item of outboundDetails) {
@@ -265,15 +265,6 @@ export const outboundService = {
               `Order: ${item.orderId} chưa có tồn kho`,
               "INVENTORY_NOT_FOUND",
             );
-          }
-
-          //LOAN QTY
-          // Nếu xuất > tồn hiện tại, phần chênh lệch sẽ tính vào qtyLoan
-          if (item.outboundQty > inventory.qtyInventory) {
-            // xuất 10, kho còn 4 -> mượn thêm 6.
-            // Nếu kho đang âm sẵn (vd -2), xuất 10 -> mượn thêm đúng 10.
-            const currentAvailable = Math.max(0, inventory.qtyInventory);
-            loanQtyIncrement = item.outboundQty - currentAvailable;
           }
 
           //check delivery item is existed
@@ -317,7 +308,6 @@ export const outboundService = {
             deliveredQty: Number(exportedQty ?? 0),
             deliveryItemId: item.deliveryItemId,
             isPromotion,
-            loanQtyIncrement,
           });
         }
 
@@ -384,7 +374,6 @@ export const outboundService = {
             {
               totalQtyOutbound: item.outboundQty,
               qtyInventory: -item.outboundQty,
-              qtyLoan: item.loanQtyIncrement,
               valueInventory: -(item.outboundQty * item.price),
             },
             {
@@ -510,22 +499,17 @@ export const outboundService = {
           const deltaQty = item.outboundQty - oldQty;
           const deltaValue = currentTotalPrice - oldPrice * oldQty;
 
-          //LOGIC LOAN QTY
-          // Giả định: qtyLoan = abs(qtyInventory) nếu qtyInventory < 0, ngược lại = 0.
-          const newQtyInventory = inventory.qtyInventory - deltaQty;
-          const targetLoan = newQtyInventory < 0 ? -newQtyInventory : 0;
-          const deltaLoan = targetLoan - (inventory.qtyLoan || 0);
-
           // cập nhật tồn kho theo delta
-          await Inventory.increment(
-            {
-              totalQtyOutbound: deltaQty,
-              qtyInventory: -deltaQty,
-              qtyLoan: deltaLoan,
-              valueInventory: -deltaValue,
-            },
-            { where: { orderId: item.orderId }, transaction },
-          );
+          if (deltaQty !== 0) {
+            await Inventory.increment(
+              {
+                totalQtyOutbound: deltaQty,
+                qtyInventory: -deltaQty,
+                valueInventory: -deltaValue,
+              },
+              { where: { orderId: item.orderId }, transaction },
+            );
+          }
 
           const vatRate = isPromotion ? 0 : (order.vat ?? 0) / 100;
           const vatAmount = currentTotalPrice * vatRate;
@@ -536,7 +520,6 @@ export const outboundService = {
           totalOutboundQty += item.outboundQty;
 
           if (oldDetail) {
-            // UPDATE
             await oldDetail.update(
               {
                 outboundQty: item.outboundQty,
@@ -548,12 +531,12 @@ export const outboundService = {
               { transaction },
             );
           } else {
-            // ADD
             const exportedQty = await warehouseRepository.sumOutboundQtyExcludeOutbound({
               orderId: item.orderId,
               outboundId,
               transaction,
             });
+
             await OutboundDetail.create(
               {
                 outboundId,
@@ -582,15 +565,10 @@ export const outboundService = {
 
             // hoàn kho
             if (inv) {
-              const newQtyInventory = inv.qtyInventory + oldDetail.outboundQty;
-              const targetLoan = newQtyInventory < 0 ? -newQtyInventory : 0;
-              const deltaLoan = targetLoan - (inv.qtyLoan || 0);
-
               await Inventory.increment(
                 {
                   totalQtyOutbound: -oldDetail.outboundQty,
                   qtyInventory: oldDetail.outboundQty,
-                  qtyLoan: deltaLoan,
                   valueInventory: oldDetail.outboundQty * oldDetail.price,
                 },
                 { where: { orderId: oldDetail.orderId }, transaction },

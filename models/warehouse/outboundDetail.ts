@@ -50,7 +50,7 @@ export class OutboundDetail
   declare outbound: OutboundHistory;
 
   declare deliveryItemId?: number;
-  declare DeliveryItem: DeliveryItem;
+  declare DeliveryItem: DeliveryItem[];
 }
 
 export function initOutboundDetailModel(sequelize: Sequelize): typeof OutboundDetail {

@@ -5,11 +5,12 @@ import { liquidationInvService } from "../../../service/warehouse/liquidationInv
 
 //====================================INVENTORY========================================
 export const getAllInventory = async (req: Request, res: Response, next: NextFunction) => {
-  const { field, keyword, page, pageSize } = req.query as {
+  const { field, keyword, page, pageSize, filter } = req.query as {
     field: string;
     keyword: string;
     page: string;
     pageSize: string;
+    filter: "gtZero" | "ltZero";
   };
 
   try {
@@ -21,9 +22,10 @@ export const getAllInventory = async (req: Request, res: Response, next: NextFun
         keyword,
         page: Number(page),
         pageSize: Number(pageSize),
+        filter,
       });
     } else {
-      response = await inventoryService.getAllInventory(Number(page), Number(pageSize));
+      response = await inventoryService.getAllInventory(Number(page), Number(pageSize), filter);
     }
 
     return res.status(200).json(response);

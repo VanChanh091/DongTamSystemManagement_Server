@@ -418,7 +418,6 @@ export const deliveryRepository = {
                         "lengthPaperManufacture",
                         "paperSizeManufacture",
                         "dvt",
-                        "note",
                         "orderIdCustomer",
                       ],
                       include: [

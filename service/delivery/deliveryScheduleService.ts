@@ -22,6 +22,8 @@ import { deliveryRepository } from "../../repository/deliveryRepository";
 import { exportDeliveryExcelResponse } from "../../utils/helper/excelExporter";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
 import { deliveryColumns, mappingDeliveryRow } from "../../utils/mapping/deliveryRowAndComlumn";
+import { manufactureRepo } from "../../repository/manufactureRepository";
+import { OutboundDetail } from "../../models/warehouse/outboundDetail";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { schedule } = CacheKey.delivery;
@@ -32,7 +34,13 @@ export const deliveryScheduleService = {
     const cacheKey = schedule.date(deliveryDate);
 
     try {
-      const { isChanged } = await CacheManager.check(DeliveryItem, "schedule");
+      const { isChanged } = await CacheManager.check(
+        [
+          { model: DeliveryItem },
+          { model: OutboundDetail, where: { deliveryItemId: { [Op.ne]: null } } },
+        ],
+        "schedule",
+      );
 
       if (isChanged) {
         await CacheManager.clear("schedule");
@@ -313,13 +321,15 @@ export const deliveryScheduleService = {
     }
   },
 
-  requestOrPrepareGoods: async (deliveryItemId: number, isRequest: string) => {
+  requestOrPrepareGoods: async (deliveryItemId: number, isRequest: string, empCode: string) => {
     try {
       return await runInTransaction(async (transaction) => {
         const item = await DeliveryItem.findByPk(deliveryItemId, { transaction });
         if (!item) {
           throw AppError.BadRequest("item not found", "ITEM_NOT_FOUND");
         }
+
+        const now = new Date();
 
         if (isRequest === "true") {
           // Gửi yêu cầu (Chuyển từ planned -> requested)
@@ -328,14 +338,27 @@ export const deliveryScheduleService = {
           }
 
           if (item.status === "planned") {
-            await item.update({ status: "requested" }, { transaction });
+            await item.update({ status: "requested", dayRequested: now }, { transaction });
           }
 
           return { message: "Gửi yêu cầu xuất hàng thành công" };
         } else {
           // Chuẩn bị hàng (Chuyển từ requested -> prepared)
           if (item.status === "requested") {
-            await item.update({ status: "prepared" }, { transaction });
+            const employee = await manufactureRepo.getEmployeeByCode(empCode, transaction);
+            if (!employee) {
+              throw AppError.NotFound("Mã nhân viên không tồn tại", "EMPLOYEE_NOT_FOUND");
+            }
+
+            await item.update(
+              {
+                status: "prepared",
+                dayCompleted: now,
+                recipient: employee.fullName,
+              },
+              { transaction },
+            );
+
             await CacheManager.clear("schedule");
           }
 

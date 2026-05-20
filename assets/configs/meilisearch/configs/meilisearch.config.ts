@@ -68,7 +68,7 @@ export const inboundSettings: Settings = {
 
 //inventory
 export const inventorySettings: Settings = {
-  searchableAttributes: ["orderId", "customerName"],
+  searchableAttributes: ["orderId", "customerName", "fullName"],
   filterableAttributes: ["qtyInventory"],
   rankingRules: rule,
 };

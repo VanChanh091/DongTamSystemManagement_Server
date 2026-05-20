@@ -23,17 +23,18 @@ import { meiliService } from "../meiliService";
 import { MEILI_INDEX } from "../../assets/labelFields";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { inventory } = CacheKey.warehouse;
+const { inventory_gt, inventory_lt } = CacheKey.warehouse;
 
 export const inventoryService = {
-  getAllInventory: async (page: number, pageSize: number) => {
-    const cacheKey = inventory.page(page);
+  getAllInventory: async (page: number, pageSize: number, filter: "gtZero" | "ltZero") => {
+    const cacheKey = filter === "gtZero" ? inventory_gt.page(page) : inventory_lt.page(page);
+    const cachName = filter === "gtZero" ? "inventory_gt" : "inventory_lt";
 
     try {
-      const { isChanged } = await CacheManager.check(Inventory, "inventory");
+      const { isChanged } = await CacheManager.check(Inventory, cachName);
 
       if (isChanged) {
-        await CacheManager.clear("inventory");
+        await CacheManager.clear(cachName);
       } else {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {
@@ -42,7 +43,11 @@ export const inventoryService = {
         }
       }
 
-      const { rows, count } = await inventoryRepository.getInventoryByPage({ page, pageSize });
+      const { rows, count } = await inventoryRepository.getInventoryByPage({
+        page,
+        pageSize,
+        filter,
+      });
       const totals: any = await inventoryRepository.inventoryTotals();
 
       const responseData = {
@@ -63,19 +68,21 @@ export const inventoryService = {
     }
   },
 
-  getInventoryByField: async ({ field, keyword, page, pageSize }: searchFieldAtribute) => {
+  getInventoryByField: async ({ field, keyword, page, pageSize, filter }: searchFieldAtribute) => {
     try {
-      const validFields = ["orderId", "customerName"];
+      const validFields = ["orderId", "customerName", "fullName"];
       if (!validFields.includes(field)) {
         throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
       }
 
       const index = meiliClient.index("inventories");
 
+      const filterCondition = filter === "gtZero" ? "qtyInventory > 0" : "qtyInventory < 0";
+
       const searchResult = await index.search(keyword, {
         attributesToSearchOn: [field],
         attributesToRetrieve: ["inventoryId"],
-        filter: "qtyInventory > 0",
+        filter: filterCondition,
         page: Number(page) || 1,
         hitsPerPage: Number(pageSize) || 25, //pageSize
       });
@@ -94,6 +101,7 @@ export const inventoryService = {
       //query db
       const { rows } = await inventoryRepository.getInventoryByPage({
         searching: { inventoryId: { [Op.in]: inventoryIds } },
+        filter: filter!,
       });
       const totals: any = await inventoryRepository.inventoryTotals({
         inventoryId: { [Op.in]: rows.map((inv) => inv.inventoryId) },
@@ -200,10 +208,6 @@ export const inventoryService = {
           { transaction },
         );
         await sourceInv.reload({ transaction });
-
-        // if (sourceInv.qtyInventory <= 0) {
-        //   await sourceInv.destroy({ transaction });
-        // }
 
         // Xử lý cộng kho đích
         const targetInv = await inventoryRepository.findByOrderId({
@@ -368,7 +372,7 @@ export const inventoryService = {
 
   exportExcelInventory: async (res: Response) => {
     try {
-      const { rows } = await inventoryRepository.getInventoryByPage({});
+      const { rows } = await inventoryRepository.getInventoryByPage({ filter: "gtZero" });
 
       await exportExcelResponse(res, {
         data: rows,

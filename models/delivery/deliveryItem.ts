@@ -16,6 +16,9 @@ interface DeliveryItemAttributes {
   deliveryItemId: number;
   sequence: string;
   idxOrder?: number;
+  recipient?: string;
+  dayRequested?: Date | null;
+  dayCompleted?: Date | null;
   status: statusDeliveryItem;
 
   //FK
@@ -30,7 +33,14 @@ interface DeliveryItemAttributes {
 //cho phép bỏ qua id khi tạo
 export type DeliveryItemCreationAttributes = Optional<
   DeliveryItemAttributes,
-  "deliveryItemId" | "status" | "createdAt" | "updatedAt" | "idxOrder"
+  | "deliveryItemId"
+  | "status"
+  | "recipient"
+  | "dayRequested"
+  | "dayCompleted"
+  | "createdAt"
+  | "updatedAt"
+  | "idxOrder"
 >;
 
 //định nghĩa kiểu OOP
@@ -41,6 +51,9 @@ export class DeliveryItem
   declare deliveryItemId: number;
   declare sequence: string;
   declare idxOrder?: number;
+  declare recipient?: string;
+  declare dayRequested?: Date | null;
+  declare dayCompleted?: Date | null;
   declare status: statusDeliveryItem;
 
   //FK
@@ -62,6 +75,16 @@ export function initDeliveryItemModel(sequelize: Sequelize): typeof DeliveryItem
       deliveryItemId: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
       sequence: { type: DataTypes.STRING, allowNull: false },
       idxOrder: { type: DataTypes.INTEGER },
+      recipient: { type: DataTypes.STRING },
+      dayRequested: { type: DataTypes.DATE },
+      dayCompleted: {
+        type: DataTypes.DATE,
+        // get() {
+        //   const rawValue = this.getDataValue("dayCompleted");
+        //   if (!rawValue) return null;
+        //   return new Date(rawValue.getTime() - rawValue.getTimezoneOffset() * 60000).toISOString();
+        // },
+      },
       status: {
         type: DataTypes.ENUM("none", "planned", "requested", "prepared", "cancelled", "completed"),
         allowNull: false,

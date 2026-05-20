@@ -53,4 +53,5 @@ export interface searchFieldAtribute {
   user?: any;
   page?: number;
   pageSize?: number;
+  filter?: "gtZero" | "ltZero";
 }

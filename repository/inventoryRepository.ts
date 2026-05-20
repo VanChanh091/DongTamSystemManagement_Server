@@ -1,7 +1,8 @@
-import { FindOptions, Op, Sequelize, Transaction } from "sequelize";
+import { User } from "../models/user/user";
 import { Order } from "../models/order/order";
-import { Customer } from "../models/customer/customer";
 import { Product } from "../models/product/product";
+import { Customer } from "../models/customer/customer";
+import { FindOptions, Op, Sequelize, Transaction } from "sequelize";
 import { Inventory } from "../models/warehouse/inventory/inventory";
 import { LiquidationInventory } from "../models/warehouse/inventory/liquidationInventory";
 
@@ -10,15 +11,17 @@ export const inventoryRepository = {
   getInventoryByPage: async ({
     page,
     pageSize,
+    filter, //gt or lt
     searching,
   }: {
     page?: number;
     pageSize?: number;
+    filter: "gtZero" | "ltZero";
     searching?: any;
   }) => {
+    const operator = filter === "gtZero" ? Op.gt : Op.lt;
     const whereClause: any = {
-      [Op.and]: [{ qtyInventory: { [Op.gt]: 0 } }],
-      // [Op.and]: [],
+      [Op.and]: [{ qtyInventory: { [operator]: 0 } }],
     };
 
     if (searching && typeof searching === "object") {
@@ -59,6 +62,7 @@ export const inventoryRepository = {
           include: [
             { model: Customer, attributes: ["customerName"] },
             { model: Product, attributes: ["typeProduct", "productName"] },
+            { model: User, attributes: ["fullName"] },
           ],
         },
       ],
@@ -140,7 +144,10 @@ export const inventoryRepository = {
       {
         model: Order,
         attributes: ["orderId"],
-        include: [{ model: Customer, attributes: ["customerName"] }],
+        include: [
+          { model: Customer, attributes: ["customerName"] },
+          { model: User, attributes: ["fullName"] },
+        ],
       },
     ],
     transaction,

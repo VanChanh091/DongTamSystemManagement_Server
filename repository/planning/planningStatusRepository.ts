@@ -81,7 +81,6 @@ export const planningStatusRepository = {
           "acreage",
           "dvt",
           "price",
-          "pricePaper",
           "discount",
           "profit",
           "vat",
