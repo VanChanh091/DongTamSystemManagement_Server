@@ -138,7 +138,7 @@ export const deliveryRepository = {
 
     return await DeliveryRequest.findAll({
       where: whereCondition,
-      attributes: { exclude: ["createdAt", "updatedAt"] },
+      attributes: ["requestId", "qtyRegistered", "volume", "note", "status", "planningId"],
       include: [
         {
           model: PlanningPaper,
