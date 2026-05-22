@@ -1,5 +1,7 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 
+export type typeDvtEnum = "M2" | "Kg";
+
 interface MachinePaperAttributes {
   machineId: number;
   machineName?: string | null;
@@ -13,13 +15,15 @@ interface MachinePaperAttributes {
   speed7Layer: number;
   paperRollSpeed: number;
   machinePerformance: number;
+  type: typeDvtEnum;
+
   createdAt?: Date;
   updatedAt?: Date;
 }
 
 export type MachinePaperCreationAttributes = Optional<
   MachinePaperAttributes,
-  "machineId" | "machineName" | "createdAt" | "updatedAt"
+  "machineId" | "machineName" | "type" | "createdAt" | "updatedAt"
 >;
 
 export class MachinePaper
@@ -38,6 +42,8 @@ export class MachinePaper
   declare speed7Layer: number;
   declare paperRollSpeed: number;
   declare machinePerformance: number;
+  declare type: typeDvtEnum;
+
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
 }
@@ -61,8 +67,9 @@ export function initMachinePaperModel(sequelize: Sequelize): typeof MachinePaper
       speed7Layer: { type: DataTypes.INTEGER, allowNull: false },
       paperRollSpeed: { type: DataTypes.INTEGER, allowNull: false }, //tốc độ quấn cuồn
       machinePerformance: { type: DataTypes.DOUBLE, allowNull: false }, //hiệu suất hoạt động
+      type: { type: DataTypes.ENUM("M2", "Kg"), allowNull: false, defaultValue: "M2" }, //loại dvt
     },
-    { sequelize, tableName: "MachinePapers", timestamps: true }
+    { sequelize, tableName: "MachinePapers", timestamps: true },
   );
 
   return MachinePaper;

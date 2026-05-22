@@ -31,8 +31,8 @@ export const planningStatusService = {
   //===============================PLANNING ORDER=====================================
 
   //"unplanned" | "planned" | "partial"
-  getOrderAccept: async (filter: string) => {
-    const cacheKey = order.all;
+  getOrderAccept: async (type: string) => {
+    // const cacheKey = order.all;
 
     try {
       // const { isChanged: order } = await CacheManager.check(
@@ -60,7 +60,7 @@ export const planningStatusService = {
       //   }
       // }
 
-      const result = await planningStatusRepository.getOrderAccept(filter);
+      const result = await planningStatusRepository.getOrderAccept(type);
 
       // await redisCache.set(cacheKey, JSON.stringify(result), "EX", 3600);
 

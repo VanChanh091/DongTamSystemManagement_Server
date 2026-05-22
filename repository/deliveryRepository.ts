@@ -56,6 +56,7 @@ export const deliveryRepository = {
             "isBox",
             "volume",
             "instructSpecial",
+            "orderIdCustomer",
             "customerId",
             "productId",
             "userId",

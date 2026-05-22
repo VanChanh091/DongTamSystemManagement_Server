@@ -124,6 +124,7 @@ export const syntheticOrderService = {
       });
 
       const orderIds = searchResult.hits.map((hit: any) => hit.orderId);
+
       if (orderIds.length === 0) {
         return {
           message: "No orders found",
@@ -136,10 +137,9 @@ export const syntheticOrderService = {
 
       //query db
       const { rows } = await syntheticRepository.getAllOrderByStatus({
-        page,
-        pageSize,
         status,
         allOrders,
+        condition: { orderId: { [Op.in]: orderIds } },
       });
 
       // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch

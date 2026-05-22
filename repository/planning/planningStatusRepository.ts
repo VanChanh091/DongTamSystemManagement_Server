@@ -12,7 +12,7 @@ export const planningStatusRepository = {
   getOrderAccept: async (type: string) => {
     const whereOrder: any = { status: "accept" };
 
-    //flag use to inner jion or left join with PlanningPaper
+    //flag use to inner join or left join with PlanningPaper
     let isPlanningRequired = false;
 
     //lọc theo planned/unplanned

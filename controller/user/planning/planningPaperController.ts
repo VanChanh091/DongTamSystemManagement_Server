@@ -37,16 +37,19 @@ export const handleUpdatePlanningPapers = async (
   res: Response,
   next: NextFunction,
 ) => {
-  const { action, planningIds, newMachine, newStatus, rejectReason } = req.body as {
+  const { action, planningIds, newMachine, newStatus, rejectReason, note } = req.body as {
     action: string;
     planningIds: number | number[];
     newMachine?: machinePaperType;
     newStatus?: OrderStatus;
     rejectReason?: string;
+    note?: string;
   };
 
   try {
-    if (!Array.isArray(planningIds) || planningIds.length === 0 || !action) {
+    const planningIdsArrs = Array.isArray(planningIds) ? planningIds : [planningIds];
+
+    if (!planningIdsArrs[0] || planningIdsArrs.length === 0 || !action) {
       throw AppError.BadRequest("Missing planningIds or action parameter", "MISSING_PARAMETERS");
     }
 
@@ -55,20 +58,23 @@ export const handleUpdatePlanningPapers = async (
     switch (action) {
       case "CHANGE_MACHINE":
         if (newMachine) {
-          response = await planningPaperService.changeMachinePlanning(planningIds, newMachine);
+          response = await planningPaperService.changeMachinePlanning(planningIdsArrs, newMachine);
         }
         break;
       case "CONFIRM_COMPLETE":
-        response = await planningPaperService.confirmCompletePlanningPaper(planningIds);
+        response = await planningPaperService.confirmCompletePlanningPaper(planningIdsArrs);
         break;
       case "PAUSE_OR_ACCEPT_LACK":
         if (newStatus) {
           response = await planningPaperService.pauseOrAcceptLackQtyPLanning(
-            planningIds,
+            planningIdsArrs,
             newStatus,
             rejectReason,
           );
         }
+        break;
+      case "NOTE":
+        if (note) response = await planningPaperService.addNoteToPlanning(planningIdsArrs[0], note);
         break;
       default:
         throw AppError.BadRequest("Invalid action parameter", "INVALID_ACTION");

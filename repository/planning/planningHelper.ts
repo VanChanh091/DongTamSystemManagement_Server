@@ -2,6 +2,10 @@ import { RepoPayload } from "../../interface/types";
 
 export const planningHelper = {
   //====================================FUNC GLOBAL========================================
+  getAllData: async ({ model, where, options = {} }: RepoPayload) => {
+    return await model.findAll({ where, ...options });
+  },
+
   getModelById: async ({ model, where, options = {} }: RepoPayload) => {
     return await model.findOne({ where, ...options });
   },

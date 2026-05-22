@@ -30,12 +30,13 @@ export const customerRepository = {
           attributes: { exclude: ["createdAt", "updatedAt"] },
         },
       ],
-      order: [["customerSeq", "ASC"]],
     };
 
     if (page && pageSize) {
       query.offset = (page - 1) * pageSize;
       query.limit = pageSize;
+
+      query.order = [["customerSeq", "ASC"]];
     }
 
     return await Customer.findAndCountAll(query);

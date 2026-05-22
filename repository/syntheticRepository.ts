@@ -16,11 +16,13 @@ export const syntheticRepository = {
     pageSize,
     status,
     allOrders,
+    condition = {},
   }: {
-    page: number;
-    pageSize: number;
-    status: string | string[];
+    page?: number;
+    pageSize?: number;
     allOrders?: string;
+    condition?: any;
+    status: string | string[];
   }) => {
     let statusFilter: string[];
 
@@ -31,9 +33,9 @@ export const syntheticRepository = {
       statusFilter = Array.isArray(status) ? status : [status];
     }
 
-    const whereCondition = { status: { [Op.in]: statusFilter } };
+    const whereCondition = { status: { [Op.in]: statusFilter }, ...condition };
 
-    return await Order.findAndCountAll({
+    const query: any = {
       where: whereCondition,
       attributes: [
         "orderId",
@@ -56,12 +58,14 @@ export const syntheticRepository = {
         "songC",
         "songE2",
         "instructSpecial",
+        "pricePaper",
+        "totalPrice",
+        "totalPriceVAT",
         "status",
         "isBox",
         "orderSortValue",
         "statusPriority",
       ],
-
       include: [
         { model: Customer, attributes: ["customerName"] },
         { model: Product, attributes: ["productName"] },
@@ -69,17 +73,21 @@ export const syntheticRepository = {
         { model: PlanningPaper, attributes: ["planningId", "qtyProduced", "qtyWasteNorm"] },
         { model: User, attributes: ["fullName"] },
       ],
+    };
 
-      offset: (page - 1) * pageSize,
-      limit: pageSize,
+    if (page && pageSize) {
+      query.offset = (page - 1) * pageSize;
+      query.limit = pageSize;
 
-      order: [
+      query.order = [
         // sort theo orderId
         ["orderSortValue", "ASC"],
         // sort theo accept -> planning | pending -> reject
         ["statusPriority", "DESC"],
-      ],
-    });
+      ];
+    }
+
+    return await Order.findAndCountAll(query);
   },
 
   getPlanningBoxDetail: async (orderId: string) => {

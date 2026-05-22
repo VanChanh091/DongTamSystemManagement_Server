@@ -239,6 +239,9 @@ export const orderService = {
             customerId: customerId,
             productId: productId,
             userId: userId,
+            dayReceiveOrder: new Date(),
+            createdAt: new Date(),
+            updatedAt: new Date(),
             ...restOrderData,
             ...metrics,
           },
@@ -371,7 +374,7 @@ export const orderService = {
           });
         }
 
-        return { message: "Order updated successfully", data: order };
+        return { message: "Order updated successfully", data: order, orderId };
       });
     } catch (error) {
       console.error("Error in getOrderPendingAndReject:", error);

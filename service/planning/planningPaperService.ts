@@ -99,6 +99,7 @@ export const planningPaperService = {
     }
   },
 
+  //helper function: sắp xếp planning paper theo sortPlanning + ghepKho, sau đó gộp overflow vào sau đơn gốc
   applyPlanningSortAndOverflow: (data: any[]) => {
     // Phân loại
     const withSort = data.filter((item: any) => item.sortPlanning !== null);
@@ -563,17 +564,24 @@ export const planningPaperService = {
         );
 
         // Lấy thông tin máy
-        const machineInfo = await planningHelper.getModelById({
-          model: MachinePaper,
+        const machineInfo = await MachinePaper.findAll({
           where: { machineName: machine },
-          options: { transaction },
+          transaction,
         });
         if (!machineInfo) throw AppError.NotFound("Machine not found", "MACHINE_NOT_FOUND");
+
+        const machineMap = {
+          m2: machineInfo.find((m) => m.type === "M2"),
+          kg: machineInfo.find((m) => m.type === "Kg"),
+        };
+
+        // console.log(`machine map: ${JSON.stringify(machineMap)}`);
+        // console.log(`==========================================`);
 
         // Tính toán thời gian chạy
         const updatedPlannings = await calculateTimeRunning({
           plannings,
-          machineInfo,
+          machineMap,
           machine,
           dayStart,
           timeStart,
@@ -587,6 +595,22 @@ export const planningPaperService = {
           data: updatedPlannings,
         };
       });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  addNoteToPlanning: async (planningId: number, note: string) => {
+    try {
+      const paper = await PlanningPaper.findByPk(planningId);
+      if (!paper) {
+        throw AppError.NotFound("Planning paper not found", "PLANNING_PAPER_NOT_FOUND");
+      }
+
+      await paper.update({ note });
+
+      return { message: "Note updated successfully" };
     } catch (error) {
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();

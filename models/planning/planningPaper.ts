@@ -55,6 +55,7 @@ interface PlanningPaperAttributes {
   chooseMachine: machinePaperType;
   shiftProduction?: string | null;
   shiftManagement?: string | null;
+  note?: string | null;
 
   status: planningPaperStatus;
   statusRequest: statusRequestInbound;
@@ -100,6 +101,7 @@ export type PlanningPaperCreationAttributes = Optional<
   | "qtyWasteNorm"
   | "shiftProduction"
   | "shiftManagement"
+  | "note"
   | "status"
   | "statusRequest"
   | "hasOverFlow"
@@ -153,7 +155,7 @@ export class PlanningPaper
   declare chooseMachine: machinePaperType;
   declare shiftProduction?: string | null;
   declare shiftManagement?: string | null;
-
+  declare note?: string | null;
   declare status: planningPaperStatus;
   declare statusRequest: statusRequestInbound;
   declare deliveryPlanned: statusDeliveryPlanned;
@@ -229,6 +231,7 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
       //other info
       shiftProduction: { type: DataTypes.STRING },
       shiftManagement: { type: DataTypes.STRING },
+      note: { type: DataTypes.STRING },
 
       chooseMachine: {
         type: DataTypes.ENUM("Máy 1350", "Máy 1900", "Máy 2 Lớp", "Máy Quấn Cuồn"),

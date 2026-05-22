@@ -44,7 +44,7 @@ export const updateSortPlanning = async (
 
 export const calculateTimeRunning = async ({
   plannings,
-  machineInfo,
+  machineMap,
   machine,
   dayStart,
   timeStart,
@@ -53,7 +53,7 @@ export const calculateTimeRunning = async ({
   transaction,
 }: {
   plannings: any[];
-  machineInfo: any;
+  machineMap: any;
   machine: string;
   dayStart: string | Date;
   timeStart: string;
@@ -73,7 +73,7 @@ export const calculateTimeRunning = async ({
 
     lastGhepKho = null;
   } else {
-    // ✅ Xác định con trỏ bắt đầu
+    // Xác định con trỏ bắt đầu
     const feComplete = plannings
       .filter((p) => p.status === "complete")
       .sort((a, b) => new Date(b.dayStart as any).getTime() - new Date(a.dayStart).getTime())[0];
@@ -108,7 +108,7 @@ export const calculateTimeRunning = async ({
     }
   }
 
-  // ✅ Tính từng đơn
+  // Tính từng đơn
   for (let i = 0; i < plannings.length; i++) {
     const planning = plannings[i];
     if (planning.status === "complete") continue;
@@ -116,7 +116,7 @@ export const calculateTimeRunning = async ({
     const data = await calculateTimeForOnePlanning({
       planning,
       machine,
-      machineInfo,
+      machineMap,
       currentTime,
       currentDay,
       timeStart,
@@ -140,7 +140,7 @@ export const calculateTimeRunning = async ({
 const calculateTimeForOnePlanning = async ({
   planning,
   machine,
-  machineInfo,
+  machineMap,
   currentTime,
   currentDay,
   timeStart,
@@ -156,11 +156,12 @@ const calculateTimeForOnePlanning = async ({
     Order?: {
       numberChild?: number | null;
       flute?: string | null;
+      dvt: string;
     } | null;
     status?: string;
   };
   machine: string;
-  machineInfo: any;
+  machineMap: any;
   currentTime: Date;
   currentDay: Date;
   timeStart: string;
@@ -170,26 +171,43 @@ const calculateTimeForOnePlanning = async ({
   isFirst: boolean;
 }) => {
   const { planningId, runningPlan, ghepKho, Order } = planning;
+
+  const isKg = planning.Order?.dvt === "Kg";
+  const activeMachine = isKg ? machineMap.kg : machineMap.m2;
+
+  // console.log(`dvt: ${planning.Order?.dvt}`);
+  // console.log(`active machine: ${JSON.stringify(activeMachine)}`);
+  // console.log(`==========================================`);
+
+  if (!activeMachine) {
+    throw new Error(`Thiếu cấu hình máy hệ ${isKg ? "Kg" : "m2"} cho máy ${machine}`);
+  }
+
+  //total length
   const numberChild = Order?.numberChild || 1;
-  const flute = Order?.flute || "3B";
-  const speed = getSpeed(flute, machine, machineInfo);
-  const performance = machineInfo.machinePerformance;
   const totalLength = runningPlan / numberChild;
 
-  const isSameSize = lastGhepKho && ghepKho === lastGhepKho;
+  //get speed
+  const flute = Order?.flute || "3B";
+  const speed = getSpeed(flute, machine, activeMachine);
+  const performance = activeMachine.machinePerformance;
 
-  const changeTime =
-    machine === "Máy Quấn Cuồn"
-      ? machineInfo.timeChangeSize
-      : isFirst
-        ? machineInfo.timeChangeSize
-        : isSameSize
-          ? machineInfo.timeChangeSameSize
-          : machineInfo.timeChangeSize;
+  //check same size
+  const isSameSize = lastGhepKho && ghepKho === lastGhepKho;
+  let changeTime = 0;
+
+  if (machine === "Máy Quấn Cuồn") {
+    changeTime = activeMachine.timeChangeSize;
+  } else if (isFirst) {
+    changeTime = activeMachine.timeChangeSize;
+  } else {
+    // Áp dụng logic cùng khổ/khác khổ cho cả đơn mét và đơn kg
+    changeTime = isSameSize ? activeMachine.timeChangeSameSize : activeMachine.timeChangeSize;
+  }
 
   const productionMinutes = Math.ceil((changeTime + totalLength / speed) / (performance / 100));
 
-  // --- BƯỚC 1: Tính thời gian kết thúc (Tạm thời) ---
+  // --- Tính thời gian kết thúc ---
   let tempEnd = new Date(currentTime);
   tempEnd.setMinutes(tempEnd.getMinutes() + productionMinutes);
   let extraBreak = isDuringBreak(currentTime, tempEnd);
@@ -197,22 +215,42 @@ const calculateTimeForOnePlanning = async ({
   let predictedEnd = new Date(currentTime);
   predictedEnd.setMinutes(predictedEnd.getMinutes() + productionMinutes + extraBreak);
 
-  // --- BƯỚC 2: Kiểm tra nhảy ca & Tràn giờ ---
+  // --- Kiểm tra nhảy ca & Tràn giờ ---
   const [h, m] = timeStart.split(":").map(Number);
+
+  // Tìm mốc bắt đầu của "Ngày sản xuất" chứa currentTime
   let startOfWork = new Date(currentTime);
   startOfWork.setHours(h, m, 0, 0);
 
-  // Đảm bảo startOfWork bám đúng ca
   if (currentTime < startOfWork) {
     startOfWork.setDate(startOfWork.getDate() - 1);
   }
 
+  // Mốc kết thúc của "Ngày sản xuất" đó
   let endOfWork = new Date(startOfWork);
   endOfWork.setHours(startOfWork.getHours() + totalTimeWorking);
 
   let hasOverFlow = false;
 
-  if (totalTimeWorking < 24) {
+  if (totalTimeWorking >= 24) {
+    hasOverFlow = false;
+
+    /**
+     * Nếu giờ kết thúc (predictedEnd) là 05:00 sáng (hôm sau) mà timeStart là 06:00
+     * thì cái 05:00 đó vẫn thuộc về "Ngày sản xuất" của hôm trước.
+     */
+    let productionDate = new Date(predictedEnd);
+    let pivotPoint = new Date(predictedEnd);
+    pivotPoint.setHours(h, m, 0, 0);
+
+    // Nếu chưa chạm đến mốc timeStart => vẫn thuộc về chu kỳ sản xuất của ngày trước.
+    if (predictedEnd < pivotPoint) {
+      productionDate.setDate(productionDate.getDate() - 1);
+    }
+
+    currentDay = productionDate;
+    currentDay.setHours(0, 0, 0, 0);
+  } else {
     // Nếu qua mốc kết thúc ca -> Bắt đầu ngày mới
     if (currentTime >= endOfWork) {
       startOfWork.setDate(startOfWork.getDate() + 1);
@@ -228,11 +266,10 @@ const calculateTimeForOnePlanning = async ({
       predictedEnd.setMinutes(predictedEnd.getMinutes() + productionMinutes + extraBreak);
     }
     hasOverFlow = predictedEnd > endOfWork;
-  }
 
-  // --- BƯỚC 3: Chốt "Ngày sản xuất" (Dựa theo ngày kết thúc thực tế) ---
-  currentDay = new Date(predictedEnd);
-  currentDay.setHours(0, 0, 0, 0);
+    currentDay = new Date(predictedEnd);
+    currentDay.setHours(0, 0, 0, 0);
+  }
 
   const result = await handleOverflow({
     hasOverFlow,

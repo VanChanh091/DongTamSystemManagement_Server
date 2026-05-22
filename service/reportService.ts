@@ -41,12 +41,11 @@ export const reportService = {
         }
       }
 
-      const offset = (page - 1) * pageSize;
-      const { rows, count } = await reportRepository.findReportPaperByMachine(
+      const { rows, count } = await reportRepository.getAllReportPaper({
         machine,
+        page,
         pageSize,
-        offset,
-      );
+      });
       const totalPages = Math.ceil(count / pageSize);
 
       const responseData = {
@@ -112,6 +111,7 @@ export const reportService = {
         filter: filters.join(" AND "),
         attributesToSearchOn: searchKeyword ? [field] : [],
         attributesToRetrieve: ["reportPaperId"],
+        sort: ["dayReported:desc"],
         page: Number(page) || 1,
         hitsPerPage: Number(pageSize) || 25,
       });
@@ -128,17 +128,16 @@ export const reportService = {
       }
 
       // Truy vấn DB để lấy data dựa trên orderIds
-      const fullOrders = (await reportRepository.getDataReportPaperOrBox({
-        isBox: false,
+      const { rows } = await reportRepository.getAllReportPaper({
         machine,
         whereCondition: {
           reportPaperId: { [Op.in]: paperIds },
         },
-      })) as ReportPlanningPaper[];
+      });
 
       // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
       const finalData = paperIds
-        .map((id) => fullOrders.find((r) => r.reportPaperId === id))
+        .map((id) => rows.find((r) => r.reportPaperId === id))
         .filter(Boolean);
 
       return {
@@ -172,8 +171,12 @@ export const reportService = {
         }
       }
 
-      const offset = (page - 1) * pageSize;
-      const { rows, count } = await reportRepository.findAllReportBox(machine, pageSize, offset);
+      const { rows, count } = await reportRepository.getAllReportBox({
+        machine,
+        page,
+        pageSize,
+        whereCondition: { machine },
+      });
 
       const totalPages = Math.ceil(count / pageSize);
 
@@ -240,6 +243,7 @@ export const reportService = {
         filter: filters.join(" AND "),
         attributesToSearchOn: searchKeyword ? [field] : [],
         attributesToRetrieve: ["reportBoxId"],
+        sort: ["dayReported:desc"],
         page: Number(page) || 1,
         hitsPerPage: Number(pageSize) || 25,
       });
@@ -256,18 +260,13 @@ export const reportService = {
       }
 
       // Truy vấn DB để lấy data dựa trên orderIds
-      const fullOrders = (await reportRepository.getDataReportPaperOrBox({
-        isBox: true,
+      const { rows } = await reportRepository.getAllReportBox({
         machine,
-        whereCondition: {
-          reportBoxId: { [Op.in]: boxIds },
-        },
-      })) as ReportPlanningBox[];
+        whereCondition: { machine, reportBoxId: { [Op.in]: boxIds } },
+      });
 
       // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
-      const finalData = boxIds
-        .map((id) => fullOrders.find((r) => r.reportBoxId === id))
-        .filter(Boolean);
+      const finalData = boxIds.map((id) => rows.find((r) => r.reportBoxId === id)).filter(Boolean);
 
       return {
         message: "Get orders from Meilisearch & DB successfully",

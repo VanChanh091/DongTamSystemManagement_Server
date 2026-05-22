@@ -46,6 +46,7 @@ export const warehouseRepository = {
             "quantityManufacture",
             "dateRequestShipping",
             "instructSpecial",
+            "dvt",
             "isBox",
             "customerId",
             "productId",
@@ -261,12 +262,13 @@ export const warehouseRepository = {
           ],
         },
       ],
-      order: [["dateOutbound", "DESC"]],
     };
 
     if (page && pageSize) {
       query.offset = (page - 1) * pageSize;
       query.limit = pageSize;
+
+      query.order = [["dateOutbound", "DESC"]];
     }
 
     return await OutboundHistory.findAndCountAll(query);

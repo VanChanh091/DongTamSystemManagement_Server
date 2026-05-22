@@ -28,12 +28,13 @@ export const productRepository = {
     const query: any = {
       where: whereCondition,
       attributes: { exclude: ["createdAt", "updatedAt"] },
-      order: [["productSeq", "ASC"]],
     };
 
     if (page && pageSize) {
       query.offset = (page - 1) * pageSize;
       query.limit = pageSize;
+
+      query.order = [["productSeq", "ASC"]];
     }
 
     return await Product.findAndCountAll(query);

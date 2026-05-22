@@ -66,15 +66,16 @@ export const inventoryRepository = {
           ],
         },
       ],
-      order: [
-        [Order, Customer, "customerName", "ASC"],
-        [Order, "orderSortValue", "ASC"],
-      ],
     };
 
     if (page !== undefined && pageSize !== undefined) {
       options.offset = (page - 1) * pageSize;
       options.limit = pageSize;
+
+      options.order = [
+        [Order, Customer, "customerName", "ASC"],
+        [Order, "orderSortValue", "ASC"],
+      ];
     }
 
     return await Inventory.findAndCountAll(options);

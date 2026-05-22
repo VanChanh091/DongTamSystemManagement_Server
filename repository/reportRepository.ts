@@ -9,8 +9,19 @@ import { ReportPlanningBox } from "../models/report/reportPlanningBox";
 import { ReportPlanningPaper } from "../models/report/reportPlanningPaper";
 
 export const reportRepository = {
-  findReportPaperByMachine: async (machine: string, pageSize: number, offset: number) => {
-    return await ReportPlanningPaper.findAndCountAll({
+  getAllReportPaper: async ({
+    machine,
+    page,
+    pageSize,
+    whereCondition,
+  }: {
+    machine: string;
+    page?: number;
+    pageSize?: number;
+    whereCondition?: any;
+  }) => {
+    const query: any = {
+      where: whereCondition,
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {
@@ -64,15 +75,31 @@ export const reportRepository = {
           ],
         },
       ],
-      offset,
-      limit: pageSize,
-      order: [["dayReport", "DESC"]],
-    });
+    };
+
+    if (page && pageSize) {
+      query.offset = (page - 1) * pageSize;
+      query.limit = pageSize;
+
+      query.order = [["dayReport", "DESC"]];
+    }
+
+    return await ReportPlanningPaper.findAndCountAll(query);
   },
 
-  findAllReportBox: async (machine: string, pageSize: number, offset: number) => {
-    return await ReportPlanningBox.findAndCountAll({
-      where: { machine: machine },
+  getAllReportBox: async ({
+    machine,
+    page,
+    pageSize,
+    whereCondition,
+  }: {
+    machine: string;
+    page?: number;
+    pageSize?: number;
+    whereCondition?: any;
+  }) => {
+    const query: any = {
+      where: whereCondition, //machine: machine
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {
@@ -159,10 +186,16 @@ export const reportRepository = {
           ],
         },
       ],
-      offset,
-      limit: pageSize,
-      order: [["dayReport", "DESC"]],
-    });
+    };
+
+    if (page && pageSize) {
+      query.offset = (page - 1) * pageSize;
+      query.limit = pageSize;
+
+      query.order = [["dayReport", "DESC"]];
+    }
+
+    return await ReportPlanningBox.findAndCountAll(query);
   },
 
   exportReportPaper: async (whereCondition: any = {}, machine: string) => {
@@ -315,177 +348,6 @@ export const reportRepository = {
         },
       ],
     });
-  },
-
-  //sync report paper or box for meili
-  getDataReportPaperOrBox: async ({
-    isBox,
-    machine,
-    whereCondition,
-  }: {
-    isBox: boolean;
-    machine: string;
-    whereCondition?: any;
-  }) => {
-    let data;
-
-    if (isBox) {
-      data = await ReportPlanningBox.findAll({
-        where: whereCondition,
-        attributes: { exclude: ["createdAt", "updatedAt"] },
-        include: [
-          {
-            model: PlanningBox,
-            attributes: {
-              exclude: [
-                "hasIn",
-                "hasBe",
-                "hasXa",
-                "hasDan",
-                "hasCanLan",
-                "hasCatKhe",
-                "hasCanMang",
-                "hasDongGhim",
-                "createdAt",
-                "updatedAt",
-              ],
-            },
-            include: [
-              {
-                model: PlanningBoxTime,
-                where: { machine: machine },
-                as: "boxTimes",
-                attributes: { exclude: ["createdAt", "updatedAt"] },
-              },
-              {
-                model: PlanningBoxTime,
-                as: "allBoxTimes",
-                where: {
-                  machine: { [Op.ne]: machine },
-                },
-                attributes: {
-                  exclude: [
-                    "timeRunning",
-                    "dayStart",
-                    "dayCompleted",
-                    "wasteBox",
-                    "shiftManagement",
-                    "status",
-                    "sortPlanning",
-                    "createdAt",
-                    "updatedAt",
-                    "rpWasteLoss",
-                  ],
-                },
-              },
-              {
-                model: Order,
-                attributes: {
-                  exclude: [
-                    "acreage",
-                    "dvt",
-                    "price",
-                    "pricePaper",
-                    "discount",
-                    "profit",
-                    "vat",
-                    "rejectReason",
-                    "createdAt",
-                    "updatedAt",
-                    "lengthPaperCustomer",
-                    "paperSizeCustomer",
-                    "day",
-                    "matE",
-                    "matB",
-                    "matC",
-                    "songE",
-                    "songB",
-                    "songC",
-                    "songE2",
-                    "lengthPaperManufacture",
-                    "status",
-                  ],
-                },
-                include: [
-                  { model: Customer, attributes: ["customerName", "companyName"] },
-                  {
-                    model: Box,
-                    as: "box",
-                    attributes: { exclude: ["createdAt", "updatedAt"] },
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      });
-    } else {
-      data = await ReportPlanningPaper.findAll({
-        where: whereCondition,
-        attributes: { exclude: ["createdAt", "updatedAt"] },
-        include: [
-          {
-            model: PlanningPaper,
-            where: { chooseMachine: machine },
-            attributes: {
-              exclude: [
-                "createdAt",
-                "updatedAt",
-                "dayCompleted",
-                "shiftProduction",
-                "shiftProduction",
-                "shiftManagement",
-                "status",
-                "hasOverFlow",
-                "sortPlanning",
-              ],
-            },
-            include: [
-              {
-                model: Order,
-                attributes: {
-                  exclude: [
-                    "acreage",
-                    "dvt",
-                    "price",
-                    "pricePaper",
-                    "discount",
-                    "profit",
-                    "vat",
-                    "rejectReason",
-                    "createdAt",
-                    "updatedAt",
-                    "lengthPaperCustomer",
-                    "paperSizeCustomer",
-                    "quantityCustomer",
-                    "day",
-                    "matE",
-                    "matB",
-                    "matC",
-                    "songE",
-                    "songB",
-                    "songC",
-                    "songE2",
-                    "lengthPaperManufacture",
-                    "status",
-                  ],
-                },
-                include: [
-                  { model: Customer, attributes: ["customerName", "companyName"] },
-                  {
-                    model: Box,
-                    as: "box",
-                    attributes: { exclude: ["createdAt", "updatedAt"] },
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      });
-    }
-
-    return data;
   },
 
   syncReportPaperForMeili: async (reportPaperId: number, transaction: Transaction) => {

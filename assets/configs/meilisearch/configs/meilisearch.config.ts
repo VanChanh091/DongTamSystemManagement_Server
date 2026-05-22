@@ -49,6 +49,7 @@ export const planningBoxSettings: Settings = {
 export const reportPaperSettings: Settings = {
   searchableAttributes: ["orderId", "customerName", "dayReported", "shiftManagement"],
   filterableAttributes: ["chooseMachine", "dayReported"],
+  sortableAttributes: ["dayReported"],
   rankingRules: rule,
 };
 
@@ -56,6 +57,7 @@ export const reportPaperSettings: Settings = {
 export const reportBoxSettings: Settings = {
   searchableAttributes: ["orderId", "customerName", "dayReported", "QC_box", "shiftManagement"],
   filterableAttributes: ["machine", "dayReported"],
+  sortableAttributes: ["dayReported"],
   rankingRules: rule,
 };
 

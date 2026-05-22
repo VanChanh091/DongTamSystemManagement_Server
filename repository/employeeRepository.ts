@@ -53,12 +53,13 @@ export const employeeRepository = {
           attributes: { exclude: ["createdAt", "updatedAt"] },
         },
       ],
-      order: [["employeeId", "ASC"]],
     };
 
     if (page && pageSize) {
       query.offset = (page - 1) * pageSize;
       query.limit = pageSize;
+
+      query.order = [["employeeId", "ASC"]];
     }
 
     return await EmployeeBasicInfo.findAndCountAll(query);

@@ -43,6 +43,7 @@ export const planningPaperRepository = {
             "matE2",
             "quantityManufacture",
             "instructSpecial",
+            "dvt",
             "isBox",
             "chongTham",
             "orderIdCustomer",
