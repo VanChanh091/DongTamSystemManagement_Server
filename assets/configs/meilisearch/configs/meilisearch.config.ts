@@ -34,7 +34,7 @@ export const ordersSettings: Settings = {
 //planning paper
 export const planningPaperSettings: Settings = {
   searchableAttributes: ["orderId", "customerName", "ghepKho"],
-  filterableAttributes: ["chooseMachine", "status"],
+  filterableAttributes: ["chooseMachine", "status", "deliveryPlanned", "userId"],
   rankingRules: rule,
 };
 
@@ -65,13 +65,7 @@ export const reportBoxSettings: Settings = {
 export const inboundSettings: Settings = {
   searchableAttributes: ["orderId", "customerName", "dateInbound", "checkedBy"],
   filterableAttributes: ["dateInbound"],
-  rankingRules: rule,
-};
-
-//inventory
-export const inventorySettings: Settings = {
-  searchableAttributes: ["orderId", "customerName", "fullName"],
-  filterableAttributes: ["qtyInventory"],
+  sortableAttributes: ["dateInbound"],
   rankingRules: rule,
 };
 
@@ -79,6 +73,14 @@ export const inventorySettings: Settings = {
 export const outboundSettings: Settings = {
   searchableAttributes: ["dateOutbound", "outboundSlipCode", "customerName", "status"],
   filterableAttributes: ["status", "dateOutbound"],
+  sortableAttributes: ["outboundId"],
+  rankingRules: rule,
+};
+
+//inventory
+export const inventorySettings: Settings = {
+  searchableAttributes: ["orderId", "customerName", "fullName"],
+  filterableAttributes: ["qtyInventory"],
   rankingRules: rule,
 };
 

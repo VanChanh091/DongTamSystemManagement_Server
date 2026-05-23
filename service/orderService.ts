@@ -125,7 +125,7 @@ export const orderService = {
       const index = meiliClient.index("orders");
 
       // Phân quyền và Trạng thái
-      let filters = ["status IN [accept]"];
+      let filters = [`status == "accept"`];
       if (role !== "admin" && role !== "manager") {
         filters.push(`userId = ${userId}`);
       }
@@ -138,6 +138,7 @@ export const orderService = {
       });
 
       const orderIds = searchResult.hits.map((hit: any) => hit.orderId);
+
       if (orderIds.length === 0) {
         return { message: "No orders found", data: [] };
       }

@@ -128,6 +128,7 @@ export const outboundService = {
         filter: filter.join(" AND "),
         attributesToSearchOn: searchKeyword ? [field] : [],
         attributesToRetrieve: ["outboundId"],
+        sort: ["outboundId:desc"],
         page: Number(page) || 1,
         hitsPerPage: Number(pageSize) || 25, //pageSize
       });

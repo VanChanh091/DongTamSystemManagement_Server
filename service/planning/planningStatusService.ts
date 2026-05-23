@@ -159,11 +159,11 @@ export const planningStatusService = {
             };
           });
 
-        const layers = parseStructure(structStr);
-
         // 4) Xác định loại sóng từ đơn hàng (flute: "5EB" => ["E", "B"])
         const waveTypes = (order.flute?.match(/[EBC]/gi) || []).map((s: string) => s.toUpperCase());
         const roundSmart = (num: number) => Math.round(num * 100) / 100;
+
+        const layers = parseStructure(structStr);
 
         // 5) Hàm tính phế liệu paper
         const calculateWaste = (
@@ -334,10 +334,10 @@ export const planningStatusService = {
         }
 
         //--------------------MEILISEARCH-----------------------
-        const paperToSync = await planningPaperRepository.syncPaperFromOrderToMeili(
-          paperPlan.planningId,
+        const paperToSync = await planningPaperRepository.syncPaperFromOrderToMeili({
+          planningId: paperPlan.planningId,
           transaction,
-        );
+        });
 
         if (paperToSync) {
           const flatPaperData = meiliTransformer.planningPaper(paperToSync);

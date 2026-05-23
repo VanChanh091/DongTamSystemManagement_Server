@@ -54,12 +54,13 @@ export const meiliTransformer = {
 
     return {
       planningId: raw.planningId,
-      ghepKho: raw.ghepKho,
-      orderId: raw.orderId,
-      chooseMachine: raw.chooseMachine,
+      orderId: raw.Order?.orderId,
+      userId: raw.Order?.userId,
       status: raw.status,
+      ghepKho: raw.ghepKho,
+      chooseMachine: raw.chooseMachine,
+      deliveryPlanned: raw.deliveryPlanned,
       customerName: raw.Order?.Customer?.customerName,
-      productName: raw.Order?.Product?.productName,
     };
   },
 

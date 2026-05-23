@@ -3,9 +3,10 @@ dotenv.config();
 
 import { Op } from "sequelize";
 import { Request } from "express";
-import { AppError } from "../../utils/appError";
-import { MachineBox } from "../../models/admin/machineBox";
 import { meiliService } from "../meiliService";
+import { AppError } from "../../utils/appError";
+import { MEILI_INDEX } from "../../assets/labelFields";
+import { MachineBox } from "../../models/admin/machineBox";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { PlanningBox } from "../../models/planning/planningBox";
 import redisCache from "../../assets/configs/connect/redis.connect";
@@ -15,10 +16,9 @@ import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { planningHelper } from "../../repository/planning/planningHelper";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
+import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
 import { planningBoxRepository } from "../../repository/planning/planningBoxRepository";
 import { PlanningBoxTime, statusBoxType } from "../../models/planning/planningBoxMachineTime";
-import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
-import { MEILI_INDEX } from "../../assets/labelFields";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { box } = CacheKey.planning;

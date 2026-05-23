@@ -3,18 +3,14 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.5.8</title>
-            <sparkle:version>4.5.8</sparkle:version> 
-            <description>Cải tiến giao diện cho form xuất kho
-            Cho phép xuất kho với nhiều đơn hàng cùng lúc
-            Cho phép xuất âm và hàng tặng
-            Tồn kho có 2 trạng thái
-            fix lại xuất lệch múi giờ ở dữ liệu nguồn khi tìm kiếm và xuất excel
-            Thêm trường chứa tổng tiền và hiển thị tổng tiền trong ngày ở trang kế hoạch sản xuất
-            Thêm tìm kiếm theo nhân viên bán hàng ở tồn kho
-            Cho phép ghi chú khi đăng ký giao hàng
+            <title>Version 4.5.9</title>
+            <sparkle:version>4.5.9</sparkle:version> 
+            <description>Kế hoạch sản xuất: Thêm phần tính toán thời gian cho case 24h và các đơn hàng có dvt là Kg
+            Hiển thị ghi chú trong phần yêu cầu giao hàng
+            Thêm ghi chú cho kế hoạch sản xuất
+            Thêm lọc tồn kho theo nhân viên bán hàng
             </description>
-            <pubDate>Tue, 12 May 2026</pubDate>
+            <pubDate>Fri, 22 May 2026</pubDate>
             <enclosure url="dongtam.exe" 
                     sparkle:os="windows" 
                     length="12345678" 

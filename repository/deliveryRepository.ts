@@ -89,7 +89,7 @@ export const deliveryRepository = {
       order: [
         [{ model: Order, as: "Order" }, { model: Customer, as: "Customer" }, "customerName", "ASC"],
       ],
-      limit: 1000,
+      limit: 700,
     });
   },
 

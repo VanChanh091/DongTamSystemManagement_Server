@@ -21,6 +21,8 @@ import { ReportPlanningPaper } from "../../../../models/report/reportPlanningPap
 import { EmployeeCompanyInfo } from "../../../../models/employee/employeeCompanyInfo";
 import { planningBoxRepository } from "../../../../repository/planning/planningBoxRepository";
 import { inventoryRepository } from "../../../../repository/inventoryRepository";
+import { planningPaperRepository } from "../../../../repository/planning/planningPaperRepository";
+import { Op } from "sequelize";
 
 interface SyncMeiliData {
   data: any[];
@@ -177,19 +179,9 @@ export const syncOrderToMeili = async (isDeleteAll: boolean) => {
 
 //sync planning
 export const syncPlanningPaperToMeili = async (isDeleteAll: boolean) => {
-  const papers = await PlanningPaper.findAll({
-    attributes: ["planningId", "ghepKho", "orderId", "chooseMachine", "status"],
-    include: [
-      {
-        model: Order,
-        include: [
-          { model: Customer, attributes: ["customerName"] },
-          { model: Product, attributes: ["productName"] },
-        ],
-      },
-    ],
+  const papers = await planningPaperRepository.syncAllPaperToMeili({
+    whereCondition: { deliveryPlanned: { [Op.ne]: "delivered" } },
   });
-
   const flattenData = papers.map(meiliTransformer.planningPaper);
 
   return await syncMeiliData({

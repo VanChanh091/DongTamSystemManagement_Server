@@ -76,7 +76,6 @@ export const inventoryService = {
       }
 
       const index = meiliClient.index("inventories");
-
       const filterCondition = filter === "gtZero" ? "qtyInventory > 0" : "qtyInventory < 0";
 
       const searchResult = await index.search(keyword, {

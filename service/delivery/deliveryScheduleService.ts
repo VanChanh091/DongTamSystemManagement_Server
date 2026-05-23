@@ -24,6 +24,7 @@ import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransfor
 import { deliveryColumns, mappingDeliveryRow } from "../../utils/mapping/deliveryRowAndComlumn";
 import { manufactureRepo } from "../../repository/manufactureRepository";
 import { OutboundDetail } from "../../models/warehouse/outboundDetail";
+import { planningPaperRepository } from "../../repository/planning/planningPaperRepository";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { schedule } = CacheKey.delivery;
@@ -202,6 +203,18 @@ export const deliveryScheduleService = {
 
             if (distinctOrderIds.length > 0) {
               await deliveryScheduleService._syncOrderForMeili(distinctOrderIds, transaction);
+
+              const paperToMeili = await planningPaperRepository.syncAllPaperToMeili({
+                whereCondition: { planningId: { [Op.in]: distinctPaperIds } },
+                transaction,
+              });
+              const flattenData = paperToMeili.map(meiliTransformer.planningPaper);
+
+              await meiliService.syncOrUpdateMeiliData({
+                indexKey: MEILI_INDEX.PLANNING_PAPERS,
+                data: flattenData,
+                transaction,
+              });
             }
           }
         } else if (action === "cancel") {
@@ -239,7 +252,6 @@ export const deliveryScheduleService = {
 
         //--------------------MEILISEARCH-----------------------
         const requestIds = items.map((i) => i.requestId);
-
         const requestData = await deliveryRepository.getManyDeliveryRequestForMeili(
           requestIds,
           transaction,

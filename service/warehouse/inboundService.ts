@@ -478,6 +478,7 @@ export const inboundService = {
         filter: filter.join(" AND "),
         attributesToSearchOn: searchKeyword ? [field] : [],
         attributesToRetrieve: ["inboundId"],
+        sort: ["dateInbound:desc"],
         page: Number(page) || 1,
         hitsPerPage: Number(pageSize) || 25, //pageSize
       });

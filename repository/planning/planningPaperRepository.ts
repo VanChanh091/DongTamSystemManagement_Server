@@ -1,7 +1,6 @@
 import { Op, Sequelize, Transaction } from "sequelize";
 import { Box } from "../../models/order/box";
 import { Order } from "../../models/order/order";
-import { Product } from "../../models/product/product";
 import { Customer } from "../../models/customer/customer";
 import { PlanningBox } from "../../models/planning/planningBox";
 import { PlanningPaper } from "../../models/planning/planningPaper";
@@ -230,20 +229,50 @@ export const planningPaperRepository = {
     });
   },
 
-  syncPaperFromOrderToMeili: async (planningId: number, transaction: Transaction) => {
-    return await PlanningPaper.findByPk(planningId, {
-      attributes: ["planningId", "ghepKho", "orderId", "chooseMachine", "status"],
-      include: [
-        {
-          model: Order,
-          attributes: ["orderId"],
-          include: [
-            { model: Customer, attributes: ["customerName"] },
-            { model: Product, attributes: ["productName"] },
-          ],
-        },
-      ],
-      transaction,
-    });
+  //MEILISEARCH
+  PLANNINGPAPER_MEILI_OPTIONS: ({
+    whereCondition = {},
+    transaction,
+  }: {
+    whereCondition?: any;
+    transaction?: Transaction;
+  }) => ({
+    where: whereCondition,
+    attributes: ["planningId", "ghepKho", "chooseMachine", "status", "deliveryPlanned"],
+    include: [
+      {
+        model: Order,
+        attributes: ["orderId", "userId"],
+        include: [{ model: Customer, attributes: ["customerName"] }],
+      },
+    ],
+    transaction,
+  }),
+
+  syncAllPaperToMeili: async ({
+    whereCondition,
+    transaction,
+  }: {
+    whereCondition?: any;
+    transaction?: Transaction;
+  }) => {
+    return await PlanningPaper.findAll(
+      planningPaperRepository.PLANNINGPAPER_MEILI_OPTIONS({ whereCondition, transaction }),
+    );
+  },
+
+  syncPaperFromOrderToMeili: async ({
+    planningId,
+    transaction,
+  }: {
+    planningId: number;
+    transaction: Transaction;
+  }) => {
+    return await PlanningPaper.findOne(
+      planningPaperRepository.PLANNINGPAPER_MEILI_OPTIONS({
+        whereCondition: { planningId, deliveryPlanned: { [Op.ne]: "delivered" } },
+        transaction,
+      }),
+    );
   },
 };

@@ -201,6 +201,7 @@ export const planningPaperService = {
         for (const planning of plannings) {
           planning.chooseMachine = newMachine;
           planning.sortPlanning = null;
+
           await planning.save({ transaction });
         }
 

@@ -14,6 +14,8 @@ import { calculateVolume } from "../../utils/helper/modelHelper/orderHelpers";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
+import { planningPaperRepository } from "../../repository/planning/planningPaperRepository";
+import { Op } from "sequelize";
 
 export const deliveryEstimateService = {
   getPlanningEstimateTime: async ({
@@ -113,7 +115,6 @@ export const deliveryEstimateService = {
     field: string;
     keyword: string;
   }) => {
-    const filterStatus = ["stop", "cancel"];
     const index = meiliClient.index("planningPapers");
 
     try {
@@ -122,15 +123,27 @@ export const deliveryEstimateService = {
         throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
       }
 
+      let filters = [`deliveryPlanned != "delivered"`, `status NOT IN ["stop", "cancel"]`];
+
+      if (all !== "true") {
+        filters.push(`userId = ${userId}`);
+      }
+
+      // console.log(`filter: ${filters.join(" AND ")}`);
+
       const searchResult = await index.search(keyword, {
-        attributesToSearchOn: [field],
+        filter: filters.join(" AND "),
         attributesToRetrieve: ["planningId"],
-        filter: `status NOT IN ${JSON.stringify(filterStatus)}`,
+        attributesToSearchOn: [field],
         page: Number(page) || 1,
         hitsPerPage: Number(pageSize) || 25, //pageSizes
       });
 
       const planningIds = searchResult.hits.map((hit: any) => hit.planningId);
+
+      // console.log(`length orderId: ${orderIds.length}`);
+      // console.log(`orderIds: ${JSON.stringify(orderIds)}`);
+
       if (planningIds.length === 0) {
         return {
           message: "No planning papers found",
@@ -142,7 +155,6 @@ export const deliveryEstimateService = {
       }
 
       const plannings = await deliveryRepository.getPlanningEstimateTime(dayStart, userId, all);
-
       const filtered = deliveryEstimateService.filterPlanningEstimateTime({
         plannings,
         dayStart,
@@ -290,6 +302,12 @@ export const deliveryEstimateService = {
           request.requestId,
           transaction,
         );
+
+        const planningForMeili = await planningPaperRepository.syncPaperFromOrderToMeili({
+          planningId,
+          transaction,
+        });
+
         if (requetsCreated) {
           const flattenData = meiliTransformer.deliveryRequest(requetsCreated);
 
@@ -298,6 +316,15 @@ export const deliveryEstimateService = {
             data: flattenData,
             transaction,
           });
+
+          if (planningForMeili) {
+            await meiliService.syncOrUpdateMeiliData({
+              indexKey: MEILI_INDEX.PLANNING_PAPERS,
+              data: { planningId: planningForMeili.planningId, deliveryPlanned: "pending" },
+              transaction,
+              isUpdate: true,
+            });
+          }
         }
 
         return { message: "Xác nhận đăng ký giao hàng thành công" };
@@ -443,6 +470,19 @@ export const deliveryEstimateService = {
 
           //--------------------MEILISEARCH-----------------------
           await deliveryScheduleService._syncOrderForMeili(listOrderIds, transaction);
+
+          const papers = await planningPaperRepository.syncAllPaperToMeili({
+            whereCondition: { planningId: { [Op.in]: idArray } },
+            transaction,
+          });
+
+          const flattenData = papers.map(meiliTransformer.planningPaper);
+
+          await meiliService.syncOrUpdateMeiliData({
+            indexKey: MEILI_INDEX.PLANNING_PAPERS,
+            data: flattenData,
+            transaction,
+          });
         }
 
         return {
