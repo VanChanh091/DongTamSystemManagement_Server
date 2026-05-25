@@ -8,14 +8,14 @@ import { DeliveryRequest } from "../../models/delivery/deliveryRequest";
 import { deliveryRepository } from "../../repository/deliveryRepository";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 
-export const deliveryPlanningService = {
+export const deliveryRequestService = {
   getDeliveryRequest: async () => {
     try {
       const request = await deliveryRepository.getDeliveryRequest({});
 
-      return { message: "get planning waiting delivery successfully", data: request };
+      return { message: "get delivery request successfully", data: request };
     } catch (error) {
-      console.error("❌ get planning waiting delivery failed:", error);
+      console.error("❌ get delivery request failed:", error);
       throw AppError.ServerError();
     }
   },
@@ -56,7 +56,7 @@ export const deliveryPlanningService = {
         data: finalData,
       };
     } catch (error) {
-      console.error("❌ get planning waiting delivery failed:", error);
+      console.error("❌ get delivery request failed:", error);
       throw AppError.ServerError();
     }
   },
@@ -74,7 +74,7 @@ export const deliveryPlanningService = {
         data: plan,
       };
     } catch (error) {
-      console.error("❌ get planning detail for edit:", error);
+      console.error("❌ get delivery plan detail for edit:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }

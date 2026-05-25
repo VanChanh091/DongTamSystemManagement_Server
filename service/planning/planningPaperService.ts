@@ -319,7 +319,7 @@ export const planningPaperService = {
       return await runInTransaction(async (transaction) => {
         const plannings = await planningPaperRepository.getPapersById({ planningIds, transaction });
         if (plannings.length === 0) {
-          throw AppError.NotFound("planning npt found", "PLANNING_NOT_FOUND");
+          throw AppError.NotFound("planning not found", "PLANNING_NOT_FOUND");
         }
 
         if (newStatus !== "complete") {
@@ -337,7 +337,7 @@ export const planningPaperService = {
                 if (newStatus === "reject") {
                   if ((planning.qtyProduced ?? 0) > 0) {
                     throw AppError.Conflict(
-                      `Cannot reject planning ${planning.planningId} has produced quantity.`,
+                      `Không thể dừng đơn hàng đã có số lượng`,
                       "CANNOT_REJECT_PRODUCED_PLANNING",
                     );
                   }
@@ -487,8 +487,8 @@ export const planningPaperService = {
           for (const planning of plannings) {
             if (planning.sortPlanning === null) {
               throw AppError.BadRequest(
-                "Cannot pause planning without sortPlanning",
-                "CANNOT_PAUSE_WITHOUT_SORT",
+                "Không thể hoàn thành đơn hàng chưa được sắp xếp",
+                "CANNOT_COMPLETE_WITHOUT_SORT",
               );
             }
 

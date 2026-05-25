@@ -12,7 +12,7 @@ import {
   getRequestPrepareGoods,
   handlePutDelivery,
   notifyPrepareGoods,
-  requestOrPrepareGoods,
+  requestOrPreparedGoods,
   getDeliveryItemsByOrderId,
 } from "../../controller/user/delivery/deliveryController";
 
@@ -53,7 +53,7 @@ router.post(
 //=================================PREPARE GOODS=====================================
 
 router.get("/prepare", authenticate, getRequestPrepareGoods);
-router.put("/prepare", authenticate, requestOrPrepareGoods);
+router.put("/prepare", authenticate, requestOrPreparedGoods);
 
 //socket
 router.post(

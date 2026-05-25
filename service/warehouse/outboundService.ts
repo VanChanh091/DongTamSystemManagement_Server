@@ -22,6 +22,7 @@ import { warehouseRepository } from "../../repository/warehouseRepository";
 import { inventoryRepository } from "../../repository/inventoryRepository";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
+import { Product } from "../../models/product/product";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { outbound } = CacheKey.warehouse;
@@ -212,8 +213,6 @@ export const outboundService = {
       isPromotion?: boolean;
     }[];
   }) => {
-    console.log(`detail: ${JSON.stringify(outboundDetails)}`);
-
     try {
       return await runInTransaction(async (transaction) => {
         if (!outboundDetails || outboundDetails.length === 0) {
@@ -239,9 +238,44 @@ export const outboundService = {
 
         for (const item of outboundDetails) {
           // check order is exist
-          const order = await Order.findByPk(item.orderId, { transaction });
+          const order = await Order.findByPk(item.orderId, {
+            include: [{ model: Product, attributes: ["typeProduct"] }],
+            transaction,
+          });
           if (!order) {
             throw AppError.NotFound(`Order ${item.orderId} không tồn tại`, "ORDER_NOT_FOUND");
+          }
+
+          if (order.Product?.typeProduct !== "Phí Khác") {
+            const prefix = item.orderId.slice(0, -3); // Lấy cụm phía trước chữ D
+
+            const feeOrders = await Order.findAll({
+              where: { orderId: { [Op.like]: `${prefix}%` } },
+              attributes: ["orderId"],
+              include: { model: Product, required: true, where: { typeProduct: "Phí Khác" } },
+              transaction,
+            });
+
+            for (const feeOrder of feeOrders) {
+              // Kiểm tra xem mã này đã nằm trong danh sách đang tích chọn xuất kho hay chưa
+              const isFeeIncluded = outboundDetails.some(
+                (detail) => detail.orderId === feeOrder.orderId,
+              );
+
+              if (!isFeeIncluded) {
+                const feeInventory = await inventoryRepository.findByOrderId({
+                  orderId: feeOrder.orderId,
+                  transaction,
+                });
+
+                if (feeInventory && feeInventory.qtyInventory >= 1) {
+                  throw AppError.BadRequest(
+                    `Mã đơn này có phí khác chưa được xuất kèm theo: ${feeOrder.orderId} `,
+                    "FEE_ORDER_NOT_INCLUDED",
+                  );
+                }
+              }
+            }
           }
 
           // check customer

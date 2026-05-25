@@ -125,7 +125,7 @@ export const orderService = {
       const index = meiliClient.index("orders");
 
       // Phân quyền và Trạng thái
-      let filters = [`status == "accept"`];
+      let filters = [`status IN ["accept"]`];
       if (role !== "admin" && role !== "manager") {
         filters.push(`userId = ${userId}`);
       }

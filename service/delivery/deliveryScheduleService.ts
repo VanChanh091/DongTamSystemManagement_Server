@@ -333,44 +333,71 @@ export const deliveryScheduleService = {
     }
   },
 
-  requestOrPrepareGoods: async (deliveryItemId: number, isRequest: string, empCode: string) => {
+  requestOrPreparedGoods: async ({
+    deliveryItemIds,
+    isRequest,
+    empCode,
+  }: {
+    deliveryItemIds: number[];
+    isRequest: Boolean;
+    empCode: string;
+  }) => {
     try {
       return await runInTransaction(async (transaction) => {
-        const item = await DeliveryItem.findByPk(deliveryItemId, { transaction });
-        if (!item) {
-          throw AppError.BadRequest("item not found", "ITEM_NOT_FOUND");
+        const items = await DeliveryItem.findAll({
+          where: { deliveryItemId: { [Op.in]: deliveryItemIds } },
+          transaction,
+        });
+
+        if (items.length === 0) {
+          throw AppError.BadRequest("Không tìm thấy mục nào", "ITEMS_NOT_FOUND");
         }
 
         const now = new Date();
 
-        if (isRequest === "true") {
+        if (isRequest) {
           // Gửi yêu cầu (Chuyển từ planned -> requested)
-          if (item.status === "requested") {
-            throw AppError.BadRequest("Đơn này đã được yêu cầu rồi", "ALREADY_REQUESTED");
+          const alreadyRequested = items.filter((i) => i.status === "requested");
+          if (alreadyRequested.length > 0) {
+            throw AppError.BadRequest(
+              `Có ${alreadyRequested.length} đơn đã được yêu cầu trước đó`,
+              "ALREADY_REQUESTED",
+            );
           }
 
-          if (item.status === "planned") {
-            await item.update({ status: "requested", dayRequested: now }, { transaction });
+          // Lọc các item có thể update (status = planned)
+          const validIds = items.filter((i) => i.status === "planned").map((i) => i.deliveryItemId);
+          if (validIds.length > 0) {
+            await DeliveryItem.update(
+              { status: "requested", dayRequested: now },
+              { where: { deliveryItemId: { [Op.in]: validIds } }, transaction },
+            );
           }
 
-          return { message: "Gửi yêu cầu xuất hàng thành công" };
+          return { message: `Gửi yêu cầu thành công cho ${validIds.length} đơn hàng` };
         } else {
           // Chuẩn bị hàng (Chuyển từ requested -> prepared)
-          if (item.status === "requested") {
-            const employee = await manufactureRepo.getEmployeeByCode(empCode, transaction);
-            if (!employee) {
-              throw AppError.NotFound("Mã nhân viên không tồn tại", "EMPLOYEE_NOT_FOUND");
-            }
 
-            await item.update(
+          const employee = await manufactureRepo.getEmployeeByCode(empCode, transaction);
+          if (!employee) {
+            throw AppError.NotFound("Mã nhân viên không tồn tại", "EMPLOYEE_NOT_FOUND");
+          }
+
+          const validIds = items
+            .filter((i) => i.status === "requested")
+            .map((i) => i.deliveryItemId);
+
+          if (validIds.length > 0) {
+            await DeliveryItem.update(
               {
                 status: "prepared",
                 dayCompleted: now,
                 recipient: employee.fullName,
               },
-              { transaction },
+              { where: { deliveryItemId: validIds }, transaction },
             );
 
+            // Xóa cache sau khi cập nhật thành công
             await CacheManager.clear("schedule");
           }
 

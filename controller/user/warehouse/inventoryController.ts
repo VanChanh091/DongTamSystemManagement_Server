@@ -38,11 +38,11 @@ export const createNewInventory = async (req: Request, res: Response, next: Next
   const { orderId } = req.query as { orderId: string };
   const { action, sourceOrderId, targetOrderId, qtyTransfer, inventoryId, reason } = req.body as {
     action: string;
-    sourceOrderId: string;
-    targetOrderId: string;
-    qtyTransfer: number;
-    inventoryId: number;
-    reason: string;
+    sourceOrderId?: string;
+    targetOrderId?: string;
+    qtyTransfer?: number;
+    inventoryId?: number;
+    reason?: string;
   };
 
   try {
@@ -57,10 +57,11 @@ export const createNewInventory = async (req: Request, res: Response, next: Next
         if (!sourceOrderId || !targetOrderId || !qtyTransfer) {
           throw AppError.BadRequest("Thiếu thông tin để thực hiện chuyển giao");
         }
-        response = await inventoryService.transferOrderQty({
+        response = await inventoryService.transferOrderQty(req, {
           sourceOrderId,
           targetOrderId,
           qtyTransfer,
+          reason,
         });
         break;
       case "TRANSFER_TO_LIQUIDATION":

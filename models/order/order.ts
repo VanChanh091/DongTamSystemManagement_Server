@@ -11,21 +11,26 @@ export type OrderStatus = "pending" | "accept" | "reject" | "planning" | "stop" 
 //định nghĩa trường trong bảng
 interface OrderAttributes {
   orderId: string;
+
   dayReceiveOrder: Date;
   dateRequestShipping: Date;
+
   lengthPaperCustomer: number;
   lengthPaperManufacture: number;
   paperSizeCustomer: number;
   paperSizeManufacture: number;
   quantityCustomer: number;
   quantityManufacture: number;
+
   numberChild: number;
   acreage: number;
   dvt: string;
+
   price: number;
   pricePaper: number;
   totalPrice: number;
   totalPriceVAT: number;
+
   volume: number;
   status: OrderStatus;
   statusPriority: number;
@@ -37,6 +42,7 @@ interface OrderAttributes {
   QC_box?: string | null;
   canLan?: string | null;
   daoXa?: string | null;
+
   day?: string | null;
   matE?: string | null;
   matB?: string | null;
@@ -46,6 +52,7 @@ interface OrderAttributes {
   songB?: string | null;
   songC?: string | null;
   songE2?: string | null;
+
   discount?: number | null;
   profit?: number | null;
   vat?: number | null;

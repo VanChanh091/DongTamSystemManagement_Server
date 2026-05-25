@@ -1,5 +1,7 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { Order } from "../../order/order";
+import { LiquidationInventory } from "./liquidationInventory";
+import { InventoryTransfers } from "./inventoryTransfers";
 
 //định nghĩa trường trong bảng
 interface InventoryAttributes {
@@ -45,6 +47,9 @@ export class Inventory
   //FK
   declare orderId: string;
   declare Order: Order;
+
+  declare liquidation?: LiquidationInventory;
+  declare invTransfers?: InventoryTransfers[];
 }
 
 export function initInventoryModel(sequelize: Sequelize): typeof Inventory {

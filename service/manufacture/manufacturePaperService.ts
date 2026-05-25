@@ -69,11 +69,11 @@ export const manuPaperService = {
 
   addReportPaper: async (planningId: number, data: any, user: any) => {
     const { role, permissions: userPermissions } = user;
-    const { qtyProduced, qtyWasteNorm, dayCompleted, reportedBy, ...otherData } = data;
+    const { qtyProduced, dayCompleted, reportedBy, ...otherData } = data;
 
     try {
       return await runInTransaction(async (transaction) => {
-        if (!planningId || !qtyProduced || !dayCompleted || !qtyWasteNorm) {
+        if (!planningId || !qtyProduced || !dayCompleted) {
           throw AppError.BadRequest("Missing required fields", "MISSING_PARAMETERS");
         }
 
@@ -106,7 +106,6 @@ export const manuPaperService = {
 
         // 2. Cộng dồn số lượng mới vào số đã có
         const newQtyProduced = Number(planning.qtyProduced || 0) + Number(qtyProduced || 0);
-        const newQtyWasteNorm = Number(planning.qtyWasteNorm || 0) + Number(qtyWasteNorm || 0);
 
         // update status dựa trên qtyProduced
         const isCompleted = newQtyProduced >= planning.runningPlan;
@@ -151,7 +150,7 @@ export const manuPaperService = {
           model: planning,
           data: {
             qtyProduced: newQtyProduced,
-            qtyWasteNorm: newQtyWasteNorm,
+            qtyWasteNorm: 1,
             status: isCompleted ? planning.status : "lackQty",
             dayCompleted: isOverflowReport ? planning.dayCompleted : dayReportValue,
             shiftProduction: updatedShiftProduction,
@@ -194,7 +193,7 @@ export const manuPaperService = {
           planning: planning.toJSON(),
           model: ReportPlanningPaper,
           qtyProduced,
-          qtyWasteNorm,
+          qtyWasteNorm: 1,
           dayReportValue,
           reportedBy: employee.fullName,
           otherData,
@@ -213,7 +212,6 @@ export const manuPaperService = {
           data: {
             planningId,
             qtyProduced: newQtyProduced,
-            qtyWasteNorm: newQtyWasteNorm,
             dayCompleted,
             ...otherData,
           },
@@ -344,6 +342,15 @@ export const manuPaperService = {
       });
     } catch (error) {
       console.error("Error update Report paper:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  addReportWasteNormPaper: async (planningId: number, data: any, user: any) => {
+    try {
+    } catch (error) {
+      console.error("Error add Report waste norm paper:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }

@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { Op } from "sequelize";
-import { Response } from "express";
+import { Request, Response } from "express";
 import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
 import { searchFieldAtribute } from "../../interface/types";
@@ -21,6 +21,8 @@ import {
 } from "../../utils/mapping/warehouse/inventoryRowAndColumn";
 import { meiliService } from "../meiliService";
 import { MEILI_INDEX } from "../../assets/labelFields";
+import { InventoryTransfers } from "../../models/warehouse/inventory/inventoryTransfers";
+import { User } from "../../models/user/user";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inventory_gt, inventory_lt } = CacheKey.warehouse;
@@ -144,12 +146,16 @@ export const inventoryService = {
     }
   },
 
-  transferOrderQty: async (data: {
-    sourceOrderId: string;
-    targetOrderId: string;
-    qtyTransfer: number;
-  }) => {
-    const { sourceOrderId, targetOrderId, qtyTransfer } = data;
+  transferOrderQty: async (
+    req: Request,
+    data: {
+      sourceOrderId: string;
+      targetOrderId: string;
+      qtyTransfer: number;
+      reason?: string;
+    },
+  ) => {
+    const { sourceOrderId, targetOrderId, qtyTransfer, reason } = data;
 
     try {
       return await runInTransaction(async (transaction) => {
@@ -247,6 +253,21 @@ export const inventoryService = {
 
         await order.update(
           { quantityManufacture: newQtyManufacture, status: newStatus },
+          { transaction },
+        );
+
+        const userName = await User.findOne({ where: { userId: req.user.userId }, transaction });
+
+        // Ghi log chuyển kho
+        await InventoryTransfers.create(
+          {
+            sourceId: sourceOrderId,
+            targetId: targetOrderId,
+            qtyTransfers: qtyTransfer,
+            reason,
+            transferBy: userName?.fullName,
+            inventoryId: sourceInv.inventoryId,
+          },
           { transaction },
         );
 

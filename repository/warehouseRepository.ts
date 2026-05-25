@@ -368,7 +368,7 @@ export const warehouseRepository = {
           required: true,
         },
       ],
-      limit: 20,
+      limit: 50,
       order: [["orderId", "ASC"]],
     });
   },

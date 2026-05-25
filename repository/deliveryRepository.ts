@@ -232,11 +232,13 @@ export const deliveryRepository = {
       include: [
         {
           model: DeliveryItem,
-          attributes: { exclude: ["createdAt", "updatedAt"] },
+          attributes: {
+            exclude: ["createdAt", "updatedAt", "recipient", "dayRequested", "dayCompleted"],
+          },
           include: [
             {
               model: DeliveryRequest,
-              attributes: ["requestId", "volume", "qtyRegistered"],
+              attributes: ["requestId", "volume", "qtyRegistered", "note"],
               include: [
                 {
                   model: PlanningPaper,
