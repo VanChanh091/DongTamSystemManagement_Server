@@ -150,7 +150,6 @@ export const manuPaperService = {
           model: planning,
           data: {
             qtyProduced: newQtyProduced,
-            qtyWasteNorm: 1,
             status: isCompleted ? planning.status : "lackQty",
             dayCompleted: isOverflowReport ? planning.dayCompleted : dayReportValue,
             shiftProduction: updatedShiftProduction,
@@ -193,7 +192,6 @@ export const manuPaperService = {
           planning: planning.toJSON(),
           model: ReportPlanningPaper,
           qtyProduced,
-          qtyWasteNorm: 1,
           dayReportValue,
           reportedBy: employee.fullName,
           otherData,
@@ -226,7 +224,7 @@ export const manuPaperService = {
 
   updateReportPaper: async (planningId: number, updateData: any, user: any) => {
     const { role, permissions: userPermissions } = user;
-    const { qtyProduced: newQty, qtyWasteNorm: newWaste, reportedBy, ...otherData } = updateData;
+    const { qtyProduced: newQty, reportedBy, ...otherData } = updateData;
 
     try {
       return await runInTransaction(async (transaction) => {
@@ -275,7 +273,6 @@ export const manuPaperService = {
         const reportUpdated = await oldReport.update(
           {
             qtyProduced: newQty,
-            qtyWasteNorm: newWaste,
             lackOfQty: newLackOfQty,
             reportedBy: employee.fullName,
             ...otherData,
@@ -289,9 +286,6 @@ export const manuPaperService = {
           transaction,
         });
 
-        // Tính tổng phế liệu từ tất cả báo cáo
-        const totalQtyWaste = allReports.reduce((sum, r) => sum + Number(r.qtyWasteNorm || 0), 0);
-
         // Gom chuỗi shiftProduction và shiftManagement
         const { combinedShiftProduction, combinedShiftManagement } =
           aggregateReportFields(allReports);
@@ -299,7 +293,6 @@ export const manuPaperService = {
         const planningUpdated = await planning.update(
           {
             qtyProduced: totalQtyProduced,
-            qtyWasteNorm: totalQtyWaste,
             status: totalQtyProduced >= planning.runningPlan ? planning.status : "lackQty",
             shiftProduction: combinedShiftProduction,
             shiftManagement: combinedShiftManagement,
@@ -347,8 +340,112 @@ export const manuPaperService = {
     }
   },
 
-  addReportWasteNormPaper: async (planningId: number, data: any, user: any) => {
+  reportWasteNormPaper: async (planningId: number[], qtyWasteNorm: number) => {
     try {
+      return await runInTransaction(async (transaction) => {
+        if (!planningId || !qtyWasteNorm) {
+          throw AppError.BadRequest("Missing required parameters", "MISSING_PARAMETERS");
+        }
+
+        const plannings = await PlanningPaper.findAll({
+          where: { planningId: { [Op.in]: planningId } },
+          attributes: ["planningId", "totalLoss", "qtyWasteNorm", "orderId"],
+          transaction,
+        });
+        const planningMap = new Map(plannings.map((p) => [p.planningId, p]));
+
+        const allReports = await ReportPlanningPaper.findAll({
+          where: { planningId: { [Op.in]: planningId } },
+          attributes: [
+            "reportPaperId",
+            "planningId",
+            "qtyWasteNorm",
+            "shiftProduction",
+            "shiftManagement",
+          ],
+          transaction,
+        });
+
+        if (allReports.length === 0) {
+          throw AppError.NotFound(
+            "No production reports found for these plannings",
+            "REPORTS_NOT_FOUND",
+          );
+        }
+
+        // XÁC ĐỊNH CA HIỆN TẠI ĐANG BÁO CÁO PHẾ LIỆU
+        // Lấy danh sách report của đơn đầu tiên, xếp row mới nhất lên đầu để lấy đúng Ca đơn lẻ vừa làm xong
+        const firstPlanningReports = allReports.filter((r) => r.planningId === planningId[0]);
+        firstPlanningReports.sort((a, b) => b.reportPaperId - a.reportPaperId);
+        const latestReportOfShift = firstPlanningReports[0];
+
+        if (!latestReportOfShift) {
+          throw AppError.NotFound("Target shift report not found", "SHIFT_NOT_FOUND");
+        }
+
+        const targetShiftProduction = latestReportOfShift.shiftProduction;
+        const targetShiftManagement = latestReportOfShift.shiftManagement;
+
+        const targetShiftReportsMap = new Map<number, any>();
+        allReports.forEach((r) => {
+          if (
+            r.shiftProduction === targetShiftProduction &&
+            r.shiftManagement === targetShiftManagement
+          ) {
+            targetShiftReportsMap.set(r.planningId, r);
+          }
+        });
+
+        // Nhóm các report theo planningId
+        const reportsGroupedByPlanning = new Map<number, any[]>();
+        allReports.forEach((r) => {
+          if (!reportsGroupedByPlanning.has(r.planningId)) {
+            reportsGroupedByPlanning.set(r.planningId, []);
+          }
+          reportsGroupedByPlanning.get(r.planningId)!.push(r);
+        });
+
+        let remainingWaste = Math.round(Number(qtyWasteNorm) * 100) / 100;
+        const totalItems = planningId.length;
+
+        for (let i = 0; i < totalItems; i++) {
+          const pId = planningId[i];
+
+          const planning = planningMap.get(pId);
+          if (!planning) {
+            throw AppError.NotFound(`Planning with ID ${pId} not found`, "PLANNING_NOT_FOUND");
+          }
+
+          const reportToUpdate = targetShiftReportsMap.get(pId);
+          if (!reportToUpdate) continue;
+
+          // Thuật toán phân bổ phế liệu
+          const norm = Number(planning.totalLoss || 0);
+          let allocatedWaste = 0;
+
+          if (i === totalItems - 1) {
+            allocatedWaste = remainingWaste; // Đơn cuối ôm trọn phần còn lại
+          } else {
+            allocatedWaste = Math.round(Math.min(remainingWaste, norm) * 100) / 100;
+          }
+
+          remainingWaste = Math.round((remainingWaste - allocatedWaste) * 100) / 100;
+          if (remainingWaste < 0) remainingWaste = 0;
+
+          // Cập nhật phế liệu vào đúng Row Report của ca hiện tại
+          reportToUpdate.qtyWasteNorm = allocatedWaste;
+          await reportToUpdate.save({ transaction });
+
+          // Tính tổng phế liệu tích lũy
+          const planningAllReports = reportsGroupedByPlanning.get(pId) || [];
+          const totalQtyWaste =
+            Math.round(
+              planningAllReports.reduce((sum, r) => sum + Number(r.qtyWasteNorm || 0), 0) * 100,
+            ) / 100;
+
+          await planning.update({ qtyWasteNorm: totalQtyWaste }, { transaction });
+        }
+      });
     } catch (error) {
       console.error("Error add Report waste norm paper:", error);
       if (error instanceof AppError) throw error;

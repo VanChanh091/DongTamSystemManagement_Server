@@ -30,15 +30,15 @@ const { box } = CacheKey.manufacture;
 export const manuBoxService = {
   getPlanningBox: async (machine: string) => {
     try {
-      const cacheKey = box.machine(machine);
-      const { isChanged } = await CacheManager.check(
-        [
-          { model: PlanningBox },
-          { model: PlanningBoxTime },
-          { model: timeOverflowPlanning, where: { planningBoxId: { [Op.ne]: null } } },
-        ],
-        "manufactureBox",
-      );
+      // const cacheKey = box.machine(machine);
+      // const { isChanged } = await CacheManager.check(
+      //   [
+      //     { model: PlanningBox },
+      //     { model: PlanningBoxTime },
+      //     { model: timeOverflowPlanning, where: { planningBoxId: { [Op.ne]: null } } },
+      //   ],
+      //   "manufactureBox",
+      // );
 
       // if (isChanged) {
       //   await CacheManager.clear("manufactureBox");
@@ -98,11 +98,11 @@ export const manuBoxService = {
   },
 
   addReportBox: async (planningBoxId: number, machine: string, data: any) => {
-    const { qtyProduced, rpWasteLoss, dayCompleted, shiftManagement, reportedBy } = data;
+    const { qtyProduced, dayCompleted, shiftManagement, reportedBy } = data;
 
     try {
       return await runInTransaction(async (transaction) => {
-        if (!planningBoxId || !qtyProduced || !dayCompleted || !rpWasteLoss || !reportedBy) {
+        if (!planningBoxId || !qtyProduced || !dayCompleted || !reportedBy) {
           throw AppError.BadRequest("Missing required fields", "MISSING_PARAMETERS");
         }
 
@@ -119,10 +119,7 @@ export const manuBoxService = {
 
         // 2. Cộng dồn số lượng mới vào số đã có
         const newQtyProduced = Number(planning.qtyProduced || 0) + Number(qtyProduced || 0);
-        const newQtyWasteNorm = Number(planning.rpWasteLoss || 0) + Number(rpWasteLoss || 0);
-
         const mergedShift = mergeShiftField(planning.shiftManagement ?? "", shiftManagement);
-
         const isCompletedOrder = newQtyProduced >= (planning.runningPlan || 0);
 
         const overflow = await planningHelper.getModelById({
@@ -146,7 +143,6 @@ export const manuBoxService = {
             model: planning,
             data: {
               qtyProduced: newQtyProduced,
-              rpWasteLoss: newQtyWasteNorm,
               shiftManagement: mergedShift,
             },
             options: { transaction },
@@ -160,7 +156,6 @@ export const manuBoxService = {
             data: {
               dayCompleted: new Date(dayCompleted),
               qtyProduced: newQtyProduced,
-              rpWasteLoss: newQtyWasteNorm,
               shiftManagement: mergedShift,
             },
             options: { transaction },
@@ -182,7 +177,6 @@ export const manuBoxService = {
           planning: planning.toJSON(),
           model: ReportPlanningBox,
           qtyProduced: qtyProduced,
-          qtyWasteNorm: rpWasteLoss,
           dayReportValue: new Date(dayReportValue ?? ""),
           shiftManagementBox: shiftManagement,
           machine: planning.machine,
@@ -203,7 +197,6 @@ export const manuBoxService = {
             planningBoxId,
             machine,
             qtyProduced: newQtyProduced,
-            qtyWasteNorm: newQtyWasteNorm,
             dayCompleted,
             shiftManagement,
             status: isCompletedOrder ? planning.status : "lackQty",
@@ -218,7 +211,7 @@ export const manuBoxService = {
   },
 
   updateReportBox: async (planningBoxId: number, machine: string, updateData: any) => {
-    const { qtyProduced: newQty, rpWasteLoss: newWaste, shiftManagement, reportedBy } = updateData;
+    const { qtyProduced: newQty, shiftManagement, reportedBy } = updateData;
 
     try {
       return await runInTransaction(async (transaction) => {
@@ -264,7 +257,6 @@ export const manuBoxService = {
         const reportUpdated = await oldReport.update(
           {
             qtyProduced: newQty,
-            wasteLoss: newWaste,
             lackOfQty: newLackOfQty,
             shiftManagement: shiftManagement,
             reportedBy: employee.fullName,
@@ -278,16 +270,12 @@ export const manuBoxService = {
           transaction,
         });
 
-        // Tính tổng phế liệu từ tất cả báo cáo
-        const totalQtyWaste = allReports.reduce((sum, r) => sum + Number(r.wasteLoss || 0), 0);
-
         // Gom chuỗi shiftProduction và shiftManagement
         const { combinedShiftManagement } = aggregateReportFields(allReports);
 
         await planning.update(
           {
             qtyProduced: totalQtyProduced,
-            rpWasteLoss: totalQtyWaste,
             status: totalQtyProduced >= (planning.runningPlan || 0) ? planning.status : "lackOfQty",
             shiftManagement: combinedShiftManagement,
           },

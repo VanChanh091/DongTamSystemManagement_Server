@@ -226,7 +226,7 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
       fluteE2: { type: DataTypes.DOUBLE },
       knife: { type: DataTypes.DOUBLE },
       totalLoss: { type: DataTypes.DOUBLE },
-      qtyWasteNorm: { type: DataTypes.DOUBLE },
+      qtyWasteNorm: { type: DataTypes.DOUBLE, defaultValue: 0 },
 
       //other info
       shiftProduction: { type: DataTypes.STRING },

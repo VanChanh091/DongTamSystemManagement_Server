@@ -80,6 +80,7 @@ export const deliveryScheduleService = {
       throw AppError.ServerError();
     }
   },
+
   getDeliveryItemsById: async (deliveryItemId: number) => {
     try {
       const items = await deliveryRepository.getDeliveryItemsById(deliveryItemId);

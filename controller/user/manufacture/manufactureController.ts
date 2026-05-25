@@ -26,7 +26,8 @@ export const addReportPaper = async (req: Request, res: Response, next: NextFunc
   const { planningId } = req.query as { planningId: string };
 
   try {
-    const response = await manuPaperService.addReportPaper(Number(planningId), req.body, req.user);
+    let response = await manuPaperService.addReportPaper(Number(planningId), req.body, req.user);
+
     return res.status(201).json(response);
   } catch (error) {
     next(error);
@@ -34,7 +35,11 @@ export const addReportPaper = async (req: Request, res: Response, next: NextFunc
 };
 
 export const updateReportPaper = async (req: Request, res: Response, next: NextFunction) => {
-  const { planningId, action } = req.query as { planningId: string | string[]; action: string };
+  const { planningId, qtyWasteNorm, action } = req.query as {
+    planningId: string | string[];
+    qtyWasteNorm: string;
+    action: string;
+  };
 
   try {
     if (!planningId || !action) {
@@ -57,6 +62,9 @@ export const updateReportPaper = async (req: Request, res: Response, next: NextF
         break;
       case "REQUEST_COMPLETE":
         response = await manuPaperService.requestCompletePlanningPaper(idArray);
+        break;
+      case "REPORT_WASTE_NORM":
+        response = await manuPaperService.reportWasteNormPaper(idArray, Number(qtyWasteNorm));
         break;
       default:
         throw AppError.BadRequest("Invalid action parameter", "INVALID_ACTION");

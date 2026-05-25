@@ -100,7 +100,7 @@ export const inventoryRepository = {
 
   inventoryTotals: async (whereCondition?: any) => {
     const result = await Inventory.findAll({
-      where: { ...whereCondition, valueInventory: { [Op.gt]: 0 } },
+      where: { ...whereCondition, valueInventory: { [Op.ne]: 0 } },
       attributes: [[Sequelize.fn("SUM", Sequelize.col("valueInventory")), "totalValueInventory"]],
       raw: true,
     });

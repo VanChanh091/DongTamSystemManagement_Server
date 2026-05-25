@@ -22,7 +22,7 @@ interface ReportPlanningPaperAttributes {
 //cho phép bỏ qua id khi tạo
 export type ReportPlanningPaperCreationAttributes = Optional<
   ReportPlanningPaperAttributes,
-  "reportPaperId" | "createdAt" | "updatedAt"
+  "reportPaperId" | "qtyWasteNorm" | "shiftProduction" | "createdAt" | "updatedAt"
 >;
 
 //định nghĩa kiểu OOP
@@ -62,7 +62,7 @@ export function initReportPlanningPaperModel(sequelize: Sequelize): typeof Repor
       },
       qtyProduced: { type: DataTypes.INTEGER, allowNull: false },
       lackOfQty: { type: DataTypes.INTEGER, allowNull: false },
-      qtyWasteNorm: { type: DataTypes.DOUBLE, allowNull: false },
+      qtyWasteNorm: { type: DataTypes.DOUBLE, allowNull: false, defaultValue: 0 },
       shiftProduction: { type: DataTypes.ENUM("Ca 1", "Ca 2", "Ca 3"), allowNull: false },
       shiftManagement: { type: DataTypes.STRING, allowNull: false },
       reportedBy: { type: DataTypes.STRING, allowNull: false },

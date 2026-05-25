@@ -237,6 +237,10 @@ export const planningPaperService = {
           );
         }
 
+        if (p.qtyWasteNorm == 0) {
+          throw AppError.BadRequest(`Đơn ${p.orderId} chưa cập nhật phế liệu`, "PLANNING_NO_WASTE");
+        }
+
         if ((p.qtyProduced ?? 0) < p.runningPlan) {
           throw AppError.BadRequest(`Đơn ${p.orderId} sản xuất thiếu số lượng`, "LACK_QUANTITY");
         }
@@ -259,6 +263,7 @@ export const planningPaperService = {
             "planningId",
             "runningPlan",
             "qtyProduced",
+            "qtyWasteNorm",
             "status",
             "orderId",
             "statusRequest",
