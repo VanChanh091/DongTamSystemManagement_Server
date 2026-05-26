@@ -26,8 +26,7 @@ export const addReportPaper = async (req: Request, res: Response, next: NextFunc
   const { planningId } = req.query as { planningId: string };
 
   try {
-    let response = await manuPaperService.addReportPaper(Number(planningId), req.body, req.user);
-
+    const response = await manuPaperService.addReportPaper(Number(planningId), req.body, req.user);
     return res.status(201).json(response);
   } catch (error) {
     next(error);
@@ -35,9 +34,8 @@ export const addReportPaper = async (req: Request, res: Response, next: NextFunc
 };
 
 export const updateReportPaper = async (req: Request, res: Response, next: NextFunction) => {
-  const { planningId, qtyWasteNorm, action } = req.query as {
+  const { planningId, action } = req.query as {
     planningId: string | string[];
-    qtyWasteNorm: string;
     action: string;
   };
 
@@ -63,33 +61,13 @@ export const updateReportPaper = async (req: Request, res: Response, next: NextF
       case "REQUEST_COMPLETE":
         response = await manuPaperService.requestCompletePlanningPaper(idArray);
         break;
-      case "REPORT_WASTE_NORM":
-        response = await manuPaperService.reportWasteNormPaper(idArray, Number(qtyWasteNorm));
+      case "CONFIRM_PRODUCING":
+        response = await manuPaperService.confirmProducingPaper(req, idArray[0], req.user);
         break;
       default:
         throw AppError.BadRequest("Invalid action parameter", "INVALID_ACTION");
     }
 
-    return res.status(201).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
-//confirm producing paper
-export const confirmProducingPaper = async (req: Request, res: Response, next: NextFunction) => {
-  const { planningId } = req.query as { planningId: string };
-
-  try {
-    if (!planningId) {
-      throw AppError.BadRequest("Missing planningId parameter", "MISSING_PARAMETERS");
-    }
-
-    const response = await manuPaperService.confirmProducingPaper(
-      req,
-      Number(planningId),
-      req.user,
-    );
     return res.status(201).json(response);
   } catch (error) {
     next(error);
@@ -128,9 +106,9 @@ export const addReportBox = async (req: Request, res: Response, next: NextFuncti
 
 export const updateReportBox = async (req: Request, res: Response, next: NextFunction) => {
   const { planningBoxId, machine, action } = req.query as {
-    action: string;
     planningBoxId: string | string[];
     machine: string;
+    action: string;
   };
 
   try {
@@ -155,47 +133,17 @@ export const updateReportBox = async (req: Request, res: Response, next: NextFun
       case "REQUEST_COMPLETE":
         response = await manuBoxService.requestCompletePlanningBox(idArray, machine);
         break;
+      case "REQUEST_STOCK_CHECK":
+        //send request to check quality product
+        response = await manuBoxService.updateRequestStockCheck(idArray[0], machine);
+        break;
+      case "CONFIRM_PRODUCING":
+        response = await manuBoxService.confirmProducingBox(req, idArray[0], machine, req.user);
+        break;
       default:
         throw AppError.BadRequest("Invalid action parameter", "INVALID_ACTION");
     }
 
-    return res.status(201).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
-//confirm producing box
-export const confirmProducingBox = async (req: Request, res: Response, next: NextFunction) => {
-  const { planningBoxId, machine } = req.query as { planningBoxId: string; machine: string };
-
-  try {
-    if (!planningBoxId || !machine) {
-      throw AppError.BadRequest("Missing planningBoxId parameter", "MISSING_PARAMETERS");
-    }
-
-    const response = await manuBoxService.confirmProducingBox(
-      req,
-      Number(planningBoxId),
-      machine,
-      req.user,
-    );
-    return res.status(201).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
-//send request to check quality product
-export const updateRequestStockCheck = async (req: Request, res: Response, next: NextFunction) => {
-  const { planningBoxId, machine } = req.query as { planningBoxId: string; machine: string };
-
-  try {
-    if (!planningBoxId) {
-      throw AppError.BadRequest("Missing planningBoxId parameter", "MISSING_PARAMETERS");
-    }
-
-    const response = await manuBoxService.updateRequestStockCheck(Number(planningBoxId), machine);
     return res.status(201).json(response);
   } catch (error) {
     next(error);

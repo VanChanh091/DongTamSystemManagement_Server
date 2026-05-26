@@ -5,9 +5,6 @@ import {
   addReportPaper,
   getPlanningPaper,
   getPlanningBox,
-  confirmProducingPaper,
-  confirmProducingBox,
-  updateRequestStockCheck,
   updateReportPaper,
   updateReportBox,
 } from "../../controller/user/manufacture/manufactureController";
@@ -18,12 +15,6 @@ const router = Router();
 //=========================PAPER=========================
 router.get("/paper", authenticate, getPlanningPaper);
 router.post(
-  "/paper/confirm",
-  authenticate,
-  authorizeAnyPermission(["machine1350", "machine1900", "machine2Layer", "MachineRollPaper"]),
-  confirmProducingPaper,
-);
-router.post(
   "/paper",
   authenticate,
   authorizeAnyPermission(["machine1350", "machine1900", "machine2Layer", "MachineRollPaper"]),
@@ -32,25 +23,18 @@ router.post(
 router.put(
   "/paper",
   authenticate,
-  authorizeAnyPermission(["machine1350", "machine1900", "machine2Layer", "MachineRollPaper"]),
+  authorizeAnyPermission(["machine1350", "machine1900", "machine2Layer", "MachineRollPaper", "QC"]),
   updateReportPaper,
 );
 
 //=========================BOX=========================
 router.get("/box", authenticate, getPlanningBox);
-router.post(
-  "/box/confirm",
-  authenticate,
-  authorizeAnyPermission(["step2Production"]),
-  confirmProducingBox,
-);
 router.post("/box", authenticate, authorizeAnyPermission(["step2Production"]), addReportBox);
-router.put("/box", authenticate, authorizeAnyPermission(["step2Production"]), updateReportBox);
 router.put(
-  "/box/request",
+  "/box",
   authenticate,
-  authorizeAnyPermission(["step2Production"]),
-  updateRequestStockCheck,
+  authorizeAnyPermission(["step2Production", "QC"]),
+  updateReportBox,
 );
 
 export default router;

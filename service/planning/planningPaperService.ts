@@ -227,7 +227,7 @@ export const planningPaperService = {
     }
   },
 
-  confirmCompletePlanningPaper: async (planningId: number | number[]) => {
+  confirmCompletePlanningPaper: async (planningId: number | number[], role: any) => {
     return await planningPaperService._updateStatusPaper(planningId, "complete", (papers) => {
       for (const p of papers) {
         if (p.status !== "requested") {
@@ -237,9 +237,14 @@ export const planningPaperService = {
           );
         }
 
-        if (p.qtyWasteNorm == 0) {
-          throw AppError.BadRequest(`Đơn ${p.orderId} chưa cập nhật phế liệu`, "PLANNING_NO_WASTE");
-        }
+        // if (role !== "admin") {
+        //   if (p.qtyWasteNorm == 0) {
+        //     throw AppError.BadRequest(
+        //       `Đơn ${p.orderId} chưa cập nhật phế liệu`,
+        //       "PLANNING_NO_WASTE",
+        //     );
+        //   }
+        // }
 
         if ((p.qtyProduced ?? 0) < p.runningPlan) {
           throw AppError.BadRequest(`Đơn ${p.orderId} sản xuất thiếu số lượng`, "LACK_QUANTITY");
@@ -315,11 +320,7 @@ export const planningPaperService = {
     });
   },
 
-  pauseOrAcceptLackQtyPLanning: async (
-    planningIds: number[],
-    newStatus: string,
-    rejectReason?: string,
-  ) => {
+  pauseOrAcceptLackQtyPLanning: async (planningIds: number[], newStatus: string) => {
     try {
       return await runInTransaction(async (transaction) => {
         const plannings = await planningPaperRepository.getPapersById({ planningIds, transaction });
@@ -350,10 +351,7 @@ export const planningPaperService = {
                   // Trả order về reject
                   await planningHelper.updateDataModel({
                     model: order,
-                    data: {
-                      status: newStatus,
-                      rejectReason,
-                    },
+                    data: { status: newStatus },
                     options: { transaction },
                   });
 
@@ -373,7 +371,6 @@ export const planningPaperService = {
                   // }
 
                   // Xoá dữ liệu phụ thuộc
-
                   const dependents = await planningPaperRepository.getBoxByPlanningId(
                     planning.planningId,
                     transaction,
@@ -418,7 +415,7 @@ export const planningPaperService = {
                   if ((planning.qtyProduced ?? 0) > 0) {
                     await planningHelper.updateDataModel({
                       model: order,
-                      data: { status: newStatus, rejectReason: rejectReason },
+                      data: { status: newStatus },
                       options: { transaction },
                     });
 

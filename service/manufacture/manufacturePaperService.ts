@@ -374,7 +374,6 @@ export const manuPaperService = {
         }
 
         // XÁC ĐỊNH CA HIỆN TẠI ĐANG BÁO CÁO PHẾ LIỆU
-        // Lấy danh sách report của đơn đầu tiên, xếp row mới nhất lên đầu để lấy đúng Ca đơn lẻ vừa làm xong
         const firstPlanningReports = allReports.filter((r) => r.planningId === planningId[0]);
         firstPlanningReports.sort((a, b) => b.reportPaperId - a.reportPaperId);
         const latestReportOfShift = firstPlanningReports[0];
