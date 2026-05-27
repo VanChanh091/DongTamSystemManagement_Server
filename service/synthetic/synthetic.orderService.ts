@@ -1,13 +1,14 @@
 import { Op } from "sequelize";
 import { Response } from "express";
 import { AppError } from "../../utils/appError";
-import { Order } from "../../models/order/order";
 import { orderRepository } from "../../repository/orderRepository";
-import { exportExcelResponse } from "../../utils/helper/excelExporter";
 import { syntheticRepository } from "../../repository/syntheticRepository";
+import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { mappingOrderRow, orderColumns } from "../../utils/mapping/orderRowAndColumn";
 import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
+import { performance } from "perf_hooks";
+import { Order } from "../../models/order/order";
 
 export const syntheticOrderService = {
   getAllOrderByStatus: async ({
@@ -159,6 +160,8 @@ export const syntheticOrderService = {
   },
 
   exportExcelOrder: async (res: Response, { fromDate, toDate }: any) => {
+    const startTime = performance.now();
+
     try {
       let whereCondition: any = {
         status: { [Op.in]: ["accept", "planning", "completed"] },
@@ -174,16 +177,19 @@ export const syntheticOrderService = {
         whereCondition.dayReceiveOrder = { [Op.between]: [startTimestamp, endTimestamp] };
       }
 
-      const query = orderRepository.buildQueryOptions({ whereCondition });
-      const data = await Order.findAll(query);
+      const baseQuery: any = orderRepository.buildOrdersOptions({ whereCondition, isExport: true });
 
-      await exportExcelResponse(res, {
-        data: data,
+      await exportExcelStreamResponse(res, {
+        baseQuery: baseQuery,
+        model: Order,
         sheetName: "Danh sách đơn hàng",
         fileName: "orders",
         columns: orderColumns,
         rows: mappingOrderRow,
       });
+
+      const endTime = performance.now();
+      console.log(`Execution time: ${(endTime - startTime).toFixed(2)} ms`);
     } catch (error) {
       console.error("❌ Export Excel error:", error);
       throw AppError.ServerError();

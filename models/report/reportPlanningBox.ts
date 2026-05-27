@@ -62,7 +62,7 @@ export function initReportPlanningBoxModel(sequelize: Sequelize): typeof ReportP
       },
       qtyProduced: { type: DataTypes.INTEGER, allowNull: false },
       lackOfQty: { type: DataTypes.INTEGER, allowNull: false },
-      wasteLoss: { type: DataTypes.DOUBLE, allowNull: false },
+      wasteLoss: { type: DataTypes.DOUBLE, allowNull: false, defaultValue: 0 },
       shiftManagement: { type: DataTypes.STRING, allowNull: false },
       machine: { type: DataTypes.STRING, allowNull: false },
       reportedBy: { type: DataTypes.STRING, allowNull: false },

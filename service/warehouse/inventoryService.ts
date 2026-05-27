@@ -10,7 +10,6 @@ import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { Inventory } from "../../models/warehouse/inventory/inventory";
-import { exportExcelResponse } from "../../utils/helper/excelExporter";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { inventoryRepository } from "../../repository/inventoryRepository";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
@@ -23,6 +22,7 @@ import { meiliService } from "../meiliService";
 import { MEILI_INDEX } from "../../assets/labelFields";
 import { InventoryTransfers } from "../../models/warehouse/inventory/inventoryTransfers";
 import { User } from "../../models/user/user";
+import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inventory_gt, inventory_lt } = CacheKey.warehouse;
@@ -45,11 +45,9 @@ export const inventoryService = {
         }
       }
 
-      const { rows, count } = await inventoryRepository.getInventoryByPage({
-        page,
-        pageSize,
-        filter,
-      });
+      const options = inventoryRepository.buildInventoryOptions({ page, pageSize, filter });
+      const { rows, count } = await Inventory.findAndCountAll(options);
+
       const totals: any = await inventoryRepository.inventoryTotals();
 
       const responseData = {
@@ -100,10 +98,12 @@ export const inventoryService = {
       }
 
       //query db
-      const { rows } = await inventoryRepository.getInventoryByPage({
+      const options = inventoryRepository.buildInventoryOptions({
         searching: { inventoryId: { [Op.in]: inventoryIds } },
         filter: filter!,
       });
+      const { rows } = await Inventory.findAndCountAll(options);
+
       const totals: any = await inventoryRepository.inventoryTotals({
         inventoryId: { [Op.in]: rows.map((inv) => inv.inventoryId) },
       });
@@ -392,10 +392,11 @@ export const inventoryService = {
 
   exportExcelInventory: async (res: Response) => {
     try {
-      const { rows } = await inventoryRepository.getInventoryByPage({ filter: "gtZero" });
+      const baseQuery: any = inventoryRepository.buildInventoryOptions({ filter: "gtZero" });
 
-      await exportExcelResponse(res, {
-        data: rows,
+      await exportExcelStreamResponse(res, {
+        baseQuery: baseQuery,
+        model: Inventory,
         sheetName: "Tồn Kho",
         fileName: "inventory",
         columns: inventoryColumns,

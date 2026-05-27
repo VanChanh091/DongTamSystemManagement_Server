@@ -654,8 +654,8 @@ export const outboundService = {
   ) => {
     try {
       const [outbound, inventories] = await Promise.all([
-        warehouseRepository.getOutboundForMeili(outboundId, transaction),
-        inventoryRepository.syncManyInventoryToMeili(
+        warehouseRepository.syncOutboundForMeili(outboundId, transaction),
+        inventoryRepository.syncAllInventoryToMeili(
           Array.isArray(orderIds) ? orderIds : [orderIds],
           transaction,
         ),
@@ -726,7 +726,7 @@ export const outboundService = {
         const orderIds = details.map((d) => d.orderId);
 
         if (orderIds.length > 0) {
-          const updatedInvs = await inventoryRepository.syncManyInventoryToMeili(
+          const updatedInvs = await inventoryRepository.syncAllInventoryToMeili(
             orderIds,
             transaction,
           );

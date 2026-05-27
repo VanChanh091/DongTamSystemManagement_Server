@@ -8,7 +8,7 @@ import { CacheManager } from "../utils/helper/cache/cacheManager";
 import { ReportPlanningPaper } from "../models/report/reportPlanningPaper";
 import { reportRepository } from "../repository/reportRepository";
 import { ReportPlanningBox } from "../models/report/reportPlanningBox";
-import { exportExcelResponse } from "../utils/helper/excelExporter";
+import { exportExcelStreamResponse } from "../utils/helper/excelExporter";
 import {
   mapReportPaperRow,
   reportPaperColumns,
@@ -41,11 +41,9 @@ export const reportService = {
         }
       }
 
-      const { rows, count } = await reportRepository.getAllReportPaper({
-        machine,
-        page,
-        pageSize,
-      });
+      const queryOptions = reportRepository.buildReportPaperOptions({ machine, page, pageSize });
+      const { rows, count } = await ReportPlanningPaper.findAndCountAll(queryOptions);
+
       const totalPages = Math.ceil(count / pageSize);
 
       const responseData = {
@@ -128,16 +126,17 @@ export const reportService = {
       }
 
       // Truy vấn DB để lấy data dựa trên orderIds
-      const { rows } = await reportRepository.getAllReportPaper({
+      const queryOptions = reportRepository.buildReportPaperOptions({
         machine,
         whereCondition: {
           reportPaperId: { [Op.in]: paperIds },
         },
       });
+      const result = await ReportPlanningPaper.findAll(queryOptions);
 
       // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
       const finalData = paperIds
-        .map((id) => rows.find((r) => r.reportPaperId === id))
+        .map((id) => result.find((r) => r.reportPaperId === id))
         .filter(Boolean);
 
       return {
@@ -171,12 +170,13 @@ export const reportService = {
         }
       }
 
-      const { rows, count } = await reportRepository.getAllReportBox({
+      const queryOptions = reportRepository.buildReportBoxOptions({
         machine,
         page,
         pageSize,
         whereCondition: { machine },
       });
+      const { rows, count } = await ReportPlanningBox.findAndCountAll(queryOptions);
 
       const totalPages = Math.ceil(count / pageSize);
 
@@ -260,13 +260,16 @@ export const reportService = {
       }
 
       // Truy vấn DB để lấy data dựa trên orderIds
-      const { rows } = await reportRepository.getAllReportBox({
+      const queryOptions = reportRepository.buildReportBoxOptions({
         machine,
         whereCondition: { machine, reportBoxId: { [Op.in]: boxIds } },
       });
+      const result = await ReportPlanningBox.findAll(queryOptions);
 
       // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
-      const finalData = boxIds.map((id) => rows.find((r) => r.reportBoxId === id)).filter(Boolean);
+      const finalData = boxIds
+        .map((id) => result.find((r) => r.reportBoxId === id))
+        .filter(Boolean);
 
       return {
         message: "Get orders from Meilisearch & DB successfully",
@@ -305,12 +308,13 @@ export const reportService = {
         whereCondition.dayReport = { [Op.between]: [startTimestamp, endTimestamp] };
       }
 
-      const data = await reportRepository.exportReportPaper(whereCondition, machine);
+      const baseQuery: any = reportRepository.buildReportPaperOptions({ machine, whereCondition });
 
       const safeMachineName = machine.replace(/\s+/g, "-");
 
-      await exportExcelResponse(res, {
-        data: data,
+      await exportExcelStreamResponse(res, {
+        baseQuery: baseQuery,
+        model: ReportPlanningPaper,
         sheetName: "Báo cáo sản xuất giấy tấm",
         fileName: `bao-cao-${normalizeVN(safeMachineName)}`,
         columns: reportPaperColumns,
@@ -345,12 +349,13 @@ export const reportService = {
         whereCondition.dayReport = { [Op.between]: [startTimestamp, endTimestamp] };
       }
 
-      const data = await reportRepository.exportReportBox(whereCondition, machine);
+      const baseQuery: any = reportRepository.buildReportBoxOptions({ machine, whereCondition });
 
       const safeMachineName = machine.replace(/\s+/g, "-");
 
-      await exportExcelResponse(res, {
-        data: data,
+      await exportExcelStreamResponse(res, {
+        baseQuery: baseQuery,
+        model: ReportPlanningBox,
         sheetName: "Báo cáo sản xuất thùng",
         fileName: `bao-cao-${normalizeVN(safeMachineName)}`,
         columns: reportBoxColumns,

@@ -16,12 +16,12 @@ import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { InboundHistory } from "../../models/warehouse/inboundHistory";
 import { Inventory } from "../../models/warehouse/inventory/inventory";
-import { exportExcelResponse } from "../../utils/helper/excelExporter";
 import { manufactureRepo } from "../../repository/manufactureRepository";
 import { planningHelper } from "../../repository/planning/planningHelper";
 import { warehouseRepository } from "../../repository/warehouseRepository";
 import { inventoryRepository } from "../../repository/inventoryRepository";
 import { syntheticRepository } from "../../repository/syntheticRepository";
+import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { buildStagesDetails } from "../../utils/helper/modelHelper/planningHelper";
@@ -370,8 +370,8 @@ export const inboundService = {
   }) => {
     try {
       const [inbound, inventory] = await Promise.all([
-        warehouseRepository.syncInbound(inboundId, transaction),
-        inventoryRepository.syncInventoryToMeili(orderId, transaction),
+        warehouseRepository.syncInboundForMeili(inboundId, transaction),
+        inventoryRepository.syncInventoryForMeili(orderId, transaction),
       ]);
 
       const flattenInbound = meiliTransformer.inbound(inbound);
@@ -412,7 +412,9 @@ export const inboundService = {
         }
       }
 
-      const { rows, count } = await warehouseRepository.findInboundByPage({ page, pageSize });
+      const options = warehouseRepository.buildInboundOptions({ page, pageSize });
+      const { rows, count } = await InboundHistory.findAndCountAll(options);
+
       const totalPages = Math.ceil(count / pageSize);
 
       const responseData = {
@@ -485,8 +487,6 @@ export const inboundService = {
 
       const inboundIds = searchResult.hits.map((hit: any) => hit.inboundId);
 
-      // console.log(`result: ${inboundIds.join(", ")}`);
-
       if (inboundIds.length === 0) {
         return {
           message: "No inbound histories found",
@@ -498,9 +498,10 @@ export const inboundService = {
       }
 
       //query db
-      const { rows } = await warehouseRepository.findInboundByPage({
+      const options = warehouseRepository.buildInboundOptions({
         whereCondition: { inboundId: { [Op.in]: inboundIds } },
       });
+      const { rows } = await InboundHistory.findAndCountAll(options);
 
       // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
       const finalData = inboundIds
@@ -535,14 +536,16 @@ export const inboundService = {
         whereCondition.dateInbound = { [Op.between]: [startTimestamp, endTimestamp] };
       }
 
-      const { rows } = await warehouseRepository.findInboundByPage({
+      const baseQuery: any = warehouseRepository.buildInboundOptions({
         whereCondition,
+        isExport: true,
       });
 
-      await exportExcelResponse(res, {
-        data: rows,
-        sheetName: "Lịch Sử Nhập Kho",
-        fileName: "inbound_histories",
+      await exportExcelStreamResponse(res, {
+        baseQuery: baseQuery,
+        model: InboundHistory,
+        sheetName: "Lịch sử nhập kho",
+        fileName: "inbound_history",
         columns: inboundColumns,
         rows: mappingInboundRow,
       });

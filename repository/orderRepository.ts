@@ -9,8 +9,14 @@ import { OrderImage } from "../models/order/orderImage";
 import { PlanningPaper } from "../models/planning/planningPaper";
 
 export const orderRepository = {
-  buildQueryOptions: ({ whereCondition = {} }: { whereCondition: any }): FindOptions => {
-    return {
+  buildOrdersOptions: ({
+    whereCondition = {},
+    isExport = false,
+  }: {
+    whereCondition: any;
+    isExport?: boolean;
+  }): FindOptions => {
+    const queryOptions: FindOptions = {
       where: whereCondition,
       attributes: { exclude: ["createdAt", "updatedAt"] },
 
@@ -30,6 +36,13 @@ export const orderRepository = {
         ["orderSortValue", "ASC"],
       ],
     };
+
+    if (isExport) {
+      queryOptions.raw = true;
+      queryOptions.nest = true;
+    }
+
+    return queryOptions;
   },
 
   findOneFluteRatio: async (flute: string, transaction?: Transaction) => {
@@ -80,13 +93,20 @@ export const orderRepository = {
     });
   },
 
-  //meilisearch
-  findOrderForMeili: async (orderId: string, transaction: Transaction) => {
-    return await Order.findByPk(orderId, {
+  //------------------------MEILISEARCH-----------------------------
+  buildMeiliOrderOptions: ({
+    whereCondition,
+    transaction,
+  }: {
+    whereCondition?: any;
+    transaction?: Transaction;
+  }): FindOptions => {
+    const queryOptions: FindOptions = {
+      where: whereCondition,
       attributes: [
         "orderId",
-        "flute",
         "dayReceiveOrder",
+        "flute",
         "QC_box",
         "status",
         "userId",
@@ -97,26 +117,27 @@ export const orderRepository = {
         { model: Product, attributes: ["productName"] },
       ],
       transaction,
-    });
+    };
+
+    return queryOptions;
   },
 
-  findOrdersForMeili: async (orderId: string[], transaction: Transaction) => {
-    return await Order.findAll({
-      where: { orderId: { [Op.in]: orderId } },
-      attributes: [
-        "orderId",
-        "flute",
-        "dayReceiveOrder",
-        "QC_box",
-        "status",
-        "userId",
-        "orderSortValue",
-      ],
-      include: [
-        { model: Customer, attributes: ["customerName"] },
-        { model: Product, attributes: ["productName"] },
-      ],
-      transaction,
-    });
+  syncOrderForMeili: async (orderId: string, transaction: Transaction) => {
+    return await Order.findOne(
+      orderRepository.buildMeiliOrderOptions({ whereCondition: { orderId }, transaction }),
+    );
+  },
+
+  syncOrdersForMeili: async (orderId: string[], transaction: Transaction) => {
+    return await Order.findAll(
+      orderRepository.buildMeiliOrderOptions({
+        whereCondition: { orderId: { [Op.in]: orderId } },
+        transaction,
+      }),
+    );
+  },
+
+  syncAllOrdersForMeili: async () => {
+    return await Order.findAll(orderRepository.buildMeiliOrderOptions({}));
   },
 };

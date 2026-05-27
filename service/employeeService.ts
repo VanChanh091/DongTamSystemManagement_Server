@@ -3,22 +3,22 @@ dotenv.config();
 
 import { Op } from "sequelize";
 import { Response } from "express";
-import { CacheManager } from "../utils/helper/cache/cacheManager";
 import { AppError } from "../utils/appError";
-import { EmployeeBasicInfo } from "../models/employee/employeeBasicInfo";
-import { employeeRepository } from "../repository/employeeRepository";
-import { createDataTable, updateChildTable } from "../utils/helper/modelHelper/orderHelpers";
-import { EmployeeCompanyInfo } from "../models/employee/employeeCompanyInfo";
-import { exportExcelResponse } from "../utils/helper/excelExporter";
-import { employeeColumns, mappingEmployeeRow } from "../utils/mapping/employeeRowAndColumn";
-import { runInTransaction } from "../utils/helper/transactionHelper";
-import redisCache from "../assets/configs/connect/redis.connect";
-import { CacheKey } from "../utils/helper/cache/cacheKey";
-import { meiliClient } from "../assets/configs/connect/meilisearch.connect";
 import { meiliService } from "./meiliService";
-import { searchFieldAtribute } from "../interface/types";
 import { MEILI_INDEX } from "../assets/labelFields";
+import { searchFieldAtribute } from "../interface/types";
+import { CacheKey } from "../utils/helper/cache/cacheKey";
+import redisCache from "../assets/configs/connect/redis.connect";
+import { CacheManager } from "../utils/helper/cache/cacheManager";
+import { exportExcelStreamResponse } from "../utils/helper/excelExporter";
+import { runInTransaction } from "../utils/helper/transactionHelper";
+import { employeeRepository } from "../repository/employeeRepository";
+import { EmployeeBasicInfo } from "../models/employee/employeeBasicInfo";
+import { meiliClient } from "../assets/configs/connect/meilisearch.connect";
+import { EmployeeCompanyInfo } from "../models/employee/employeeCompanyInfo";
 import { meiliTransformer } from "../assets/configs/meilisearch/meiliTransformer";
+import { createDataTable, updateChildTable } from "../utils/helper/modelHelper/orderHelpers";
+import { employeeColumns, mappingEmployeeRow } from "../utils/mapping/employeeRowAndColumn";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { employee } = CacheKey;
@@ -60,7 +60,8 @@ export const employeeService = {
         totalEmployees = data.length;
         totalPages = 1;
       } else {
-        const { rows, count } = await employeeRepository.findEmployeeByPage({ page, pageSize });
+        const queryOptions = employeeRepository.buildEmployeeOptions({ page, pageSize });
+        const { rows, count } = await EmployeeBasicInfo.findAndCountAll(queryOptions);
 
         data = rows;
         totalEmployees = count;
@@ -112,9 +113,10 @@ export const employeeService = {
       }
 
       //query db
-      const fullEmployees = await employeeRepository.getEmployeeByField({
-        employeeId: { [Op.in]: employeeIds },
+      const queryOptions = employeeRepository.buildEmployeeOptions({
+        whereCondition: { employeeId: { [Op.in]: employeeIds } },
       });
+      const fullEmployees = await EmployeeBasicInfo.findAll(queryOptions);
 
       // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
       const finalData = employeeIds
@@ -234,7 +236,7 @@ export const employeeService = {
 
   syncEmployeeForMeili: async (employeeId: number, transaction: any) => {
     try {
-      const employee = await employeeRepository.findEmployeeForMeili(employeeId, transaction);
+      const employee = await employeeRepository.syncEmployeeForMeili(employeeId, transaction);
 
       if (employee) {
         const flattenData = meiliTransformer.employee(employee);
@@ -291,12 +293,16 @@ export const employeeService = {
         whereCondition["$companyInfo.joinDate$"] = { [Op.between]: [start, end] };
       }
 
-      const { rows } = await employeeRepository.findEmployeeByPage({ whereCondition });
+      const baseQuery: any = employeeRepository.buildEmployeeOptions({
+        whereCondition,
+        isExport: true,
+      });
 
-      await exportExcelResponse(res, {
-        data: rows,
+      await exportExcelStreamResponse(res, {
+        baseQuery: baseQuery,
+        model: EmployeeBasicInfo,
         sheetName: "Danh sách nhân viên",
-        fileName: "employee",
+        fileName: "employees",
         columns: employeeColumns,
         rows: mappingEmployeeRow,
       });

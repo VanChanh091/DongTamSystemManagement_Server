@@ -3,11 +3,11 @@ import { User } from "../models/user/user";
 import { Order } from "../models/order/order";
 import { Product } from "../models/product/product";
 import { Customer } from "../models/customer/customer";
-import { Op, Sequelize, Transaction } from "sequelize";
 import { InboundSumByPlanning } from "../interface/types";
 import { PlanningBox } from "../models/planning/planningBox";
 import { QcSession } from "../models/qualityControl/qcSession";
 import { PlanningPaper } from "../models/planning/planningPaper";
+import { FindOptions, Op, Sequelize, Transaction } from "sequelize";
 import { InboundHistory } from "../models/warehouse/inboundHistory";
 import { Inventory } from "../models/warehouse/inventory/inventory";
 import { OutboundDetail } from "../models/warehouse/outboundDetail";
@@ -166,16 +166,18 @@ export const warehouseRepository = {
     return rows as unknown as InboundSumByPlanning[];
   },
 
-  findInboundByPage: async ({
+  buildInboundOptions: ({
     page,
     pageSize,
     whereCondition,
+    isExport = false,
   }: {
     page?: number;
     pageSize?: number;
     whereCondition?: any;
-  }) => {
-    const query: any = {
+    isExport?: boolean;
+  }): FindOptions => {
+    const queryOptions: FindOptions = {
       where: whereCondition,
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
@@ -210,15 +212,28 @@ export const warehouseRepository = {
     };
 
     if (page && pageSize) {
-      query.offset = (page - 1) * pageSize;
-      query.limit = pageSize;
+      queryOptions.offset = (page - 1) * pageSize;
+      queryOptions.limit = pageSize;
     }
 
-    return await InboundHistory.findAndCountAll(query);
+    if (isExport) {
+      queryOptions.raw = true;
+      queryOptions.nest = true;
+    }
+
+    return queryOptions;
   },
 
-  syncInbound: async (inboundId: number, transaction: Transaction) => {
-    return await InboundHistory.findByPk(inboundId, {
+  //------------------------MEILISEARCH-----------------------------
+  buildMeiliInboundOptions: ({
+    whereCondition,
+    transaction,
+  }: {
+    whereCondition?: any;
+    transaction?: Transaction;
+  }): FindOptions => {
+    const queryOptions: FindOptions = {
+      where: whereCondition,
       attributes: ["inboundId", "dateInbound"],
       include: [
         {
@@ -229,7 +244,19 @@ export const warehouseRepository = {
         { model: QcSession, attributes: ["checkedBy"] },
       ],
       transaction,
-    });
+    };
+
+    return queryOptions;
+  },
+
+  syncInboundForMeili: async (inboundId: number, transaction: Transaction) => {
+    return await InboundHistory.findOne(
+      warehouseRepository.buildMeiliInboundOptions({ whereCondition: { inboundId }, transaction }),
+    );
+  },
+
+  syncAllInboundsForMeili: () => {
+    return InboundHistory.findAll(warehouseRepository.buildMeiliInboundOptions({}));
   },
 
   //====================================OUTBOUND HISTORY========================================
@@ -272,27 +299,6 @@ export const warehouseRepository = {
     }
 
     return await OutboundHistory.findAndCountAll(query);
-  },
-
-  getOutboundForMeili: async (outboundId: number, transaction: Transaction) => {
-    return await OutboundHistory.findByPk(outboundId, {
-      attributes: ["outboundId", "outboundSlipCode", "dateOutbound"],
-      include: [
-        {
-          model: OutboundDetail,
-          as: "detail",
-          attributes: ["outboundDetailId"],
-          include: [
-            {
-              model: Order,
-              attributes: ["orderId"],
-              include: [{ model: Customer, attributes: ["customerName"] }],
-            },
-          ],
-        },
-      ],
-      transaction,
-    });
   },
 
   getOutboundDetail: async (outboundId: number) => {
@@ -443,5 +449,49 @@ export const warehouseRepository = {
         },
       ],
     });
+  },
+
+  //------------------------MEILISEARCH-----------------------------
+  buildMeiliOutboundOptions: ({
+    whereCondition,
+    transaction,
+  }: {
+    whereCondition?: any;
+    transaction?: Transaction;
+  }): FindOptions => {
+    const queryOptions: FindOptions = {
+      where: whereCondition,
+      attributes: ["outboundId", "outboundSlipCode", "dateOutbound", "status"],
+      include: [
+        {
+          model: OutboundDetail,
+          as: "detail",
+          attributes: ["outboundDetailId"],
+          include: [
+            {
+              model: Order,
+              attributes: ["orderId"],
+              include: [{ model: Customer, attributes: ["customerName"] }],
+            },
+          ],
+        },
+      ],
+      transaction,
+    };
+
+    return queryOptions;
+  },
+
+  syncOutboundForMeili: async (outboundId: number, transaction: Transaction) => {
+    return await OutboundHistory.findOne(
+      warehouseRepository.buildMeiliOutboundOptions({
+        whereCondition: { outboundId },
+        transaction,
+      }),
+    );
+  },
+
+  syncAllOutboundsForMeili: async () => {
+    return await OutboundHistory.findAll(warehouseRepository.buildMeiliOutboundOptions({}));
   },
 };

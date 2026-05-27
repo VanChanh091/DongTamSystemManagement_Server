@@ -298,7 +298,7 @@ export const deliveryEstimateService = {
         );
 
         //--------------------MEILISEARCH-----------------------
-        const requetsCreated = await deliveryRepository.getDeliveryRequestForMeili(
+        const requetsCreated = await deliveryRepository.syncDeliveryRequestForMeili(
           request.requestId,
           transaction,
         );

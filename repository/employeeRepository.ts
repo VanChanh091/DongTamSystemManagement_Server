@@ -1,8 +1,45 @@
-import { col, fn, Op, Transaction, where } from "sequelize";
+import { col, FindOptions, fn, Op, Transaction, where } from "sequelize";
 import { EmployeeBasicInfo } from "../models/employee/employeeBasicInfo";
 import { EmployeeCompanyInfo } from "../models/employee/employeeCompanyInfo";
 
 export const employeeRepository = {
+  buildEmployeeOptions: ({
+    page,
+    pageSize,
+    whereCondition = {},
+    isExport = false,
+  }: {
+    page?: number;
+    pageSize?: number;
+    whereCondition?: any;
+    isExport?: boolean;
+  }): FindOptions => {
+    const queryOptions: FindOptions = {
+      where: whereCondition,
+      attributes: { exclude: ["createdAt", "updatedAt"] },
+      include: [
+        {
+          model: EmployeeCompanyInfo,
+          as: "companyInfo",
+          attributes: { exclude: ["createdAt", "updatedAt"] },
+        },
+      ],
+    };
+
+    if (page && pageSize) {
+      queryOptions.offset = (page - 1) * pageSize;
+      queryOptions.limit = pageSize;
+      queryOptions.order = [["employeeId", "ASC"]];
+    }
+
+    if (isExport) {
+      queryOptions.raw = true;
+      queryOptions.nest = true;
+    }
+
+    return queryOptions;
+  },
+
   findEmployeeByPK: async (employeeId: number, transaction: Transaction) => {
     return await EmployeeBasicInfo.findByPk(employeeId, {
       attributes: { exclude: ["createdAt", "updatedAt"] },
@@ -31,52 +68,6 @@ export const employeeRepository = {
           attributes: { exclude: ["createdAt", "updatedAt"] },
         },
       ],
-    });
-  },
-
-  findEmployeeByPage: async ({
-    page,
-    pageSize,
-    whereCondition = {},
-  }: {
-    page?: number;
-    pageSize?: number;
-    whereCondition?: any;
-  }) => {
-    const query: any = {
-      attributes: { exclude: ["createdAt", "updatedAt"] },
-      include: [
-        {
-          model: EmployeeCompanyInfo,
-          where: whereCondition,
-          as: "companyInfo",
-          attributes: { exclude: ["createdAt", "updatedAt"] },
-        },
-      ],
-    };
-
-    if (page && pageSize) {
-      query.offset = (page - 1) * pageSize;
-      query.limit = pageSize;
-
-      query.order = [["employeeId", "ASC"]];
-    }
-
-    return await EmployeeBasicInfo.findAndCountAll(query);
-  },
-
-  getEmployeeByField: async (whereCondition: any) => {
-    return await EmployeeBasicInfo.findAll({
-      where: whereCondition,
-      attributes: { exclude: ["createdAt", "updatedAt"] },
-      include: [
-        {
-          model: EmployeeCompanyInfo,
-          as: "companyInfo",
-          attributes: { exclude: ["createdAt", "updatedAt"] },
-        },
-      ],
-      order: [["employeeId", "ASC"]],
     });
   },
 
@@ -113,9 +104,16 @@ export const employeeRepository = {
     return await employee.destroy(transaction);
   },
 
-  //find customer for meilisearch
-  findEmployeeForMeili: async (employeeId: number, transaction: Transaction) => {
-    return await EmployeeBasicInfo.findByPk(employeeId, {
+  //------------------------MEILISEARCH-----------------------------
+  buildMeiliEmployeeOptions: ({
+    whereCondition,
+    transaction,
+  }: {
+    whereCondition?: any;
+    transaction?: Transaction;
+  }): FindOptions => {
+    const queryOptions: FindOptions = {
+      where: whereCondition,
       attributes: ["employeeId", "fullName", "phoneNumber"],
       include: [
         {
@@ -124,7 +122,20 @@ export const employeeRepository = {
           attributes: ["employeeCode", "status"],
         },
       ],
+      order: [["employeeId", "ASC"]],
       transaction,
-    });
+    };
+
+    return queryOptions;
+  },
+
+  syncEmployeeForMeili: async (employeeId: number, transaction: Transaction) => {
+    return await EmployeeBasicInfo.findOne(
+      employeeRepository.buildMeiliEmployeeOptions({ whereCondition: { employeeId }, transaction }),
+    );
+  },
+
+  syncAllEmployeesForMeili: async () => {
+    return await EmployeeBasicInfo.findAll(employeeRepository.buildMeiliEmployeeOptions({}));
   },
 };

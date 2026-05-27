@@ -144,7 +144,7 @@ export const orderService = {
       }
 
       // Truy vấn DB để lấy data dựa trên orderIds
-      const query = orderRepository.buildQueryOptions({
+      const query = orderRepository.buildOrdersOptions({
         whereCondition: { orderId: { [Op.in]: orderIds } },
       });
       const fullOrders = await Order.findAll(query);
@@ -276,7 +276,7 @@ export const orderService = {
         }
 
         //--------------------MEILISEARCH-----------------------
-        const orderCreated = await orderRepository.findOrderForMeili(newOrderId, transaction);
+        const orderCreated = await orderRepository.syncOrderForMeili(newOrderId, transaction);
         if (orderCreated) {
           const flattenData = meiliTransformer.order(orderCreated);
           await meiliService.syncOrUpdateMeiliData({
@@ -363,7 +363,7 @@ export const orderService = {
         });
 
         //--------------------MEILISEARCH-----------------------
-        const orderUpdated = await orderRepository.findOrderForMeili(orderId, transaction);
+        const orderUpdated = await orderRepository.syncOrderForMeili(orderId, transaction);
 
         if (orderUpdated) {
           const flattenData = meiliTransformer.order(orderUpdated);

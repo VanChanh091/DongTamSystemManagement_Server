@@ -259,7 +259,7 @@ export const getOrderByStatus = async ({
     whereCondition.userId = userId;
   }
 
-  const queryOptions = orderRepository.buildQueryOptions({ whereCondition });
+  const queryOptions = orderRepository.buildOrdersOptions({ whereCondition });
 
   const rows = await Order.findAll(queryOptions);
   return { data: rows };

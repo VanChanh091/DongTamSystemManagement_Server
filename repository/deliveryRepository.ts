@@ -1,5 +1,5 @@
 import { User } from "../models/user/user";
-import { Op, Transaction } from "sequelize";
+import { FindOptions, Op, Transaction } from "sequelize";
 import { Order } from "../models/order/order";
 import { Vehicle } from "../models/admin/vehicle";
 import { Product } from "../models/product/product";
@@ -178,53 +178,6 @@ export const deliveryRepository = {
     });
   },
 
-  DELIVERY_REQUEST_MEILI_OPTIONS: ({
-    whereCondition,
-    transaction,
-  }: {
-    whereCondition?: any;
-    transaction?: Transaction;
-  }) => ({
-    where: whereCondition,
-    attributes: ["requestId", "status"],
-    include: [
-      {
-        model: PlanningPaper,
-        attributes: ["planningId"],
-        include: [
-          {
-            model: Order,
-            attributes: ["orderId"],
-            include: [{ model: Customer, attributes: ["customerName"] }],
-          },
-        ],
-      },
-      { model: User, attributes: ["fullName"] },
-    ],
-    transaction,
-  }),
-
-  getDeliveryRequestForMeili: async (requestId: number, transaction: Transaction) => {
-    return await DeliveryRequest.findOne(
-      deliveryRepository.DELIVERY_REQUEST_MEILI_OPTIONS({
-        whereCondition: { requestId },
-        transaction,
-      }),
-    );
-  },
-
-  getManyDeliveryRequestForMeili: async (
-    requestIds: number | number[],
-    transaction?: Transaction,
-  ) => {
-    return await DeliveryRequest.findAll(
-      deliveryRepository.DELIVERY_REQUEST_MEILI_OPTIONS({
-        whereCondition: { requestId: { [Op.in]: requestIds } },
-        transaction,
-      }),
-    );
-  },
-
   getDeliveryPlanByDate: async (deliveryDate: Date) => {
     return await DeliveryPlan.findOne({
       where: { deliveryDate },
@@ -355,6 +308,62 @@ export const deliveryRepository = {
       updateOnDuplicate: ["vehicleId", "sequence", "status", "idxOrder"],
       transaction,
     });
+  },
+
+  //------------------------MEILISEARCH-----------------------------
+  buildMeiliDeliveryRequestOptions: ({
+    whereCondition,
+    transaction,
+  }: {
+    whereCondition?: any;
+    transaction?: Transaction;
+  }): FindOptions => {
+    const queryOptions: FindOptions = {
+      where: whereCondition,
+      attributes: ["requestId", "status"],
+      include: [
+        {
+          model: PlanningPaper,
+          attributes: ["planningId"],
+          include: [
+            {
+              model: Order,
+              attributes: ["orderId"],
+              include: [{ model: Customer, attributes: ["customerName"] }],
+            },
+          ],
+        },
+        { model: User, attributes: ["fullName"] },
+      ],
+      transaction,
+    };
+
+    return queryOptions;
+  },
+
+  syncDeliveryRequestForMeili: async (requestId: number, transaction: Transaction) => {
+    return await DeliveryRequest.findOne(
+      deliveryRepository.buildMeiliDeliveryRequestOptions({
+        whereCondition: { requestId },
+        transaction,
+      }),
+    );
+  },
+
+  syncManyDeliveryRequestForMeili: async (
+    requestIds: number | number[],
+    transaction?: Transaction,
+  ) => {
+    return await DeliveryRequest.findAll(
+      deliveryRepository.buildMeiliDeliveryRequestOptions({
+        whereCondition: { requestId: { [Op.in]: requestIds } },
+        transaction,
+      }),
+    );
+  },
+
+  syncAllDeliveryRequestForMeili: async () => {
+    return await DeliveryRequest.findAll(deliveryRepository.buildMeiliDeliveryRequestOptions({}));
   },
 
   //=================================SCHEDULE DELIVERY=====================================

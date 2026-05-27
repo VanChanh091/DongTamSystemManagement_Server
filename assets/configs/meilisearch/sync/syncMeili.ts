@@ -23,6 +23,11 @@ import { planningBoxRepository } from "../../../../repository/planning/planningB
 import { inventoryRepository } from "../../../../repository/inventoryRepository";
 import { planningPaperRepository } from "../../../../repository/planning/planningPaperRepository";
 import { Op } from "sequelize";
+import { customerRepository } from "../../../../repository/customerRepository";
+import { employeeRepository } from "../../../../repository/employeeRepository";
+import { orderRepository } from "../../../../repository/orderRepository";
+import { warehouseRepository } from "../../../../repository/warehouseRepository";
+import { reportRepository } from "../../../../repository/reportRepository";
 
 interface SyncMeiliData {
   data: any[];
@@ -86,19 +91,7 @@ export const resetMeiliIndex = async (indexName: string) => {
 
 //sync customer
 export const syncCustomerToMeili = async (isDeleteAll: boolean) => {
-  const customers = await Customer.findAll({
-    attributes: [
-      "customerId",
-      "customerName",
-      "companyName",
-      "cskh",
-      "phone",
-      "dayCreated",
-      "customerSeq",
-    ],
-    order: [["customerSeq", "ASC"]],
-  });
-
+  const customers = await customerRepository.syncAllCustomersForMeili();
   const flattenData = customers.map(meiliTransformer.customer);
 
   return await syncMeiliData({
@@ -112,10 +105,11 @@ export const syncCustomerToMeili = async (isDeleteAll: boolean) => {
 
 //sync product
 export const syncProductToMeili = async (isDeleteAll: boolean) => {
-  const { rows } = await productRepository.findProductByPage({});
+  const query = productRepository.buildProductOptions({});
+  const products = await Product.findAll(query);
 
   return await syncMeiliData({
-    data: rows,
+    data: products,
     indexName: "products",
     displayName: "products",
     primaryKey: "productId",
@@ -125,18 +119,7 @@ export const syncProductToMeili = async (isDeleteAll: boolean) => {
 
 //sync employee
 export const syncEmployeeToMeili = async (isDeleteAll: boolean) => {
-  const employees = await EmployeeBasicInfo.findAll({
-    attributes: ["employeeId", "fullName", "phoneNumber"],
-    include: [
-      {
-        model: EmployeeCompanyInfo,
-        as: "companyInfo",
-        attributes: ["employeeCode", "status"],
-      },
-    ],
-    order: [["employeeId", "ASC"]],
-  });
-
+  const employees = await employeeRepository.syncAllEmployeesForMeili();
   const flattenData = employees.map(meiliTransformer.employee);
 
   return await syncMeiliData({
@@ -150,22 +133,7 @@ export const syncEmployeeToMeili = async (isDeleteAll: boolean) => {
 
 //sync order
 export const syncOrderToMeili = async (isDeleteAll: boolean) => {
-  const orders = await Order.findAll({
-    attributes: [
-      "orderId",
-      "dayReceiveOrder",
-      "flute",
-      "QC_box",
-      "status",
-      "userId",
-      "orderSortValue",
-    ],
-    include: [
-      { model: Customer, attributes: ["customerName"] },
-      { model: Product, attributes: ["productName"] },
-    ],
-  });
-
+  const orders = await orderRepository.syncAllOrdersForMeili();
   const flattenData = orders.map(meiliTransformer.order);
 
   return await syncMeiliData({
@@ -208,18 +176,7 @@ export const syncPlanningBoxToMeili = async (isDeleteAll: boolean) => {
 
 //sync inbound & outbound
 export const syncInboundToMeili = async (isDeleteAll: boolean) => {
-  const inbounds = await InboundHistory.findAll({
-    attributes: ["inboundId", "dateInbound"],
-    include: [
-      {
-        model: Order,
-        attributes: ["orderId"],
-        include: [{ model: Customer, attributes: ["customerName"] }],
-      },
-      { model: QcSession, attributes: ["checkedBy"] },
-    ],
-  });
-
+  const inbounds = await warehouseRepository.syncAllInboundsForMeili();
   const flattenData = inbounds.map(meiliTransformer.inbound);
 
   return await syncMeiliData({
@@ -232,24 +189,7 @@ export const syncInboundToMeili = async (isDeleteAll: boolean) => {
 };
 
 export const syncOutboundToMeili = async (isDeleteAll: boolean) => {
-  const outbounds = await OutboundHistory.findAll({
-    attributes: ["outboundId", "outboundSlipCode", "dateOutbound", "status"],
-    include: [
-      {
-        model: OutboundDetail,
-        as: "detail",
-        attributes: ["outboundDetailId"],
-        include: [
-          {
-            model: Order,
-            attributes: ["orderId"],
-            include: [{ model: Customer, attributes: ["customerName"] }],
-          },
-        ],
-      },
-    ],
-  });
-
+  const outbounds = await warehouseRepository.syncAllOutboundsForMeili();
   const flattenData = outbounds.map(meiliTransformer.outbound);
 
   return await syncMeiliData({
@@ -263,7 +203,7 @@ export const syncOutboundToMeili = async (isDeleteAll: boolean) => {
 
 //sync inventory
 export const syncInventoryToMeili = async (isDeleteAll: boolean) => {
-  const inventories = await Inventory.findAll(inventoryRepository.INVENTORY_MEILI_OPTIONS({}));
+  const inventories = await inventoryRepository.syncAllInventoryForMeili();
   const flattenData = inventories.map(meiliTransformer.inventory);
 
   return await syncMeiliData({
@@ -277,25 +217,7 @@ export const syncInventoryToMeili = async (isDeleteAll: boolean) => {
 
 //sync report
 export const syncReportPaperToMeili = async (isDeleteAll: boolean) => {
-  const papers = await ReportPlanningPaper.findAll({
-    attributes: ["reportPaperId", "dayReport", "shiftManagement"],
-    include: [
-      {
-        model: PlanningPaper,
-        attributes: ["planningId", "chooseMachine"],
-        include: [
-          {
-            model: Order,
-            attributes: ["orderId"],
-            include: [{ model: Customer, attributes: ["customerName"] }],
-          },
-        ],
-      },
-    ],
-  });
-
-  // console.log(JSON.stringify(papers[0]));
-
+  const papers = await reportRepository.syncAllReportPapersForMeili();
   const flattenData = papers.map(meiliTransformer.reportPaper);
 
   return await syncMeiliData({
@@ -308,26 +230,8 @@ export const syncReportPaperToMeili = async (isDeleteAll: boolean) => {
 };
 
 export const syncReportBoxToMeili = async (isDeleteAll: boolean) => {
-  const boxes = await ReportPlanningBox.findAll({
-    attributes: ["reportBoxId", "dayReport", "shiftManagement", "machine"],
-    include: [
-      {
-        model: PlanningBox,
-        attributes: ["planningBoxId"],
-        include: [
-          {
-            model: Order,
-            attributes: ["orderId", "QC_box"],
-            include: [{ model: Customer, attributes: ["customerName"] }],
-          },
-        ],
-      },
-    ],
-  });
-
+  const boxes = await reportRepository.syncAllReportBoxesForMeili();
   const flattenData = boxes.map(meiliTransformer.reportBox);
-
-  // console.log(flattenData[0]);
 
   return await syncMeiliData({
     data: flattenData,
@@ -339,13 +243,8 @@ export const syncReportBoxToMeili = async (isDeleteAll: boolean) => {
 };
 
 export const syncDeliveryRequestToMeili = async (isDeleteAll: boolean) => {
-  const requests = await DeliveryRequest.findAll(
-    deliveryRepository.DELIVERY_REQUEST_MEILI_OPTIONS({}),
-  );
-
+  const requests = await deliveryRepository.syncAllDeliveryRequestForMeili();
   const flattenData = requests.map(meiliTransformer.deliveryRequest);
-
-  // console.log(flattenData[0]);
 
   return await syncMeiliData({
     data: flattenData,

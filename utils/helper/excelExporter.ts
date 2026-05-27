@@ -3,6 +3,7 @@ import { Response } from "express";
 import { AppError } from "../appError";
 import { ExportExcelOptions } from "../../interface/types";
 
+//using for export planning paper
 export const exportExcelResponse = async <T>(
   res: Response,
   { data, sheetName, fileName, columns, rows }: ExportExcelOptions<T>,
@@ -15,16 +16,21 @@ export const exportExcelResponse = async <T>(
     // Header
     worksheet.columns = columns as ExcelJS.Column[];
 
+    const colCount = worksheet.columnCount;
+
     // Data rows
     data.forEach((item, index) => {
       const rowData = rows(item, index);
       const excelRow = worksheet.addRow(rowData);
 
-      for (let i = 1; i <= worksheet.columnCount; i++) {
-        sytleBorder(excelRow.getCell(i));
-        sytleFill(excelRow.getCell(i), "FFF2F2F2");
+      for (let i = 1; i <= colCount; i++) {
+        const cell = excelRow.getCell(i);
+        sytleBorder(cell);
+        sytleFill(cell, "FFF2F2F2");
       }
     });
+
+    (data as any) = null; // giải phóng bộ nhớ cho data sau khi đã add vào excel
 
     // Header style
     headerStyleAndAutofitColumns(worksheet);
@@ -47,6 +53,97 @@ export const exportExcelResponse = async <T>(
   } catch (error) {
     console.error("Export Excel error:", error);
     throw AppError.BadRequest("Lỗi xuất Excel", "ERROR_EXPORT_EXCEL");
+  }
+};
+
+export const exportExcelStreamResponse = async <T>(
+  res: Response,
+  { baseQuery, model, sheetName, fileName, columns, rows }: any,
+) => {
+  try {
+    const now = new Date();
+    const dateStr = now.toISOString().split("T")[0];
+    const fullName = `${fileName}_${dateStr}`;
+
+    // Thiết lập Header cho Response để trình duyệt hiểu là đang tải file Excel
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader("Content-Disposition", `attachment; filename=${fullName}.xlsx`);
+
+    // KHỞI TẠO WORKBOOK TRONG CHẾ ĐỘ STREAM
+    const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({
+      stream: res, // Đẩy trực tiếp luồng dữ liệu vào biến res của Express
+      useStyles: true, // BẮT BUỘC bật cái này thì sytleBorder và styleFill mới có tác dụng
+    });
+
+    const worksheet = workbook.addWorksheet(sheetName);
+    worksheet.columns = columns as ExcelJS.Column[];
+
+    //header style
+    styleHeaderStream(worksheet);
+
+    const totalColumns = columns.length;
+
+    const cellBorder = {
+      top: { style: "thin" },
+      left: { style: "thin" },
+      bottom: { style: "thin" },
+      right: { style: "thin" },
+    };
+    const cellFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2F2F2" } };
+
+    let page = 1;
+    const limit = 500; // Mỗi lượt chỉ bốc tối đa 500 dòng lên RAM
+    let hasMore = true;
+    let globalIndex = 0;
+
+    // VÒNG LẶP STREAM DỮ LIỆU
+    while (hasMore) {
+      const chunkData = await model.findAll({
+        ...baseQuery,
+        limit: limit,
+        offset: (page - 1) * limit,
+      });
+
+      // Nếu không còn dữ liệu nữa thì dừng vòng lặp
+      if (!chunkData || chunkData.length === 0) {
+        hasMore = false;
+        break;
+      }
+
+      chunkData.forEach((item: any) => {
+        const rowData = rows(item, globalIndex);
+        const excelRow = worksheet.addRow(rowData);
+
+        // Đổ style cho từng ô trong dòng
+        for (let i = 1; i <= totalColumns; i++) {
+          const cell = excelRow.getCell(i);
+          cell.border = cellBorder as any;
+          cell.fill = cellFill as any;
+        }
+
+        // QUAN TRỌNG NHẤT: Đẩy dòng này xuống mạng lập tức và giải phóng RAM
+        excelRow.commit();
+        globalIndex++;
+      });
+
+      console.log(`📡 Đã stream thành công cụm số ${page} (${chunkData.length} dòng)`);
+
+      page++;
+    }
+
+    // 4. ĐÓNG LUỒNG (COMMIT HOÀN TẤT FILE)
+    worksheet.commit();
+    await workbook.commit();
+
+    console.log(`✅ Toàn bộ file Excel đã được stream thành công! Tổng số dòng: ${globalIndex}`);
+  } catch (error) {
+    console.error("Stream Excel error:", error);
+    if (!res.headersSent) {
+      res.status(500).send("Lỗi trong quá trình xuất file");
+    }
   }
 };
 
@@ -278,6 +375,21 @@ export const exportDeliveryExcelResponse = async <T>(
 };
 
 //helper functions
+const styleHeaderStream = (worksheet: ExcelJS.Worksheet) => {
+  const headerRow = worksheet.getRow(1);
+
+  // Giữ nguyên 100% logic style cũ của bạn
+  headerRow.eachCell((cell) => {
+    cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    sytleFill(cell, "FF0070C0"); // Dùng lại màu xanh dương của bạn
+    cell.alignment = { vertical: "middle", horizontal: "center" };
+    sytleBorder(cell);
+  });
+
+  // 🔥 BẮT BUỘC: Khóa dòng 1 lại và đẩy đi trước trong chế độ Stream
+  headerRow.commit();
+};
+
 const headerStyleAndAutofitColumns = (worksheet: ExcelJS.Worksheet) => {
   // style main header
   worksheet.getRow(1).eachCell((cell) => {
@@ -302,19 +414,32 @@ const headerStyleAndAutofitColumns = (worksheet: ExcelJS.Worksheet) => {
   });
 };
 
-const sytleBorder = (cell: ExcelJS.Cell) => {
-  cell.border = {
-    top: { style: "thin" },
-    left: { style: "thin" },
-    bottom: { style: "thin" },
-    right: { style: "thin" },
-  };
+const CONST_BORDER: Partial<ExcelJS.Borders> = {
+  top: { style: "thin" },
+  left: { style: "thin" },
+  bottom: { style: "thin" },
+  right: { style: "thin" },
 };
 
-const sytleFill = (cell: ExcelJS.Cell, color: string) => {
-  cell.fill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: color }, //"FFFFFFFF"
-  };
+export const sytleBorder = (cell: ExcelJS.Cell) => {
+  // Thay vì mỗi lần gọi lại tạo 1 object {}, ta gán thẳng tham chiếu tới CONST_BORDER
+  cell.border = CONST_BORDER;
+};
+
+// Dùng Map để cache lại các màu đã từng tạo
+const fillCache = new Map<string, ExcelJS.Fill>();
+
+export const sytleFill = (cell: ExcelJS.Cell, color: string) => {
+  let fill = fillCache.get(color);
+
+  if (!fill) {
+    fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: color },
+    };
+    fillCache.set(color, fill); // Lưu lại để lần sau tái sử dụng
+  }
+
+  cell.fill = fill;
 };

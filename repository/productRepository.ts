@@ -1,4 +1,4 @@
-import { Transaction } from "sequelize";
+import { FindOptions, Transaction } from "sequelize";
 import { Product } from "../models/product/product";
 
 export const productRepository = {
@@ -16,28 +16,35 @@ export const productRepository = {
     });
   },
 
-  findProductByPage: async ({
+  buildProductOptions: ({
     page,
     pageSize,
     whereCondition = {},
+    isExport = false,
   }: {
     page?: number;
     pageSize?: number;
     whereCondition?: any;
-  }) => {
-    const query: any = {
+    isExport?: boolean;
+  }): FindOptions => {
+    const queryOptions: FindOptions = {
       where: whereCondition,
       attributes: { exclude: ["createdAt", "updatedAt"] },
     };
 
     if (page && pageSize) {
-      query.offset = (page - 1) * pageSize;
-      query.limit = pageSize;
+      queryOptions.offset = (page - 1) * pageSize;
+      queryOptions.limit = pageSize;
 
-      query.order = [["productSeq", "ASC"]];
+      queryOptions.order = [["productSeq", "ASC"]];
     }
 
-    return await Product.findAndCountAll(query);
+    if (isExport) {
+      queryOptions.raw = true;
+      queryOptions.nest = true;
+    }
+
+    return queryOptions;
   },
 
   //create

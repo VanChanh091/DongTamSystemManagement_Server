@@ -253,7 +253,7 @@ export const deliveryScheduleService = {
 
         //--------------------MEILISEARCH-----------------------
         const requestIds = items.map((i) => i.requestId);
-        const requestData = await deliveryRepository.getManyDeliveryRequestForMeili(
+        const requestData = await deliveryRepository.syncManyDeliveryRequestForMeili(
           requestIds,
           transaction,
         );
@@ -282,7 +282,7 @@ export const deliveryScheduleService = {
 
   _syncOrderForMeili: async (orderIds: string[], transaction: Transaction) => {
     try {
-      const ordersForMeili = await orderRepository.findOrdersForMeili(orderIds, transaction);
+      const ordersForMeili = await orderRepository.syncOrdersForMeili(orderIds, transaction);
 
       if (ordersForMeili.length > 0) {
         const dataToSync = ordersForMeili.map((o) => meiliTransformer.order(o));

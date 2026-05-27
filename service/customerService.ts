@@ -9,7 +9,6 @@ import { Order } from "../models/order/order";
 import { Customer } from "../models/customer/customer";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { CacheManager } from "../utils/helper/cache/cacheManager";
-import { exportExcelResponse } from "../utils/helper/excelExporter";
 import { CustomerPayment } from "../models/customer/customerPayment";
 import { runInTransaction } from "../utils/helper/transactionHelper";
 import { customerRepository } from "../repository/customerRepository";
@@ -21,6 +20,7 @@ import { searchFieldAtribute } from "../interface/types";
 import { MEILI_INDEX } from "../assets/labelFields";
 import { meiliTransformer } from "../assets/configs/meilisearch/meiliTransformer";
 import { dayjsUtc } from "../assets/configs/dayjs/dayjs.config";
+import { exportExcelStreamResponse } from "../utils/helper/excelExporter";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { customer } = CacheKey;
@@ -57,7 +57,8 @@ export const customerService = {
         totalCustomers = data.length;
         totalPages = 1;
       } else {
-        const { rows, count } = await customerRepository.findCustomerByPage({ page, pageSize });
+        const options = customerRepository.buildCustomersOptions({ page, pageSize });
+        const { rows, count } = await Customer.findAndCountAll(options);
 
         data = rows;
         totalCustomers = count;
@@ -114,9 +115,10 @@ export const customerService = {
       }
 
       //query db
-      const { rows } = await customerRepository.findCustomerByPage({
+      const options = customerRepository.buildCustomersOptions({
         whereCondition: { customerId: { [Op.in]: customerIds } },
       });
+      const { rows } = await Customer.findAndCountAll(options);
 
       // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
       const finalData = customerIds
@@ -173,9 +175,9 @@ export const customerService = {
         const nextId = Number(maxSeq) + 1;
         const newCustomerId = `${prefix}${String(nextId).padStart(4, "0")}`;
 
-        const newCustomer = await customerRepository.createCustomer(
+        const newCustomer = await Customer.create(
           { customerId: newCustomerId, customerSeq: nextId, ...customerData },
-          transaction,
+          { transaction },
         );
 
         //create customer payment
@@ -210,7 +212,7 @@ export const customerService = {
           throw AppError.NotFound("Customer not found", "CUSTOMER_NOT_FOUND");
         }
 
-        await customerRepository.updateCustomer(customer, restCustomerData, transaction);
+        await customer.update(restCustomerData, { transaction });
 
         await updateChildTable({
           model: CustomerPayment,
@@ -233,7 +235,7 @@ export const customerService = {
 
   syncCustomerForMeili: async (customerId: string, transaction: any) => {
     try {
-      const customer = await customerRepository.findCustomerForMeili(customerId, transaction);
+      const customer = await customerRepository.syncCustomerForMeili(customerId, transaction);
 
       if (customer) {
         const flattenData = meiliTransformer.customer(customer);
@@ -300,10 +302,14 @@ export const customerService = {
         whereCondition.timePayment = { [Op.between]: [start, end] };
       }
 
-      const { rows } = await customerRepository.findCustomerByPage({ whereCondition });
+      const baseQuery: any = customerRepository.buildCustomersOptions({
+        whereCondition,
+        isExport: true,
+      });
 
-      await exportExcelResponse(res, {
-        data: rows,
+      await exportExcelStreamResponse(res, {
+        baseQuery: baseQuery,
+        model: Customer,
         sheetName: "Danh sách khách hàng",
         fileName: "customer",
         columns: customerColumns,

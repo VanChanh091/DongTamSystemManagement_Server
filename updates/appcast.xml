@@ -3,18 +3,12 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.6.0</title>
-            <sparkle:version>4.6.0</sparkle:version> 
+            <title>Version 4.6.1</title>
+            <sparkle:version>4.6.1</sparkle:version> 
             <description>
-            Hiển thị ghi chú trong phần yêu cầu giao hàng
-            Thêm ghi chú cho kế hoạch sản xuất
-            Thêm lọc tồn kho theo nhân viên bán hàng
-            </description>Thêm mục giao hàng tại kho
-            Thêm logic kiểm tra nếu đơn hàng có phí mà không xuất kèm theo
-            Thêm hàm báo cáo phân bổ phế liệu giấy tấm
-            Chỉnh sửa lỗi không tìm thấy tên khách hàng ở trang đăng ký giao hàng
-            Thêm bảng lưu trữ lịch sử chuyển giao số lượng tồn kho
-            <pubDate>Mon, 25 May 2026</pubDate>
+            Sửa lỗi dừng và hủy sản xuất bị trả đơn về từ chối
+            </description>
+            <pubDate>Tue, 26 May 2026</pubDate>
             <enclosure url="dongtam.exe" 
                     sparkle:os="windows" 
                     length="12345678" 

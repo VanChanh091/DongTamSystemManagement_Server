@@ -16,7 +16,7 @@ import {
   uploadImageToCloudinary,
 } from "../utils/image/converToWebp";
 import cloudinary from "../assets/configs/connect/cloudinary.connect";
-import { exportExcelResponse } from "../utils/helper/excelExporter";
+import { exportExcelStreamResponse } from "../utils/helper/excelExporter";
 import { mappingProductRow, productColumns } from "../utils/mapping/productRowAndColumn";
 import { runInTransaction } from "../utils/helper/transactionHelper";
 import { meiliClient } from "../assets/configs/connect/meilisearch.connect";
@@ -61,7 +61,8 @@ export const productService = {
         totalProducts = data.length;
         totalPages = 1;
       } else {
-        const { rows, count } = await productRepository.findProductByPage({ page, pageSize });
+        const options = productRepository.buildProductOptions({ page, pageSize });
+        const { rows, count } = await Product.findAndCountAll(options);
 
         data = rows;
         totalProducts = count;
@@ -280,10 +281,14 @@ export const productService = {
         whereCondition.typeProduct = typeProduct;
       }
 
-      const { rows } = await productRepository.findProductByPage({ whereCondition });
+      const baseQuery: any = productRepository.buildProductOptions({
+        whereCondition,
+        isExport: true,
+      });
 
-      await exportExcelResponse(res, {
-        data: rows,
+      await exportExcelStreamResponse(res, {
+        baseQuery: baseQuery,
+        model: Product,
         sheetName: "Danh sách sản phẩm",
         fileName: "product",
         columns: productColumns,

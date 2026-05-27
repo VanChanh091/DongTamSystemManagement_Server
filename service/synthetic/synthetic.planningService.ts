@@ -1,22 +1,23 @@
 import dotenv from "dotenv";
-import { CacheKey } from "../../utils/helper/cache/cacheKey";
-import { CacheManager } from "../../utils/helper/cache/cacheManager";
-import { PlanningPaper } from "../../models/planning/planningPaper";
-import redisCache from "../../assets/configs/connect/redis.connect";
-import { AppError } from "../../utils/appError";
-import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
-import { buildStagesDetails } from "../../utils/helper/modelHelper/planningHelper";
-import { searchFieldAtribute } from "../../interface/types";
-import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
+dotenv.config();
+
 import { Op } from "sequelize";
 import { Request, Response } from "express";
-import { exportExcelDbPlanning } from "../../utils/helper/excelExporter";
+import { AppError } from "../../utils/appError";
+import { searchFieldAtribute } from "../../interface/types";
+import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import {
   dbPlanningColumns,
   mappingDbPlanningRow,
 } from "../../utils/mapping/dbPlanningRowAndColumn";
+import { CacheManager } from "../../utils/helper/cache/cacheManager";
+import { PlanningPaper } from "../../models/planning/planningPaper";
+import redisCache from "../../assets/configs/connect/redis.connect";
+import { exportExcelDbPlanning } from "../../utils/helper/excelExporter";
+
+import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { syntheticRepository } from "../../repository/syntheticRepository";
-dotenv.config();
+import { buildStagesDetails } from "../../utils/helper/modelHelper/planningHelper";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { planning } = CacheKey.dashboard;
@@ -193,9 +194,10 @@ export const syntheticPlanningService = {
     try {
       let whereCondition: any = {};
 
-      if (all === "true") {
-        // xuất toàn bộ
-      } else if (username) {
+      // if (all === "true") {
+      //   // xuất toàn bộ
+      // }
+      if (username) {
         whereCondition["$Order.User.fullName$"] = {
           [Op.like]: `%${username}%`,
         };

@@ -11,7 +11,7 @@ module.exports = {
       autorestart: true,
       watch: false,
       merge_logs: true,
-      max_memory_restart: "500M",
+      max_memory_restart: "600M",
       // instances: "max", // chạy với số core CPU được cấp
       instances: 3,
 

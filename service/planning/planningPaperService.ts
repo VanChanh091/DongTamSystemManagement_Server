@@ -13,7 +13,6 @@ import { MachinePaper } from "../../models/admin/machinePaper";
 import { PlanningBox } from "../../models/planning/planningBox";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
-import { exportExcelResponse } from "../../utils/helper/excelExporter";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { planningHelper } from "../../repository/planning/planningHelper";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
@@ -26,6 +25,7 @@ import {
   mapPlanningPaperRow,
   planningPaperColumns,
 } from "../../utils/mapping/planningPaperRowAndColumn";
+// import { exportExcelResponse } from "../../utils/helper/excelExporter";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper } = CacheKey.planning;
@@ -665,13 +665,13 @@ export const planningPaperService = {
 
       const safeMachineName = machine.replace(/\s+/g, "-");
 
-      await exportExcelResponse(res, {
-        data: finalData,
-        sheetName: "Kế hoạch sản xuất",
-        fileName: `KHSX_${normalizeVN(safeMachineName)}`,
-        columns: planningPaperColumns,
-        rows: mapPlanningPaperRow,
-      });
+      // await exportExcelResponse(res, {
+      //   data: finalData,
+      //   sheetName: "Kế hoạch sản xuất",
+      //   fileName: `KHSX_${normalizeVN(safeMachineName)}`,
+      //   columns: planningPaperColumns,
+      //   rows: mapPlanningPaperRow,
+      // });
     } catch (error) {
       console.error("Error create inventory:", error);
       if (error instanceof AppError) throw error;

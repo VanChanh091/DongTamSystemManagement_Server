@@ -8,17 +8,19 @@ import { LiquidationInventory } from "../models/warehouse/inventory/liquidationI
 
 export const inventoryRepository = {
   //====================================INVENTORY========================================
-  getInventoryByPage: async ({
+  buildInventoryOptions: ({
     page,
     pageSize,
     filter, //gt or lt
     searching,
+    isExport = false,
   }: {
     page?: number;
     pageSize?: number;
     filter: "gtZero" | "ltZero";
     searching?: any;
-  }) => {
+    isExport?: boolean;
+  }): FindOptions => {
     const operator = filter === "gtZero" ? Op.gt : Op.lt;
     const whereClause: any = {
       [Op.and]: [{ qtyInventory: { [operator]: 0 } }],
@@ -28,7 +30,7 @@ export const inventoryRepository = {
       whereClause[Op.and].push(searching);
     }
 
-    const options: any = {
+    const options: FindOptions = {
       where: whereClause,
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
@@ -68,7 +70,7 @@ export const inventoryRepository = {
       ],
     };
 
-    if (page !== undefined && pageSize !== undefined) {
+    if (page && pageSize) {
       options.offset = (page - 1) * pageSize;
       options.limit = pageSize;
 
@@ -78,7 +80,12 @@ export const inventoryRepository = {
       ];
     }
 
-    return await Inventory.findAndCountAll(options);
+    if (isExport) {
+      options.raw = true;
+      options.nest = true;
+    }
+
+    return options;
   },
 
   getTargetOrder: async (targetOrderId: string, transaction: Transaction) => {
@@ -132,41 +139,49 @@ export const inventoryRepository = {
     });
   },
 
-  INVENTORY_MEILI_OPTIONS: ({
+  buildMeiliInventoryOptions: ({
     whereCondition,
     transaction,
   }: {
     whereCondition?: any;
     transaction?: Transaction;
-  }) => ({
-    where: whereCondition,
-    attributes: ["inventoryId", "qtyInventory"],
-    include: [
-      {
-        model: Order,
-        attributes: ["orderId"],
-        include: [
-          { model: Customer, attributes: ["customerName"] },
-          { model: User, attributes: ["fullName"] },
-        ],
-      },
-    ],
-    transaction,
-  }),
+  }): FindOptions => {
+    const queryOptions: FindOptions = {
+      where: whereCondition,
+      attributes: ["inventoryId", "qtyInventory"],
+      include: [
+        {
+          model: Order,
+          attributes: ["orderId"],
+          include: [
+            { model: Customer, attributes: ["customerName"] },
+            { model: User, attributes: ["fullName"] },
+          ],
+        },
+      ],
+      transaction,
+    };
 
-  syncInventoryToMeili: async (orderId: string, transaction: Transaction) => {
+    return queryOptions;
+  },
+
+  syncInventoryForMeili: async (orderId: string, transaction: Transaction) => {
     return await Inventory.findOne(
-      inventoryRepository.INVENTORY_MEILI_OPTIONS({ whereCondition: { orderId }, transaction }),
+      inventoryRepository.buildMeiliInventoryOptions({ whereCondition: { orderId }, transaction }),
     );
   },
 
-  syncManyInventoryToMeili: async (orderId: string | string[], transaction: Transaction) => {
+  syncAllInventoryToMeili: async (orderId: string | string[], transaction: Transaction) => {
     return await Inventory.findAll(
-      inventoryRepository.INVENTORY_MEILI_OPTIONS({
+      inventoryRepository.buildMeiliInventoryOptions({
         whereCondition: { orderId: { [Op.in]: orderId } },
         transaction,
       }),
     );
+  },
+
+  syncAllInventoryForMeili: async () => {
+    return await Inventory.findAll(inventoryRepository.buildMeiliInventoryOptions({}));
   },
 
   //====================================LIQUIDATION INVENTORY========================================
