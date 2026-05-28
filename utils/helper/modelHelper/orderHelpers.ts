@@ -144,6 +144,7 @@ export const calculateVolume = async ({
   const baseVolume = (lengthCustomer * sizeCustomer) / 10000;
   const totalVolume = baseVolume * quantity * ratio * 1.3;
   const volumeRaw = Number(Math.round(totalVolume * 100) / 100); //làm tròn, lấy 2 số sau dấu phẩy
+
   return volumeRaw;
 };
 

@@ -61,7 +61,7 @@ export const deliveryEstimateService = {
         throw AppError.BadRequest("estimateTime không hợp lệ", "INVALID_ESTIMATE_TIME");
       }
 
-      const plannings = await deliveryRepository.getPlanningEstimateTime(dayStart, userId, all);
+      const plannings = await deliveryRepository.getPlanningEstimateTime({ dayStart, userId, all });
 
       //filter
       const filtered = deliveryEstimateService.filterPlanningEstimateTime({
@@ -130,6 +130,7 @@ export const deliveryEstimateService = {
       }
 
       // console.log(`filter: ${filters.join(" AND ")}`);
+      // console.log(`keyword: ${keyword}`);
 
       const searchResult = await index.search(keyword, {
         filter: filters.join(" AND "),
@@ -154,7 +155,11 @@ export const deliveryEstimateService = {
         };
       }
 
-      const plannings = await deliveryRepository.getPlanningEstimateTime(dayStart, userId, all);
+      const plannings = await deliveryRepository.getPlanningEstimateByField({
+        planningIds,
+        dayStart,
+        all: "true",
+      });
       const filtered = deliveryEstimateService.filterPlanningEstimateTime({
         plannings,
         dayStart,

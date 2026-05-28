@@ -15,13 +15,21 @@ import { OutboundDetail } from "../models/warehouse/outboundDetail";
 
 export const deliveryRepository = {
   //================================PLANNING ESTIMATE TIME==================================
-  getPlanningEstimateTime: async (dayStart: Date, userId: number, all: string) => {
-    return await PlanningPaper.findAll({
-      where: {
-        dayStart: { [Op.lte]: dayStart },
-        status: { [Op.notIn]: ["stop", "cancel"] },
-        deliveryPlanned: { [Op.ne]: "delivered" },
-      },
+  buildPlanningEstimateOptions: ({
+    whereCondition,
+    userId,
+    all = "false",
+    dayStart,
+    isSearch,
+  }: {
+    whereCondition?: any;
+    userId?: number;
+    all?: string;
+    dayStart: Date;
+    isSearch: boolean;
+  }): FindOptions => {
+    const queryOptions: FindOptions = {
+      where: whereCondition,
       attributes: [
         "planningId",
         "dayStart",
@@ -86,11 +94,59 @@ export const deliveryRepository = {
           ],
         },
       ],
-      order: [
+    };
+
+    if (!isSearch) {
+      queryOptions.order = [
         [{ model: Order, as: "Order" }, { model: Customer, as: "Customer" }, "customerName", "ASC"],
-      ],
-      limit: 700,
-    });
+      ];
+      queryOptions.limit = 600;
+    }
+
+    return queryOptions;
+  },
+
+  getPlanningEstimateTime: ({
+    dayStart,
+    userId,
+    all,
+  }: {
+    dayStart: Date;
+    userId: number;
+    all: string;
+  }) => {
+    return PlanningPaper.findAll(
+      deliveryRepository.buildPlanningEstimateOptions({
+        whereCondition: {
+          dayStart: { [Op.lte]: dayStart },
+          status: { [Op.notIn]: ["stop", "cancel"] },
+          deliveryPlanned: { [Op.ne]: "delivered" },
+        },
+        userId,
+        all,
+        dayStart,
+        isSearch: false,
+      }),
+    );
+  },
+
+  getPlanningEstimateByField: async ({
+    planningIds,
+    dayStart,
+    all,
+  }: {
+    planningIds: number[];
+    dayStart: Date;
+    all: string;
+  }) => {
+    return await PlanningPaper.findAll(
+      deliveryRepository.buildPlanningEstimateOptions({
+        whereCondition: { planningId: { [Op.in]: planningIds } },
+        dayStart,
+        all,
+        isSearch: true,
+      }),
+    );
   },
 
   getPaperWaitingRegister: async (planningId: number, transaction: Transaction) => {
