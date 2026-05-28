@@ -314,8 +314,11 @@ InventoryTransfers.belongsTo(Inventory, { foreignKey: "inventoryId" });
 PlanningPaper.hasMany(DeliveryRequest, { foreignKey: "planningId", onDelete: "CASCADE" });
 DeliveryRequest.belongsTo(PlanningPaper, { foreignKey: "planningId" });
 
-User.hasOne(DeliveryRequest, { foreignKey: "userId" });
+User.hasOne(DeliveryRequest, { foreignKey: "userId", onDelete: "CASCADE" });
 DeliveryRequest.belongsTo(User, { foreignKey: "userId" });
+
+Order.hasMany(DeliveryRequest, { foreignKey: "orderId", onDelete: "CASCADE" });
+DeliveryRequest.belongsTo(Order, { foreignKey: "orderId" });
 
 DeliveryPlan.hasMany(DeliveryItem, { foreignKey: "deliveryId", onDelete: "CASCADE" });
 DeliveryItem.belongsTo(DeliveryPlan, { foreignKey: "deliveryId" });
@@ -323,7 +326,7 @@ DeliveryItem.belongsTo(DeliveryPlan, { foreignKey: "deliveryId" });
 DeliveryRequest.hasOne(DeliveryItem, { foreignKey: "requestId", onDelete: "CASCADE" });
 DeliveryItem.belongsTo(DeliveryRequest, { foreignKey: "requestId" });
 
-Vehicle.hasOne(DeliveryItem, { foreignKey: "vehicleId" });
+Vehicle.hasOne(DeliveryItem, { foreignKey: "vehicleId", onDelete: "CASCADE" });
 DeliveryItem.belongsTo(Vehicle, { foreignKey: "vehicleId" });
 
 export default models;

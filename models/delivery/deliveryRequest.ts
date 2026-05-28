@@ -1,6 +1,7 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { PlanningPaper } from "../planning/planningPaper";
 import { User } from "../user/user";
+import { Order } from "../order/order";
 
 export type statusDelivery = "requested" | "partial" | "scheduled" | "cancelled";
 
@@ -17,6 +18,7 @@ interface DeliveryRequestAttributes {
   //FK
   userId: number;
   planningId: number;
+  orderId: string;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -31,6 +33,9 @@ export type DeliveryRequestCreationAttributes = Optional<
   | "qtyAllocated"
   | "volumeAllocated"
   | "note"
+  | "userId"
+  | "orderId"
+  | "planningId"
   | "createdAt"
   | "updatedAt"
 >;
@@ -55,6 +60,9 @@ export class DeliveryRequest
   declare userId: number;
   declare User: User;
 
+  declare orderId: string;
+  declare Order: Order;
+
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
 }
@@ -77,6 +85,7 @@ export function initDeliveryRequestModel(sequelize: Sequelize): typeof DeliveryR
       //FK
       userId: { type: DataTypes.INTEGER, allowNull: false },
       planningId: { type: DataTypes.INTEGER },
+      orderId: { type: DataTypes.STRING, allowNull: false },
     },
     {
       sequelize,
@@ -86,6 +95,7 @@ export function initDeliveryRequestModel(sequelize: Sequelize): typeof DeliveryR
         //FK
         { fields: ["userId"] },
         { fields: ["planningId"] },
+        { fields: ["orderId"] },
 
         //indexes
         { fields: ["status"] },

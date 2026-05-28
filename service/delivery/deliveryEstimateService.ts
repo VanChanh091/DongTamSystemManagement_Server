@@ -1,3 +1,4 @@
+import { Op } from "sequelize";
 import { meiliService } from "../meiliService";
 import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
@@ -15,7 +16,6 @@ import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
 import { planningPaperRepository } from "../../repository/planning/planningPaperRepository";
-import { Op } from "sequelize";
 
 export const deliveryEstimateService = {
   getPlanningEstimateTime: async ({
@@ -141,8 +141,8 @@ export const deliveryEstimateService = {
 
       const planningIds = searchResult.hits.map((hit: any) => hit.planningId);
 
-      // console.log(`length orderId: ${orderIds.length}`);
-      // console.log(`orderIds: ${JSON.stringify(orderIds)}`);
+      // console.log(`length planningIds: ${planningIds.length}`);
+      // console.log(`planningIds: ${JSON.stringify(planningIds)}`);
 
       if (planningIds.length === 0) {
         return {
@@ -286,6 +286,7 @@ export const deliveryEstimateService = {
             qtyRegistered,
             volume,
             note,
+            orderId: planning.orderId,
             status: "requested",
           },
           { transaction },

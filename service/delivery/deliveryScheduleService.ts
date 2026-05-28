@@ -14,17 +14,18 @@ import { DeliveryPlan } from "../../models/delivery/deliveryPlan";
 import { DeliveryItem } from "../../models/delivery/deliveryItem";
 import { orderRepository } from "../../repository/orderRepository";
 import redisCache from "../../assets/configs/connect/redis.connect";
-import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { PlanningPaper } from "../../models/planning/planningPaper";
+import { CacheManager } from "../../utils/helper/cache/cacheManager";
+import { OutboundDetail } from "../../models/warehouse/outboundDetail";
 import { DeliveryRequest } from "../../models/delivery/deliveryRequest";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { deliveryRepository } from "../../repository/deliveryRepository";
+import { manufactureRepo } from "../../repository/manufactureRepository";
 import { exportDeliveryExcelResponse } from "../../utils/helper/excelExporter";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
-import { deliveryColumns, mappingDeliveryRow } from "../../utils/mapping/deliveryRowAndComlumn";
-import { manufactureRepo } from "../../repository/manufactureRepository";
-import { OutboundDetail } from "../../models/warehouse/outboundDetail";
 import { planningPaperRepository } from "../../repository/planning/planningPaperRepository";
+import { deliveryColumns, mappingDeliveryRow } from "../../utils/mapping/deliveryRowAndComlumn";
+import { inventoryRepository } from "../../repository/inventoryRepository";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { schedule } = CacheKey.delivery;
@@ -166,16 +167,50 @@ export const deliveryScheduleService = {
           const distinctOrderIds = Array.from(orderIds);
 
           if (distinctPaperIds.length > 0) {
-            const updateTasks: Promise<any>[] = [
-              PlanningPaper.update(
-                { statusRequest: "finalize", deliveryPlanned: "delivered" },
-                { where: { planningId: { [Op.in]: distinctPaperIds } }, transaction },
-              ),
-              QcSession.update(
-                { status: "finalized" },
-                { where: { planningId: { [Op.in]: distinctPaperIds } }, transaction },
-              ),
-            ];
+            const updateTasks: Promise<any>[] = [];
+
+            const inventories = await inventoryRepository.findByOrderIds({
+              orderIds: distinctOrderIds,
+              transaction,
+            });
+            const inventoryMap = new Map(inventories.map((inv) => [inv.orderId, inv]));
+
+            const orders = await orderRepository.getOrdersByIds({
+              orderIds: distinctOrderIds,
+              transaction,
+            });
+            const orderMap = new Map(orders.map((order) => [order.orderId, order]));
+
+            for (const planningId of distinctPaperIds) {
+              const paper = await PlanningPaper.findByPk(planningId, { transaction });
+
+              if (paper && paper.orderId) {
+                const currentInventory = inventoryMap.get(paper.orderId);
+                const currentOrder = orderMap.get(paper.orderId);
+                let isFullyDelivered = false;
+
+                if (currentInventory && currentOrder) {
+                  // ĐIỀU KIỆN CHUẨN: So sánh Tổng xuất kho thực tế với Số lượng cần sản xuất gốc
+                  // Ví dụ: Nhập 10,010 | Cần sx 10,000 | Xuất đợt một 5,000 -> 5,000 >= 10,000 (False) -> Giữ 'delivering'
+                  // Xuất đợt hai thêm 5,000 (Tổng xuất 10,000) -> 10,000 >= 10,000 (True) -> Hoàn thành!
+                  isFullyDelivered =
+                    currentInventory.totalQtyOutbound >= currentOrder.quantityManufacture;
+                }
+
+                updateTasks.push(
+                  PlanningPaper.update(
+                    {
+                      statusRequest: "finalize",
+                      deliveryPlanned: isFullyDelivered ? "delivered" : "planned",
+                    },
+                    { where: { planningId }, transaction },
+                  ),
+                );
+                updateTasks.push(
+                  QcSession.update({ status: "finalized" }, { where: { planningId }, transaction }),
+                );
+              }
+            }
 
             // Nếu có Box thì add vào updateTaskss
             if (distinctBoxIds.length > 0) {
@@ -191,32 +226,7 @@ export const deliveryScheduleService = {
               );
             }
 
-            if (distinctOrderIds.length > 0) {
-              updateTasks.push(
-                Order.update(
-                  { status: "completed" },
-                  { where: { orderId: { [Op.in]: distinctOrderIds } }, transaction },
-                ),
-              );
-            }
-
             await Promise.all(updateTasks);
-
-            if (distinctOrderIds.length > 0) {
-              await deliveryScheduleService._syncOrderForMeili(distinctOrderIds, transaction);
-
-              const paperToMeili = await planningPaperRepository.syncAllPaperToMeili({
-                whereCondition: { planningId: { [Op.in]: distinctPaperIds } },
-                transaction,
-              });
-              const flattenData = paperToMeili.map(meiliTransformer.planningPaper);
-
-              await meiliService.syncOrUpdateMeiliData({
-                indexKey: MEILI_INDEX.PLANNING_PAPERS,
-                data: flattenData,
-                transaction,
-              });
-            }
           }
         } else if (action === "cancel") {
           const itemsCancel = await deliveryRepository.getDeliveryItemByIds(itemIds, transaction);

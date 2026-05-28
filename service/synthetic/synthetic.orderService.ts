@@ -1,14 +1,14 @@
 import { Op } from "sequelize";
 import { Response } from "express";
 import { AppError } from "../../utils/appError";
+import { Order } from "../../models/order/order";
+import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
 import { orderRepository } from "../../repository/orderRepository";
+import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { syntheticRepository } from "../../repository/syntheticRepository";
 import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { mappingOrderRow, orderColumns } from "../../utils/mapping/orderRowAndColumn";
-import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
-import { performance } from "perf_hooks";
-import { Order } from "../../models/order/order";
 
 export const syntheticOrderService = {
   getAllOrderByStatus: async ({
@@ -23,6 +23,8 @@ export const syntheticOrderService = {
     allOrders?: string;
   }) => {
     try {
+      console.log(`status: ${status}`);
+
       const { rows, count } = await syntheticRepository.getAllOrderByStatus({
         page,
         pageSize,
@@ -159,8 +161,42 @@ export const syntheticOrderService = {
     }
   },
 
+  completeOrder: async (orderIds: string[]) => {
+    try {
+      return await runInTransaction(async (transaction) => {
+        const orders = await Order.findAll({
+          where: { orderId: { [Op.in]: orderIds } },
+          transaction,
+        });
+        if (orders.length === 0) {
+          throw AppError.NotFound("No orders found to complete", "ORDERS_NOT_FOUND");
+        }
+
+        // if (distinctOrderIds.length > 0) {
+        //   await deliveryScheduleService._syncOrderForMeili(distinctOrderIds, transaction);
+
+        //   const paperToMeili = await planningPaperRepository.syncAllPaperToMeili({
+        //     whereCondition: { planningId: { [Op.in]: distinctPaperIds } },
+        //     transaction,
+        //   });
+        //   const flattenData = paperToMeili.map(meiliTransformer.planningPaper);
+
+        //   await meiliService.syncOrUpdateMeiliData({
+        //     indexKey: MEILI_INDEX.PLANNING_PAPERS,
+        //     data: flattenData,
+        //     transaction,
+        //   });
+        // }
+      });
+    } catch (error) {
+      console.error("Error complete orders:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
   exportExcelOrder: async (res: Response, { fromDate, toDate }: any) => {
-    const startTime = performance.now();
+    // const startTime = performance.now();
 
     try {
       let whereCondition: any = {
@@ -188,8 +224,8 @@ export const syntheticOrderService = {
         rows: mappingOrderRow,
       });
 
-      const endTime = performance.now();
-      console.log(`Execution time: ${(endTime - startTime).toFixed(2)} ms`);
+      // const endTime = performance.now();
+      // console.log(`Execution time: ${(endTime - startTime).toFixed(2)} ms`);
     } catch (error) {
       console.error("❌ Export Excel error:", error);
       throw AppError.ServerError();

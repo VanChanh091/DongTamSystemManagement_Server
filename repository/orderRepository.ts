@@ -53,7 +53,24 @@ export const orderRepository = {
     });
   },
 
-  //repo for auto complete
+  getOrdersByIds: async ({
+    orderIds,
+    transaction,
+    options = {},
+  }: {
+    orderIds: string[];
+    transaction: Transaction;
+    options?: FindOptions;
+  }) => {
+    return await Order.findAll({
+      where: { orderId: { [Op.in]: orderIds } },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+      ...options,
+    });
+  },
+
+  ///start auto complete
   getOrderIdRaw: async (orderId: string) => {
     return await Order.findAll({
       where: { orderId: { [Op.like]: `%${orderId}%` } },
@@ -92,6 +109,7 @@ export const orderRepository = {
       ],
     });
   },
+  ///end auto complete
 
   //------------------------MEILISEARCH-----------------------------
   buildMeiliOrderOptions: ({

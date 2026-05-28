@@ -7,8 +7,7 @@ import { meiliService } from "../meiliService";
 import { AppError } from "../../utils/appError";
 import { MEILI_INDEX } from "../../assets/labelFields";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
-import { PlanningBox } from "../../models/planning/planningBox";
-import { CacheManager } from "../../utils/helper/cache/cacheManager";
+import { planningBoxService } from "../planning/planningBoxService";
 import { reportRepository } from "../../repository/reportRepository";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { planningPaperService } from "../planning/planningPaperService";
@@ -22,7 +21,6 @@ import { createReportPlanning } from "../../utils/helper/modelHelper/reportHelpe
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
 import { planningBoxRepository } from "../../repository/planning/planningBoxRepository";
 import { aggregateReportFields } from "../../utils/helper/modelHelper/manufactureHelper";
-import { planningBoxService } from "../planning/planningBoxService";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { box } = CacheKey.manufacture;

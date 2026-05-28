@@ -14,7 +14,7 @@ export const getAllVehicle = async (req: Request, res: Response, next: NextFunct
       response.data.sort((a: any, b: any) => {
         // 1. So sánh theo nhà xe (vehicleHouse) trước
         // Dùng || "" để phòng trường hợp dữ liệu trong DB bị null/undefined
-        const houseCompare = (a.vehicleHouse || "").localeCompare(b.vehicleHouse || "", "vi", {
+        const houseCompare = (b.vehicleHouse || "").localeCompare(a.vehicleHouse || "", "vi", {
           sensitivity: "base",
         });
 

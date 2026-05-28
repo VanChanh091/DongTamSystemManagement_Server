@@ -122,6 +122,12 @@ export const inventoryRepository = {
     });
   },
 
+  getQueryOptions: (transaction: Transaction, options: FindOptions = {}) => ({
+    transaction,
+    lock: transaction.LOCK.UPDATE,
+    ...options,
+  }),
+
   findByOrderId: async ({
     orderId,
     transaction,
@@ -133,9 +139,22 @@ export const inventoryRepository = {
   }) => {
     return await Inventory.findOne({
       where: { orderId },
-      transaction,
-      lock: transaction.LOCK.UPDATE,
-      ...options,
+      ...inventoryRepository.getQueryOptions(transaction, options),
+    });
+  },
+
+  findByOrderIds: async ({
+    orderIds,
+    transaction,
+    options = {},
+  }: {
+    orderIds: string[];
+    transaction: Transaction;
+    options?: FindOptions;
+  }) => {
+    return await Inventory.findAll({
+      where: { orderId: { [Op.in]: orderIds } },
+      ...inventoryRepository.getQueryOptions(transaction, options),
     });
   },
 
