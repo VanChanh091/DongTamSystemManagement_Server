@@ -9,6 +9,9 @@ import { syntheticRepository } from "../../repository/syntheticRepository";
 import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { mappingOrderRow, orderColumns } from "../../utils/mapping/orderRowAndColumn";
+import { PlanningPaper } from "../../models/planning/planningPaper";
+import { meiliService } from "../meiliService";
+import { MEILI_INDEX } from "../../assets/labelFields";
 
 export const syntheticOrderService = {
   getAllOrderByStatus: async ({
@@ -23,8 +26,6 @@ export const syntheticOrderService = {
     allOrders?: string;
   }) => {
     try {
-      console.log(`status: ${status}`);
-
       const { rows, count } = await syntheticRepository.getAllOrderByStatus({
         page,
         pageSize,
@@ -166,27 +167,96 @@ export const syntheticOrderService = {
       return await runInTransaction(async (transaction) => {
         const orders = await Order.findAll({
           where: { orderId: { [Op.in]: orderIds } },
+          attributes: ["orderId", "orderSortValue", "status"],
           transaction,
         });
         if (orders.length === 0) {
           throw AppError.NotFound("No orders found to complete", "ORDERS_NOT_FOUND");
         }
 
-        // if (distinctOrderIds.length > 0) {
-        //   await deliveryScheduleService._syncOrderForMeili(distinctOrderIds, transaction);
+        const invalidOrder = orders.find((o) => o.status == "accept");
+        if (invalidOrder) {
+          throw AppError.BadRequest(
+            `Đơn hàng ${invalidOrder.orderId} chưa được xếp kế hoạch`,
+            "INVALID_ORDER_STATUS",
+          );
+        }
+        const distinctOrderIds = orders.map((o) => o.orderId);
 
-        //   const paperToMeili = await planningPaperRepository.syncAllPaperToMeili({
-        //     whereCondition: { planningId: { [Op.in]: distinctPaperIds } },
-        //     transaction,
-        //   });
-        //   const flattenData = paperToMeili.map(meiliTransformer.planningPaper);
+        const papers = await PlanningPaper.findAll({
+          where: { orderId: { [Op.in]: distinctOrderIds } },
+          attributes: [
+            "planningId",
+            "orderId",
+            "qtyProduced",
+            "status",
+            "statusRequest",
+            "deliveryPlanned",
+          ],
+          transaction,
+        });
+        if (papers.length === 0) {
+          throw AppError.NotFound(
+            "No planning papers found for the orders",
+            "PLANNING_PAPERS_NOT_FOUND",
+          );
+        }
 
-        //   await meiliService.syncOrUpdateMeiliData({
-        //     indexKey: MEILI_INDEX.PLANNING_PAPERS,
-        //     data: flattenData,
-        //     transaction,
-        //   });
-        // }
+        const hasZeroQty = papers.some((p) => p.qtyProduced === null || p.qtyProduced === 0);
+        if (hasZeroQty) {
+          throw AppError.BadRequest(
+            "Không thể hoàn thành đơn hàng khi có số lượng chưa sản xuất",
+            "ZERO_QTY_PRODUCED",
+          );
+        }
+
+        const distinctPaperIds = papers.map((p) => p.planningId);
+
+        await Order.update(
+          { status: "completed" },
+          { where: { orderId: { [Op.in]: distinctOrderIds } }, transaction },
+        );
+
+        if (distinctPaperIds.length > 0) {
+          await PlanningPaper.update(
+            {
+              status: "complete",
+              statusRequest: "finalize",
+              deliveryPlanned: "delivered",
+            },
+            { where: { planningId: { [Op.in]: distinctPaperIds } }, transaction },
+          );
+        }
+
+        if (distinctOrderIds.length > 0) {
+          const ordersToMeili = orders.map((o) => ({
+            orderId: o.orderId,
+            status: "completed",
+            orderSortValue: o.orderSortValue,
+          }));
+
+          const paperToMeili = papers.map((p) => ({
+            planningId: p.planningId,
+            status: "complete",
+            statusRequest: "finalize",
+            deliveryPlanned: "delivered",
+          }));
+
+          await meiliService.syncOrUpdateMeiliData({
+            indexKey: MEILI_INDEX.ORDERS,
+            data: ordersToMeili,
+            transaction,
+            isUpdate: true,
+          });
+          await meiliService.syncOrUpdateMeiliData({
+            indexKey: MEILI_INDEX.PLANNING_PAPERS,
+            data: paperToMeili,
+            transaction,
+            isUpdate: true,
+          });
+        }
+
+        return { message: "Orders completed successfully" };
       });
     } catch (error) {
       console.error("Error complete orders:", error);

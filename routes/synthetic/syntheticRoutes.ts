@@ -5,6 +5,7 @@ import {
   getSyntheticPlanning,
 } from "../../controller/user/synthetic/synthetic.planningController";
 import {
+  completeOrder,
   exportExcelOrders,
   getAllSyntheticOrders,
 } from "../../controller/user/synthetic/synthetic.orderController";
@@ -20,6 +21,7 @@ router.post(
   authorizeAnyPermission(["accountant"]),
   exportExcelOrders,
 );
+router.put("/orders", authenticate, completeOrder);
 
 //=========================PLANNING=========================
 router.get("/planning", authenticate, getSyntheticPlanning);

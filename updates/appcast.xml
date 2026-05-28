@@ -3,12 +3,16 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.6.1</title>
-            <sparkle:version>4.6.1</sparkle:version> 
+            <title>Version 4.6.2</title>
+            <sparkle:version>4.6.2</sparkle:version> 
             <description>
-            Sửa lỗi dừng và hủy sản xuất bị trả đơn về từ chối
+            Sửa lỗi báo cáo thùng không được
+            Chỉnh sửa công thức tính thời gian sản xuất giấy tấm
+            Tối ưu hàm xuất file excel và đồng bộ dịch vụ tìm kiếm
+            Thay đổi logic của nút hoàn thành giao hàng
+            Thêm nút hoàn thành đơn hàng ở trang tổng hợp đơn hàng
             </description>
-            <pubDate>Tue, 26 May 2026</pubDate>
+            <pubDate>Fri, 28 May 2026</pubDate>
             <enclosure url="dongtam.exe" 
                     sparkle:os="windows" 
                     length="12345678" 

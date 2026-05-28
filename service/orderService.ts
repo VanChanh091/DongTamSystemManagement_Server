@@ -276,7 +276,10 @@ export const orderService = {
         }
 
         //--------------------MEILISEARCH-----------------------
-        const orderCreated = await orderRepository.syncOrderForMeili(newOrderId, transaction);
+        const orderCreated = await orderRepository.syncOrderForMeili({
+          orderId: newOrderId,
+          transaction,
+        });
         if (orderCreated) {
           const flattenData = meiliTransformer.order(orderCreated);
           await meiliService.syncOrUpdateMeiliData({
@@ -363,7 +366,7 @@ export const orderService = {
         });
 
         //--------------------MEILISEARCH-----------------------
-        const orderUpdated = await orderRepository.syncOrderForMeili(orderId, transaction);
+        const orderUpdated = await orderRepository.syncOrderForMeili({ orderId, transaction });
 
         if (orderUpdated) {
           const flattenData = meiliTransformer.order(orderUpdated);

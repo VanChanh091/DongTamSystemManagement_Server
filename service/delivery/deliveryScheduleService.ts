@@ -5,7 +5,6 @@ import { Op, Transaction } from "sequelize";
 import { Request, Response } from "express";
 import { meiliService } from "../meiliService";
 import { AppError } from "../../utils/appError";
-import { Order } from "../../models/order/order";
 import { MEILI_INDEX } from "../../assets/labelFields";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { PlanningBox } from "../../models/planning/planningBox";
@@ -21,11 +20,10 @@ import { DeliveryRequest } from "../../models/delivery/deliveryRequest";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { deliveryRepository } from "../../repository/deliveryRepository";
 import { manufactureRepo } from "../../repository/manufactureRepository";
+import { inventoryRepository } from "../../repository/inventoryRepository";
 import { exportDeliveryExcelResponse } from "../../utils/helper/excelExporter";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
-import { planningPaperRepository } from "../../repository/planning/planningPaperRepository";
 import { deliveryColumns, mappingDeliveryRow } from "../../utils/mapping/deliveryRowAndComlumn";
-import { inventoryRepository } from "../../repository/inventoryRepository";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { schedule } = CacheKey.delivery;
@@ -292,7 +290,7 @@ export const deliveryScheduleService = {
 
   _syncOrderForMeili: async (orderIds: string[], transaction: Transaction) => {
     try {
-      const ordersForMeili = await orderRepository.syncOrdersForMeili(orderIds, transaction);
+      const ordersForMeili = await orderRepository.syncOrdersForMeili({ orderIds, transaction });
 
       if (ordersForMeili.length > 0) {
         const dataToSync = ordersForMeili.map((o) => meiliTransformer.order(o));

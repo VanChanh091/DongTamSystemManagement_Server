@@ -153,6 +153,7 @@ const calculateTimeForOnePlanning = async ({
     planningId: number;
     runningPlan: number;
     ghepKho?: number | null;
+    lengthPaperPlanning: number;
     Order?: {
       numberChild?: number | null;
       flute?: string | null;
@@ -184,8 +185,9 @@ const calculateTimeForOnePlanning = async ({
   }
 
   //total length
+  const lengthPaper = planning.lengthPaperPlanning / 100;
   const numberChild = Order?.numberChild || 1;
-  const totalLength = runningPlan / numberChild;
+  const totalLength = isKg ? runningPlan : (runningPlan * lengthPaper) / numberChild;
 
   //get speed
   const flute = Order?.flute || "3B";

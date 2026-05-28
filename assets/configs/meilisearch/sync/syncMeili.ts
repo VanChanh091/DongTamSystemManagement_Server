@@ -1,3 +1,4 @@
+import { Op } from "sequelize";
 import { User } from "../../../../models/user/user";
 import { AppError } from "../../../../utils/appError";
 import { Order } from "../../../../models/order/order";
@@ -5,29 +6,17 @@ import { meiliTransformer } from "../meiliTransformer";
 import { Product } from "../../../../models/product/product";
 import { meiliClient } from "../../connect/meilisearch.connect";
 import { Customer } from "../../../../models/customer/customer";
-import { PlanningBox } from "../../../../models/planning/planningBox";
-import { QcSession } from "../../../../models/qualityControl/qcSession";
+import { orderRepository } from "../../../../repository/orderRepository";
 import { PlanningPaper } from "../../../../models/planning/planningPaper";
-import { Inventory } from "../../../../models/warehouse/inventory/inventory";
-import { OutboundDetail } from "../../../../models/warehouse/outboundDetail";
+import { reportRepository } from "../../../../repository/reportRepository";
 import { productRepository } from "../../../../repository/productRepository";
-import { InboundHistory } from "../../../../models/warehouse/inboundHistory";
-import { DeliveryRequest } from "../../../../models/delivery/deliveryRequest";
 import { deliveryRepository } from "../../../../repository/deliveryRepository";
-import { OutboundHistory } from "../../../../models/warehouse/outboundHistory";
-import { ReportPlanningBox } from "../../../../models/report/reportPlanningBox";
-import { EmployeeBasicInfo } from "../../../../models/employee/employeeBasicInfo";
-import { ReportPlanningPaper } from "../../../../models/report/reportPlanningPaper";
-import { EmployeeCompanyInfo } from "../../../../models/employee/employeeCompanyInfo";
-import { planningBoxRepository } from "../../../../repository/planning/planningBoxRepository";
-import { inventoryRepository } from "../../../../repository/inventoryRepository";
-import { planningPaperRepository } from "../../../../repository/planning/planningPaperRepository";
-import { Op } from "sequelize";
 import { customerRepository } from "../../../../repository/customerRepository";
 import { employeeRepository } from "../../../../repository/employeeRepository";
-import { orderRepository } from "../../../../repository/orderRepository";
 import { warehouseRepository } from "../../../../repository/warehouseRepository";
-import { reportRepository } from "../../../../repository/reportRepository";
+import { inventoryRepository } from "../../../../repository/inventoryRepository";
+import { planningBoxRepository } from "../../../../repository/planning/planningBoxRepository";
+import { planningPaperRepository } from "../../../../repository/planning/planningPaperRepository";
 
 interface SyncMeiliData {
   data: any[];
@@ -243,7 +232,9 @@ export const syncReportBoxToMeili = async (isDeleteAll: boolean) => {
 };
 
 export const syncDeliveryRequestToMeili = async (isDeleteAll: boolean) => {
-  const requests = await deliveryRepository.syncAllDeliveryRequestForMeili();
+  const requests = await deliveryRepository.syncAllDeliveryRequestForMeili({
+    whereCondition: { status: { [Op.notIn]: ["scheduled", "cancelled"] } },
+  });
   const flattenData = requests.map(meiliTransformer.deliveryRequest);
 
   return await syncMeiliData({

@@ -53,7 +53,7 @@ router.post(
 //=================================PREPARE GOODS=====================================
 
 router.get("/prepare", authenticate, getRequestPrepareGoods);
-router.put("/prepare", authenticate, requestOrPreparedGoods);
+router.put("/prepare", authenticate, authorizeAnyPermission(["delivery"]), requestOrPreparedGoods);
 
 //socket
 router.post(

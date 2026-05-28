@@ -85,7 +85,7 @@ export function initDeliveryRequestModel(sequelize: Sequelize): typeof DeliveryR
       //FK
       userId: { type: DataTypes.INTEGER, allowNull: false },
       planningId: { type: DataTypes.INTEGER },
-      orderId: { type: DataTypes.STRING, allowNull: false },
+      orderId: { type: DataTypes.STRING },
     },
     {
       sequelize,

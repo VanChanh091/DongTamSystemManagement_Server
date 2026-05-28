@@ -131,11 +131,9 @@ export const planningPaperRepository = {
     const { attributes, include } = options;
 
     return await PlanningPaper.findAll({
+      where: { planningId: { [Op.in]: planningIds } },
       attributes,
       include,
-      where: {
-        planningId: { [Op.in]: planningIds },
-      },
       transaction,
     });
   },
@@ -150,6 +148,28 @@ export const planningPaperRepository = {
   getPapersByUpdateIndex: async (updateIndex: any[], transaction?: any) => {
     return await PlanningPaper.findAll({
       where: { planningId: updateIndex.map((i) => i.planningId) },
+      attributes: {
+        exclude: [
+          "createdAt",
+          "updatedAt",
+          "qtyProduced",
+          "totalPrice",
+          "bottom",
+          "fluteE",
+          "fluteB",
+          "fluteC",
+          "fluteE2",
+          "knife",
+          "totalLoss",
+          "qtyWasteNorm",
+          "shiftProduction",
+          "shiftManagement",
+          "note",
+          "statusRequest",
+          "deliveryPlanned",
+          "hasBox",
+        ],
+      },
       include: [{ model: Order }, { model: timeOverflowPlanning, as: "timeOverFlow" }],
       order: [["sortPlanning", "ASC"]],
       transaction,

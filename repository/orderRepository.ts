@@ -140,16 +140,28 @@ export const orderRepository = {
     return queryOptions;
   },
 
-  syncOrderForMeili: async (orderId: string, transaction: Transaction) => {
+  syncOrderForMeili: async ({
+    orderId,
+    transaction,
+  }: {
+    orderId: string;
+    transaction: Transaction;
+  }) => {
     return await Order.findOne(
       orderRepository.buildMeiliOrderOptions({ whereCondition: { orderId }, transaction }),
     );
   },
 
-  syncOrdersForMeili: async (orderId: string[], transaction: Transaction) => {
+  syncOrdersForMeili: async ({
+    orderIds,
+    transaction,
+  }: {
+    orderIds: string[];
+    transaction: Transaction;
+  }) => {
     return await Order.findAll(
       orderRepository.buildMeiliOrderOptions({
-        whereCondition: { orderId: { [Op.in]: orderId } },
+        whereCondition: { orderId: { [Op.in]: orderIds } },
         transaction,
       }),
     );

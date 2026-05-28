@@ -49,7 +49,12 @@ router.put(
   authenticate,
   handleAddOrUpdateOutbound,
 );
-router.delete("/outbound", authorizeAnyPermission(["delivery"]), authenticate, deleteOutbound);
+router.delete(
+  "/outbound",
+  authorizeAnyPermission(["delivery", "accountant"]),
+  authenticate,
+  deleteOutbound,
+);
 
 //auto complete dialog
 router.get("/outbound/get-search", authenticate, outboundAutoComplete);

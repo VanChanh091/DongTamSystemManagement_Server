@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { syntheticOrderService } from "../../../service/synthetic/synthetic.orderService";
+import { AppError } from "../../../utils/appError";
 
 export const getAllSyntheticOrders = async (req: Request, res: Response, next: NextFunction) => {
   const { page, pageSize, status, allOrders, orderId, field, keyword, startDate, endDate } =
@@ -50,6 +51,23 @@ export const getAllSyntheticOrders = async (req: Request, res: Response, next: N
       });
     }
 
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const completeOrder = async (req: Request, res: Response, next: NextFunction) => {
+  const { orderIds } = req.body as { orderIds: string[] };
+
+  try {
+    if (!orderIds || (Array.isArray(orderIds) && orderIds.length === 0)) {
+      throw AppError.BadRequest("Danh sách orderIds không được để trống", "ORDER_IDS_REQUIRED");
+    }
+
+    const orderIdsToArray = Array.isArray(orderIds) ? orderIds.map(String) : [String(orderIds)];
+
+    const response = await syntheticOrderService.completeOrder(orderIdsToArray);
     return res.status(200).json(response);
   } catch (error) {
     next(error);

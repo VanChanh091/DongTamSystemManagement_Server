@@ -362,8 +362,10 @@ export const deliveryRepository = {
     );
   },
 
-  syncAllDeliveryRequestForMeili: async () => {
-    return await DeliveryRequest.findAll(deliveryRepository.buildMeiliDeliveryRequestOptions({}));
+  syncAllDeliveryRequestForMeili: async ({ whereCondition }: { whereCondition?: any }) => {
+    return await DeliveryRequest.findAll(
+      deliveryRepository.buildMeiliDeliveryRequestOptions({ whereCondition }),
+    );
   },
 
   //=================================SCHEDULE DELIVERY=====================================

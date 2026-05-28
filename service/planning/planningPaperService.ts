@@ -25,6 +25,7 @@ import {
   mapPlanningPaperRow,
   planningPaperColumns,
 } from "../../utils/mapping/planningPaperRowAndColumn";
+import { exportExcelResponse } from "../../utils/helper/excelExporter";
 // import { exportExcelResponse } from "../../utils/helper/excelExporter";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
@@ -665,13 +666,13 @@ export const planningPaperService = {
 
       const safeMachineName = machine.replace(/\s+/g, "-");
 
-      // await exportExcelResponse(res, {
-      //   data: finalData,
-      //   sheetName: "Kế hoạch sản xuất",
-      //   fileName: `KHSX_${normalizeVN(safeMachineName)}`,
-      //   columns: planningPaperColumns,
-      //   rows: mapPlanningPaperRow,
-      // });
+      await exportExcelResponse(res, {
+        data: finalData,
+        sheetName: "Kế hoạch sản xuất",
+        fileName: `KHSX_${normalizeVN(safeMachineName)}`,
+        columns: planningPaperColumns,
+        rows: mapPlanningPaperRow,
+      });
     } catch (error) {
       console.error("Error create inventory:", error);
       if (error instanceof AppError) throw error;

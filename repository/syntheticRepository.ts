@@ -65,6 +65,11 @@ export const syntheticRepository = {
         "isBox",
         "orderSortValue",
         "statusPriority",
+        "pricePaper",
+        "totalPrice",
+        "totalPriceVAT",
+        "vat",
+        "orderIdCustomer",
       ],
       include: [
         { model: Customer, attributes: ["customerName"] },
