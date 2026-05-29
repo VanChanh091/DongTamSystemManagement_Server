@@ -10,12 +10,16 @@ export const getCustomers = async (req: Request, res: Response, next: NextFuncti
     page = 1,
     pageSize = 20,
     noPaging = false,
+    startDate,
+    endDate,
   } = req.query as {
     field?: string;
     keyword?: string;
     page: string;
     pageSize: string;
     noPaging?: string | boolean;
+    startDate?: string;
+    endDate?: string;
   };
 
   try {
@@ -28,6 +32,8 @@ export const getCustomers = async (req: Request, res: Response, next: NextFuncti
         keyword,
         page: Number(page),
         pageSize: Number(pageSize),
+        startDate,
+        endDate,
       });
     }
     // 2. Nhánh lấy tất cả

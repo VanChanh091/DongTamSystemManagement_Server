@@ -1,17 +1,17 @@
 import { Op } from "sequelize";
 import { Response } from "express";
+import { meiliService } from "../meiliService";
 import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
+import { MEILI_INDEX } from "../../assets/labelFields";
 import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
 import { orderRepository } from "../../repository/orderRepository";
+import { PlanningPaper } from "../../models/planning/planningPaper";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { syntheticRepository } from "../../repository/syntheticRepository";
 import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { mappingOrderRow, orderColumns } from "../../utils/mapping/orderRowAndColumn";
-import { PlanningPaper } from "../../models/planning/planningPaper";
-import { meiliService } from "../meiliService";
-import { MEILI_INDEX } from "../../assets/labelFields";
 
 export const syntheticOrderService = {
   getAllOrderByStatus: async ({
@@ -121,14 +121,13 @@ export const syntheticOrderService = {
 
       const searchResult = await index.search(searchKeyword, {
         filter: filters.join(" AND "),
-        attributesToSearchOn: searchKeyword ? [field] : [],
         attributesToRetrieve: ["orderId"],
+        attributesToSearchOn: searchKeyword ? [field] : [],
         page: Number(page) || 1,
         hitsPerPage: Number(pageSize) || 25,
       });
 
       const orderIds = searchResult.hits.map((hit: any) => hit.orderId);
-
       if (orderIds.length === 0) {
         return {
           message: "No orders found",

@@ -10,6 +10,7 @@ interface InventoryAttributes {
   totalQtyOutbound: number;
   qtyInventory: number;
   valueInventory: number;
+  dateInbound?: Date;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -26,6 +27,7 @@ export type InventoryCreationAttributes = Optional<
   | "totalQtyOutbound"
   | "qtyInventory"
   | "valueInventory"
+  | "dateInbound"
   | "createdAt"
   | "updatedAt"
 >;
@@ -40,6 +42,7 @@ export class Inventory
   declare totalQtyOutbound: number;
   declare qtyInventory: number;
   declare valueInventory: number;
+  declare dateInbound?: Date;
 
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
@@ -60,6 +63,7 @@ export function initInventoryModel(sequelize: Sequelize): typeof Inventory {
       totalQtyOutbound: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
       qtyInventory: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
       valueInventory: { type: DataTypes.DOUBLE, allowNull: false, defaultValue: 0 },
+      dateInbound: { type: DataTypes.DATE },
 
       //FK
       orderId: { type: DataTypes.STRING, allowNull: false },

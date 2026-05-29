@@ -227,6 +227,11 @@ export const inboundService = {
 
       if (isFirstInbound) {
         await planning.update({ statusRequest: "inbounded" }, { transaction });
+
+        await Inventory.update(
+          { dateInbound: new Date() },
+          { where: { orderId: planning.orderId }, transaction },
+        );
       }
 
       //xóa cache
@@ -327,15 +332,10 @@ export const inboundService = {
       if (isFirstInbound) {
         await planning.update({ statusRequest: "inbounded" }, { transaction });
 
-        const paper = await PlanningPaper.findOne({
-          where: { planningId: planning.planningId },
-          attributes: ["planningId", "statusRequest"],
-        });
-        if (!paper) {
-          throw AppError.BadRequest("planning paper not found", "PLANNING_PAPER_NOT_FOUND");
-        }
-
-        await paper.update({ statusRequest: "inbounded" }, { transaction });
+        await Inventory.update(
+          { dateInbound: new Date() },
+          { where: { orderId: planning.orderId }, transaction },
+        );
       }
 
       //xóa cache

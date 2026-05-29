@@ -17,11 +17,11 @@ export const inventoryRepository = {
   }: {
     page?: number;
     pageSize?: number;
-    filter: "gtZero" | "ltZero";
+    filter?: "gtZero" | "ltZero";
     searching?: any;
     isExport?: boolean;
   }): FindOptions => {
-    const operator = filter === "gtZero" ? Op.gt : Op.lt;
+    const operator = isExport ? Op.ne : filter === "gtZero" ? Op.gt : Op.lt;
     const whereClause: any = {
       [Op.and]: [{ qtyInventory: { [operator]: 0 } }],
     };

@@ -49,13 +49,12 @@ export const createMachinePaper = async (req: Request, res: Response, next: Next
 //update machine
 export const updateMachinePaper = async (req: Request, res: Response, next: NextFunction) => {
   const { machineId } = req.query as { machineId: string };
-  const { ...machineUpdated } = req.body;
 
   try {
     const response = await adminService.updateItem({
       model: MachinePaper,
       itemId: Number(machineId),
-      dataUpdated: machineUpdated,
+      dataUpdated: req.body,
       message: "update machine successfully",
       errMessage: "machine not found",
       errCode: "MACHINE_NOT_FOUND",

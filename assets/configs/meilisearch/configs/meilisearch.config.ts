@@ -6,6 +6,7 @@ const rule = ["words", "typo", "proximity", "attribute", "sort", "exactness"];
 export const customersSettings: Settings = {
   searchableAttributes: ["customerId", "customerName", "cskh", "phone", "dayCreated"],
   sortableAttributes: ["customerSeq"],
+  filterableAttributes: ["dayCreated"],
   rankingRules: rule,
 };
 

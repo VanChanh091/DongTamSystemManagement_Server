@@ -1,4 +1,3 @@
-import redisCache from "../assets/configs/connect/redis.connect";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -6,21 +5,22 @@ import { Op } from "sequelize";
 import { Response } from "express";
 import { AppError } from "../utils/appError";
 import { Order } from "../models/order/order";
+import { meiliService } from "./meiliService";
+import { MEILI_INDEX } from "../assets/labelFields";
 import { Customer } from "../models/customer/customer";
+import { searchFieldAtribute } from "../interface/types";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
+import { dayjsUtc } from "../assets/configs/dayjs/dayjs.config";
+import redisCache from "../assets/configs/connect/redis.connect";
 import { CacheManager } from "../utils/helper/cache/cacheManager";
 import { CustomerPayment } from "../models/customer/customerPayment";
 import { runInTransaction } from "../utils/helper/transactionHelper";
 import { customerRepository } from "../repository/customerRepository";
+import { exportExcelStreamResponse } from "../utils/helper/excelExporter";
 import { meiliClient } from "../assets/configs/connect/meilisearch.connect";
+import { meiliTransformer } from "../assets/configs/meilisearch/meiliTransformer";
 import { customerColumns, mappingCustomerRow } from "../utils/mapping/customerRowAndColumn";
 import { createDataTable, updateChildTable } from "../utils/helper/modelHelper/orderHelpers";
-import { meiliService } from "./meiliService";
-import { searchFieldAtribute } from "../interface/types";
-import { MEILI_INDEX } from "../assets/labelFields";
-import { meiliTransformer } from "../assets/configs/meilisearch/meiliTransformer";
-import { dayjsUtc } from "../assets/configs/dayjs/dayjs.config";
-import { exportExcelStreamResponse } from "../utils/helper/excelExporter";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { customer } = CacheKey;
@@ -82,23 +82,45 @@ export const customerService = {
     }
   },
 
-  getCustomerByFields: async ({ field, keyword, page, pageSize }: searchFieldAtribute) => {
+  getCustomerByFields: async ({
+    field,
+    keyword,
+    page,
+    pageSize,
+    startDate,
+    endDate,
+  }: searchFieldAtribute) => {
     try {
       const validFields = ["customerId", "customerName", "cskh", "phone", "dayCreated"];
       if (!validFields.includes(field)) {
         throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
       }
 
-      if (field === "dayCreated") {
-        const date = new Date(keyword);
-        keyword = dayjsUtc.utc(date).startOf("day").unix().toString();
-      }
-
       const index = meiliClient.index("customers");
 
-      const searchResult = await index.search(keyword, {
-        attributesToSearchOn: [field],
+      // Lọc theo ngày nếu có
+      let searchKeyword = keyword;
+      let filters = [];
+
+      if (field === "dayCreated") {
+        searchKeyword = "";
+
+        if (startDate && endDate) {
+          const startTimestamp = dayjsUtc.utc(startDate).startOf("day").unix();
+          filters.push(`dayCreated >= ${startTimestamp}`);
+
+          const endTimestamp = dayjsUtc.utc(endDate).endOf("day").unix();
+          filters.push(`dayCreated <= ${endTimestamp}`);
+        }
+
+        // console.log(`start: ${startDate} - end: ${endDate}`);
+        // console.log(`filter: ${filters.join(" AND ")}`);
+      }
+
+      const searchResult = await index.search(searchKeyword, {
+        filter: filters.join(" AND "),
         attributesToRetrieve: ["customerId"],
+        attributesToSearchOn: searchKeyword ? [field] : [],
         page: Number(page) || 1,
         hitsPerPage: Number(pageSize) || 25, //pageSize
       });

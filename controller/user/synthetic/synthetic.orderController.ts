@@ -1,6 +1,6 @@
+import { AppError } from "../../../utils/appError";
 import { NextFunction, Request, Response } from "express";
 import { syntheticOrderService } from "../../../service/synthetic/synthetic.orderService";
-import { AppError } from "../../../utils/appError";
 
 export const getAllSyntheticOrders = async (req: Request, res: Response, next: NextFunction) => {
   const { page, pageSize, status, allOrders, orderId, field, keyword, startDate, endDate } =

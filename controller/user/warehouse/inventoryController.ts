@@ -83,8 +83,10 @@ export const createNewInventory = async (req: Request, res: Response, next: Next
 
 //export excel
 export const exportInventory = async (req: Request, res: Response, next: NextFunction) => {
+  const { fromDate, toDate } = req.body;
+
   try {
-    await inventoryService.exportExcelInventory(res);
+    await inventoryService.exportExcelInventory(res, { fromDate, toDate });
   } catch (error) {
     next(error);
   }

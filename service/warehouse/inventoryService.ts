@@ -23,6 +23,7 @@ import { MEILI_INDEX } from "../../assets/labelFields";
 import { InventoryTransfers } from "../../models/warehouse/inventory/inventoryTransfers";
 import { User } from "../../models/user/user";
 import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
+import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inventory_gt, inventory_lt } = CacheKey.warehouse;
@@ -390,9 +391,24 @@ export const inventoryService = {
     }
   },
 
-  exportExcelInventory: async (res: Response) => {
+  exportExcelInventory: async (res: Response, { fromDate, toDate }: any) => {
     try {
-      const baseQuery: any = inventoryRepository.buildInventoryOptions({ filter: "gtZero" });
+      let whereCondition: any = {};
+
+      if (fromDate && toDate) {
+        const startTimestamp = dayjsUtc(fromDate).startOf("day").toDate();
+        const endTimestamp = dayjsUtc(toDate).endOf("day").toDate();
+
+        // console.log(`start: ${fromDate} - end: ${toDate}`);
+        // console.log(`startTimestamp: ${startTimestamp} - endTimestamp: ${endTimestamp}`);
+
+        whereCondition.dateInbound = { [Op.between]: [startTimestamp, endTimestamp] };
+      }
+
+      const baseQuery: any = inventoryRepository.buildInventoryOptions({
+        isExport: true,
+        searching: whereCondition,
+      });
 
       await exportExcelStreamResponse(res, {
         baseQuery: baseQuery,
