@@ -14,6 +14,7 @@ interface OrderAttributes {
 
   dayReceiveOrder: Date;
   dateRequestShipping: Date;
+  dayApproved?: Date;
 
   lengthPaperCustomer: number;
   lengthPaperManufacture: number;
@@ -77,6 +78,7 @@ export type OrderCreationAttributes = Optional<
   OrderAttributes,
   | "dayReceiveOrder"
   | "dateRequestShipping"
+  | "dayApproved"
   | "lengthPaperCustomer"
   | "lengthPaperManufacture"
   | "paperSizeCustomer"
@@ -127,6 +129,7 @@ export class Order
 {
   declare orderId: string;
   declare dayReceiveOrder: Date;
+  declare dayApproved?: Date;
   declare lengthPaperCustomer: number;
   declare lengthPaperManufacture: number;
   declare paperSizeCustomer: number;
@@ -200,8 +203,11 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
   Order.init(
     {
       orderId: { type: DataTypes.STRING(15), allowNull: false, primaryKey: true },
+
       dayReceiveOrder: { type: DataTypes.DATE, allowNull: false },
       dateRequestShipping: { type: DataTypes.DATE, allowNull: false },
+      dayApproved: { type: DataTypes.DATE },
+
       flute: { type: DataTypes.STRING },
       QC_box: { type: DataTypes.STRING },
       canLan: { type: DataTypes.STRING },

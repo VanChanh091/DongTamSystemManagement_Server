@@ -129,7 +129,7 @@ export const exportExcelStreamResponse = async <T>(
         globalIndex++;
       });
 
-      console.log(`📡 Đã stream thành công cụm số ${page} (${chunkData.length} dòng)`);
+      // console.log(`📡 Đã stream thành công cụm số ${page} (${chunkData.length} dòng)`);
 
       page++;
     }
@@ -138,7 +138,9 @@ export const exportExcelStreamResponse = async <T>(
     worksheet.commit();
     await workbook.commit();
 
-    console.log(`✅ Toàn bộ file Excel đã được stream thành công! Tổng số dòng: ${globalIndex}`);
+    console.log(
+      `✅ Toàn bộ file Excel đã được stream thành công! Tổng số dòng: ${globalIndex}, model: ${model.name}`,
+    );
   } catch (error) {
     console.error("Stream Excel error:", error);
     if (!res.headersSent) {

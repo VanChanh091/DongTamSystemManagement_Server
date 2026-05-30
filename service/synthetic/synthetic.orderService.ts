@@ -279,7 +279,7 @@ export const syntheticOrderService = {
         // console.log(`start: ${fromDate} - end: ${toDate}`);
         // console.log(`startTimestamp: ${startTimestamp} - endTimestamp: ${endTimestamp}`);
 
-        whereCondition.dayReceiveOrder = { [Op.between]: [startTimestamp, endTimestamp] };
+        whereCondition.dayApproved = { [Op.between]: [startTimestamp, endTimestamp] };
       }
 
       const baseQuery: any = orderRepository.buildOrdersOptions({ whereCondition, isExport: true });
