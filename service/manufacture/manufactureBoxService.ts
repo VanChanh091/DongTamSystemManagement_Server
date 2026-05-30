@@ -183,6 +183,33 @@ export const manuBoxService = {
           transaction,
         });
 
+        // 4. check công đoạn cuối của đơn hàng
+        const allStages = await PlanningBoxTime.findAll({
+          where: { planningBoxId },
+          attributes: ["boxTimeId", "qtyProduced", "machine"],
+          transaction,
+        });
+
+        console.log(`allStages: ${JSON.stringify(allStages)}`);
+
+        let isLastStage = true;
+
+        for (const stage of allStages) {
+          if (stage.machine === machine) {
+            // Đối với công đoạn hiện tại đang báo cáo, ta check theo số lượng mới sau khi cộng dồn (newQtyProduced)
+            if (!newQtyProduced || Number(newQtyProduced) <= 0) {
+              isLastStage = false;
+              break;
+            }
+          } else {
+            // Đối với các công đoạn khác, nếu có bất kỳ công đoạn nào chưa có số lượng (null, undefined hoặc <= 0)
+            if (!stage.qtyProduced || Number(stage.qtyProduced) <= 0) {
+              isLastStage = false;
+              break;
+            }
+          }
+        }
+
         //--------------------MEILISEARCH-----------------------
         const boxId = planning.PlanningBox.planningBoxId;
         const reportId = reportCreated.report.reportBoxId;
@@ -198,6 +225,7 @@ export const manuBoxService = {
             dayCompleted,
             shiftManagement,
             status: isCompletedOrder ? planning.status : "lackQty",
+            isLastStage,
           },
         };
       });

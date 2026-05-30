@@ -58,7 +58,7 @@ export const exportExcelResponse = async <T>(
 
 export const exportExcelStreamResponse = async <T>(
   res: Response,
-  { baseQuery, model, sheetName, fileName, columns, rows }: any,
+  { baseQuery, model, sheetName, fileName, columns, rows, userName }: any,
 ) => {
   try {
     const now = new Date();
@@ -139,7 +139,7 @@ export const exportExcelStreamResponse = async <T>(
     await workbook.commit();
 
     console.log(
-      `✅ Toàn bộ file Excel đã được stream thành công! Tổng số dòng: ${globalIndex}, model: ${model.name}`,
+      `✅ Toàn bộ file Excel đã được stream thành công! Tổng số dòng: ${globalIndex}, model: ${model.name}, user: ${userName}`,
     );
   } catch (error) {
     console.error("Stream Excel error:", error);

@@ -60,7 +60,7 @@ export const exportExcelInbounds = async (req: Request, res: Response, next: Nex
   const { fromDate, toDate } = req.body;
 
   try {
-    await inboundService.exportExcelInboundHistory(res, { fromDate, toDate });
+    await inboundService.exportExcelInboundHistory(res, { fromDate, toDate }, req.user.email);
   } catch (error) {
     next(error);
   }

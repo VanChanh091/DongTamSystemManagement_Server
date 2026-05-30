@@ -195,9 +195,7 @@ export const inboundService = {
 
       const isFirstInbound = totalInboundQty === 0;
 
-      //create inventory
-      await inventoryService.createNewInventory(planning.orderId, transaction);
-
+      //create inbound record
       const inboundRecord = await planningHelper.createData({
         model: InboundHistory,
         data: {
@@ -299,9 +297,7 @@ export const inboundService = {
 
       const isFirstInbound = totalInboundQty === 0;
 
-      //create inventory
-      await inventoryService.createNewInventory(planning.orderId, transaction);
-
+      //create inbound record
       const inboundRecord = await planningHelper.createData({
         model: InboundHistory,
         data: {
@@ -522,7 +518,7 @@ export const inboundService = {
     }
   },
 
-  exportExcelInboundHistory: async (res: Response, { fromDate, toDate }: any) => {
+  exportExcelInboundHistory: async (res: Response, { fromDate, toDate }: any, userName: string) => {
     try {
       let whereCondition: any = {};
 
@@ -548,6 +544,7 @@ export const inboundService = {
         fileName: "inbound_history",
         columns: inboundColumns,
         rows: mappingInboundRow,
+        userName: userName,
       });
     } catch (error) {
       console.error("❌ Export Excel error:", error);

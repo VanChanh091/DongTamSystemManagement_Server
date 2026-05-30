@@ -12,6 +12,7 @@ import { syntheticRepository } from "../../repository/syntheticRepository";
 import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { mappingOrderRow, orderColumns } from "../../utils/mapping/orderRowAndColumn";
+import { Inventory } from "../../models/warehouse/inventory/inventory";
 
 export const syntheticOrderService = {
   getAllOrderByStatus: async ({
@@ -161,7 +162,7 @@ export const syntheticOrderService = {
     }
   },
 
-  completeOrder: async (orderIds: string[]) => {
+  completeOrder: async (orderIds: string[], allowNegativeInv = false) => {
     try {
       return await runInTransaction(async (transaction) => {
         const orders = await Order.findAll({
@@ -211,6 +212,20 @@ export const syntheticOrderService = {
 
         const distinctPaperIds = papers.map((p) => p.planningId);
 
+        const inventories = await Inventory.findAll({
+          where: { orderId: { [Op.in]: distinctOrderIds } },
+          transaction,
+        });
+
+        const isNegativeInv = inventories.some((inv) => inv.valueInventory < 0);
+
+        if (isNegativeInv && !allowNegativeInv) {
+          return {
+            message: "Có đơn hàng tồn kho bị âm. Tiếp tục để hoàn thành các đơn này",
+            allowNegativeInv: true,
+          };
+        }
+
         await Order.update(
           { status: "completed" },
           { where: { orderId: { [Op.in]: distinctOrderIds } }, transaction },
@@ -227,6 +242,7 @@ export const syntheticOrderService = {
           );
         }
 
+        //-----------------------MEILISEARCH-----------------------------
         if (distinctOrderIds.length > 0) {
           const ordersToMeili = orders.map((o) => ({
             orderId: o.orderId,
@@ -264,7 +280,7 @@ export const syntheticOrderService = {
     }
   },
 
-  exportExcelOrder: async (res: Response, { fromDate, toDate }: any) => {
+  exportExcelOrder: async (res: Response, { fromDate, toDate }: any, userName: string) => {
     // const startTime = performance.now();
 
     try {
@@ -291,6 +307,7 @@ export const syntheticOrderService = {
         fileName: "orders",
         columns: orderColumns,
         rows: mappingOrderRow,
+        userName: userName,
       });
 
       // const endTime = performance.now();

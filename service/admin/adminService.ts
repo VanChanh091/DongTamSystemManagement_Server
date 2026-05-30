@@ -6,15 +6,16 @@ import { Request } from "express";
 import { meiliService } from "../meiliService";
 import { AppError } from "../../utils/appError";
 import { userRole } from "../../models/user/user";
-import { MEILI_INDEX, validPermissions } from "../../assets/labelFields";
 import { Order, OrderStatus } from "../../models/order/order";
 import { adminRepository } from "../../repository/adminRepository";
 import { getCloudinaryPublicId } from "../../utils/image/converToWebp";
+import { Inventory } from "../../models/warehouse/inventory/inventory";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import cloudinary from "../../assets/configs/connect/cloudinary.connect";
-import { Inventory } from "../../models/warehouse/inventory/inventory";
-import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
+import { MEILI_INDEX, validPermissions } from "../../assets/labelFields";
 import { inventoryRepository } from "../../repository/inventoryRepository";
+import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
+import { inventoryService } from "../warehouse/inventoryService";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 
@@ -223,8 +224,10 @@ export const adminService = {
             dayApproved: new Date(),
           });
 
+          let success;
+
           if (phiKhac) {
-            await Inventory.create(
+            success = await Inventory.create(
               {
                 totalQtyInbound: order.quantityCustomer,
                 qtyInventory: order.quantityCustomer,
@@ -233,7 +236,13 @@ export const adminService = {
               },
               { transaction },
             );
+          } else {
+            //create inventory
+            success = await inventoryService.createNewInventory(orderId, transaction);
+          }
 
+          //--------------------MEILISEARCH-----------------------
+          if (success) {
             const inventory = await inventoryRepository.syncInventoryForMeili(orderId, transaction);
 
             if (inventory) {

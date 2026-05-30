@@ -79,7 +79,7 @@ export const exportExcelOrders = async (req: Request, res: Response, next: NextF
   const { fromDate, toDate } = req.body;
 
   try {
-    await syntheticOrderService.exportExcelOrder(res, { fromDate, toDate });
+    await syntheticOrderService.exportExcelOrder(res, { fromDate, toDate }, req.user.email);
   } catch (error) {
     next(error);
   }
