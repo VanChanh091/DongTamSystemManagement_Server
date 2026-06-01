@@ -19,10 +19,11 @@ import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { WaveCrestCoefficient } from "../../models/admin/waveCrestCoefficient";
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
-import { PlanningPaper, planningPaperStatus } from "../../models/planning/planningPaper";
-import { planningStatusRepository } from "../../repository/planning/planningStatusRepository";
-import { planningPaperRepository } from "../../repository/planning/planningPaperRepository";
 import { planningBoxRepository } from "../../repository/planning/planningBoxRepository";
+import { PlanningPaper, planningPaperStatus } from "../../models/planning/planningPaper";
+import { planningPaperRepository } from "../../repository/planning/planningPaperRepository";
+import { planningStatusRepository } from "../../repository/planning/planningStatusRepository";
+import { Inventory } from "../../models/warehouse/inventory/inventory";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { stop, order } = CacheKey.planning;
@@ -396,6 +397,22 @@ export const planningStatusService = {
           throw AppError.BadRequest("Order has produced items", "ORDER_HAS_PRODUCED_ITEMS");
         }
 
+        //check inventory
+        const inventory = await Inventory.findOne({
+          where: { orderId },
+          transaction,
+        });
+
+        if (inventory) {
+          if ((inventory.valueInventory ?? 0) !== 0) {
+            throw AppError.BadRequest(
+              "Không thể hoàn đơn đã có giá trị tồn",
+              "INVENTORY_VALUE_NOT_ZERO",
+            );
+          }
+          await inventory.destroy({ transaction });
+        }
+
         await order.update({ status: "reject" }, { transaction });
 
         //socket
@@ -416,9 +433,7 @@ export const planningStatusService = {
 
         const hasSocket = sockets && sockets.length > 0;
         if (!hasSocket) {
-          if (devEnvironment) {
-            console.log(`⚠️ No one is in room ${roomName}, skip emitting.`);
-          }
+          if (devEnvironment) console.log(`⚠️ No one is in room ${roomName}, skip emitting.`);
           return { message: "Order status updated successfully, no active socket to notify" };
         }
 

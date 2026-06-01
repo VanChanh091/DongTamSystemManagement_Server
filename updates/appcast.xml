@@ -3,16 +3,16 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.6.3</title>
-            <sparkle:version>4.6.3</sparkle:version> 
+            <title>Version 4.6.4</title>
+            <sparkle:version>4.6.4</sparkle:version> 
             <description>
-            Sửa lại logic lọc đơn ở trang đăng ký giao hàng
-            Tồn kho có thể xuất file theo khoảng ngày
-            Có thể tìm khách hàng theo khoảng ngày tạo
-            Thay đổi logic của nút hoàn thành giao hàng
-            Thêm nút hoàn thành đơn hàng ở trang tổng hợp đơn hàng
-            Thay đổi giao diện quản lý máy chạy sóng
-            Thay đổi từ xuất file theo ngày nhập đơn sang xuất file theo ngày duyệt đơn
+            Fix lỗi từ chối đơn không được
+            Cho phép tạo tồn kho khi duyệt đơn
+            Thêm trạng thái cho đơn hàng chờ giao
+            Thêm nhắc nhở khi số lượng xuất vượt số lượng khách đặt
+            Thay đổi giao diện quản lý máy sóng
+            Thêm nhắc nhở yêu cầu kiểm nếu nhập số lượng ở công đoạn cuối của CD 2
+            Cho phép xuất âm nhưng giá trị tồn không âm
             </description>
             <pubDate>Fri, 29 May 2026</pubDate>
             <enclosure url="dongtam.exe" 

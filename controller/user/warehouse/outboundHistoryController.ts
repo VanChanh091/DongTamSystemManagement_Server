@@ -56,6 +56,7 @@ export const handleAddOrUpdateOutbound = async (
     outboundDetails: {
       orderId: string;
       outboundQty: number;
+      outboundDetailId: number;
       deliveryItemId?: number;
       isPromotion?: boolean;
     }[];

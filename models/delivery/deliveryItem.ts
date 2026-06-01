@@ -8,6 +8,7 @@ export type statusDeliveryItem =
   | "planned"
   | "requested"
   | "prepared"
+  | "outbound"
   | "cancelled"
   | "completed";
 
@@ -86,7 +87,15 @@ export function initDeliveryItemModel(sequelize: Sequelize): typeof DeliveryItem
         // },
       },
       status: {
-        type: DataTypes.ENUM("none", "planned", "requested", "prepared", "cancelled", "completed"),
+        type: DataTypes.ENUM(
+          "none",
+          "planned",
+          "requested",
+          "prepared",
+          "outbound",
+          "cancelled",
+          "completed",
+        ),
         allowNull: false,
         defaultValue: "none",
       },

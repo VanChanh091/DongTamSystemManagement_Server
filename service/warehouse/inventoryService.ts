@@ -134,7 +134,12 @@ export const inventoryService = {
         throw AppError.BadRequest("Missing orderId", "MISSING_ORDER_ID");
       }
 
-      const existedInventory = await inventoryRepository.findByOrderId({ orderId, transaction });
+      const existedInventory = await inventoryRepository.findByOrderId({
+        orderId,
+        transaction,
+        options: { lock: transaction?.LOCK.UPDATE },
+      });
+
       if (existedInventory) {
         return existedInventory;
       }

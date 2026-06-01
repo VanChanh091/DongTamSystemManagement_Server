@@ -23,6 +23,7 @@ import { inventoryRepository } from "../../repository/inventoryRepository";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
 import { Product } from "../../models/product/product";
+import { DeliveryItem } from "../../models/delivery/deliveryItem";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { outbound } = CacheKey.warehouse;
@@ -234,6 +235,8 @@ export const outboundService = {
           deliveredQty: number;
           deliveryItemId?: number;
           isPromotion: boolean;
+          currentQtyInventory: number;
+          currentTotalQtyOutbound: number;
         }[] = [];
 
         for (const item of outboundDetails) {
@@ -343,6 +346,8 @@ export const outboundService = {
             deliveredQty: Number(exportedQty ?? 0),
             deliveryItemId: item.deliveryItemId,
             isPromotion,
+            currentQtyInventory: inventory.qtyInventory,
+            currentTotalQtyOutbound: inventory.totalQtyOutbound,
           });
         }
 
@@ -405,17 +410,29 @@ export const outboundService = {
             transaction,
           });
 
-          await Inventory.increment(
+          // Cập nhật tồn kho
+          const finalQty = item.currentQtyInventory - item.outboundQty;
+          const finalValue = finalQty < 0 ? 0 : finalQty * item.price;
+
+          await Inventory.update(
             {
-              totalQtyOutbound: item.outboundQty,
-              qtyInventory: -item.outboundQty,
-              valueInventory: -(item.outboundQty * item.price),
+              totalQtyOutbound: item.currentTotalQtyOutbound + item.outboundQty,
+              qtyInventory: finalQty,
+              valueInventory: finalValue,
             },
             {
               where: { orderId: item.orderId },
               transaction,
             },
           );
+
+          // Cập nhật trạng thái lịch giao hàng nếu có
+          if (item.deliveryItemId) {
+            await DeliveryItem.update(
+              { status: "outbound" },
+              { where: { deliveryItemId: item.deliveryItemId }, transaction },
+            );
+          }
         }
 
         //--------------------MEILISEARCH-----------------------
@@ -439,6 +456,7 @@ export const outboundService = {
     outboundDetails: {
       orderId: string;
       outboundQty: number;
+      outboundDetailId: number;
       deliveryItemId?: number;
       isPromotion?: boolean;
     }[];
@@ -459,10 +477,7 @@ export const outboundService = {
         }
 
         const oldDetails = outbound.detail ?? [];
-        const oldDetailMap = new Map<string, OutboundDetail>();
-        for (const detail of oldDetails) {
-          oldDetailMap.set(detail.orderId, detail);
-        }
+        const usedOldDetailIds = new Set<number>();
 
         let customerId: string | null = null;
         let timePayment: Date | null = null;
@@ -471,10 +486,10 @@ export const outboundService = {
         let totalPricePayment = 0;
         let totalOutboundQty = 0;
 
-        const handledOrderIds = new Set<string>();
-
         // UPDATE
         for (const item of outboundDetails) {
+          const deliveryItemId = item.deliveryItemId || null;
+
           const order = await Order.findByPk(item.orderId, { transaction });
           if (!order) {
             throw AppError.NotFound(`Order ${item.orderId} không tồn tại`, "ORDER_NOT_FOUND");
@@ -493,7 +508,7 @@ export const outboundService = {
           }
 
           // check delivery item is existed
-          if (item.deliveryItemId) {
+          if (deliveryItemId) {
             const duplicateCheck = await OutboundDetail.findOne({
               where: {
                 deliveryItemId: item.deliveryItemId,
@@ -513,6 +528,7 @@ export const outboundService = {
           const inventory = await inventoryRepository.findByOrderId({
             orderId: item.orderId,
             transaction,
+            options: { lock: transaction.LOCK.UPDATE },
           });
           if (!inventory) {
             throw AppError.BadRequest(
@@ -521,30 +537,29 @@ export const outboundService = {
             );
           }
 
-          const oldDetail = oldDetailMap.get(item.orderId);
+          const oldDetail = item.outboundDetailId
+            ? oldDetails.find((d) => d.outboundDetailId === item.outboundDetailId)
+            : null;
 
           // Logic giá & khuyến mãi
           const isPromotion = !!item.isPromotion;
           const currentPrice = isPromotion ? 0 : order.pricePaper;
           const currentTotalPrice = currentPrice * item.outboundQty;
 
-          // Tính delta kho
           const oldQty = oldDetail ? oldDetail.outboundQty : 0;
-          const oldPrice = oldDetail ? oldDetail.price : 0;
-          const deltaQty = item.outboundQty - oldQty;
-          const deltaValue = currentTotalPrice - oldPrice * oldQty;
 
-          // cập nhật tồn kho theo delta
-          if (deltaQty !== 0) {
-            await Inventory.increment(
-              {
-                totalQtyOutbound: deltaQty,
-                qtyInventory: -deltaQty,
-                valueInventory: -deltaValue,
-              },
-              { where: { orderId: item.orderId }, transaction },
-            );
-          }
+          // tính toán cập nhật tồn kho
+          const finalQty = inventory.qtyInventory + oldQty - item.outboundQty;
+          const finalValue = finalQty < 0 ? 0 : finalQty * currentPrice;
+
+          await Inventory.update(
+            {
+              totalQtyOutbound: inventory.totalQtyOutbound - oldQty + item.outboundQty,
+              qtyInventory: finalQty,
+              valueInventory: finalValue,
+            },
+            { where: { orderId: item.orderId }, transaction },
+          );
 
           const vatRate = isPromotion ? 0 : (order.vat ?? 0) / 100;
           const vatAmount = currentTotalPrice * vatRate;
@@ -555,6 +570,9 @@ export const outboundService = {
           totalOutboundQty += item.outboundQty;
 
           if (oldDetail) {
+            // Đánh dấu dòng cũ này ĐƯỢC GIỮ LẠI
+            usedOldDetailIds.add(oldDetail.outboundDetailId);
+
             await oldDetail.update(
               {
                 outboundQty: item.outboundQty,
@@ -585,28 +603,44 @@ export const outboundService = {
               },
               { transaction },
             );
-          }
 
-          handledOrderIds.add(item.orderId);
+            if (item.deliveryItemId) {
+              await DeliveryItem.update(
+                { status: "outbound" },
+                { where: { deliveryItemId: item.deliveryItemId }, transaction },
+              );
+            }
+          }
         }
 
         // XỬ LÝ DELETE đơn bị xóa khỏi phiếu
         for (const oldDetail of oldDetails) {
-          if (!handledOrderIds.has(oldDetail.orderId)) {
+          if (!usedOldDetailIds.has(oldDetail.outboundDetailId)) {
             const inv = await inventoryRepository.findByOrderId({
               orderId: oldDetail.orderId,
               transaction,
+              options: { lock: transaction.LOCK.UPDATE },
             });
 
             // hoàn kho
             if (inv) {
-              await Inventory.increment(
+              const finalQty = inv.qtyInventory + oldDetail.outboundQty;
+              const finalValue = finalQty < 0 ? 0 : finalQty * oldDetail.price;
+
+              await Inventory.update(
                 {
-                  totalQtyOutbound: -oldDetail.outboundQty,
-                  qtyInventory: oldDetail.outboundQty,
-                  valueInventory: oldDetail.outboundQty * oldDetail.price,
+                  totalQtyOutbound: inv.totalQtyOutbound - oldDetail.outboundQty,
+                  qtyInventory: finalQty,
+                  valueInventory: finalValue,
                 },
                 { where: { orderId: oldDetail.orderId }, transaction },
+              );
+            }
+
+            if (oldDetail.deliveryItemId) {
+              await DeliveryItem.update(
+                { status: "planned" },
+                { where: { deliveryItemId: oldDetail.deliveryItemId }, transaction },
               );
             }
 
@@ -697,17 +731,37 @@ export const outboundService = {
 
         // Hoàn kho cho từng order
         for (const detail of details) {
-          await Inventory.increment(
-            {
-              totalQtyOutbound: -detail.outboundQty,
-              qtyInventory: detail.outboundQty,
-              valueInventory: detail.outboundQty * detail.price,
-            },
-            {
-              where: { orderId: detail.orderId },
-              transaction,
-            },
-          );
+          // Bật Row Lock cho từng dòng Inventory tương ứng
+          const inv = await inventoryRepository.findByOrderId({
+            orderId: detail.orderId,
+            transaction,
+            options: { lock: transaction.LOCK.UPDATE },
+          });
+
+          if (inv) {
+            // Tính toán số lượng và giá trị tuyệt đối sau khi hủy phiếu
+            const finalQty = inv.qtyInventory + detail.outboundQty;
+            const finalValue = finalQty < 0 ? 0 : finalQty * detail.price;
+
+            await Inventory.update(
+              {
+                totalQtyOutbound: inv.totalQtyOutbound - detail.outboundQty,
+                qtyInventory: finalQty,
+                valueInventory: finalValue,
+              },
+              {
+                where: { orderId: detail.orderId },
+                transaction,
+              },
+            );
+          }
+
+          if (detail.deliveryItemId) {
+            await DeliveryItem.update(
+              { status: "planned" },
+              { where: { deliveryItemId: detail.deliveryItemId }, transaction },
+            );
+          }
         }
 
         // Xóa outbound detail

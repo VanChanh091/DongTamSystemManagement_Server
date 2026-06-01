@@ -177,34 +177,6 @@ export const adminService = {
 
         if (newStatus === "reject") {
           order.set({ status: newStatus, rejectReason: rejectReason || "" });
-
-          //-------------------- SOCKET -----------------------
-          badgeCount = await Order.count({
-            where: { status: "reject", userId: ownerId },
-            transaction,
-          });
-
-          const roomName = `reject-order-${ownerId}`;
-          const sockets = await req.io?.in(roomName).fetchSockets();
-
-          // console.log(`-----------------------------------`);
-          // console.log(`📡 Event: updateBadgeCount`);
-          // console.log(`🏠 Room Target: ${roomName}`);
-          // console.log(`👥 Active sockets: ${sockets?.length ?? 0}`);
-          // console.log(`-----------------------------------`);
-
-          const hasSocket = sockets && sockets.length > 0;
-          if (!hasSocket) {
-            if (devEnvironment) {
-              console.log(`⚠️ No one is in room ${roomName}, skip emitting.`);
-            }
-            return { message: "Order status updated successfully, no active socket to notify" };
-          }
-
-          req.io?.to(roomName).emit("updateBadgeCount", {
-            type: "REJECTED_ORDER",
-            count: badgeCount,
-          });
         } else {
           //calculate debt limit of customer
           // if (req.user.role !== "admin") {
@@ -265,6 +237,34 @@ export const adminService = {
           transaction,
           isUpdate: true,
         });
+
+        //-------------------- SOCKET -----------------------
+        if (newStatus === "reject") {
+          badgeCount = await Order.count({
+            where: { status: "reject", userId: ownerId },
+            transaction,
+          });
+
+          const roomName = `reject-order-${ownerId}`;
+          const sockets = await req.io?.in(roomName).fetchSockets();
+
+          // console.log(`-----------------------------------`);
+          // console.log(`📡 Event: updateBadgeCount`);
+          // console.log(`🏠 Room Target: ${roomName}`);
+          // console.log(`👥 Active sockets: ${sockets?.length ?? 0}`);
+          // console.log(`-----------------------------------`);
+
+          const hasSocket = sockets && sockets.length > 0;
+          if (!hasSocket) {
+            if (devEnvironment) console.log(`⚠️ No one is in room ${roomName}, skip emitting.`);
+            return { message: "Order status updated successfully, no active socket to notify" };
+          }
+
+          req.io?.to(roomName).emit("updateBadgeCount", {
+            type: "REJECTED_ORDER",
+            count: badgeCount,
+          });
+        }
 
         return {
           message: "Order status updated successfully",

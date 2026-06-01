@@ -6,7 +6,6 @@ import { Op, Transaction } from "sequelize";
 import { meiliService } from "../meiliService";
 import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
-import { inventoryService } from "./inventoryService";
 import { MEILI_INDEX } from "../../assets/labelFields";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { PlanningBox } from "../../models/planning/planningBox";
@@ -30,6 +29,7 @@ import {
   inboundColumns,
   mappingInboundRow,
 } from "../../utils/mapping/warehouse/inboundRowAndColumn";
+import { inventoryService } from "./inventoryService";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inbound } = CacheKey.warehouse;
@@ -195,6 +195,9 @@ export const inboundService = {
 
       const isFirstInbound = totalInboundQty === 0;
 
+      //create inventory
+      const inventory = await inventoryService.createNewInventory(planning.orderId, transaction);
+
       //create inbound record
       const inboundRecord = await planningHelper.createData({
         model: InboundHistory,
@@ -211,11 +214,14 @@ export const inboundService = {
       });
 
       //update inventory
-      await Inventory.increment(
+      const finalQty = inventory.qtyInventory + inboundQty;
+      const finalValue = finalQty < 0 ? 0 : finalQty * planning.Order.pricePaper;
+
+      await Inventory.update(
         {
-          totalQtyInbound: inboundQty,
-          qtyInventory: inboundQty,
-          valueInventory: inboundQty * planning.Order.pricePaper,
+          totalQtyInbound: inventory.totalQtyInbound + inboundQty,
+          qtyInventory: finalQty,
+          valueInventory: finalValue,
         },
         {
           where: { orderId: planning.orderId },
@@ -297,6 +303,9 @@ export const inboundService = {
 
       const isFirstInbound = totalInboundQty === 0;
 
+      //create inventory
+      const inventory = await inventoryService.createNewInventory(planning.orderId, transaction);
+
       //create inbound record
       const inboundRecord = await planningHelper.createData({
         model: InboundHistory,
@@ -313,11 +322,14 @@ export const inboundService = {
       });
 
       //update inventory
-      await Inventory.increment(
+      const finalQty = inventory.qtyInventory + inboundQty;
+      const finalValue = finalQty < 0 ? 0 : finalQty * planning.Order.pricePaper;
+
+      await Inventory.update(
         {
-          totalQtyInbound: inboundQty,
-          qtyInventory: inboundQty,
-          valueInventory: inboundQty * planning.Order.pricePaper,
+          totalQtyInbound: inventory.totalQtyInbound + inboundQty,
+          qtyInventory: finalQty,
+          valueInventory: finalValue,
         },
         {
           where: { orderId: planning.orderId },

@@ -190,8 +190,6 @@ export const manuBoxService = {
           transaction,
         });
 
-        console.log(`allStages: ${JSON.stringify(allStages)}`);
-
         let isLastStage = true;
 
         for (const stage of allStages) {
