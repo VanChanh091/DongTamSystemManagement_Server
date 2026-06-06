@@ -26,7 +26,6 @@ const { box } = CacheKey.planning;
 const filterStatus = ["planning", "lackOfQty", "producing", "requested"];
 
 export const planningBoxService = {
-  //Planning Box
   getPlanningBox: async (machine: string) => {
     try {
       const cacheKey = box.machine(machine);
@@ -296,8 +295,15 @@ export const planningBoxService = {
         for (const planning of plannings) {
           if (planning.sortPlanning === null) {
             throw AppError.Conflict(
-              "Cannot pause planning without sortPlanning",
+              "Không thể hoàn thành đơn hàng chưa được sắp xếp",
               "CANNOT_PAUSE_NO_SORT",
+            );
+          }
+
+          if (planning.status !== "requested") {
+            throw AppError.BadRequest(
+              `Có đơn hàng chưa được yêu cầu hoàn thành`,
+              "PLANNING_NOT_REQUESTED",
             );
           }
 

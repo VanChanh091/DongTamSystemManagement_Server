@@ -12,6 +12,7 @@ import employeeRoutes from "./userRouter/employeeRoutes";
 import warehouseRoutes from "./userRouter/warehouseRoutes";
 import qcRoutes from "./userRouter/qualityControlRoutes";
 import deliveryRoutes from "./userRouter/deliveryRoutes";
+import scrapRoutes from "./userRouter/scrapReportRoutes";
 import badgeRoutes from "./badgeRouter/badgeRoutes";
 import processingRoutes from "./processingRouter/processingRoutes";
 import meilisearchRoutes from "./meilisearchRouter/meilisearchRoutes";
@@ -32,7 +33,7 @@ export {
   qcRoutes,
   deliveryRoutes,
   badgeRoutes,
-
+  scrapRoutes,
   //process
   processingRoutes,
 

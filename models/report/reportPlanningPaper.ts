@@ -8,6 +8,7 @@ interface ReportPlanningPaperAttributes {
   qtyProduced: number;
   lackOfQty: number;
   qtyWasteNorm: number;
+  totalPrice: number;
   shiftProduction: "Ca 1" | "Ca 2" | "Ca 3";
   shiftManagement: string;
   reportedBy: string;
@@ -22,7 +23,7 @@ interface ReportPlanningPaperAttributes {
 //cho phép bỏ qua id khi tạo
 export type ReportPlanningPaperCreationAttributes = Optional<
   ReportPlanningPaperAttributes,
-  "reportPaperId" | "qtyWasteNorm" | "shiftProduction" | "createdAt" | "updatedAt"
+  "reportPaperId" | "qtyWasteNorm" | "totalPrice" | "shiftProduction" | "createdAt" | "updatedAt"
 >;
 
 //định nghĩa kiểu OOP
@@ -35,6 +36,7 @@ export class ReportPlanningPaper
   declare qtyProduced: number;
   declare lackOfQty: number;
   declare qtyWasteNorm: number;
+  declare totalPrice: number;
   declare shiftProduction: "Ca 1" | "Ca 2" | "Ca 3";
   declare shiftManagement: string;
   declare reportedBy: string;
@@ -62,6 +64,7 @@ export function initReportPlanningPaperModel(sequelize: Sequelize): typeof Repor
       },
       qtyProduced: { type: DataTypes.INTEGER, allowNull: false },
       lackOfQty: { type: DataTypes.INTEGER, allowNull: false },
+      totalPrice: { type: DataTypes.DOUBLE, allowNull: false, defaultValue: 0 },
       qtyWasteNorm: { type: DataTypes.DOUBLE, allowNull: false, defaultValue: 0 },
       shiftProduction: { type: DataTypes.ENUM("Ca 1", "Ca 2", "Ca 3"), allowNull: false },
       shiftManagement: { type: DataTypes.STRING, allowNull: false },

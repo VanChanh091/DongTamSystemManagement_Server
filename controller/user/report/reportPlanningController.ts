@@ -100,10 +100,9 @@ export const getReportBoxes = async (req: Request, res: Response, next: NextFunc
 
 //export excel paper
 export const exportExcelReportPaper = async (req: Request, res: Response, next: NextFunction) => {
-  const { fromDate, toDate, reportPaperId, machine } = req.body as {
+  const { fromDate, toDate, machine } = req.body as {
     fromDate: string | Date;
     toDate: string | Date;
-    reportPaperId: number[];
     machine: string;
   };
 
@@ -112,10 +111,9 @@ export const exportExcelReportPaper = async (req: Request, res: Response, next: 
       res,
       fromDate,
       toDate,
-      reportPaperId,
       machine,
+      req.user.email,
     );
-
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -124,10 +122,9 @@ export const exportExcelReportPaper = async (req: Request, res: Response, next: 
 
 //export excel box
 export const exportExcelReportBox = async (req: Request, res: Response, next: NextFunction) => {
-  const { fromDate, toDate, reportBoxId, machine } = req.body as {
+  const { fromDate, toDate, machine } = req.body as {
     fromDate: string | Date;
     toDate: string | Date;
-    reportBoxId: number[];
     machine: string;
   };
 
@@ -136,10 +133,9 @@ export const exportExcelReportBox = async (req: Request, res: Response, next: Ne
       res,
       fromDate,
       toDate,
-      reportBoxId,
       machine,
+      req.user.email,
     );
-
     return res.status(200).json(response);
   } catch (error) {
     next(error);

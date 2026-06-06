@@ -3,18 +3,17 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.6.4</title>
-            <sparkle:version>4.6.4</sparkle:version> 
+            <title>Version 4.6.5</title>
+            <sparkle:version>4.6.5</sparkle:version> 
             <description>
-            Fix lỗi từ chối đơn không được
-            Cho phép tạo tồn kho khi duyệt đơn
-            Thêm trạng thái cho đơn hàng chờ giao
-            Thêm nhắc nhở khi số lượng xuất vượt số lượng khách đặt
-            Thay đổi giao diện quản lý máy sóng
-            Thêm nhắc nhở yêu cầu kiểm nếu nhập số lượng ở công đoạn cuối của CD 2
-            Cho phép xuất âm nhưng giá trị tồn không âm
+            Chỉnh sửa đơn vị tính khi xuất phiếu xuất kho
+            Chỉ cho phép sửa phiếu xuất kho trong ngày tạo phiếu
+            Sửa lỗi hiển thị giao diện PXK và thêm trường ký tên
+            Sửa lỗi triển khai đơn hàng làm cập nhật lại trạng thái tất cả đơn lịch giao hàng
+            Xử lý lại logic chuyển số lượng tồn kho
+            Sửa lỗi hiển thị tổng tiền ở báo cáo sản xuất bị sai
             </description>
-            <pubDate>Fri, 29 May 2026</pubDate>
+            <pubDate>Sat, 06 Jul 2026</pubDate>
             <enclosure url="dongtam.exe" 
                     sparkle:os="windows" 
                     length="12345678" 

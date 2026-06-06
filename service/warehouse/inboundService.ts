@@ -484,17 +484,21 @@ export const inboundService = {
         // console.log(`filter: ${filter.join(" AND ")}`);
       }
 
-      const searchResult = await index.search(searchKeyword, {
+      const searchOptions: any = {
         filter: filter.join(" AND "),
         attributesToSearchOn: searchKeyword ? [field] : [],
         attributesToRetrieve: ["inboundId"],
-        sort: ["dateInbound:desc"],
         page: Number(page) || 1,
         hitsPerPage: Number(pageSize) || 25, //pageSize
-      });
+      };
+
+      if (field === "dateInbound") {
+        searchOptions.sort = ["dateInbound:desc"];
+      }
+
+      const searchResult = await index.search(searchKeyword, searchOptions);
 
       const inboundIds = searchResult.hits.map((hit: any) => hit.inboundId);
-
       if (inboundIds.length === 0) {
         return {
           message: "No inbound histories found",

@@ -87,6 +87,8 @@ export const reportService = {
         throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
       }
 
+      const index = meiliClient.index("reportPapers");
+
       // Lọc theo ngày nếu có
       let searchKeyword = keyword;
       let filters = [`chooseMachine = "${machine}"`];
@@ -103,16 +105,19 @@ export const reportService = {
         }
       }
 
-      const index = meiliClient.index("reportPapers");
-
-      const searchResult = await index.search(searchKeyword, {
+      const searchOptions: any = {
         filter: filters.join(" AND "),
         attributesToSearchOn: searchKeyword ? [field] : [],
         attributesToRetrieve: ["reportPaperId"],
-        sort: ["dayReported:desc"],
         page: Number(page) || 1,
         hitsPerPage: Number(pageSize) || 25,
-      });
+      };
+
+      if (field === "dayReported") {
+        searchOptions.sort = ["dayReported:desc"];
+      }
+
+      const searchResult = await index.search(searchKeyword, searchOptions);
 
       const paperIds = searchResult.hits.map((hit: any) => hit.reportPaperId);
       if (paperIds.length === 0) {
@@ -181,7 +186,7 @@ export const reportService = {
       const totalPages = Math.ceil(count / pageSize);
 
       const responseData = {
-        message: "get all report planning paper successfully",
+        message: "get all report planning box successfully",
         data: rows,
         totalBoxes: count,
         totalPages,
@@ -221,6 +226,8 @@ export const reportService = {
         throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
       }
 
+      const index = meiliClient.index("reportBoxes");
+
       // Lọc theo ngày nếu có
       let searchKeyword = keyword;
       let filters = [`machine = "${machine}"`];
@@ -237,16 +244,19 @@ export const reportService = {
         }
       }
 
-      const index = meiliClient.index("reportBoxes");
-
-      const searchResult = await index.search(searchKeyword, {
+      const searchOptions: any = {
         filter: filters.join(" AND "),
         attributesToSearchOn: searchKeyword ? [field] : [],
         attributesToRetrieve: ["reportBoxId"],
-        sort: ["dayReported:desc"],
         page: Number(page) || 1,
         hitsPerPage: Number(pageSize) || 25,
-      });
+      };
+
+      const searchResult = await index.search(searchKeyword, searchOptions);
+
+      if (field === "dayReported") {
+        searchOptions.sort = ["dayReported:desc"];
+      }
 
       const boxIds = searchResult.hits.map((hit: any) => hit.reportBoxId);
       if (boxIds.length === 0) {
@@ -290,15 +300,13 @@ export const reportService = {
     res: Response,
     fromDate: string | Date,
     toDate: string | Date,
-    reportPaperId: number[],
     machine: string,
+    userName: string,
   ) => {
     try {
       let whereCondition: any = {};
 
-      if (reportPaperId && reportPaperId.length > 0) {
-        whereCondition.reportPaperId = reportPaperId;
-      } else if (fromDate && toDate) {
+      if (fromDate && toDate) {
         const startTimestamp = dayjsUtc(fromDate).startOf("day").toDate();
         const endTimestamp = dayjsUtc(toDate).endOf("day").toDate();
 
@@ -319,6 +327,7 @@ export const reportService = {
         fileName: `bao-cao-${normalizeVN(safeMachineName)}`,
         columns: reportPaperColumns,
         rows: mapReportPaperRow,
+        userName: userName,
       });
     } catch (error) {
       console.error("Export Excel error:", error);
@@ -331,15 +340,13 @@ export const reportService = {
     res: Response,
     fromDate: string | Date,
     toDate: string | Date,
-    reportBoxId: number[],
     machine: string,
+    userName: string,
   ) => {
     try {
       let whereCondition: any = { machine: machine };
 
-      if (reportBoxId && reportBoxId.length > 0) {
-        whereCondition.reportBoxId = reportBoxId;
-      } else if (fromDate && toDate) {
+      if (fromDate && toDate) {
         const startTimestamp = dayjsUtc(fromDate).startOf("day").toDate();
         const endTimestamp = dayjsUtc(toDate).endOf("day").toDate();
 
@@ -360,6 +367,7 @@ export const reportService = {
         fileName: `bao-cao-${normalizeVN(safeMachineName)}`,
         columns: reportBoxColumns,
         rows: mapReportBoxRow,
+        userName: userName,
       });
     } catch (error) {
       console.error("Export Excel error:", error);

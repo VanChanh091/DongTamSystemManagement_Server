@@ -65,6 +65,7 @@ export const deliveryRepository = {
             "volume",
             "instructSpecial",
             "orderIdCustomer",
+            "note",
             "customerId",
             "productId",
             "userId",
@@ -141,7 +142,10 @@ export const deliveryRepository = {
   }) => {
     return await PlanningPaper.findAll(
       deliveryRepository.buildPlanningEstimateOptions({
-        whereCondition: { planningId: { [Op.in]: planningIds } },
+        whereCondition: {
+          planningId: { [Op.in]: planningIds },
+          dayStart: { [Op.lte]: dayStart },
+        },
         dayStart,
         all,
         isSearch: true,

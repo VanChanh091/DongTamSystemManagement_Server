@@ -388,7 +388,7 @@ const styleHeaderStream = (worksheet: ExcelJS.Worksheet) => {
     sytleBorder(cell);
   });
 
-  // 🔥 BẮT BUỘC: Khóa dòng 1 lại và đẩy đi trước trong chế độ Stream
+  // Khóa dòng 1 lại và đẩy đi trước trong chế độ Stream
   headerRow.commit();
 };
 

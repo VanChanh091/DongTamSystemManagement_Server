@@ -67,6 +67,44 @@ export const manuPaperService = {
     }
   },
 
+  getPaperByDateAndShift: async ({
+    machine,
+    dayCompleted,
+    shiftProduction,
+  }: {
+    machine: string;
+    dayCompleted: Date;
+    shiftProduction: "Ca 1" | "Ca 2" | "Ca 3";
+  }) => {
+    try {
+      if (!machine || !dayCompleted || !shiftProduction) {
+        throw AppError.BadRequest("Missing required parameters", "MISSING_PARAMETERS");
+      }
+
+      const plannings = await manufactureRepo.getPlanningByDateAndShift({
+        machine,
+        dayCompleted,
+        shiftProduction,
+      });
+
+      // console.log(`length: ${plannings.length}`);
+      // console.log(`plannings: ${JSON.stringify(plannings)}`);
+
+      if (plannings.length === 0) {
+        throw AppError.NotFound(
+          "No production reports found for this date and shift",
+          "REPORTS_NOT_FOUND",
+        );
+      }
+
+      return { message: "Get planning papers by date and shift successfully", data: plannings };
+    } catch (error) {
+      console.error("Error get paper by date:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
   addReportPaper: async (planningId: number, data: any, user: any) => {
     const { role, permissions: userPermissions } = user;
     const { qtyProduced, dayCompleted, reportedBy, ...otherData } = data;
@@ -106,8 +144,6 @@ export const manuPaperService = {
 
         // 2. Cộng dồn số lượng mới vào số đã có
         const newQtyProduced = Number(planning.qtyProduced || 0) + Number(qtyProduced || 0);
-
-        // update status dựa trên qtyProduced
         const isCompleted = newQtyProduced >= planning.runningPlan;
 
         // Logic Overflow
@@ -178,7 +214,7 @@ export const manuPaperService = {
         const totalQtyProduced = allPlans.reduce((sum, p) => sum + Number(p.qtyProduced || 0), 0);
         const quantityManufacture = planning.Order?.quantityManufacture || 0;
 
-        //update stauts if enough qty
+        //update status if enough qty
         if (totalQtyProduced >= quantityManufacture) {
           await planningHelper.updateDataModel({
             model: Order,
@@ -194,6 +230,7 @@ export const manuPaperService = {
           qtyProduced,
           dayReportValue,
           reportedBy: employee.fullName,
+          totalPrice: Number(qtyProduced) * planning.Order.pricePaper,
           otherData,
           transaction,
         });
@@ -275,6 +312,7 @@ export const manuPaperService = {
             qtyProduced: newQty,
             lackOfQty: newLackOfQty,
             reportedBy: employee.fullName,
+            totalPrice: Number(newQty) * planning.Order.pricePaper,
             ...otherData,
           },
           { transaction },
@@ -335,118 +373,6 @@ export const manuPaperService = {
       });
     } catch (error) {
       console.error("Error update Report paper:", error);
-      if (error instanceof AppError) throw error;
-      throw AppError.ServerError();
-    }
-  },
-
-  reportWasteNormPaper: async (planningId: number[], qtyWasteNorm: number) => {
-    try {
-      return await runInTransaction(async (transaction) => {
-        if (!planningId || !qtyWasteNorm) {
-          throw AppError.BadRequest("Missing required parameters", "MISSING_PARAMETERS");
-        }
-
-        const plannings = await PlanningPaper.findAll({
-          where: { planningId: { [Op.in]: planningId } },
-          attributes: ["planningId", "totalLoss", "qtyWasteNorm", "orderId"],
-          transaction,
-        });
-        const planningMap = new Map(plannings.map((p) => [p.planningId, p]));
-
-        const allReports = await ReportPlanningPaper.findAll({
-          where: { planningId: { [Op.in]: planningId } },
-          attributes: [
-            "reportPaperId",
-            "planningId",
-            "qtyWasteNorm",
-            "shiftProduction",
-            "shiftManagement",
-          ],
-          transaction,
-        });
-
-        if (allReports.length === 0) {
-          throw AppError.NotFound(
-            "No production reports found for these plannings",
-            "REPORTS_NOT_FOUND",
-          );
-        }
-
-        // XÁC ĐỊNH CA HIỆN TẠI ĐANG BÁO CÁO PHẾ LIỆU
-        const firstPlanningReports = allReports.filter((r) => r.planningId === planningId[0]);
-        firstPlanningReports.sort((a, b) => b.reportPaperId - a.reportPaperId);
-        const latestReportOfShift = firstPlanningReports[0];
-
-        if (!latestReportOfShift) {
-          throw AppError.NotFound("Target shift report not found", "SHIFT_NOT_FOUND");
-        }
-
-        const targetShiftProduction = latestReportOfShift.shiftProduction;
-        const targetShiftManagement = latestReportOfShift.shiftManagement;
-
-        const targetShiftReportsMap = new Map<number, any>();
-        allReports.forEach((r) => {
-          if (
-            r.shiftProduction === targetShiftProduction &&
-            r.shiftManagement === targetShiftManagement
-          ) {
-            targetShiftReportsMap.set(r.planningId, r);
-          }
-        });
-
-        // Nhóm các report theo planningId
-        const reportsGroupedByPlanning = new Map<number, any[]>();
-        allReports.forEach((r) => {
-          if (!reportsGroupedByPlanning.has(r.planningId)) {
-            reportsGroupedByPlanning.set(r.planningId, []);
-          }
-          reportsGroupedByPlanning.get(r.planningId)!.push(r);
-        });
-
-        let remainingWaste = Math.round(Number(qtyWasteNorm) * 100) / 100;
-        const totalItems = planningId.length;
-
-        for (let i = 0; i < totalItems; i++) {
-          const pId = planningId[i];
-
-          const planning = planningMap.get(pId);
-          if (!planning) {
-            throw AppError.NotFound(`Planning with ID ${pId} not found`, "PLANNING_NOT_FOUND");
-          }
-
-          const reportToUpdate = targetShiftReportsMap.get(pId);
-          if (!reportToUpdate) continue;
-
-          // Thuật toán phân bổ phế liệu
-          const norm = Number(planning.totalLoss || 0);
-          let allocatedWaste = 0;
-
-          if (i === totalItems - 1) {
-            allocatedWaste = remainingWaste; // Đơn cuối ôm trọn phần còn lại
-          } else {
-            allocatedWaste = Math.round(Math.min(remainingWaste, norm) * 100) / 100;
-          }
-
-          remainingWaste = Math.round((remainingWaste - allocatedWaste) * 100) / 100;
-          if (remainingWaste < 0) remainingWaste = 0;
-
-          // Cập nhật phế liệu vào đúng Row Report của ca hiện tại
-          reportToUpdate.qtyWasteNorm = allocatedWaste;
-          await reportToUpdate.save({ transaction });
-
-          // Tính tổng phế liệu tích lũy
-          const planningAllReports = reportsGroupedByPlanning.get(pId) || [];
-          const totalQtyWaste =
-            Math.round(
-              planningAllReports.reduce((sum, r) => sum + Number(r.qtyWasteNorm || 0), 0) * 100,
-            ) / 100;
-
-          await planning.update({ qtyWasteNorm: totalQtyWaste }, { transaction });
-        }
-      });
-    } catch (error) {
-      console.error("Error add Report waste norm paper:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }

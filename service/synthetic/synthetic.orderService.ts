@@ -7,12 +7,13 @@ import { MEILI_INDEX } from "../../assets/labelFields";
 import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
 import { orderRepository } from "../../repository/orderRepository";
 import { PlanningPaper } from "../../models/planning/planningPaper";
+import { Inventory } from "../../models/warehouse/inventory/inventory";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { syntheticRepository } from "../../repository/syntheticRepository";
 import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { mappingOrderRow, orderColumns } from "../../utils/mapping/orderRowAndColumn";
-import { Inventory } from "../../models/warehouse/inventory/inventory";
+import { Product } from "../../models/product/product";
 
 export const syntheticOrderService = {
   getAllOrderByStatus: async ({
@@ -168,62 +169,75 @@ export const syntheticOrderService = {
         const orders = await Order.findAll({
           where: { orderId: { [Op.in]: orderIds } },
           attributes: ["orderId", "orderSortValue", "status"],
+          include: [{ model: Product, attributes: ["typeProduct"] }],
           transaction,
         });
         if (orders.length === 0) {
           throw AppError.NotFound("No orders found to complete", "ORDERS_NOT_FOUND");
         }
 
-        const invalidOrder = orders.find((o) => o.status == "accept");
+        const distinctOrderIds = orders.map((o) => o.orderId);
+
+        // phân loại đơn hàng
+        const regularOrders = orders.filter((o: any) => o.Product?.typeProduct !== "Phí Khác");
+        const regularOrderIds = regularOrders.map((o) => o.orderId);
+
+        const invalidOrder = regularOrders.find((o) => o.status === "accept");
         if (invalidOrder) {
           throw AppError.BadRequest(
             `Đơn hàng ${invalidOrder.orderId} chưa được xếp kế hoạch`,
             "INVALID_ORDER_STATUS",
           );
         }
-        const distinctOrderIds = orders.map((o) => o.orderId);
 
-        const papers = await PlanningPaper.findAll({
-          where: { orderId: { [Op.in]: distinctOrderIds } },
-          attributes: [
-            "planningId",
-            "orderId",
-            "qtyProduced",
-            "status",
-            "statusRequest",
-            "deliveryPlanned",
-          ],
-          transaction,
-        });
-        if (papers.length === 0) {
-          throw AppError.NotFound(
-            "No planning papers found for the orders",
-            "PLANNING_PAPERS_NOT_FOUND",
-          );
-        }
+        let papers: any[] = [];
+        let distinctPaperIds: string[] = [];
 
-        const hasZeroQty = papers.some((p) => p.qtyProduced === null || p.qtyProduced === 0);
-        if (hasZeroQty) {
-          throw AppError.BadRequest(
-            "Không thể hoàn thành đơn hàng khi có số lượng chưa sản xuất",
-            "ZERO_QTY_PRODUCED",
-          );
-        }
+        //chỉ xử lí những đơn hàng khác phí khác
+        if (regularOrders.length > 0) {
+          papers = await PlanningPaper.findAll({
+            where: { orderId: { [Op.in]: regularOrderIds } },
+            attributes: [
+              "planningId",
+              "orderId",
+              "qtyProduced",
+              "status",
+              "statusRequest",
+              "deliveryPlanned",
+            ],
+            transaction,
+          });
 
-        const distinctPaperIds = papers.map((p) => p.planningId);
+          if (papers.length === 0) {
+            throw AppError.NotFound(
+              "No planning papers found for the regular orders",
+              "PLANNING_PAPERS_NOT_FOUND",
+            );
+          }
 
-        const inventories = await Inventory.findAll({
-          where: { orderId: { [Op.in]: distinctOrderIds } },
-          transaction,
-        });
+          const hasZeroQty = papers.some((p) => p.qtyProduced === null || p.qtyProduced === 0);
+          if (hasZeroQty) {
+            throw AppError.BadRequest(
+              "Không thể hoàn thành đơn hàng khi có số lượng chưa sản xuất",
+              "ZERO_QTY_PRODUCED",
+            );
+          }
 
-        const isNegativeInv = inventories.some((inv) => inv.valueInventory < 0);
+          distinctPaperIds = papers.map((p) => p.planningId);
 
-        if (isNegativeInv && !allowNegativeInv) {
-          return {
-            message: "Có đơn hàng tồn kho bị âm. Tiếp tục để hoàn thành các đơn này",
-            allowNegativeInv: true,
-          };
+          const inventories = await Inventory.findAll({
+            where: { orderId: { [Op.in]: regularOrderIds } },
+            transaction,
+          });
+
+          const isNegativeInv = inventories.some((inv) => inv.valueInventory < 0);
+
+          if (isNegativeInv && !allowNegativeInv) {
+            return {
+              message: "Có đơn hàng tồn kho bị âm. Tiếp tục để hoàn thành các đơn này",
+              allowNegativeInv: true,
+            };
+          }
         }
 
         await Order.update(
@@ -242,19 +256,12 @@ export const syntheticOrderService = {
           );
         }
 
-        //-----------------------MEILISEARCH-----------------------------
+        //---------------------MEILISEARCH--------------------------
         if (distinctOrderIds.length > 0) {
           const ordersToMeili = orders.map((o) => ({
             orderId: o.orderId,
             status: "completed",
             orderSortValue: o.orderSortValue,
-          }));
-
-          const paperToMeili = papers.map((p) => ({
-            planningId: p.planningId,
-            status: "complete",
-            statusRequest: "finalize",
-            deliveryPlanned: "delivered",
           }));
 
           await meiliService.syncOrUpdateMeiliData({
@@ -263,12 +270,22 @@ export const syntheticOrderService = {
             transaction,
             isUpdate: true,
           });
-          await meiliService.syncOrUpdateMeiliData({
-            indexKey: MEILI_INDEX.PLANNING_PAPERS,
-            data: paperToMeili,
-            transaction,
-            isUpdate: true,
-          });
+
+          if (distinctPaperIds.length > 0) {
+            const paperToMeili = papers.map((p) => ({
+              planningId: p.planningId,
+              status: "complete",
+              statusRequest: "finalize",
+              deliveryPlanned: "delivered",
+            }));
+
+            await meiliService.syncOrUpdateMeiliData({
+              indexKey: MEILI_INDEX.PLANNING_PAPERS,
+              data: paperToMeili,
+              transaction,
+              isUpdate: true,
+            });
+          }
         }
 
         return { message: "Orders completed successfully" };

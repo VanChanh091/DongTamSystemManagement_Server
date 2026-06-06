@@ -8,6 +8,7 @@ interface ReportPlanningBoxAttributes {
   qtyProduced: number;
   lackOfQty: number;
   wasteLoss: number;
+
   shiftManagement: string;
   machine: string;
   reportedBy: string;
@@ -35,6 +36,7 @@ export class ReportPlanningBox
   declare qtyProduced: number;
   declare lackOfQty: number;
   declare wasteLoss: number;
+
   declare shiftManagement: string;
   declare machine: string;
   declare reportedBy: string;

@@ -7,32 +7,31 @@ export const reportPaperColumns: Partial<ExcelJS.Column>[] = [
   { header: "STT", key: "index" },
   { header: "Mã Đơn Hàng", key: "orderId" },
   { header: "Tên Khách Hàng", key: "customerName" },
-  { header: "Ngày YC Giao", key: "dateShipping", style: { numFmt: "dd/mm/yyyy" } },
+
   { header: "Ngày Sản Xuất", key: "dayStartProduction", style: { numFmt: "dd/mm/yyyy" } },
   { header: "Ngày Báo Cáo", key: "dayReported", style: { numFmt: "dd/mm/yyyy hh:mm" } },
+
   { header: "Kết Cấu Đặt Hàng", key: "structure" },
   { header: "Sóng", key: "flute" },
   { header: "Dao Xả", key: "daoXa" },
+
   { header: "Dài", key: "length", style: { numFmt: "#,##0" } },
   { header: "Khổ", key: "size", style: { numFmt: "#,##0" } },
   { header: "Số Con", key: "child" },
   { header: "Khổ Cấp Giấy", key: "khoCapGiay" },
-  { header: "SL Đơn Hàng", key: "quantityOrd" },
+
   { header: "Kế Hoạch Chạy", key: "runningPlanProd" },
   { header: "SL Báo Cáo", key: "qtyReported" },
-  { header: "Thiếu/Đủ SL", key: "lackOfQty" },
+  { header: "PL Báo Cáo", key: "qtyWasteRp" },
+  { header: "Doanh số", key: "totalPrice", style: { numFmt: "#,##0" } },
+
   { header: "Thời Gian Chạy", key: "timeRunningProd" },
   { header: "HD Đặc Biệt", key: "HD_special" },
-  { header: "Doanh thu", key: "totalPrice", style: { numFmt: "#,##0" } },
-  { header: "Đáy", key: "bottom" },
-  { header: "Sóng E", key: "fluteE" },
-  { header: "Sóng B", key: "fluteB" },
-  { header: "Sóng C", key: "fluteC" },
-  { header: "Dao", key: "knife" },
-  { header: "Tổng PL", key: "totalLoss" },
-  { header: "PL Báo Cáo", key: "qtyWasteRp" },
+
   { header: "Ca Sản Xuất", key: "shiftProduct" },
   { header: "Trưởng Máy", key: "shiftManager" },
+  { header: "Người Báo Cáo", key: "reportedBy" },
+
   { header: "Loại Máy", key: "machine" },
   { header: "Làm Thùng?", key: "hasMadeBox" },
 ];
@@ -46,9 +45,6 @@ export const mapReportPaperRow = (item: ReportPlanningPaper, index: number) => {
     orderId: orderCell.orderId,
     customerName: orderCell.Customer.customerName,
 
-    dateShipping: orderCell.dateRequestShipping
-      ? dayjsUtc(orderCell.dateRequestShipping).format("DD/MM/YYYY")
-      : "",
     dayStartProduction: planningCell.dayStart
       ? dayjsUtc(planningCell.dayStart).format("DD/MM/YYYY")
       : "",
@@ -57,30 +53,23 @@ export const mapReportPaperRow = (item: ReportPlanningPaper, index: number) => {
     structure: formatterStructureOrder(planningCell),
     flute: orderCell.flute,
     daoXa: orderCell.daoXa,
+
     length: Number(planningCell.lengthPaperPlanning),
     size: Number(planningCell.sizePaperPLaning),
     child: orderCell.numberChild,
     khoCapGiay: planningCell.ghepKho,
 
-    quantityOrd: orderCell.quantityManufacture,
     runningPlanProd: planningCell.runningPlan,
     qtyReported: item.qtyProduced,
-    lackOfQty: item.lackOfQty,
+    qtyWasteRp: planningCell.qtyWasteNorm,
+    totalPrice: Number(item.totalPrice),
 
     timeRunningProd: planningCell.timeRunning,
     HD_special: orderCell.instructSpecial,
-    totalPrice: Number(orderCell.totalPrice),
-
-    bottom: planningCell.bottom,
-    fluteE: planningCell.fluteE,
-    fluteB: planningCell.fluteB,
-    fluteC: planningCell.fluteC,
-    knife: planningCell.knife,
-    totalLoss: planningCell.totalLoss,
-    qtyWasteRp: planningCell.qtyWasteNorm,
 
     shiftProduct: item.shiftProduction,
     shiftManager: item.shiftManagement,
+    reportedBy: item.reportedBy,
 
     machine: planningCell.chooseMachine,
     hasMadeBox: planningCell.hasBox ? "Có" : "",

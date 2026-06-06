@@ -3,27 +3,27 @@ dotenv.config();
 
 import { Op } from "sequelize";
 import { Request, Response } from "express";
+import { User } from "../../models/user/user";
+import { meiliService } from "../meiliService";
 import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
+import { MEILI_INDEX } from "../../assets/labelFields";
 import { searchFieldAtribute } from "../../interface/types";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
+import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { Inventory } from "../../models/warehouse/inventory/inventory";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { inventoryRepository } from "../../repository/inventoryRepository";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
+import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
+import { InventoryTransfers } from "../../models/warehouse/inventory/inventoryTransfers";
 import { LiquidationInventory } from "../../models/warehouse/inventory/liquidationInventory";
 import {
   inventoryColumns,
   mappingInventoryRow,
 } from "../../utils/mapping/warehouse/inventoryRowAndColumn";
-import { meiliService } from "../meiliService";
-import { MEILI_INDEX } from "../../assets/labelFields";
-import { InventoryTransfers } from "../../models/warehouse/inventory/inventoryTransfers";
-import { User } from "../../models/user/user";
-import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
-import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inventory_gt, inventory_lt } = CacheKey.warehouse;
@@ -134,7 +134,7 @@ export const inventoryService = {
         throw AppError.BadRequest("Missing orderId", "MISSING_ORDER_ID");
       }
 
-      const existedInventory = await inventoryRepository.findByOrderId({
+      const existedInventory = await inventoryRepository.findInvByOrderId({
         orderId,
         transaction,
         options: { lock: transaction?.LOCK.UPDATE },
@@ -166,7 +166,7 @@ export const inventoryService = {
     try {
       return await runInTransaction(async (transaction) => {
         // Tìm và Check tồn
-        const sourceInv = await inventoryRepository.findByOrderId({
+        const sourceInv = await inventoryRepository.findInvByOrderId({
           orderId: sourceOrderId,
           transaction,
           options: {
@@ -178,7 +178,6 @@ export const inventoryService = {
             ],
           },
         });
-
         if (!sourceInv) {
           throw AppError.NotFound(
             `Source inventory with orderId ${sourceOrderId} not found`,
@@ -221,7 +220,7 @@ export const inventoryService = {
         await sourceInv.reload({ transaction });
 
         // Xử lý cộng kho đích
-        const targetInv = await inventoryRepository.findByOrderId({
+        const targetInv = await inventoryRepository.findInvByOrderId({
           orderId: targetOrderId,
           transaction,
         });
@@ -243,25 +242,18 @@ export const inventoryService = {
           );
         }
 
-        //check đã đủ số lượng cho đơn hàng chưa để chuyển trạng thái đơn hàng
-        const totalInventory = await Inventory.sum("qtyInventory", {
-          where: { orderId: targetOrderId },
-          transaction,
-        });
-
-        let newStatus = order.status;
-        if (totalInventory >= order.quantityCustomer) {
-          newStatus = "planning";
-        }
-
         //trừ số lượng đã chuyển giao khỏi quantityManufacture của đơn hàng
         const newQtyManufacture = Math.max(0, order.quantityManufacture - qtyTransfer);
+
+        let newStatus = order.status;
+        if (newQtyManufacture == 0) newStatus = "planning";
 
         await order.update(
           { quantityManufacture: newQtyManufacture, status: newStatus },
           { transaction },
         );
 
+        // Lấy tên người dùng để ghi log
         const userName = await User.findOne({ where: { userId: req.user.userId }, transaction });
 
         // Ghi log chuyển kho
@@ -279,8 +271,8 @@ export const inventoryService = {
 
         //--------------------MEILISEARCH-----------------------
         const [source, target] = await Promise.all([
-          inventoryRepository.findByOrderId({ orderId: sourceOrderId, transaction }),
-          inventoryRepository.findByOrderId({ orderId: targetOrderId, transaction }),
+          inventoryRepository.findInvByOrderId({ orderId: sourceOrderId, transaction }),
+          inventoryRepository.findInvByOrderId({ orderId: targetOrderId, transaction }),
         ]);
 
         const meiliUpdate = async (data: any) =>
@@ -396,18 +388,17 @@ export const inventoryService = {
     }
   },
 
-  exportExcelInventory: async (res: Response, { fromDate, toDate }: any) => {
+  exportExcelInventory: async (res: Response, userName: string, date?: any) => {
     try {
       let whereCondition: any = {};
 
-      if (fromDate && toDate) {
-        const startTimestamp = dayjsUtc(fromDate).startOf("day").toDate();
-        const endTimestamp = dayjsUtc(toDate).endOf("day").toDate();
+      if (date) {
+        const dateTimestamp = dayjsUtc(date).startOf("day").toDate();
 
-        // console.log(`start: ${fromDate} - end: ${toDate}`);
-        // console.log(`startTimestamp: ${startTimestamp} - endTimestamp: ${endTimestamp}`);
+        // console.log(`date: ${date}`);
+        // console.log(`dateTimestamp: ${dateTimestamp}`);
 
-        whereCondition.dateInbound = { [Op.between]: [startTimestamp, endTimestamp] };
+        whereCondition.dateInbound = { [Op.lt]: dateTimestamp };
       }
 
       const baseQuery: any = inventoryRepository.buildInventoryOptions({
@@ -422,6 +413,7 @@ export const inventoryService = {
         fileName: "inventory",
         columns: inventoryColumns,
         rows: mappingInventoryRow,
+        userName,
       });
     } catch (error) {
       console.error("Error create inventory:", error);

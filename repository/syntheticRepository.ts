@@ -40,6 +40,7 @@ export const syntheticRepository = {
       attributes: [
         "orderId",
         "dayReceiveOrder",
+        "dateRequestShipping",
         "lengthPaperCustomer",
         "lengthPaperManufacture",
         "paperSizeCustomer",

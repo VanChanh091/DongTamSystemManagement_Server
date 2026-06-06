@@ -7,14 +7,32 @@ import { manuBoxService } from "../../../service/manufacture/manufactureBoxServi
 
 //get planning machine paper
 export const getPlanningPaper = async (req: Request, res: Response, next: NextFunction) => {
-  const { machine, filterType = "all" } = req.query as { machine: string; filterType: string };
+  const {
+    machine,
+    filterType = "all",
+    dayCompleted,
+    shiftProduction,
+  } = req.query as {
+    machine: string;
+    filterType: string;
+    dayCompleted: string;
+    shiftProduction: "Ca 1" | "Ca 2" | "Ca 3";
+  };
 
   try {
     if (!machine) {
       throw AppError.BadRequest("Missing machine parameter", "MISSING_PARAMETERS");
     }
-
-    const response = await manuPaperService.getPlanningPaper(machine, filterType);
+    let response;
+    if (shiftProduction && dayCompleted) {
+      response = await manuPaperService.getPaperByDateAndShift({
+        machine,
+        shiftProduction,
+        dayCompleted: new Date(dayCompleted),
+      });
+    } else {
+      response = await manuPaperService.getPlanningPaper(machine, filterType);
+    }
     return res.status(201).json(response);
   } catch (error) {
     next(error);
@@ -34,10 +52,7 @@ export const addReportPaper = async (req: Request, res: Response, next: NextFunc
 };
 
 export const updateReportPaper = async (req: Request, res: Response, next: NextFunction) => {
-  const { planningId, action } = req.query as {
-    planningId: string | string[];
-    action: string;
-  };
+  const { planningId, action } = req.query as { planningId: string | string[]; action: string };
 
   try {
     if (!planningId || !action) {
@@ -64,6 +79,7 @@ export const updateReportPaper = async (req: Request, res: Response, next: NextF
       case "CONFIRM_PRODUCING":
         response = await manuPaperService.confirmProducingPaper(req, idArray[0], req.user);
         break;
+
       default:
         throw AppError.BadRequest("Invalid action parameter", "INVALID_ACTION");
     }

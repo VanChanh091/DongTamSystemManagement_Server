@@ -5,6 +5,7 @@ import { Customer } from "../models/customer/customer";
 import { FindOptions, Op, Sequelize, Transaction } from "sequelize";
 import { Inventory } from "../models/warehouse/inventory/inventory";
 import { LiquidationInventory } from "../models/warehouse/inventory/liquidationInventory";
+import { InventoryTransfers } from "../models/warehouse/inventory/inventoryTransfers";
 
 export const inventoryRepository = {
   //====================================INVENTORY========================================
@@ -21,7 +22,7 @@ export const inventoryRepository = {
     searching?: any;
     isExport?: boolean;
   }): FindOptions => {
-    const operator = isExport ? Op.ne : filter === "gtZero" ? Op.gt : Op.lt;
+    const operator = isExport ? Op.gt : filter === "gtZero" ? Op.gt : Op.lt;
     const whereClause: any = {
       [Op.and]: [{ qtyInventory: { [operator]: 0 } }],
     };
@@ -67,6 +68,7 @@ export const inventoryRepository = {
             { model: User, attributes: ["fullName"] },
           ],
         },
+        { model: InventoryTransfers, as: "invTransfers", attributes: ["qtyTransfers"] },
       ],
     };
 
@@ -128,7 +130,7 @@ export const inventoryRepository = {
     ...options,
   }),
 
-  findByOrderId: async ({
+  findInvByOrderId: async ({
     orderId,
     transaction,
     options = {},

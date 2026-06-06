@@ -189,8 +189,8 @@ export const deliveryScheduleService = {
 
                 if (currentInventory && currentOrder) {
                   // ĐIỀU KIỆN CHUẨN: So sánh Tổng xuất kho thực tế với Số lượng cần sản xuất gốc
-                  // Ví dụ: Nhập 10,010 | Cần sx 10,000 | Xuất đợt một 5,000 -> 5,000 >= 10,000 (False) -> Giữ 'delivering'
-                  // Xuất đợt hai thêm 5,000 (Tổng xuất 10,000) -> 10,000 >= 10,000 (True) -> Hoàn thành!
+                  // Ví dụ: Nhập 10,010 | Cần sx 10,000 | Xuất đợt một 5,000 -> 5,000 >= 10,000 (False) -> Giữ 'planned'
+                  // Xuất đợt hai thêm 5,000 (Tổng xuất 10,000) -> 10,000 >= 10,000 (True) -> delivered
                   isFullyDelivered =
                     currentInventory.totalQtyOutbound >= currentOrder.quantityManufacture;
                 }

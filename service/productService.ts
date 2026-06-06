@@ -97,8 +97,6 @@ export const productService = {
 
       const searchResult = await index.search(keyword, {
         attributesToSearchOn: [field],
-
-        // Phân trang
         page: Number(page) || 1,
         hitsPerPage: Number(pageSize) || 25,
       });

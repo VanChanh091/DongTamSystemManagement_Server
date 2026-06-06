@@ -14,6 +14,7 @@ import { machineMap, MEILI_INDEX } from "../../assets/labelFields";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
+import { Inventory } from "../../models/warehouse/inventory/inventory";
 import { planningHelper } from "../../repository/planning/planningHelper";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { WaveCrestCoefficient } from "../../models/admin/waveCrestCoefficient";
@@ -23,7 +24,6 @@ import { planningBoxRepository } from "../../repository/planning/planningBoxRepo
 import { PlanningPaper, planningPaperStatus } from "../../models/planning/planningPaper";
 import { planningPaperRepository } from "../../repository/planning/planningPaperRepository";
 import { planningStatusRepository } from "../../repository/planning/planningStatusRepository";
-import { Inventory } from "../../models/warehouse/inventory/inventory";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { stop, order } = CacheKey.planning;
@@ -154,10 +154,9 @@ export const planningStatusService = {
         const parseStructure = (str: string) =>
           str.split("/").map((seg: string) => {
             if (/^[EBC]/.test(seg)) return { kind: "flute", code: seg };
-            return {
-              kind: "liner",
-              thickness: parseFloat(seg.replace(/\D+/g, "")),
-            };
+
+            const thicknessMatch = seg.match(/\d+$/);
+            return { kind: "liner", thickness: thicknessMatch ? parseFloat(thicknessMatch[0]) : 0 };
           });
 
         // 4) Xác định loại sóng từ đơn hàng (flute: "5EB" => ["E", "B"])
@@ -176,6 +175,16 @@ export const planningStatusService = {
           numberChild: number,
           waveTypes: string[],
         ) => {
+          // console.log("=== DATA PREPARE ===");
+          // console.log("Layers:", JSON.stringify(layers, null, 2));
+          // console.log("Ghep Kho:", ghepKho);
+          // console.log("Waste Norm:", JSON.stringify(wasteNorm, null, 2));
+          // console.log("Wave Coeff:", JSON.stringify(waveCoeff, null, 2));
+          // console.log("Running Plan:", runningPlan);
+          // console.log("Number Child:", numberChild);
+          // console.log("Wave Types:", JSON.stringify(waveTypes, null, 2));
+          // console.log("====================");
+
           const gkTh = ghepKho / 100;
           let flute = { E: 0, B: 0, C: 0, E2: 0 };
           let softLiner = 0;
@@ -188,7 +197,7 @@ export const planningStatusService = {
 
               if (!waveTypes.includes(letter)) continue;
 
-              const fluteTh = parseFloat(L.code.replace(/\D+/g, "")) / 1000;
+              const fluteTh = parseFloat(L.code.match(/\d+$/)) / 1000;
               const prev = layers[i - 1];
               const linerBefore = prev && prev.kind === "liner" ? prev.thickness / 1000 : 0;
 
@@ -230,7 +239,6 @@ export const planningStatusService = {
 
           // 5.2) Tính hao phí, dao, tổng hao hụt
           const bottom = flute.E + flute.B + flute.C + softLiner;
-
           const totalLength = runningPlan / numberChild;
           const oneM2WaveCrestSoft = bottom / wasteNorm.waveCrestSoft;
 

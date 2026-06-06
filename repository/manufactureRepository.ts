@@ -10,6 +10,7 @@ import { ReportPlanningPaper } from "../models/report/reportPlanningPaper";
 import { ReportPlanningBox } from "../models/report/reportPlanningBox";
 import { EmployeeBasicInfo } from "../models/employee/employeeBasicInfo";
 import { EmployeeCompanyInfo } from "../models/employee/employeeCompanyInfo";
+import { dayjsUtc } from "../assets/configs/dayjs/dayjs.config";
 
 export const manufactureRepo = {
   //====================================HELPER=======================================
@@ -134,11 +135,53 @@ export const manufactureRepo = {
         "orderId",
       ],
       include: [
-        { model: Order, attributes: ["orderId", "quantityCustomer", "quantityManufacture"] },
+        {
+          model: Order,
+          attributes: ["orderId", "quantityCustomer", "quantityManufacture", "pricePaper"],
+        },
       ],
       transaction,
     });
   },
+
+  getPlanningByDateAndShift: async ({
+    machine,
+    dayCompleted,
+    shiftProduction,
+    transaction,
+  }: {
+    machine: string;
+    dayCompleted: Date;
+    shiftProduction: "Ca 1" | "Ca 2" | "Ca 3";
+    transaction?: Transaction;
+  }) => {
+    const startDate = dayjsUtc(dayCompleted).startOf("day").toDate();
+    const endDate = dayjsUtc(dayCompleted).endOf("day").toDate();
+
+    return await PlanningPaper.findAll({
+      where: {
+        chooseMachine: machine,
+        dayCompleted: { [Op.between]: [startDate, endDate] },
+        shiftProduction: { [Op.like]: `%${shiftProduction}%` },
+      },
+      attributes: [
+        "planningId",
+        "orderId",
+        "totalLoss",
+        "qtyWasteNorm",
+        "dayCompleted",
+        "lengthPaperPlanning",
+        "sizePaperPLaning",
+        "qtyProduced",
+        "chooseMachine",
+        "shiftProduction",
+        "shiftManagement",
+      ],
+      order: [["sortPlanning", "ASC"]],
+      transaction,
+    });
+  },
+
   //====================================BOX========================================
 
   getManufactureBox: async (machine: string) => {
@@ -193,10 +236,11 @@ export const manufactureRepo = {
             "flute",
             "QC_box",
             "numberChild",
+            "instructSpecial",
             "dateRequestShipping",
+            "quantityCustomer",
             "customerId",
             "productId",
-            "quantityCustomer",
           ],
           include: [
             {

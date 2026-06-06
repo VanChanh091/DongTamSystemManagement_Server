@@ -226,7 +226,7 @@ export const deliveryRequestService = {
         //update status delivery item
         await deliveryRepository.updateDeliveryItemById({
           statusUpdate: "planned",
-          whereCondition: { deliveryId: existedPlan.deliveryId },
+          whereCondition: { deliveryId: existedPlan.deliveryId, status: "none" },
           transaction,
         });
 

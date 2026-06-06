@@ -129,6 +129,7 @@ export class Order
 {
   declare orderId: string;
   declare dayReceiveOrder: Date;
+  declare dateRequestShipping: Date;
   declare dayApproved?: Date;
   declare lengthPaperCustomer: number;
   declare lengthPaperManufacture: number;
@@ -142,7 +143,6 @@ export class Order
   declare price: number;
   declare pricePaper: number;
   declare profit: number;
-  declare dateRequestShipping: Date;
   declare totalPrice: number;
   declare totalPriceVAT: number;
   declare volume: number;

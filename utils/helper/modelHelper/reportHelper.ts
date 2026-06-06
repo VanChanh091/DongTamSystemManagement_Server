@@ -2,10 +2,12 @@ export const createReportPlanning = async ({
   planning,
   model,
   qtyProduced,
+  qtyWasteNorm,
   dayReportValue,
   shiftManagementBox = "",
   machine = "",
   reportedBy,
+  totalPrice,
   otherData,
   transaction,
   isBox = false,
@@ -13,10 +15,12 @@ export const createReportPlanning = async ({
   planning: any;
   model: any;
   qtyProduced: number;
+  qtyWasteNorm?: number;
   dayReportValue: Date | string;
   shiftManagementBox?: string;
   machine?: string;
   reportedBy: string;
+  totalPrice: number;
   otherData?: {
     shiftProduction: string;
     shiftManagement: string;
@@ -46,16 +50,17 @@ export const createReportPlanning = async ({
 
   // Tính số lượng còn thiếu
   let lackOfQtyValue = planning.runningPlan - totalProduced;
+  // const totalPrice;
 
   let report;
   if (isBox) {
-    //box
     report = await model.create(
       {
         planningBoxId: planning.PlanningBox.planningBoxId,
         dayReport: dayReportValue,
         qtyProduced: qtyProduced,
         lackOfQty: lackOfQtyValue,
+        wasteLoss: qtyWasteNorm,
         shiftManagement: shiftManagementBox,
         machine: machine,
         reportedBy: reportedBy,
@@ -63,7 +68,6 @@ export const createReportPlanning = async ({
       { transaction },
     );
   } else {
-    // paper
     report = await model.create(
       {
         planningId: planning.planningId,
@@ -73,6 +77,7 @@ export const createReportPlanning = async ({
         shiftProduction: otherData!.shiftProduction,
         shiftManagement: otherData!.shiftManagement,
         reportedBy: reportedBy,
+        totalPrice: totalPrice,
       },
       { transaction },
     );

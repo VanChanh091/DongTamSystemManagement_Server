@@ -495,6 +495,13 @@ export const planningPaperService = {
               );
             }
 
+            if (planning.status !== "requested") {
+              throw AppError.BadRequest(
+                `Đơn ${planning.orderId} chưa được yêu cầu hoàn thành`,
+                "PLANNING_NOT_REQUESTED",
+              );
+            }
+
             planning.status = newStatus;
             await planning.save({ transaction });
 

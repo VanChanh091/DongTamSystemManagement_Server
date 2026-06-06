@@ -7,9 +7,11 @@ import { meiliService } from "../meiliService";
 import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
 import { MEILI_INDEX } from "../../assets/labelFields";
+import { Product } from "../../models/product/product";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { exportWarehouse } from "../../utils/helper/exportPDF";
 import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
+import { DeliveryItem } from "../../models/delivery/deliveryItem";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { OutboundDetail } from "../../models/warehouse/outboundDetail";
@@ -22,8 +24,7 @@ import { warehouseRepository } from "../../repository/warehouseRepository";
 import { inventoryRepository } from "../../repository/inventoryRepository";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
-import { Product } from "../../models/product/product";
-import { DeliveryItem } from "../../models/delivery/deliveryItem";
+import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { outbound } = CacheKey.warehouse;
@@ -126,16 +127,24 @@ export const outboundService = {
         // console.log(`filter: ${filter.join(" AND ")}`);
       }
 
-      const searchResult = await index.search(searchKeyword, {
+      const searchOptions: any = {
         filter: filter.join(" AND "),
         attributesToSearchOn: searchKeyword ? [field] : [],
         attributesToRetrieve: ["outboundId"],
-        sort: ["outboundId:desc"],
         page: Number(page) || 1,
-        hitsPerPage: Number(pageSize) || 25, //pageSize
-      });
+        hitsPerPage: Number(pageSize) || 25,
+      };
+
+      if (field === "dateOutbound") {
+        searchOptions.sort = ["outboundId:desc"];
+      }
+
+      const searchResult = await index.search(searchKeyword, searchOptions);
 
       const outboundIds = searchResult.hits.map((hit: any) => hit.outboundId);
+
+      console.log(`length: ${outboundIds.length} - outboundIds: ${JSON.stringify(outboundIds)}`);
+
       if (outboundIds.length === 0) {
         return {
           message: "No outbound records found",
@@ -266,7 +275,7 @@ export const outboundService = {
               );
 
               if (!isFeeIncluded) {
-                const feeInventory = await inventoryRepository.findByOrderId({
+                const feeInventory = await inventoryRepository.findInvByOrderId({
                   orderId: feeOrder.orderId,
                   transaction,
                 });
@@ -294,7 +303,7 @@ export const outboundService = {
           }
 
           // check inventory
-          const inventory = await inventoryRepository.findByOrderId({
+          const inventory = await inventoryRepository.findInvByOrderId({
             orderId: item.orderId,
             transaction,
           });
@@ -303,21 +312,6 @@ export const outboundService = {
               `Order: ${item.orderId} chưa có tồn kho`,
               "INVENTORY_NOT_FOUND",
             );
-          }
-
-          //check delivery item is existed
-          if (item.deliveryItemId) {
-            const outboundDetail = await OutboundDetail.findOne({
-              where: { deliveryItemId: item.deliveryItemId },
-              transaction,
-            });
-
-            if (outboundDetail) {
-              throw AppError.BadRequest(
-                `Đơn hàng cho lịch giao hàng này đã được xuất ở phiếu khác`,
-                "DELIVERY_ITEM_ALREADY_EXISTS",
-              );
-            }
           }
 
           //calculate price
@@ -507,25 +501,8 @@ export const outboundService = {
             throw AppError.BadRequest("Các đơn hàng không cùng khách hàng", "CUSTOMER_MISMATCH");
           }
 
-          // check delivery item is existed
-          if (deliveryItemId) {
-            const duplicateCheck = await OutboundDetail.findOne({
-              where: {
-                deliveryItemId: item.deliveryItemId,
-                outboundId: { [Op.ne]: outboundId }, // Không phải phiếu hiện tại
-              },
-              transaction,
-            });
-            if (duplicateCheck) {
-              throw AppError.BadRequest(
-                `Đơn hàng cho lịch giao hàng này đã được xuất ở phiếu khác`,
-                "DELIVERY_ITEM_ALREADY_EXISTS",
-              );
-            }
-          }
-
           //check tồn kho
-          const inventory = await inventoryRepository.findByOrderId({
+          const inventory = await inventoryRepository.findInvByOrderId({
             orderId: item.orderId,
             transaction,
             options: { lock: transaction.LOCK.UPDATE },
@@ -616,7 +593,7 @@ export const outboundService = {
         // XỬ LÝ DELETE đơn bị xóa khỏi phiếu
         for (const oldDetail of oldDetails) {
           if (!usedOldDetailIds.has(oldDetail.outboundDetailId)) {
-            const inv = await inventoryRepository.findByOrderId({
+            const inv = await inventoryRepository.findInvByOrderId({
               orderId: oldDetail.orderId,
               transaction,
               options: { lock: transaction.LOCK.UPDATE },
@@ -732,7 +709,7 @@ export const outboundService = {
         // Hoàn kho cho từng order
         for (const detail of details) {
           // Bật Row Lock cho từng dòng Inventory tương ứng
-          const inv = await inventoryRepository.findByOrderId({
+          const inv = await inventoryRepository.findInvByOrderId({
             orderId: detail.orderId,
             transaction,
             options: { lock: transaction.LOCK.UPDATE },

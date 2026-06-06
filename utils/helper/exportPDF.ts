@@ -15,7 +15,7 @@ const header_1 = 13;
 const header_2 = 10;
 const normal = 9;
 
-const page = { size: "A5", layout: "landscape" as const, margin: 20 };
+const page = { size: "A4", layout: "portrait" as const, margin: 20 };
 
 try {
   // 1. Load Logo
@@ -239,7 +239,8 @@ function drawTableRow({
 
       align = isNumeric(text) ? "right" : "left";
 
-      if (i === 0) align = "center"; // Cột STT luôn căn giữa
+      if (text == "STT") align = "center"; // Cột STT luôn căn giữa
+      if (text == "ĐVT") align = "center"; // Cột STT luôn căn giữa
     }
 
     // TẤT CẢ CÁC CỘT ĐỀU CĂN GIỮA THEO CHIỀU DỌC (Vertical Center)
@@ -394,6 +395,8 @@ function drawItemTable(doc: PDFKit.PDFDocument, outbound: any, hasMoney: boolean
   currentY += drawHeader(currentY);
 
   // --- VẼ BODY ---
+  doc.font("MainRegular").fontSize(normal);
+
   items.forEach((item: any, index: number) => {
     const order = item.Order;
     const lengthCustomer = formatDimension(order.lengthPaperCustomer ?? 0);
@@ -407,7 +410,7 @@ function drawItemTable(doc: PDFKit.PDFDocument, outbound: any, hasMoney: boolean
       po: order.orderIdCustomer || "",
       name: `${order.Product?.productName ?? ""}:${lengthManufacture}x${sizeManufacture} ${qcBox} ${item.isPromotion ? "(KM)" : ""}`,
       qc: `${lengthCustomer}x${sizeCustomer}`,
-      dvt: order.dvt || "",
+      dvt: order.dvt === "M2" || order.dvt === "Tấm Bao Khổ" ? "Tấm" : order.dvt,
       qty: fmt(item.outboundQty),
       price: hasMoney ? fmt(item.price) : "",
       total: hasMoney ? fmt(item.totalPriceOutbound) : "",
@@ -427,6 +430,7 @@ function drawItemTable(doc: PDFKit.PDFDocument, outbound: any, hasMoney: boolean
     if (currentY + rowH > pageBottom) {
       doc.addPage(page);
       currentY = 20;
+      doc.font("MainRegular").fontSize(normal);
       doc.moveTo(tableLeft, currentY).lineTo(tableRight, currentY).lineWidth(0.5).stroke();
     }
 
@@ -458,6 +462,7 @@ function drawItemTable(doc: PDFKit.PDFDocument, outbound: any, hasMoney: boolean
   if (currentY + summaryHeight > pageBottom) {
     doc.addPage(page);
     currentY = 20;
+    doc.font("MainRegular").fontSize(normal);
     doc.moveTo(tableLeft, currentY).lineTo(tableRight, currentY).lineWidth(0.5).stroke();
   }
 
@@ -626,19 +631,22 @@ function drawSignArea(doc: PDFKit.PDFDocument) {
   const pageWidth = doc.page.width;
   const margin = 20;
   const usableWidth = pageWidth - margin * 2;
-  const colWidth = usableWidth / 3;
-  const colX = [margin, margin + colWidth, margin + colWidth * 2];
+  const colWidth = usableWidth / 5; //chia 5 cot
+  const colX = [
+    margin,
+    margin + colWidth,
+    margin + colWidth * 2,
+    margin + colWidth * 3,
+    margin + colWidth * 4,
+  ];
 
-  // ===== NGÀY THÁNG (CỘT GIÁM ĐỐC) =====
-  doc
-    .font("MainItalic")
-    .text("Ngày ..... tháng ..... năm ......", colX[2], startY, {
-      width: colWidth,
-      align: "center",
-    })
-    .fontSize(normal);
+  // ===== NGÀY THÁNG =====
+  doc.font("MainItalic").fontSize(normal).text("Ngày .... tháng .... năm ......", colX[4], startY, {
+    width: colWidth,
+    align: "center",
+  });
 
-  const titleY = startY + 24;
+  const titleY = startY + 25;
   const signNoteY = titleY + 18;
 
   const format = {
@@ -649,19 +657,20 @@ function drawSignArea(doc: PDFKit.PDFDocument) {
   // ===== TIÊU ĐỀ =====
   doc.font("MainBold").fontSize(header_2);
 
-  doc.text("Người mua hàng", colX[0], titleY, format);
-  doc.text("Kế toán trưởng", colX[1], titleY, format);
-  doc.text("Giám đốc", colX[2], titleY, format);
+  doc.text("Người lập phiếu", colX[0], titleY, format);
+  doc.text("Người nhận hàng", colX[1], titleY, format);
+  doc.text("Thủ kho", colX[2], titleY, format);
+  doc.text("Kế toán trưởng", colX[3], titleY, format);
+  doc.text("Tài xế", colX[4], titleY, format);
 
   // ===== GHI CHÚ KÝ =====
   doc.font("MainItalic").fontSize(normal);
 
   doc.text("(Ký, họ tên)", colX[0], signNoteY, format);
   doc.text("(Ký, họ tên)", colX[1], signNoteY, format);
-  doc.text("(Ký, họ tên, đóng dấu)", colX[2], signNoteY, format);
-
-  // đẩy con trỏ xuống để tránh đè nếu còn nội dung
-  // doc.y = signNoteY + 80;
+  doc.text("(Ký, họ tên)", colX[2], signNoteY, format);
+  doc.text("(Ký, họ tên)", colX[3], signNoteY, format);
+  doc.text("(Ký, họ tên, biển số)", colX[4], signNoteY, format);
 }
 
 //======================HELPER===========================
