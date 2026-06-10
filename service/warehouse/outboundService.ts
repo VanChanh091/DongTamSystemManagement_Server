@@ -131,20 +131,14 @@ export const outboundService = {
         filter: filter.join(" AND "),
         attributesToSearchOn: searchKeyword ? [field] : [],
         attributesToRetrieve: ["outboundId"],
+        sort: ["outboundId:desc"],
         page: Number(page) || 1,
         hitsPerPage: Number(pageSize) || 25,
       };
 
-      if (field === "dateOutbound") {
-        searchOptions.sort = ["outboundId:desc"];
-      }
-
       const searchResult = await index.search(searchKeyword, searchOptions);
 
       const outboundIds = searchResult.hits.map((hit: any) => hit.outboundId);
-
-      console.log(`length: ${outboundIds.length} - outboundIds: ${JSON.stringify(outboundIds)}`);
-
       if (outboundIds.length === 0) {
         return {
           message: "No outbound records found",
@@ -248,6 +242,9 @@ export const outboundService = {
           currentTotalQtyOutbound: number;
         }[] = [];
 
+        // Dùng Map để theo dõi và cập nhật tồn kho lũy kế của từng orderId trong vòng lặp
+        const inventoryMap = new Map<string, { qtyInventory: number; totalQtyOutbound: number }>();
+
         for (const item of outboundDetails) {
           // check order is exist
           const order = await Order.findByPk(item.orderId, {
@@ -302,16 +299,26 @@ export const outboundService = {
             throw AppError.BadRequest("Các đơn hàng không cùng khách hàng", "CUSTOMER_MISMATCH");
           }
 
-          // check inventory
-          const inventory = await inventoryRepository.findInvByOrderId({
-            orderId: item.orderId,
-            transaction,
-          });
+          let inventory = inventoryMap.get(item.orderId);
+
           if (!inventory) {
-            throw AppError.BadRequest(
-              `Order: ${item.orderId} chưa có tồn kho`,
-              "INVENTORY_NOT_FOUND",
-            );
+            // check inventory
+            const dbInventory = await inventoryRepository.findInvByOrderId({
+              orderId: item.orderId,
+              transaction,
+            });
+            if (!dbInventory) {
+              throw AppError.BadRequest(
+                `Order: ${item.orderId} chưa có tồn kho`,
+                "INVENTORY_NOT_FOUND",
+              );
+            }
+
+            inventory = {
+              qtyInventory: dbInventory.qtyInventory,
+              totalQtyOutbound: dbInventory.totalQtyOutbound,
+            };
+            inventoryMap.set(item.orderId, inventory);
           }
 
           //calculate price
@@ -343,6 +350,9 @@ export const outboundService = {
             currentQtyInventory: inventory.qtyInventory,
             currentTotalQtyOutbound: inventory.totalQtyOutbound,
           });
+
+          inventory.qtyInventory -= item.outboundQty;
+          inventory.totalQtyOutbound += item.outboundQty;
         }
 
         // Generate slip code
@@ -482,8 +492,6 @@ export const outboundService = {
 
         // UPDATE
         for (const item of outboundDetails) {
-          const deliveryItemId = item.deliveryItemId || null;
-
           const order = await Order.findByPk(item.orderId, { transaction });
           if (!order) {
             throw AppError.NotFound(`Order ${item.orderId} không tồn tại`, "ORDER_NOT_FOUND");

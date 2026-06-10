@@ -1,15 +1,15 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import { Request, Response, NextFunction } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
-import dotenv from "dotenv";
 import { User } from "../models/user/user";
-dotenv.config();
 
 interface DecodedToken extends JwtPayload {
   userId: number;
 }
 
 // Mở rộng type cho Request để có thể gán req.user
-
 const authenticate = async (req: Request, res: Response, next: NextFunction) => {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) return res.status(401).json({ message: "No token provided" });
@@ -30,6 +30,7 @@ const authenticate = async (req: Request, res: Response, next: NextFunction) => 
       role: user.role,
       permissions: user.permissions,
       email: user.email,
+      fullName: user.fullName,
     };
 
     next();

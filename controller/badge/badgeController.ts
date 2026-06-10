@@ -48,7 +48,7 @@ export const countPlanningStop = async (req: Request, res: Response, next: NextF
 
 //waiting check paper & box
 export const countWaitingCheck = async (req: Request, res: Response, next: NextFunction) => {
-  const { type } = req.query as { type: "paper" | "box" };
+  const { type } = req.query as { type: "paper" | "box" | "scrap" };
   try {
     let response;
 
@@ -56,8 +56,12 @@ export const countWaitingCheck = async (req: Request, res: Response, next: NextF
       response = await badgeService.countWaitingCheckPaper();
     } else if (type === "box") {
       response = await badgeService.countWaitingCheckBox();
+    } else if (type === "scrap") {
+      response = await badgeService.countWaitingCheckScrapReport();
     } else {
-      throw AppError.BadRequest("Invalid type query parameter. Must be 'paper' or 'box'.");
+      throw AppError.BadRequest(
+        "Invalid type query parameter. Must be 'paper', 'box', or 'scrap'.",
+      );
     }
 
     return res.status(201).json(response);

@@ -109,13 +109,10 @@ export const reportService = {
         filter: filters.join(" AND "),
         attributesToSearchOn: searchKeyword ? [field] : [],
         attributesToRetrieve: ["reportPaperId"],
+        sort: ["dayReported:desc"],
         page: Number(page) || 1,
         hitsPerPage: Number(pageSize) || 25,
       };
-
-      if (field === "dayReported") {
-        searchOptions.sort = ["dayReported:desc"];
-      }
 
       const searchResult = await index.search(searchKeyword, searchOptions);
 
@@ -248,15 +245,12 @@ export const reportService = {
         filter: filters.join(" AND "),
         attributesToSearchOn: searchKeyword ? [field] : [],
         attributesToRetrieve: ["reportBoxId"],
+        sort: ["dayReported:desc"],
         page: Number(page) || 1,
         hitsPerPage: Number(pageSize) || 25,
       };
 
       const searchResult = await index.search(searchKeyword, searchOptions);
-
-      if (field === "dayReported") {
-        searchOptions.sort = ["dayReported:desc"];
-      }
 
       const boxIds = searchResult.hits.map((hit: any) => hit.reportBoxId);
       if (boxIds.length === 0) {

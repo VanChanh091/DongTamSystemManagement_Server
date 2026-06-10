@@ -8,6 +8,7 @@ declare global {
         role: string;
         permissions: string[];
         email: string;
+        fullName: string;
       };
       io?: SocketIOServer;
       file?: MulterFile;

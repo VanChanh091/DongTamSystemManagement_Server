@@ -6,6 +6,7 @@ import { PlanningBox } from "../../models/planning/planningBox";
 import { DeliveryRequest } from "../../models/delivery/deliveryRequest";
 import { DeliveryItem } from "../../models/delivery/deliveryItem";
 import { warehouseRepository } from "../../repository/warehouseRepository";
+import { ScrapReport } from "../../models/scrap/scrapReport";
 
 export const badgeService = {
   //pending order (admin)
@@ -75,6 +76,16 @@ export const badgeService = {
       return { message: "Count waiting check box successfully", data: count };
     } catch (error) {
       console.error(`Count waiting check box failed:`, error);
+      throw AppError.ServerError();
+    }
+  },
+
+  countWaitingCheckScrapReport: async () => {
+    try {
+      const count = await ScrapReport.count({ where: { status: "pending" } });
+      return { message: "Count waiting check scrap report successfully", data: count };
+    } catch (error) {
+      console.error(`Count waiting check scrap report failed:`, error);
       throw AppError.ServerError();
     }
   },

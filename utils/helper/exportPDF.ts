@@ -188,6 +188,7 @@ function drawTableRow({
   tableRight,
   isHeader = false,
   bold = false,
+  colIds,
 }: {
   doc: PDFKit.PDFDocument;
   y: number;
@@ -198,6 +199,7 @@ function drawTableRow({
   tableRight: number;
   isHeader?: boolean;
   bold?: boolean;
+  colIds?: string[];
 }): number {
   doc.font(bold ? "MainBold" : "MainRegular").fontSize(bold ? header_2 : normal);
 
@@ -228,19 +230,20 @@ function drawTableRow({
     if (isHeader) {
       align = "center";
     } else {
-      const isNumeric = (val: any) => {
-        if (typeof val === "number") return true;
-        if (typeof val !== "string") return false;
+      const colId = colIds?.[i];
 
-        // Xử lý trường hợp chuỗi số có dấu phân cách (1.000 hoặc 1,000)
-        const cleanStr = val.replace(/[.,\s]/g, "");
-        return cleanStr !== "" && !isNaN(Number(cleanStr));
-      };
+      if (colId === "stt") {
+        align = "center"; // Cột STT luôn căn giữa
+      } else {
+        const isNumeric = (val: any) => {
+          if (typeof val === "number") return true;
+          if (typeof val !== "string") return false;
+          const cleanStr = val.replace(/[.,\s]/g, "");
+          return cleanStr !== "" && !isNaN(Number(cleanStr));
+        };
 
-      align = isNumeric(text) ? "right" : "left";
-
-      if (text == "STT") align = "center"; // Cột STT luôn căn giữa
-      if (text == "ĐVT") align = "center"; // Cột STT luôn căn giữa
+        align = isNumeric(text) ? "right" : "left";
+      }
     }
 
     // TẤT CẢ CÁC CỘT ĐỀU CĂN GIỮA THEO CHIỀU DỌC (Vertical Center)
@@ -378,6 +381,7 @@ function drawItemTable(doc: PDFKit.PDFDocument, outbound: any, hasMoney: boolean
       tableRight,
       isHeader: true,
       bold: true,
+      colIds: columnConfigs.map((c) => c.id),
     });
 
     // Kẻ các đường dọc cho header
@@ -443,6 +447,7 @@ function drawItemTable(doc: PDFKit.PDFDocument, outbound: any, hasMoney: boolean
       colW,
       tableLeft,
       tableRight,
+      colIds: columnConfigs.map((c) => c.id),
     });
 
     // Vẽ các đường kẻ dọc cho dòng này

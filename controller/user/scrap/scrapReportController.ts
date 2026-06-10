@@ -1,11 +1,12 @@
 import { NextFunction, Request, Response } from "express";
 import { scrapReportService } from "../../../service/scrapReportService";
-import { AppError } from "../../../utils/appError";
 
 export const getAllScrapReports = async (req: Request, res: Response, next: NextFunction) => {
-  const { page, pageSize, field, keyword, startDate, endDate } = req.query as {
+  const { page, pageSize, field, keyword, startDate, endDate, status, machine } = req.query as {
     page: string;
     pageSize: string;
+    status: string;
+    machine?: string;
     field?: string;
     keyword?: string;
     startDate?: string;
@@ -23,12 +24,18 @@ export const getAllScrapReports = async (req: Request, res: Response, next: Next
         pageSize: Number(pageSize),
         startDate,
         endDate,
+        status,
+        machine: machine!,
       });
-    } else {
-      response = await scrapReportService.getAllScrapReports({
+    } else if (page && pageSize) {
+      response = await scrapReportService.getScrapReportByStatus({
         page: Number(page),
         pageSize: Number(pageSize),
+        status,
+        machine,
       });
+    } else {
+      response = await scrapReportService.getScrapReportWaitingCheck();
     }
 
     return res.status(200).json(response);
@@ -38,26 +45,19 @@ export const getAllScrapReports = async (req: Request, res: Response, next: Next
 };
 
 export const createScrapReport = async (req: Request, res: Response, next: NextFunction) => {
-  const { empCode, machine, dayCompleted, shiftProduction, qtyWasteNorm } = req.body as {
-    empCode: string;
-    machine: string;
-    dayCompleted: Date;
-    shiftProduction: "Ca 1" | "Ca 2" | "Ca 3";
-    qtyWasteNorm: number;
+  const { wasteNormField } = req.body as {
+    wasteNormField: {
+      machine: string;
+      shiftManagement: String;
+      dayCompleted: Date;
+      shiftProduction: "Ca 1" | "Ca 2" | "Ca 3";
+    };
   };
 
   try {
-    if (!dayCompleted || !shiftProduction || !qtyWasteNorm || !machine || !empCode) {
-      throw AppError.BadRequest("Missing required parameters", "MISSING_PARAMETERS");
-    }
-
     const response = await scrapReportService.createScrapReport({
-      empCode,
-      machine,
-      dayCompleted,
-      shiftProduction,
-      qtyWasteNorm: Number(qtyWasteNorm),
       scrapData: req.body,
+      wasteNormField,
     });
     return res.status(201).json(response);
   } catch (error) {
@@ -66,10 +66,62 @@ export const createScrapReport = async (req: Request, res: Response, next: NextF
 };
 
 export const updateScrapReport = async (req: Request, res: Response, next: NextFunction) => {
-  const { scrapId, empCode } = req.body as { scrapId: number; empCode: string };
+  const { scrapId, wasteNormField } = req.body as {
+    scrapId: number;
+    wasteNormField: {
+      machine: string;
+      shiftManagement: String;
+      dayCompleted: Date;
+      shiftProduction: "Ca 1" | "Ca 2" | "Ca 3";
+    };
+  };
 
   try {
-    // Implementation for updating scrap report
+    const response = await scrapReportService.updateScrapReport({
+      scrapId,
+      updateData: req.body,
+      wasteNormField,
+    });
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const handleUpdateScrapReport = async (req: Request, res: Response, next: NextFunction) => {
+  const { scrapId, status, rejectReason, machine, dayCompleted, shiftProduction, action } =
+    req.body as {
+      scrapId: number[];
+      action: string;
+      machine?: string;
+      dayCompleted?: Date;
+      rejectReason?: string;
+      status?: "confirmed" | "rejected";
+      shiftProduction?: "Ca 1" | "Ca 2" | "Ca 3";
+    };
+
+  try {
+    let response;
+
+    switch (action) {
+      case "CONFIRM_OR_REJECT":
+        response = await scrapReportService.confirmOrRejectScrapReport({
+          scrapId,
+          status: status!,
+          rejectReason,
+        });
+        break;
+      case "ALLOCATE_SCRAP_REPORT":
+        response = await scrapReportService.allocateScrapReport({
+          scrapId,
+          machine: machine!,
+          dayCompleted: dayCompleted!,
+          shiftProduction: shiftProduction!,
+        });
+        break;
+    }
+
+    return res.status(200).json(response);
   } catch (error) {
     next(error);
   }

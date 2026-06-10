@@ -70,6 +70,9 @@ export const deliveryEstimateService = {
         estimateTime,
       });
 
+      console.log(`plannings: ${plannings.length}`);
+      console.log(`filtered: ${filtered.length}`);
+
       //PAGING DATA
       const totalPlannings = filtered.length;
       const totalPages = Math.ceil(totalPlannings / pageSize);
@@ -199,9 +202,20 @@ export const deliveryEstimateService = {
     dayStart: Date;
     estimateTime: string;
   }) => {
-    // mốc kết thúc NGÀY HÔM NAY
-    const [estH, estM] = estimateTime.split(":").map(Number);
-    const estimateMinutes = estH * 60 + estM;
+    //helper đổi giờ thành phút để so sánh
+    const getProductionMinutes = (timeStr: string): number => {
+      if (!timeStr) return 0;
+      const [h, m] = timeStr.split(":").map(Number);
+      const totalMinutesFromMidnight = h * 60 + m;
+
+      // Nếu giờ >= 6:00 sáng -> Thuộc cùng ngày dương lịch
+      if (totalMinutesFromMidnight >= 360) {
+        return totalMinutesFromMidnight - 360;
+      }
+      // Nếu giờ < 6:00 sáng (từ 00:00 đến 05:59) -> Thuộc ngày dương lịch tiếp theo
+      return totalMinutesFromMidnight + 1440 - 360;
+    };
+    const estimateMinutes = getProductionMinutes(estimateTime);
 
     return plannings.filter((paper) => {
       if (paper.status === "complete") return true;
@@ -211,25 +225,17 @@ export const deliveryEstimateService = {
       const paperDate = new Date(paper.dayStart).setHours(0, 0, 0, 0);
       const targetDate = new Date(dayStart).setHours(0, 0, 0, 0);
 
-      // console.log(
-      //   `paperDate: ${paperDate} - targetDate: ${targetDate} - compare: ${paperDate < targetDate}`,
-      // );
-
       //if paper date < target date → show
       if (paperDate < targetDate) return true;
-
-      // console.log(`estimateMinutes: ${estimateMinutes}`);
 
       // KHÔNG CÓ BOX → so paper
       if (!paper.hasBox) {
         if (!paper.timeRunning) return false;
 
-        const [h, m, s = "0"] = paper.timeRunning.split(":");
-        const paperMinutes = Number(h) * 60 + Number(m) + Number(s) / 60;
-
         // console.log(`time paper: ${paperMinutes}`);
         // console.log(`compare paper: ${paperMinutes <= estimateMinutes}`);
 
+        const paperMinutes = getProductionMinutes(paper.timeRunning);
         return paperMinutes <= estimateMinutes;
       } else {
         // CÓ BOX → so theo BOX
@@ -237,12 +243,9 @@ export const deliveryEstimateService = {
 
         if (boxTimes.length === 0) return false;
 
+        // Tìm Box có phút sản xuất lớn nhất
         const latestBoxMinutes = Math.max(
-          ...boxTimes.map((t: any) => {
-            const [h, m, s = "0"] = t.timeRunning.split(":");
-
-            return Number(h) * 60 + Number(m) + Number(s) / 60;
-          }),
+          ...boxTimes.map((t: any) => getProductionMinutes(t.timeRunning)),
         );
 
         // console.log(`latest time box: ${latestBoxMinutes}`);

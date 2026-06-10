@@ -27,8 +27,8 @@ export const employeesSettings: Settings = {
 //order
 export const ordersSettings: Settings = {
   searchableAttributes: ["orderId", "customerName", "productName", "QC_box", "dayReceiveOrder"],
-  sortableAttributes: ["orderSortValue"],
   filterableAttributes: ["status", "userId", "dayReceiveOrder"],
+  sortableAttributes: ["orderSortValue"],
   rankingRules: rule,
 };
 
@@ -51,6 +51,14 @@ export const reportPaperSettings: Settings = {
   searchableAttributes: ["orderId", "customerName", "dayReported", "shiftManagement"],
   filterableAttributes: ["chooseMachine", "dayReported"],
   sortableAttributes: ["dayReported"],
+  rankingRules: rule,
+};
+
+//scrap report
+export const scrapReportSettings: Settings = {
+  searchableAttributes: ["scrapId", "reportedBy", "reportedAt"],
+  filterableAttributes: ["status"],
+  sortableAttributes: ["reportedAt"],
   rankingRules: rule,
 };
 

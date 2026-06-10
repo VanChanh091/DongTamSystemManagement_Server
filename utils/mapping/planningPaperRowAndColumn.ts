@@ -40,7 +40,7 @@ export const mapPlanningPaperRow = (item: PlanningPaper, index: number) => {
 
     quantityManu: orderCell.quantityManufacture,
     qtyProduced: item.qtyProduced ?? 0,
-    runningPlan: item.runningPlan ?? 0,
+    runningPlan: (item.runningPlan ?? 0) - (item.qtyProduced ?? 0),
 
     length: `${Number(item.lengthPaperPlanning)} cm`,
     size: `${Number(item.sizePaperPLaning)} cm`,

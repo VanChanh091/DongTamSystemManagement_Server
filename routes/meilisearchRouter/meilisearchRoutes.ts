@@ -15,6 +15,7 @@ import {
   syncProductToMeili,
   syncReportBoxToMeili,
   syncReportPaperToMeili,
+  syncScrapReportToMeili,
 } from "../../assets/configs/meilisearch/sync/syncMeili";
 import { AppError } from "../../utils/appError";
 import { syncOrDeleteAllDataToMeili } from "../../assets/configs/meilisearch/sync/syncAllMeili";
@@ -28,6 +29,7 @@ const syncFunctions: Record<string, (isDeleteAll: boolean) => Promise<any>> = {
   employees: syncEmployeeToMeili,
   papers: syncPlanningPaperToMeili,
   boxes: syncPlanningBoxToMeili,
+  scrapReports: syncScrapReportToMeili,
   inbound: syncInboundToMeili,
   inventory: syncInventoryToMeili,
   outbounds: syncOutboundToMeili,
@@ -76,7 +78,7 @@ router.delete("/all", authenticate, async (req, res, next) => {
   try {
     const { isDeleteAll } = req.query as { isDeleteAll: string };
     await syncOrDeleteAllDataToMeili(isDeleteAll);
-    
+
     return res.status(200).json({ message: "Delete all data from Meilisearch successfully" });
   } catch (error) {
     next(error);

@@ -2,15 +2,51 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { Response } from "express";
-import { Transaction } from "sequelize";
+import { Op, Transaction } from "sequelize";
 import { AppError } from "../utils/appError";
+import { meiliService } from "./meiliService";
+import { MEILI_INDEX } from "../assets/labelFields";
 import { ScrapReport } from "../models/scrap/scrapReport";
+import { dayjsUtc } from "../assets/configs/dayjs/dayjs.config";
 import { reportRepository } from "../repository/reportRepository";
 import { runInTransaction } from "../utils/helper/transactionHelper";
 import { manufactureRepo } from "../repository/manufactureRepository";
+import { meiliClient } from "../assets/configs/connect/meilisearch.connect";
+import { scrapReportRepository } from "../repository/scrapReportRepository";
+import { meiliTransformer } from "../assets/configs/meilisearch/meiliTransformer";
 
 export const scrapReportService = {
-  getAllScrapReports: async ({ page, pageSize }: { page: number; pageSize: number }) => {
+  getScrapReportWaitingCheck: async () => {
+    try {
+      const options = scrapReportRepository.buildScrapReportOptions({
+        whereCondition: { status: { [Op.in]: ["pending", "rejected"] } },
+        optionsField: {
+          order: [
+            ["status", "DESC"],
+            ["scrapId", "DESC"],
+          ],
+        },
+      });
+      const data = await ScrapReport.findAll(options);
+
+      return { message: "Get scrap reports waiting check successfully", data };
+    } catch (error) {
+      console.error("❌ get scrap reports waiting check failed:", error);
+      throw AppError.ServerError();
+    }
+  },
+
+  getScrapReportByStatus: async ({
+    page,
+    pageSize,
+    status,
+    machine,
+  }: {
+    page: number;
+    pageSize: number;
+    status: string;
+    machine?: string;
+  }) => {
     try {
       // const { isChanged } = await CacheManager.check(
       //   [{ model: EmployeeBasicInfo }, { model: EmployeeCompanyInfo }],
@@ -28,12 +64,12 @@ export const scrapReportService = {
       //   }
       // }
 
-      const { rows, count } = await ScrapReport.findAndCountAll({
-        attributes: { exclude: ["createdAt", "updatedAt"] },
-        offset: (page - 1) * pageSize,
-        limit: pageSize,
-        order: [["scrapId", "DESC"]],
+      const options = scrapReportRepository.buildScrapReportOptions({
+        page,
+        pageSize,
+        whereCondition: { status, machine },
       });
+      const { rows, count } = await ScrapReport.findAndCountAll(options);
 
       const responseData = {
         message: "Get all scrap reports successfully",
@@ -42,78 +78,161 @@ export const scrapReportService = {
         totalPages: Math.ceil(count / pageSize),
         currentPage: page,
       };
+
+      //  await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+
       return responseData;
     } catch (error) {
-      console.error("Error get all scrap reports:", error);
+      console.error("❌ get scrap reports by status failed:", error);
       throw AppError.ServerError();
     }
   },
 
   getScrapReportByField: async ({
-    field,
-    keyword,
     page,
     pageSize,
+    field,
+    keyword,
     startDate,
     endDate,
+    status,
+    machine,
   }: {
-    field: string;
-    keyword: string;
     page: number;
     pageSize: number;
+    status: string;
+    field: string;
+    keyword: string;
+    machine: string;
     startDate?: string;
     endDate?: string;
   }) => {
     try {
+      const validFields = ["reportedBy", "reportedAt"];
+      if (!validFields.includes(field)) {
+        throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
+      }
+
+      const index = meiliClient.index("scrapReports");
+
+      let searchKeyword = keyword;
+      let filter = [];
+
+      if (field === "reportedAt") {
+        searchKeyword = "";
+
+        if (startDate && endDate) {
+          const startTimestamp = dayjsUtc.utc(startDate).startOf("day").unix();
+          filter.push(`reportedAt >= ${startTimestamp}`);
+
+          const endTimestamp = dayjsUtc.utc(endDate).endOf("day").unix();
+          filter.push(`reportedAt <= ${endTimestamp}`);
+        }
+
+        // console.log(`start: ${startDate} - end: ${endDate}`);
+        // console.log(`filter: ${filter.join(" AND ")}`);
+      }
+
+      const searchOptions: any = {
+        filter: filter.join(" AND "),
+        attributesToSearchOn: searchKeyword ? [field] : [],
+        attributesToRetrieve: ["scrapId"],
+        sort: ["reportedAt:desc"],
+        page: Number(page) || 1,
+        hitsPerPage: Number(pageSize) || 25, //pageSize
+      };
+
+      const searchResult = await index.search(searchKeyword, searchOptions);
+
+      const scrapIds = searchResult.hits.map((hit: any) => hit.scrapId);
+      if (scrapIds.length === 0) {
+        return {
+          message: "No scrap reports found",
+          data: [],
+          totalScrapReports: 0,
+          totalPages: 0,
+          currentPage: page,
+        };
+      }
+
+      //query db
+      const options = scrapReportRepository.buildScrapReportOptions({
+        whereCondition: { scrapId: { [Op.in]: scrapIds } },
+      });
+      const { rows } = await ScrapReport.findAndCountAll(options);
+
+      // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
+      const finalData = scrapIds
+        .map((id) => rows.find((scrap) => scrap.scrapId === id))
+        .filter(Boolean);
+
+      return {
+        message: "Get scrap reports from Meilisearch & DB successfully",
+        data: finalData,
+        totalScrapReports: searchResult.totalHits,
+        totalPages: searchResult.totalPages,
+        currentPage: searchResult.page,
+      };
     } catch (error) {
-      console.error("Error get scrap report by field:", error);
+      console.error("❌ get scrap reports by field failed:", error);
       throw AppError.ServerError();
     }
   },
 
   createScrapReport: async ({
-    empCode,
     scrapData,
-    machine,
-    dayCompleted,
-    shiftProduction,
-    qtyWasteNorm,
+    wasteNormField,
   }: {
-    empCode: string;
     scrapData: any;
-    machine: string;
-    dayCompleted: Date;
-    shiftProduction: "Ca 1" | "Ca 2" | "Ca 3";
-    qtyWasteNorm: number;
+    wasteNormField: {
+      machine: string;
+      shiftManagement: String;
+      dayCompleted: Date;
+      shiftProduction: "Ca 1" | "Ca 2" | "Ca 3";
+    };
   }) => {
-    const { qtyForklift = 0, qtyInventory = 0, qtyCoreTube = 0, qtyOther = 0 } = scrapData;
+    const {
+      qtyProduction = 0,
+      qtyForklift = 0,
+      qtyInventory = 0,
+      qtyCoreTube = 0,
+      qtyOther = 0,
+    } = scrapData;
 
     try {
       return await runInTransaction(async (transaction) => {
-        const employee = await manufactureRepo.getEmployeeByCode(empCode, transaction);
-        if (!employee) {
-          throw AppError.NotFound("employee not found", "EMPLOYEE_NOT_FOUND");
+        if (!wasteNormField.shiftProduction || !wasteNormField.machine) {
+          throw AppError.BadRequest("Missing required parameters", "MISSING_PARAMETERS");
         }
 
-        await scrapReportService.reportWasteNormPaper(
-          machine,
-          dayCompleted,
-          shiftProduction,
-          qtyWasteNorm,
-          transaction,
-        );
-
-        const totalQtyScrap = qtyForklift + qtyInventory + qtyCoreTube + qtyWasteNorm + qtyOther;
+        const totalQtyScrap = qtyProduction + qtyForklift + qtyInventory + qtyCoreTube + qtyOther;
         const response = await ScrapReport.create(
           {
-            qtyProduction: qtyWasteNorm,
-            totalQtyScrap: totalQtyScrap,
-            reportedBy: employee.fullName,
+            totalQtyScrap,
             reportedAt: new Date(),
+            dayCompleted: wasteNormField.dayCompleted,
+            reportedBy: wasteNormField.shiftManagement,
+            machine: wasteNormField.machine,
+            shiftProduction: wasteNormField.shiftProduction,
             ...scrapData,
           },
           { transaction },
         );
+
+        //--------------------MEILISEARCH-----------------------
+        const newScrap = await scrapReportRepository.syncScrapReportToMeili({
+          scrapId: response.scrapId,
+          transaction,
+        });
+
+        if (newScrap) {
+          const flattenScrapReport = meiliTransformer.scrapReport(newScrap);
+          await meiliService.syncOrUpdateMeiliData({
+            indexKey: MEILI_INDEX.SCRAP_REPORTS,
+            data: flattenScrapReport,
+            transaction,
+          });
+        }
 
         return { message: "Scrap report created successfully", data: response };
       });
@@ -124,13 +243,199 @@ export const scrapReportService = {
     }
   },
 
-  reportWasteNormPaper: async (
-    machine: string,
-    dayCompleted: Date,
-    shiftProduction: "Ca 1" | "Ca 2" | "Ca 3",
-    qtyWasteNorm: number,
-    transaction: Transaction,
-  ) => {
+  updateScrapReport: async ({
+    scrapId,
+    updateData,
+    wasteNormField,
+  }: {
+    scrapId: number;
+    updateData: any;
+    wasteNormField: {
+      machine: string;
+      shiftManagement: String;
+      dayCompleted: Date;
+      shiftProduction: "Ca 1" | "Ca 2" | "Ca 3";
+    };
+  }) => {
+    const {
+      qtyProduction = 0,
+      qtyForklift = 0,
+      qtyInventory = 0,
+      qtyCoreTube = 0,
+      qtyOther = 0,
+    } = updateData;
+
+    try {
+      return await runInTransaction(async (transaction) => {
+        if (!wasteNormField.shiftProduction || !wasteNormField.machine) {
+          throw AppError.BadRequest("Missing required parameters", "MISSING_PARAMETERS");
+        }
+
+        const scrapReport = await ScrapReport.findByPk(scrapId, { transaction });
+        if (!scrapReport) {
+          throw AppError.BadRequest("Scrap report not found", "SCRAP_REPORT_NOT_FOUND");
+        }
+
+        const totalQtyScrap = qtyProduction + qtyForklift + qtyInventory + qtyCoreTube + qtyOther;
+        const response = await scrapReport.update(
+          {
+            totalQtyScrap,
+            machine: wasteNormField.machine,
+            reportedBy: wasteNormField.shiftManagement,
+            dayCompleted: wasteNormField.dayCompleted,
+            shiftProduction: wasteNormField.shiftProduction,
+            rejectReason: "",
+            status: "pending",
+            ...updateData,
+          },
+          { transaction },
+        );
+
+        //--------------------MEILISEARCH-----------------------
+        const scrapUpdated = await scrapReportRepository.syncScrapReportToMeili({
+          scrapId: response.scrapId,
+          transaction,
+        });
+
+        if (scrapUpdated) {
+          const flattenScrapReport = meiliTransformer.scrapReport(scrapUpdated);
+          await meiliService.syncOrUpdateMeiliData({
+            indexKey: MEILI_INDEX.SCRAP_REPORTS,
+            data: flattenScrapReport,
+            isUpdate: true,
+            transaction,
+          });
+        }
+
+        return { message: "Scrap report updated successfully", data: response };
+      });
+    } catch (error) {
+      console.error("Error update scrap report:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  confirmOrRejectScrapReport: async ({
+    scrapId,
+    status,
+    rejectReason,
+  }: {
+    scrapId: number[];
+    status: "confirmed" | "rejected";
+    rejectReason?: string;
+  }) => {
+    try {
+      return await runInTransaction(async (transaction) => {
+        const scrapReports = await ScrapReport.findAll({
+          where: { scrapId: { [Op.in]: scrapId } },
+          attributes: { exclude: ["createdAt", "updatedAt"] },
+          transaction,
+        });
+
+        if (scrapReports.length === 0) {
+          throw AppError.BadRequest("Scrap reports not found", "SCRAP_REPORTS_NOT_FOUND");
+        }
+
+        const isAllPending = scrapReports.every((r) => r.status === "pending");
+        if (!isAllPending) {
+          throw AppError.BadRequest(
+            "Chỉ có thể xác nhận báo cáo đang chờ kiểm tra",
+            "INVALID_SCRAP_REPORT_STATUS",
+          );
+        }
+
+        await ScrapReport.update(
+          { status: status, rejectReason: rejectReason },
+          { where: { scrapId: { [Op.in]: scrapId } }, transaction },
+        );
+
+        //--------------------MEILISEARCH-----------------------
+        await scrapReportService.syncMeiliUpdateStatusScrapReport(scrapId, transaction);
+
+        return { message: `Scrap reports ${status} successfully` };
+      });
+    } catch (error) {
+      console.error(`❌ ${status} scrap report failed:`, error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  allocateScrapReport: async ({
+    scrapId,
+    machine,
+    dayCompleted,
+    shiftProduction,
+  }: {
+    scrapId: number[];
+    machine: string;
+    dayCompleted: Date;
+    shiftProduction: "Ca 1" | "Ca 2" | "Ca 3";
+  }) => {
+    try {
+      return await runInTransaction(async (transaction) => {
+        const scrapReports = await ScrapReport.findAll({
+          where: { scrapId: { [Op.in]: scrapId } },
+          attributes: { exclude: ["createdAt", "updatedAt"] },
+          transaction,
+        });
+
+        if (scrapReports.length === 0) {
+          throw AppError.BadRequest("Scrap reports not found", "SCRAP_REPORTS_NOT_FOUND");
+        }
+
+        const isAllConfirmed = scrapReports.every((r) => r.status === "confirmed");
+        if (!isAllConfirmed) {
+          throw AppError.BadRequest(
+            "Chỉ có thể phân bổ báo cáo đã được xác nhận",
+            "INVALID_SCRAP_REPORT_STATUS",
+          );
+        }
+
+        const totalQtyScrap = scrapReports.reduce(
+          (sum, r) => sum + Number(r.qtyProduction || 0),
+          0,
+        );
+        await scrapReportService.reportWasteNormPaper({
+          machine,
+          dayCompleted,
+          shiftProduction,
+          qtyWasteNorm: totalQtyScrap,
+          transaction,
+        });
+
+        await ScrapReport.update(
+          { status: "allocated" },
+          { where: { scrapId: { [Op.in]: scrapId } }, transaction },
+        );
+
+        //--------------------MEILISEARCH-----------------------
+        await scrapReportService.syncMeiliUpdateStatusScrapReport(scrapId, transaction);
+
+        return { message: `Scrap reports allocated successfully` };
+      });
+    } catch (error) {
+      console.error("❌ allocate scrap report failed:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  //helper to report waste norm paper
+  reportWasteNormPaper: async ({
+    machine,
+    dayCompleted,
+    shiftProduction,
+    qtyWasteNorm,
+    transaction,
+  }: {
+    machine: string;
+    dayCompleted: Date;
+    shiftProduction: "Ca 1" | "Ca 2" | "Ca 3";
+    qtyWasteNorm: number;
+    transaction?: Transaction;
+  }) => {
     try {
       const plannings = await manufactureRepo.getPlanningByDateAndShift({
         machine,
@@ -140,7 +445,7 @@ export const scrapReportService = {
       });
 
       // console.log(`length: ${plannings.length}`);
-      // console.log(`plannings: ${JSON.stringify(plannings)}`);
+      // console.log(`plannings: ${JSON.stringify(plannings[0])}`);
 
       if (plannings.length === 0) {
         throw AppError.NotFound(
@@ -215,31 +520,25 @@ export const scrapReportService = {
     }
   },
 
-  updateScrapReport: async ({ scrapId, updateData }: { scrapId: number; updateData: any }) => {
+  //sync meili update status scrap report
+  syncMeiliUpdateStatusScrapReport: async (scrapIds: number[], transaction: Transaction) => {
     try {
-      return await runInTransaction(async (transaction) => {
-        const scrapReport = await ScrapReport.findByPk(scrapId, { transaction });
-        if (!scrapReport) {
-          throw AppError.BadRequest("Scrap report not found", "SCRAP_REPORT_NOT_FOUND");
-        }
-
-        const totalQtyScrap =
-          (updateData.qtyForklift || 0) +
-          (updateData.qtyInventory || 0) +
-          (updateData.qtyCoreTube || 0) +
-          (updateData.qtyProduction || 0) +
-          (updateData.qtyOther || 0);
-
-        const response = await scrapReport.update(
-          { totalQtyScrap: totalQtyScrap, ...updateData },
-          { transaction },
-        );
-
-        return { message: "Scrap report updated successfully", data: response };
+      const scrapUpdated = await scrapReportRepository.syncAllScrapReportForMeili({
+        whereCondition: { scrapId: { [Op.in]: scrapIds } },
+        transaction,
       });
+
+      if (scrapUpdated) {
+        const flattenScrapReport = scrapUpdated.map(meiliTransformer.scrapReport);
+        await meiliService.syncOrUpdateMeiliData({
+          indexKey: MEILI_INDEX.SCRAP_REPORTS,
+          data: flattenScrapReport,
+          isUpdate: true,
+          transaction,
+        });
+      }
     } catch (error) {
-      console.error("Error update scrap report:", error);
-      if (error instanceof AppError) throw error;
+      console.error("Error syncing Meili update status scrap report:", error);
       throw AppError.ServerError();
     }
   },

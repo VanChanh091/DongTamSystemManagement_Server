@@ -4,6 +4,7 @@ import { meiliService } from "../meiliService";
 import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
 import { MEILI_INDEX } from "../../assets/labelFields";
+import { Product } from "../../models/product/product";
 import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
 import { orderRepository } from "../../repository/orderRepository";
 import { PlanningPaper } from "../../models/planning/planningPaper";
@@ -13,7 +14,6 @@ import { syntheticRepository } from "../../repository/syntheticRepository";
 import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { mappingOrderRow, orderColumns } from "../../utils/mapping/orderRowAndColumn";
-import { Product } from "../../models/product/product";
 
 export const syntheticOrderService = {
   getAllOrderByStatus: async ({
@@ -125,6 +125,7 @@ export const syntheticOrderService = {
         filter: filters.join(" AND "),
         attributesToRetrieve: ["orderId"],
         attributesToSearchOn: searchKeyword ? [field] : [],
+        sort: ["orderSortValue:desc"],
         page: Number(page) || 1,
         hitsPerPage: Number(pageSize) || 25,
       });

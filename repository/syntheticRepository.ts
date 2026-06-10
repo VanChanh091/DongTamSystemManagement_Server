@@ -87,7 +87,7 @@ export const syntheticRepository = {
 
       query.order = [
         // sort theo orderId
-        ["orderSortValue", "ASC"],
+        ["orderSortValue", "DESC"],
         // sort theo accept -> planning | pending -> reject
         ["statusPriority", "DESC"],
       ];

@@ -91,10 +91,7 @@ export const manuPaperService = {
       // console.log(`plannings: ${JSON.stringify(plannings)}`);
 
       if (plannings.length === 0) {
-        throw AppError.NotFound(
-          "No production reports found for this date and shift",
-          "REPORTS_NOT_FOUND",
-        );
+        return { message: "No planning papers found", data: [] };
       }
 
       return { message: "Get planning papers by date and shift successfully", data: plannings };

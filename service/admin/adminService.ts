@@ -16,6 +16,7 @@ import { MEILI_INDEX, validPermissions } from "../../assets/labelFields";
 import { inventoryRepository } from "../../repository/inventoryRepository";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
 import { inventoryService } from "../warehouse/inventoryService";
+import { OrderApproved } from "../../models/order/orderApproved";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 
@@ -197,6 +198,8 @@ export const adminService = {
           });
 
           let success;
+
+          await OrderApproved.create({ orderId, approvedBy: req.user.fullName }, { transaction });
 
           if (phiKhac) {
             success = await Inventory.create(

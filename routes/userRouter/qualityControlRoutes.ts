@@ -10,6 +10,7 @@ import {
   updateSession,
 } from "../../controller/user/QC/qcController";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
+import { handleUpdateScrapReport } from "../../controller/user/scrap/scrapReportController";
 
 const router = Router();
 
@@ -25,5 +26,8 @@ router.put("/result", authorizeAnyPermission(["QC"]), authenticate, updateResult
 
 //==================ORCHESTRATOR=======================
 router.post("/submit", authenticate, authorizeAnyPermission(["QC"]), submitQC);
+
+//==================SCRAP REPORT====================
+router.put("/scrap-report", authenticate, authorizeAnyPermission(["QC"]), handleUpdateScrapReport);
 
 export default router;

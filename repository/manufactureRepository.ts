@@ -177,6 +177,13 @@ export const manufactureRepo = {
         "shiftProduction",
         "shiftManagement",
       ],
+      include: [
+        {
+          model: Order,
+          attributes: ["dayReceiveOrder", "flute"],
+          include: [{ model: Customer, attributes: ["customerName"] }],
+        },
+      ],
       order: [["sortPlanning", "ASC"]],
       transaction,
     });

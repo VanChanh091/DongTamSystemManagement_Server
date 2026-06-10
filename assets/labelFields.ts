@@ -51,6 +51,7 @@ const MEILI_INDEX = {
   EMPLOYEES: "employees",
   PLANNING_PAPERS: "planningPapers",
   PLANNING_BOXES: "planningBoxes",
+  SCRAP_REPORTS: "scrapReports",
   INBOUND: "inboundHistories",
   OUTBOUNDS: "outbounds",
   INVENTORIES: "inventories",

@@ -17,6 +17,7 @@ import { warehouseRepository } from "../../../../repository/warehouseRepository"
 import { inventoryRepository } from "../../../../repository/inventoryRepository";
 import { planningBoxRepository } from "../../../../repository/planning/planningBoxRepository";
 import { planningPaperRepository } from "../../../../repository/planning/planningPaperRepository";
+import { scrapReportRepository } from "../../../../repository/scrapReportRepository";
 
 interface SyncMeiliData {
   data: any[];
@@ -159,6 +160,20 @@ export const syncPlanningBoxToMeili = async (isDeleteAll: boolean) => {
     indexName: "planningBoxes",
     displayName: "planningBoxes",
     primaryKey: "planningBoxId",
+    isDeleteAll: isDeleteAll,
+  });
+};
+
+//scrap report
+export const syncScrapReportToMeili = async (isDeleteAll: boolean) => {
+  const scrapReport = await scrapReportRepository.syncAllScrapReportForMeili({});
+  const flattenData = scrapReport.map(meiliTransformer.scrapReport);
+
+  return await syncMeiliData({
+    data: flattenData,
+    indexName: "scrapReports",
+    displayName: "scrapReports",
+    primaryKey: "scrapId",
     isDeleteAll: isDeleteAll,
   });
 };

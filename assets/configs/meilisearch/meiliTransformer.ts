@@ -80,6 +80,21 @@ export const meiliTransformer = {
     };
   },
 
+  scrapReport: (db: any) => {
+    const raw = db.get({ plain: true });
+
+    const reportedAtTimestamp = raw.reportedAt
+      ? dayjsUtc.utc(raw.reportedAt).startOf("day").unix()
+      : null;
+
+    return {
+      scrapId: raw.scrapId,
+      reportedBy: raw.reportedBy,
+      reportedAt: reportedAtTimestamp,
+      status: raw.status,
+    };
+  },
+
   reportPaper: (db: any) => {
     const raw = db.get({ plain: true });
 

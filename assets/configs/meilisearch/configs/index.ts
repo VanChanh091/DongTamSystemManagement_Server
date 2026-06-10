@@ -13,6 +13,7 @@ import {
   productsSettings,
   reportBoxSettings,
   reportPaperSettings,
+  scrapReportSettings,
 } from "./meilisearch.config";
 
 export const setupMeilisearch = async () => {
@@ -23,6 +24,7 @@ export const setupMeilisearch = async () => {
     meiliClient.index("employees").updateSettings(employeesSettings),
     meiliClient.index("planningPapers").updateSettings(planningPaperSettings),
     meiliClient.index("planningBoxes").updateSettings(planningBoxSettings),
+    meiliClient.index("scrapReports").updateSettings(scrapReportSettings),
     meiliClient.index("inboundHistories").updateSettings(inboundSettings),
     meiliClient.index("outbounds").updateSettings(outboundSettings),
     meiliClient.index("inventories").updateSettings(inventorySettings),

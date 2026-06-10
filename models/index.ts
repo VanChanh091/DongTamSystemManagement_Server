@@ -15,6 +15,7 @@ import { initEmployeeBasicInfoModel } from "./employee/employeeBasicInfo";
 import { initEmployeeCompanyInfoModel } from "./employee/employeeCompanyInfo";
 import { initBoxModel } from "./order/box";
 import { initOrderModel } from "./order/order";
+import { initOrderApprovedModel } from "./order/orderApproved";
 import { initOrderImageModel } from "./order/orderImage";
 import { initPlanningBoxModel } from "./planning/planningBox";
 import { initPlanningBoxTimeModel } from "./planning/planningBoxMachineTime";
@@ -45,8 +46,9 @@ const CustomerPayment = initCustomerPaymentModel(sequelize);
 
 //order
 const Order = initOrderModel(sequelize);
-const Box = initBoxModel(sequelize);
 const OrderImage = initOrderImageModel(sequelize);
+const OrderApproved = initOrderApprovedModel(sequelize);
+const Box = initBoxModel(sequelize);
 
 //planning
 const PlanningPaper = initPlanningPaperModel(sequelize);
@@ -104,6 +106,7 @@ const models = {
 
   //order
   Order,
+  OrderApproved,
   Box,
   OrderImage,
 
@@ -172,6 +175,9 @@ Box.belongsTo(Order, { foreignKey: "orderId" });
 
 Order.hasOne(OrderImage, { foreignKey: "orderId", onDelete: "CASCADE" });
 OrderImage.belongsTo(Order, { foreignKey: "orderId" });
+
+Order.hasMany(OrderApproved, { foreignKey: "orderId", onDelete: "CASCADE" });
+OrderApproved.belongsTo(Order, { foreignKey: "orderId" });
 
 //===============================USER=================================
 User.hasMany(Order, { foreignKey: "userId" });
