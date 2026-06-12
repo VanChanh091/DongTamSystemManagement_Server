@@ -199,7 +199,7 @@ export const planningPaperRepository = {
       where: {
         chooseMachine: machine,
         status: { [Op.notIn]: ["complete", "stop", "cancel"] },
-        statusRequest: { [Op.in]: ["none", "requested"] },
+        statusRequest: { [Op.ne]: 'delivered' },
         sortPlanning: { [Op.ne]: null },
 
         //qtyProduced < quantityManufacture

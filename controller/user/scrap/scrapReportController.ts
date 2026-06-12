@@ -32,7 +32,7 @@ export const getAllScrapReports = async (req: Request, res: Response, next: Next
         page: Number(page),
         pageSize: Number(pageSize),
         status,
-        machine,
+        machine: machine!,
       });
     } else {
       response = await scrapReportService.getScrapReportWaitingCheck();

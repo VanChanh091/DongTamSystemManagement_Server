@@ -30,6 +30,7 @@ const CACHE_CONFIG = {
   // report
   reportPaper: ["reportPaper:"],
   reportBox: ["reportBox:"],
+  reportScrap: ["reportScrap:"],
 
   //dashboard
   dbPlanning: ["dashboard:planning:", "dashboard:search:all"],
@@ -121,6 +122,7 @@ export const CacheManager = {
       //report
       reportPaper: CacheKey.report.paper.lastUpdated,
       reportBox: CacheKey.report.box.lastUpdated,
+      reportScrap: CacheKey.report.scrap.lastUpdated,
 
       //dashboard
       dbPlanning: CacheKey.dashboard.planning.lastUpdated,

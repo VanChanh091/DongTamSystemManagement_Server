@@ -9,6 +9,7 @@ interface InventoryAttributes {
   totalQtyInbound: number;
   totalQtyOutbound: number;
   qtyInventory: number;
+  qtyVariance?: number;
   valueInventory: number;
   dateInbound?: Date;
 
@@ -41,6 +42,7 @@ export class Inventory
   declare totalQtyInbound: number;
   declare totalQtyOutbound: number;
   declare qtyInventory: number;
+  declare qtyVariance?: number;
   declare valueInventory: number;
   declare dateInbound?: Date;
 
@@ -62,6 +64,7 @@ export function initInventoryModel(sequelize: Sequelize): typeof Inventory {
       totalQtyInbound: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
       totalQtyOutbound: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
       qtyInventory: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+      qtyVariance: { type: DataTypes.INTEGER },
       valueInventory: { type: DataTypes.DOUBLE, allowNull: false, defaultValue: 0 },
       dateInbound: { type: DataTypes.DATE },
 

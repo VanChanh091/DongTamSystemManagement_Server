@@ -14,6 +14,12 @@ import { manufactureRepo } from "../repository/manufactureRepository";
 import { meiliClient } from "../assets/configs/connect/meilisearch.connect";
 import { scrapReportRepository } from "../repository/scrapReportRepository";
 import { meiliTransformer } from "../assets/configs/meilisearch/meiliTransformer";
+import { CacheManager } from "../utils/helper/cache/cacheManager";
+import redisCache from "../assets/configs/connect/redis.connect";
+import { CacheKey } from "../utils/helper/cache/cacheKey";
+
+const devEnvironment = process.env.NODE_ENV !== "production";
+const { scrap } = CacheKey.report;
 
 export const scrapReportService = {
   getScrapReportWaitingCheck: async () => {
@@ -45,29 +51,27 @@ export const scrapReportService = {
     page: number;
     pageSize: number;
     status: string;
-    machine?: string;
+    machine: string;
   }) => {
     try {
-      // const { isChanged } = await CacheManager.check(
-      //   [{ model: EmployeeBasicInfo }, { model: EmployeeCompanyInfo }],
-      //   "employee",
-      // );
+      // const cacheKey = scrap.all(machine, status, page);
+      // const { isChanged } = await CacheManager.check([{ model: ScrapReport }], "reportScrap");
 
       // if (isChanged) {
-      //   await CacheManager.clear("employee");
+      //   await CacheManager.clear("reportScrap");
       // } else {
       //   const cachedData = await redisCache.get(cacheKey);
       //   if (cachedData) {
-      //     if (devEnvironment) console.log("✅ Data Employees from Redis");
+      //     if (devEnvironment) console.log("✅ Data Scrap Reports from Redis");
       //     const parsed = JSON.parse(cachedData);
-      //     return { ...parsed, message: `Get all employees from cache` };
+      //     return { ...parsed, message: `Get all scrap reports from cache` };
       //   }
       // }
 
       const options = scrapReportRepository.buildScrapReportOptions({
         page,
         pageSize,
-        whereCondition: { status, machine },
+        whereCondition: { machine, status },
       });
       const { rows, count } = await ScrapReport.findAndCountAll(options);
 
@@ -79,7 +83,7 @@ export const scrapReportService = {
         currentPage: page,
       };
 
-      //  await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+      // await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
 
       return responseData;
     } catch (error) {
@@ -380,7 +384,6 @@ export const scrapReportService = {
           attributes: { exclude: ["createdAt", "updatedAt"] },
           transaction,
         });
-
         if (scrapReports.length === 0) {
           throw AppError.BadRequest("Scrap reports not found", "SCRAP_REPORTS_NOT_FOUND");
         }
@@ -393,10 +396,33 @@ export const scrapReportService = {
           );
         }
 
+        const dateStr = dayjsUtc(dayCompleted).format("YYYY-MM-DD");
+        const startDay = dayjsUtc.utc(dateStr).startOf("day").toDate();
+        const endDay = dayjsUtc.utc(dateStr).endOf("day").toDate();
+
+        const missingScrap = await ScrapReport.findOne({
+          where: {
+            machine,
+            dayCompleted: { [Op.between]: [startDay, endDay] },
+            shiftProduction,
+            status: "confirmed",
+            scrapId: { [Op.notIn]: scrapId },
+          },
+          transaction,
+        });
+
+        if (missingScrap) {
+          throw AppError.BadRequest(
+            "Có báo cáo phế liệu cùng ca chưa được chọn. Vui lòng chọn đầy đủ để phân bổ!",
+            "MISSING_SCRAP_REPORTS_IN_BATCH",
+          );
+        }
+
         const totalQtyScrap = scrapReports.reduce(
           (sum, r) => sum + Number(r.qtyProduction || 0),
           0,
         );
+
         await scrapReportService.reportWasteNormPaper({
           machine,
           dayCompleted,
@@ -444,9 +470,6 @@ export const scrapReportService = {
         transaction,
       });
 
-      // console.log(`length: ${plannings.length}`);
-      // console.log(`plannings: ${JSON.stringify(plannings[0])}`);
-
       if (plannings.length === 0) {
         throw AppError.NotFound(
           "No production reports found for this date and shift",
@@ -479,21 +502,27 @@ export const scrapReportService = {
         const planning = plannings[i];
         const pId = planning.planningId;
 
+        // Tìm các Report của planning này
+        const planningReports = reportsGroupedByPlanning.get(pId) || [];
+        const latestReport = planningReports[0];
+
+        // Tính tổng số phế liệu ĐÃ ĐƯỢC PHÂN BỔ ở các ca trước (loại trừ report hiện tại)
+        const alreadyAllocated = planningReports
+          .filter((r) => r.reportPaperId !== latestReport?.reportPaperId)
+          .reduce((sum, r) => sum + Number(r.qtyWasteNorm || 0), 0);
+
+        // Tính định mức còn lại có thể phân bổ (Ví dụ: 30 - 19 = 11)
         const norm = Number(planning.totalLoss || 0);
+        const availableNorm = Math.max(0, norm - alreadyAllocated);
+
         let allocatedWaste = 0;
 
-        if (i === totalItems - 1) {
-          allocatedWaste = remainingWaste; // Thằng cuối cùng ôm trọn phần còn lại
-        } else {
-          allocatedWaste = Math.round(Math.min(remainingWaste, norm) * 100) / 100;
-        }
+        i === totalItems - 1
+          ? (allocatedWaste = remainingWaste) // nếu là đơn cuối thì ôm toàn bộ số lượng phế liệu
+          : (allocatedWaste = Math.round(Math.min(remainingWaste, availableNorm) * 100) / 100);
 
         remainingWaste = Math.round((remainingWaste - allocatedWaste) * 100) / 100;
         if (remainingWaste < 0) remainingWaste = 0;
-
-        // Tìm đúng Row Report của ca hiện tại dựa trên planningId + ngày + ca
-        const planningReports = reportsGroupedByPlanning.get(pId) || [];
-        const latestReport = planningReports[0];
 
         // Nếu tìm thấy report của ca này, cập nhật số lượng phế liệu đã phân bổ vào report
         if (latestReport) {

@@ -591,6 +591,7 @@ export const deliveryRepository = {
       where: { status: { [Op.notIn]: ["cancelled", "completed"] } },
       attributes: ["deliveryItemId"],
       include: [
+        { model: DeliveryPlan, attributes: ["deliveryDate"] },
         {
           model: DeliveryRequest,
           required: true,
@@ -611,7 +612,7 @@ export const deliveryRepository = {
                     "lengthPaperManufacture",
                     "paperSizeManufacture",
                   ],
-                  include: [{ model: Customer, attributes: ["companyName"] }],
+                  include: [{ model: Customer, attributes: ["customerName"] }],
                 },
               ],
             },

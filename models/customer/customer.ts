@@ -16,7 +16,6 @@ interface CustomerAttributes {
   mst?: string | null;
   phone?: string | null;
   contactPerson?: string | null;
-  dayCreated?: Date | null;
   rateCustomer?: string | null;
 
   createdAt?: Date;
@@ -26,14 +25,7 @@ interface CustomerAttributes {
 //cho phép bỏ qua id khi tạo
 export type CustomerCreationAttributes = Optional<
   CustomerAttributes,
-  | "distance"
-  | "mst"
-  | "phone"
-  | "contactPerson"
-  | "dayCreated"
-  | "rateCustomer"
-  | "createdAt"
-  | "updatedAt"
+  "distance" | "mst" | "phone" | "contactPerson" | "rateCustomer" | "createdAt" | "updatedAt"
 >;
 
 //định nghĩa kiểu OOP
@@ -50,7 +42,6 @@ export class Customer
   declare mst?: string | null;
   declare phone?: string | null;
   declare contactPerson?: string | null;
-  declare dayCreated?: Date | null;
   declare rateCustomer?: string | null;
   declare customerSource: string;
   declare cskh: string;
@@ -79,7 +70,6 @@ export function initCustomerModel(sequelize: Sequelize): typeof Customer {
       mst: { type: DataTypes.STRING },
       phone: { type: DataTypes.STRING },
       contactPerson: { type: DataTypes.STRING },
-      dayCreated: { type: DataTypes.DATE },
       rateCustomer: { type: DataTypes.STRING },
       customerSource: { type: DataTypes.STRING, allowNull: false },
       cskh: { type: DataTypes.STRING, allowNull: false },

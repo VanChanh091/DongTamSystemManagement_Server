@@ -98,6 +98,11 @@ export const CacheKey = {
       all: (machine: string, page: number) => `reportBox:planning:${machine}:${page}`,
       lastUpdated: "report:box:lastUpdated",
     },
+    scrap: {
+      all: (machine: string, status: string, page: number) =>
+        `reportScrap:${machine}:${status}:${page}`,
+      lastUpdated: "scrap:report:lastUpdated",
+    },
   },
 
   dashboard: {

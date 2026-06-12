@@ -209,19 +209,14 @@ export const syntheticOrderService = {
             transaction,
           });
 
-          if (papers.length === 0) {
-            throw AppError.NotFound(
-              "No planning papers found for the regular orders",
-              "PLANNING_PAPERS_NOT_FOUND",
-            );
-          }
-
-          const hasZeroQty = papers.some((p) => p.qtyProduced === null || p.qtyProduced === 0);
-          if (hasZeroQty) {
-            throw AppError.BadRequest(
-              "Không thể hoàn thành đơn hàng khi có số lượng chưa sản xuất",
-              "ZERO_QTY_PRODUCED",
-            );
+          if (papers.length > 0) {
+            const hasZeroQty = papers.some((p) => p.qtyProduced === null || p.qtyProduced === 0);
+            if (hasZeroQty) {
+              throw AppError.BadRequest(
+                "Không thể hoàn thành đơn hàng khi có số lượng chưa sản xuất",
+                "ZERO_QTY_PRODUCED",
+              );
+            }
           }
 
           distinctPaperIds = papers.map((p) => p.planningId);
