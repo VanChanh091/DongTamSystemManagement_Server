@@ -55,7 +55,7 @@ export const syntheticOrderService = {
       const data = await syntheticRepository.getPlanningBoxDetail(orderId);
 
       if (!data) {
-        throw AppError.NotFound("Planning box not found", "PLANNING_BOX_NOT_FOUND");
+        return { message: "No planning box found for this order", data: null };
       }
 
       return { message: "Get box detail successfully", data };
@@ -226,13 +226,30 @@ export const syntheticOrderService = {
             transaction,
           });
 
-          const isNegativeInv = inventories.some((inv) => inv.valueInventory < 0);
+          // const isNegativeInv = inventories.some((inv) => inv.valueInventory < 0);
 
-          if (isNegativeInv && !allowNegativeInv) {
-            return {
-              message: "Có đơn hàng tồn kho bị âm. Tiếp tục để hoàn thành các đơn này",
-              allowNegativeInv: true,
-            };
+          // if (isNegativeInv && !allowNegativeInv) {
+          //   return {
+          //     message: "Có đơn hàng tồn kho bị âm. Tiếp tục để hoàn thành các đơn này",
+          //     allowNegativeInv: true,
+          //   };
+          // }
+
+          // lọc và map dữ liệu tồn kho âm để cập nhật
+          const inventoryUpdates = inventories
+            .filter((inv) => inv.qtyInventory < 0)
+            .map((inv) => ({
+              orderId: inv.orderId,
+              inventoryId: inv.inventoryId,
+              qtyVariance: (inv.qtyVariance || 0) + inv.qtyInventory,
+              qtyInventory: 0,
+            }));
+
+          if (inventoryUpdates.length > 0) {
+            await Inventory.bulkCreate(inventoryUpdates, {
+              updateOnDuplicate: ["qtyInventory", "qtyVariance"], // Chỉ cập nhật 2 cột này khi trùng ID
+              transaction,
+            });
           }
         }
 

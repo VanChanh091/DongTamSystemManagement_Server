@@ -54,19 +54,19 @@ export const scrapReportService = {
     machine: string;
   }) => {
     try {
-      // const cacheKey = scrap.all(machine, status, page);
-      // const { isChanged } = await CacheManager.check([{ model: ScrapReport }], "reportScrap");
+      const cacheKey = scrap.all(machine, status, page);
+      const { isChanged } = await CacheManager.check([{ model: ScrapReport }], "reportScrap");
 
-      // if (isChanged) {
-      //   await CacheManager.clear("reportScrap");
-      // } else {
-      //   const cachedData = await redisCache.get(cacheKey);
-      //   if (cachedData) {
-      //     if (devEnvironment) console.log("✅ Data Scrap Reports from Redis");
-      //     const parsed = JSON.parse(cachedData);
-      //     return { ...parsed, message: `Get all scrap reports from cache` };
-      //   }
-      // }
+      if (isChanged) {
+        await CacheManager.clear("reportScrap");
+      } else {
+        const cachedData = await redisCache.get(cacheKey);
+        if (cachedData) {
+          if (devEnvironment) console.log("✅ Data Scrap Reports from Redis");
+          const parsed = JSON.parse(cachedData);
+          return { ...parsed, message: `Get all scrap reports from cache` };
+        }
+      }
 
       const options = scrapReportRepository.buildScrapReportOptions({
         page,

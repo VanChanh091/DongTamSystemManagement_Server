@@ -20,7 +20,7 @@ interface InventoryAttributes {
   orderId: string;
 }
 
-//cho phép bỏ qua id khi tạo
+//cho phép bỏ qua khi tạo
 export type InventoryCreationAttributes = Optional<
   InventoryAttributes,
   | "inventoryId"
@@ -29,6 +29,7 @@ export type InventoryCreationAttributes = Optional<
   | "qtyInventory"
   | "valueInventory"
   | "dateInbound"
+  | "qtyVariance"
   | "createdAt"
   | "updatedAt"
 >;

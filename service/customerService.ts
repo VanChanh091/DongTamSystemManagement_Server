@@ -91,7 +91,7 @@ export const customerService = {
     endDate,
   }: searchFieldAtribute) => {
     try {
-      const validFields = ["customerId", "customerName", "cskh", "phone", "dayCreated"];
+      const validFields = ["customerId", "customerName", "cskh", "phone", "createdAt"];
       if (!validFields.includes(field)) {
         throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
       }
@@ -102,15 +102,15 @@ export const customerService = {
       let searchKeyword = keyword;
       let filters = [];
 
-      if (field === "dayCreated") {
+      if (field === "createdAt") {
         searchKeyword = "";
 
         if (startDate && endDate) {
           const startTimestamp = dayjsUtc.utc(startDate).startOf("day").unix();
-          filters.push(`dayCreated >= ${startTimestamp}`);
+          filters.push(`createdAt >= ${startTimestamp}`);
 
           const endTimestamp = dayjsUtc.utc(endDate).endOf("day").unix();
-          filters.push(`dayCreated <= ${endTimestamp}`);
+          filters.push(`createdAt <= ${endTimestamp}`);
         }
 
         // console.log(`start: ${startDate} - end: ${endDate}`);

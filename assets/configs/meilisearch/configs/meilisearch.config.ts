@@ -4,9 +4,9 @@ const rule = ["words", "typo", "proximity", "attribute", "sort", "exactness"];
 
 //customer
 export const customersSettings: Settings = {
-  searchableAttributes: ["customerId", "customerName", "cskh", "phone", "dayCreated"],
+  searchableAttributes: ["customerId", "customerName", "cskh", "phone", "createdAt"],
   sortableAttributes: ["customerSeq"],
-  filterableAttributes: ["dayCreated"],
+  filterableAttributes: ["createdAt"],
   rankingRules: rule,
 };
 

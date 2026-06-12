@@ -112,7 +112,7 @@ export const customerRepository = {
         "companyName",
         "cskh",
         "phone",
-        "dayCreated",
+        "createdAt",
         "customerSeq",
       ],
       order: [["customerSeq", "ASC"]],

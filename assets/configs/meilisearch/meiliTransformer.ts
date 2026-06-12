@@ -4,13 +4,13 @@ export const meiliTransformer = {
   customer: (customer: any) => {
     const raw = customer.get({ plain: true });
 
-    const dayCreatedTimestamp = raw.dayCreated
-      ? dayjsUtc.utc(raw.dayCreated).startOf("day").unix()
+    const createdAtTimestamp = raw.createdAt
+      ? dayjsUtc.utc(raw.createdAt).startOf("day").unix()
       : null;
 
     return {
       ...raw,
-      dayCreated: dayCreatedTimestamp,
+      createdAt: createdAtTimestamp,
     };
   },
 
