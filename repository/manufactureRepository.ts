@@ -71,6 +71,7 @@ export const manufactureRepo = {
             "QC_box",
             "canLan",
             "daoXa",
+            "dvt",
             "quantityManufacture",
             "dateRequestShipping",
             "instructSpecial",
@@ -98,7 +99,10 @@ export const manufactureRepo = {
       where: { planningId },
       include: [
         { model: timeOverflowPlanning, as: "timeOverFlow" },
-        { model: Order, attributes: ["quantityCustomer", "quantityManufacture", "pricePaper"] },
+        {
+          model: Order,
+          attributes: ["quantityCustomer", "quantityManufacture", "pricePaper", "dvt"],
+        },
       ],
       transaction,
       lock: transaction?.LOCK.UPDATE,

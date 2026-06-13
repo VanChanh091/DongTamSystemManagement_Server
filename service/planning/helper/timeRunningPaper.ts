@@ -9,7 +9,7 @@ import { planningPaperRepository } from "../../../repository/planning/planningPa
 // Trong đó:
 // A: Thời gian thay đổi kích thước (phút) (nếu đơn đầu tiên trong ngày thì luôn tính thời gian thay đổi kích thước (30p))
 // B: Thời gian thay đổi cùng kích thước (phút) (nếu đơn cùng khổ ghép với đơn trước đó thì tính thời gian này (5p), ngược lại tính thời gian thay đổi kích thước)
-// Tổng dài: tổng dài cần chạy (mét) = tổng sl khách đặt / số con
+// Tổng dài: tổng dài cần chạy (mét) = (số lượng chạy * dài khổ) / số con
 // Tốc độ: tốc độ máy theo lớp giấy (mét/phút) -> lấy từ thông số máy
 // Hiệu suất: hiệu suất máy (%)
 
@@ -273,6 +273,7 @@ const calculateTimeForOnePlanning = async ({
     currentDay.setHours(0, 0, 0, 0);
   }
 
+  //xử lý tràn giờ
   const result = await handleOverflow({
     hasOverFlow,
     predictedEnd,
@@ -288,6 +289,7 @@ const calculateTimeForOnePlanning = async ({
     data: {
       dayStart: new Date(result.dayStart), // result.dayStart đã an toàn khỏi lỗi Timezone
       timeRunning: result.timeRunning,
+      timeStart: timeStart,
       hasOverFlow,
     },
     options: { where: { planningId }, transaction },

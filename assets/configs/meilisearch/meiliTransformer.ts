@@ -41,6 +41,7 @@ export const meiliTransformer = {
       QC_box: raw.QC_box,
       customerName: raw.Customer?.customerName,
       productName: raw.Product?.productName,
+      fullName: raw.User?.fullName,
 
       //filterable
       status: raw.status,

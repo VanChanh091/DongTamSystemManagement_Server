@@ -85,7 +85,7 @@ export const syntheticOrderService = {
     endDate?: string;
   }) => {
     try {
-      const validFields = ["orderId", "customerName", "dayReceiveOrder"];
+      const validFields = ["orderId", "customerName", "dayReceiveOrder", "fullName"];
       if (!validFields.includes(field)) {
         throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
       }
@@ -169,7 +169,7 @@ export const syntheticOrderService = {
       return await runInTransaction(async (transaction) => {
         const orders = await Order.findAll({
           where: { orderId: { [Op.in]: orderIds } },
-          attributes: ["orderId", "orderSortValue", "status"],
+          attributes: ["orderId", "orderSortValue", "status", "quantityManufacture"],
           include: [{ model: Product, attributes: ["typeProduct"] }],
           transaction,
         });
@@ -183,7 +183,9 @@ export const syntheticOrderService = {
         const regularOrders = orders.filter((o: any) => o.Product?.typeProduct !== "Phí Khác");
         const regularOrderIds = regularOrders.map((o) => o.orderId);
 
-        const invalidOrder = regularOrders.find((o) => o.status === "accept");
+        const invalidOrder = regularOrders.find(
+          (o) => o.status === "accept" && Number(o.quantityManufacture) !== 0,
+        );
         if (invalidOrder) {
           throw AppError.BadRequest(
             `Đơn hàng ${invalidOrder.orderId} chưa được xếp kế hoạch`,

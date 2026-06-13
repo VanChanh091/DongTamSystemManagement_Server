@@ -19,8 +19,10 @@ export type statusDeliveryPlanned = "none" | "pending" | "planned" | "delivered"
 //định nghĩa trường trong bảng
 interface PlanningPaperAttributes {
   planningId: number;
+
   dayStart?: Date | null;
   dayCompleted?: Date | null;
+  timeStart?: string | null;
   timeRunning?: string | null;
 
   dayReplace?: string | null;
@@ -78,6 +80,7 @@ export type PlanningPaperCreationAttributes = Optional<
   | "planningId"
   | "dayStart"
   | "dayCompleted"
+  | "timeStart"
   | "timeRunning"
   | "dayReplace"
   | "matEReplace"
@@ -121,6 +124,7 @@ export class PlanningPaper
 
   declare dayStart?: Date | null;
   declare dayCompleted?: Date | null;
+  declare timeStart?: string | null;
   declare timeRunning?: string | null;
 
   declare dayReplace?: string | null;
@@ -195,6 +199,7 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
           return new Date(rawValue.getTime() - rawValue.getTimezoneOffset() * 60000).toISOString();
         },
       },
+      timeStart: { type: DataTypes.TIME },
       timeRunning: { type: DataTypes.TIME },
 
       //structure replace

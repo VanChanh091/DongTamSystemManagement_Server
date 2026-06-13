@@ -133,6 +133,7 @@ export const orderRepository = {
       include: [
         { model: Customer, attributes: ["customerName"] },
         { model: Product, attributes: ["productName"] },
+        { model: User, attributes: ["fullName"] },
       ],
       transaction,
     };

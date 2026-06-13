@@ -12,6 +12,7 @@ import {
   syncProductToMeili,
   syncReportBoxToMeili,
   syncReportPaperToMeili,
+  syncScrapReportToMeili,
 } from "./syncMeili";
 
 const syncFunctions = [
@@ -28,6 +29,7 @@ const syncFunctions = [
   syncReportBoxToMeili,
   syncDeliveryRequestToMeili,
   syncDashboardToMeili,
+  syncScrapReportToMeili,
 ];
 
 /**

@@ -12,6 +12,7 @@ interface ReportPlanningPaperAttributes {
   shiftProduction: "Ca 1" | "Ca 2" | "Ca 3";
   shiftManagement: string;
   reportedBy: string;
+  averageSpeed: number;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -23,7 +24,13 @@ interface ReportPlanningPaperAttributes {
 //cho phép bỏ qua id khi tạo
 export type ReportPlanningPaperCreationAttributes = Optional<
   ReportPlanningPaperAttributes,
-  "reportPaperId" | "qtyWasteNorm" | "totalPrice" | "shiftProduction" | "createdAt" | "updatedAt"
+  | "reportPaperId"
+  | "qtyWasteNorm"
+  | "totalPrice"
+  | "shiftProduction"
+  | "createdAt"
+  | "updatedAt"
+  | "averageSpeed"
 >;
 
 //định nghĩa kiểu OOP
@@ -40,6 +47,7 @@ export class ReportPlanningPaper
   declare shiftProduction: "Ca 1" | "Ca 2" | "Ca 3";
   declare shiftManagement: string;
   declare reportedBy: string;
+  declare averageSpeed: number;
 
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
@@ -69,6 +77,7 @@ export function initReportPlanningPaperModel(sequelize: Sequelize): typeof Repor
       shiftProduction: { type: DataTypes.ENUM("Ca 1", "Ca 2", "Ca 3"), allowNull: false },
       shiftManagement: { type: DataTypes.STRING, allowNull: false },
       reportedBy: { type: DataTypes.STRING, allowNull: false },
+      averageSpeed: { type: DataTypes.DOUBLE, allowNull: false, defaultValue: 0 },
 
       //FK
       planningId: { type: DataTypes.INTEGER, allowNull: false },
