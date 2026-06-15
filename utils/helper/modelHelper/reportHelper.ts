@@ -1,5 +1,8 @@
 import { Op } from "sequelize";
 import { PlanningPaper } from "../../../models/planning/planningPaper";
+import { DailyReportPerformance } from "../../../models/report/dailyReportPerformance";
+import { sequelize } from "../../../assets/configs/connect/database.connect";
+import { dayjsUtc } from "../../../assets/configs/dayjs/dayjs.config";
 
 export const createReportPlanning = async ({
   planning,
@@ -53,7 +56,6 @@ export const createReportPlanning = async ({
 
   // Tính số lượng còn thiếu
   let lackOfQtyValue = planning.runningPlan - totalProduced;
-  // const totalPrice;
 
   let report;
   if (isBox) {
@@ -100,8 +102,6 @@ export const createReportPlanning = async ({
       const rawDayReport = prevReport.getDataValue("dayReport");
       const prevDateTime = new Date(rawDayReport);
 
-      console.log(`dayReport: ${prevReport.dayReport} - prevDateTime: ${prevDateTime}`);
-
       durationMinutes = (currentDateTime.getTime() - prevDateTime.getTime()) / (1000 * 60);
     } else {
       if (planning.timeStart) {
@@ -110,9 +110,6 @@ export const createReportPlanning = async ({
 
         // Thiết lập lại giờ chạy cho đúng mốc bấm nút START dưới xưởng
         startDateTime.setHours(hours, minutes, seconds || 0, 0);
-
-        console.log(`currentDateTime: ${currentDateTime} - startDateTime: ${startDateTime}`);
-
         durationMinutes = (currentDateTime.getTime() - startDateTime.getTime()) / (1000 * 60);
       } else {
         durationMinutes = 0;
@@ -126,15 +123,17 @@ export const createReportPlanning = async ({
       ? (totalLength = Number(qtyProduced || 0))
       : (totalLength = (Number(qtyProduced || 0) * length) / child);
 
-    speed = durationMinutes > 0 ? Math.round(totalLength / durationMinutes) : 0;
+    const parseTotalLength = Math.round(totalLength * 100) / 100;
+    const parseDuration = Math.ceil(durationMinutes);
 
-    // console.log(`=========================================================`);
+    speed = durationMinutes > 0 ? Math.round((parseTotalLength / parseDuration) * 100) / 100 : 0;
+
     // console.log(`Báo cáo trước đó tồn tại: ${prevReport ? "CÓ" : "KHÔNG (Đầu ngày)"}`);
     // console.log(`Thời gian đơn hiện tại: ${currentDateTime}`);
     // if (prevReport) console.log(`Thời gian đơn trước đó: ${prevReport.getDataValue("dayReport")}`);
+    // console.log(`Thời gian máy chạy thực tế: ${durationMinutes.toFixed(2)} phút`);
     // console.log(`Sản lượng lượt này: ${qtyProduced} | Dài: ${length} | Số con: ${child}`);
     // console.log(`Tổng dài phát sinh: ${totalLength}`);
-    // console.log(`Thời gian máy chạy thực tế: ${durationMinutes.toFixed(2)} phút`);
     // console.log(`Tốc độ lượt này: ${speed} m/p`);
     // console.log(`=========================================================`);
 
@@ -148,10 +147,41 @@ export const createReportPlanning = async ({
         shiftManagement: otherData!.shiftManagement,
         reportedBy: reportedBy,
         totalPrice: totalPrice,
+        totalLength: parseTotalLength,
+        durations: parseDuration,
         averageSpeed: speed,
       },
       { transaction },
     );
+
+    //Ghi dữ liệu vào report performances
+    const machine = planning.chooseMachine;
+    const rawFlute = planning.Order?.flute;
+    const waveLayer = rawFlute ? parseInt(rawFlute, 10) : 0;
+
+    const [affectedRows] = await DailyReportPerformance.update(
+      {
+        totalLength: sequelize.literal(`totalLength + ${parseTotalLength}`),
+        totalDurations: sequelize.literal(`totalDurations + ${parseDuration}`),
+      },
+      {
+        where: {
+          dayReport: currentDateTime,
+          machine: machine,
+          flute: waveLayer,
+        },
+      },
+    );
+
+    if (affectedRows === 0) {
+      await DailyReportPerformance.create({
+        dayReport: dayjsUtc(currentDateTime).toDate(),
+        machine: machine,
+        flute: waveLayer,
+        totalLength: parseTotalLength,
+        totalDurations: parseDuration,
+      });
+    }
   }
 
   return {

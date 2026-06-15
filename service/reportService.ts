@@ -4,8 +4,11 @@ dotenv.config();
 import { Op } from "sequelize";
 import { Response } from "express";
 import { AppError } from "../utils/appError";
+import { CacheKey } from "../utils/helper/cache/cacheKey";
+import { normalizeVN } from "../utils/helper/normalizeVN";
+import { dayjsUtc } from "../assets/configs/dayjs/dayjs.config";
+import redisCache from "../assets/configs/connect/redis.connect";
 import { CacheManager } from "../utils/helper/cache/cacheManager";
-import { ReportPlanningPaper } from "../models/report/reportPlanningPaper";
 import { reportRepository } from "../repository/reportRepository";
 import { ReportPlanningBox } from "../models/report/reportPlanningBox";
 import { exportExcelStreamResponse } from "../utils/helper/excelExporter";
@@ -13,12 +16,10 @@ import {
   mapReportPaperRow,
   reportPaperColumns,
 } from "../utils/mapping/report/reportPaperRowAndColumn";
-import { mapReportBoxRow, reportBoxColumns } from "../utils/mapping/report/reportBoxRowAndColumn";
-import redisCache from "../assets/configs/connect/redis.connect";
-import { CacheKey } from "../utils/helper/cache/cacheKey";
-import { normalizeVN } from "../utils/helper/normalizeVN";
+import { ReportPlanningPaper } from "../models/report/reportPlanningPaper";
 import { meiliClient } from "../assets/configs/connect/meilisearch.connect";
-import { dayjsUtc } from "../assets/configs/dayjs/dayjs.config";
+import { mapReportBoxRow, reportBoxColumns } from "../utils/mapping/report/reportBoxRowAndColumn";
+import { DailyReportPerformance } from "../models/report/dailyReportPerformance";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper, box } = CacheKey.report;
@@ -43,8 +44,71 @@ export const reportService = {
 
       const queryOptions = reportRepository.buildReportPaperOptions({ machine, page, pageSize });
       const { rows, count } = await ReportPlanningPaper.findAndCountAll(queryOptions);
-
       const totalPages = Math.ceil(count / pageSize);
+
+      if (rows.length === 0) {
+        return {
+          message: "No data",
+          data: [],
+          totalPapers: count,
+          totalPages,
+          currentPage: page,
+          summaryByDate: {},
+        };
+      }
+
+      const distinctDates = [
+        ...new Set(
+          rows.map((row: any) => {
+            const rawDayReport = row.getDataValue("dayReport"); //lay gia tri goc tu db
+            return new Date(rawDayReport).toISOString().split("T")[0];
+          }),
+        ),
+      ];
+
+      const perfData = await DailyReportPerformance.findAll({
+        where: { machine, dayReport: { [Op.in]: distinctDates } },
+        attributes: { exclude: ["createdAt", "updatedAt"] },
+        raw: true,
+      });
+
+      const summaryByDate: Record<string, any> = {};
+
+      perfData.forEach((item: any) => {
+        const dateKey = item.dayReport;
+        const flute = item.flute;
+        const length = Number(item.totalLength) || 0;
+        const durations = Number(item.totalDurations) || 0;
+
+        if (!summaryByDate[dateKey]) {
+          summaryByDate[dateKey] = {
+            machineTotalLength: 0,
+            machineTotalDuration: 0,
+            flute: {},
+          };
+        }
+
+        const dayGroup = summaryByDate[dateKey];
+
+        // Tích lũy cho cả máy của ngày đó
+        dayGroup.machineTotalLength += length;
+        dayGroup.machineTotalDuration += durations;
+
+        // Tính tốc độ cho từng loại sóng của ngày đó
+        dayGroup.flute[flute] = durations > 0 ? Math.round((length / durations) * 100) / 100 : 0;
+      });
+
+      Object.keys(summaryByDate).forEach((dateKey) => {
+        const dayGroup = summaryByDate[dateKey];
+        dayGroup.machineSpeed =
+          dayGroup.machineTotalDuration > 0
+            ? Math.round((dayGroup.machineTotalLength / dayGroup.machineTotalDuration) * 100) / 100
+            : 0;
+
+        // Xóa bớt các biến tạm cho cục JSON nhẹ bớt khi gửi qua mạng
+        delete dayGroup.machineTotalLength;
+        delete dayGroup.machineTotalDuration;
+      });
 
       const responseData = {
         message: "get all report planning paper successfully",
@@ -52,6 +116,7 @@ export const reportService = {
         totalPapers: count,
         totalPages,
         currentPage: page,
+        summaryByDate,
       };
 
       await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);

@@ -303,6 +303,23 @@ export const manuPaperService = {
         const totalQtyProduced = Number(otherReportsSum) + Number(newQty);
         const newLackOfQty = planning.runningPlan - totalQtyProduced;
 
+        let newTotalLength = 0;
+        const length = (planning.lengthPaperPlanning || 0) / 100;
+        const child = planning.numberChild || 1;
+
+        // Tính lại tổng chiều dài dựa theo sản lượng mới
+        planning?.Order?.dvt === "Kg"
+          ? (newTotalLength = Number(newQty || 0))
+          : (newTotalLength = (Number(newQty || 0) * length) / child);
+
+        //Lấy lại số phút chạy cũ đã tính từ lúc tạo report
+        const durationMinutes = oldReport.durations || 0;
+        const parseTotalLength = Math.round(newTotalLength * 100) / 100;
+
+        // Tính lại tốc độ bình quân mới cho lượt báo cáo này
+        const newSpeed =
+          durationMinutes > 0 ? Math.round((parseTotalLength / durationMinutes) * 100) / 100 : 0;
+
         //update report paper
         const reportUpdated = await oldReport.update(
           {
@@ -310,6 +327,8 @@ export const manuPaperService = {
             lackOfQty: newLackOfQty,
             reportedBy: employee.fullName,
             totalPrice: Number(newQty) * planning.Order.pricePaper,
+            totalLength: parseTotalLength,
+            averageSpeed: newSpeed,
             ...otherData,
           },
           { transaction },

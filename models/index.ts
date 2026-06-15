@@ -25,6 +25,7 @@ import { initProductModel } from "./product/product";
 import { initQcCriteriaModel } from "./qualityControl/qcCriteria";
 import { initQcSamepleResultModel } from "./qualityControl/qcSampleResult";
 import { initQcSessionModel } from "./qualityControl/qcSession";
+import { initDailyReportModel } from "./report/dailyReportPerformance";
 import { initReportPlanningBoxModel } from "./report/reportPlanningBox";
 import { initReportPlanningPaperModel } from "./report/reportPlanningPaper";
 import { initScrapReportModel } from "./scrap/scrapReport";
@@ -59,6 +60,7 @@ const PlanningBoxTime = initPlanningBoxTimeModel(sequelize);
 //report
 const ReportPlanningPaper = initReportPlanningPaperModel(sequelize);
 const ReportPlanningBox = initReportPlanningBoxModel(sequelize);
+const DailyReportPerformance = initDailyReportModel(sequelize);
 
 //scrap
 const ScrapReport = initScrapReportModel(sequelize);
@@ -119,6 +121,7 @@ const models = {
   //report
   ReportPlanningPaper,
   ReportPlanningBox,
+  DailyReportPerformance,
 
   //scrap
   ScrapReport,

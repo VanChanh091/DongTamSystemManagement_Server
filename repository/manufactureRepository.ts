@@ -101,7 +101,7 @@ export const manufactureRepo = {
         { model: timeOverflowPlanning, as: "timeOverFlow" },
         {
           model: Order,
-          attributes: ["quantityCustomer", "quantityManufacture", "pricePaper", "dvt"],
+          attributes: ["quantityCustomer", "quantityManufacture", "pricePaper", "dvt", "flute"],
         },
       ],
       transaction,
@@ -137,11 +137,13 @@ export const manufactureRepo = {
         "status",
         "hasBox",
         "orderId",
+        "lengthPaperPlanning",
+        "numberChild",
       ],
       include: [
         {
           model: Order,
-          attributes: ["orderId", "quantityCustomer", "quantityManufacture", "pricePaper"],
+          attributes: ["orderId", "quantityCustomer", "quantityManufacture", "pricePaper", "dvt"],
         },
       ],
       transaction,
