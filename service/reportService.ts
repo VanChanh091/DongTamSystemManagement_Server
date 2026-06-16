@@ -19,7 +19,10 @@ import {
 import { ReportPlanningPaper } from "../models/report/reportPlanningPaper";
 import { meiliClient } from "../assets/configs/connect/meilisearch.connect";
 import { mapReportBoxRow, reportBoxColumns } from "../utils/mapping/report/reportBoxRowAndColumn";
-import { DailyReportPerformance } from "../models/report/dailyReportPerformance";
+import {
+  getPerformanceSearchSummary,
+  getPerformanceSummaryByRows,
+} from "../utils/helper/modelHelper/reportHelper";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper, box } = CacheKey.report;
@@ -57,58 +60,7 @@ export const reportService = {
         };
       }
 
-      const distinctDates = [
-        ...new Set(
-          rows.map((row: any) => {
-            const rawDayReport = row.getDataValue("dayReport"); //lay gia tri goc tu db
-            return new Date(rawDayReport).toISOString().split("T")[0];
-          }),
-        ),
-      ];
-
-      const perfData = await DailyReportPerformance.findAll({
-        where: { machine, dayReport: { [Op.in]: distinctDates } },
-        attributes: { exclude: ["createdAt", "updatedAt"] },
-        raw: true,
-      });
-
-      const summaryByDate: Record<string, any> = {};
-
-      perfData.forEach((item: any) => {
-        const dateKey = item.dayReport;
-        const flute = item.flute;
-        const length = Number(item.totalLength) || 0;
-        const durations = Number(item.totalDurations) || 0;
-
-        if (!summaryByDate[dateKey]) {
-          summaryByDate[dateKey] = {
-            machineTotalLength: 0,
-            machineTotalDuration: 0,
-            flute: {},
-          };
-        }
-
-        const dayGroup = summaryByDate[dateKey];
-
-        // Tích lũy cho cả máy của ngày đó
-        dayGroup.machineTotalLength += length;
-        dayGroup.machineTotalDuration += durations;
-
-        // Tính tốc độ cho từng loại sóng của ngày đó
-        dayGroup.flute[flute] = durations > 0 ? Math.round((length / durations) * 100) / 100 : 0;
-      });
-
-      Object.keys(summaryByDate).forEach((dateKey) => {
-        const dayGroup = summaryByDate[dateKey];
-        dayGroup.machineSpeed =
-          dayGroup.machineTotalDuration > 0
-            ? Math.round((dayGroup.machineTotalLength / dayGroup.machineTotalDuration) * 100) / 100
-            : 0;
-
-        // Xóa bớt các biến tạm cho cục JSON nhẹ bớt khi gửi qua mạng
-        delete dayGroup.machineTotalLength;
-        delete dayGroup.machineTotalDuration;
-      });
+      const summaryByDate = await getPerformanceSummaryByRows(rows, machine);
 
       const responseData = {
         message: "get all report planning paper successfully",
@@ -206,12 +158,15 @@ export const reportService = {
         .map((id) => result.find((r) => r.reportPaperId === id))
         .filter(Boolean);
 
+      const summaryByDate = getPerformanceSearchSummary(finalData);
+
       return {
         message: "Get orders from Meilisearch & DB successfully",
         data: finalData,
         totalPapers: searchResult.totalHits,
         totalPages: searchResult.totalPages,
         currentPage: page,
+        summaryByDate,
       };
     } catch (error) {
       console.error(`Failed to get report paper by ${field}:`, error);

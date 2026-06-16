@@ -4,6 +4,124 @@ import { DailyReportPerformance } from "../../../models/report/dailyReportPerfor
 import { sequelize } from "../../../assets/configs/connect/database.connect";
 import { dayjsUtc } from "../../../assets/configs/dayjs/dayjs.config";
 
+interface UnifiedPerfInput {
+  dateKey: string;
+  fluteLayer: number;
+  length: number;
+  duration: number;
+}
+
+// Hàm làm tròn số thông minh
+const smartRound = (val: number): number => {
+  const nextInteger = Math.ceil(val); // Lấy số nguyên kế tiếp
+  const distance = nextInteger - val; // Khoảng cách còn thiếu
+
+  // Nếu chỉ thiếu từ 0.03 trở xuống thì làm tròn lên hẳn số nguyên đó
+  if (distance > 0 && distance <= 0.03) return nextInteger;
+
+  return Number(val.toFixed(2));
+};
+
+//CORE LÕI TÍNH TOÁN CHUNG CHO CẢ 2 HÀM LẤY DỮ LIỆU KHÁC NHAU
+const calculatePerformanceSummary = (unifiedData: UnifiedPerfInput[]): Record<string, any> => {
+  const summaryByDate: Record<string, any> = {};
+
+  unifiedData.forEach(({ dateKey, fluteLayer, length, duration }) => {
+    if (!summaryByDate[dateKey]) {
+      summaryByDate[dateKey] = {
+        machineTotalLength: 0,
+        machineTotalDuration: 0,
+        flute: {},
+        fluteTotals: {}, // Dùng chung biến tạm cho cả 2 luồng luôn
+      };
+    }
+
+    const dayGroup = summaryByDate[dateKey];
+    dayGroup.machineTotalLength += length;
+    dayGroup.machineTotalDuration += duration;
+
+    if (!isNaN(fluteLayer)) {
+      if (!dayGroup.fluteTotals[fluteLayer]) {
+        dayGroup.fluteTotals[fluteLayer] = { length: 0, duration: 0 };
+      }
+      dayGroup.fluteTotals[fluteLayer].length += length;
+      dayGroup.fluteTotals[fluteLayer].duration += duration;
+    }
+  });
+
+  // Tính toán kết quả cuối cùng
+  Object.keys(summaryByDate).forEach((dateKey) => {
+    const dayGroup = summaryByDate[dateKey];
+
+    dayGroup.machineSpeed =
+      dayGroup.machineTotalDuration > 0
+        ? smartRound(dayGroup.machineTotalLength / dayGroup.machineTotalDuration)
+        : 0;
+
+    Object.keys(dayGroup.fluteTotals).forEach((wave) => {
+      const { length, duration } = dayGroup.fluteTotals[wave];
+      dayGroup.flute[wave] = duration > 0 ? smartRound(length / duration) : 0;
+    });
+
+    // Clean các biến tạm
+    delete dayGroup.machineTotalLength;
+    delete dayGroup.machineTotalDuration;
+    delete dayGroup.fluteTotals;
+  });
+
+  return summaryByDate;
+};
+
+// HÀM 1: Dùng cho get all - lấy từ daily report performance
+export const getPerformanceSummaryByRows = async (
+  rows: any[],
+  machine: string,
+): Promise<Record<string, any>> => {
+  if (!rows || rows.length === 0) return {};
+
+  const distinctDates = [
+    ...new Set(rows.map((r: any) => new Date(r.dayReport).toISOString().split("T")[0])),
+  ];
+
+  const perfData = await DailyReportPerformance.findAll({
+    where: { machine, dayReport: { [Op.in]: distinctDates } },
+    attributes: { exclude: ["createdAt", "updatedAt"] },
+    raw: true,
+  });
+
+  // Chuẩn hóa data từ bảng phụ về dạng chung
+  const unifiedData: UnifiedPerfInput[] = perfData.map((item: any) => ({
+    dateKey: item.dayReport,
+    fluteLayer: parseInt(item.flute),
+    length: Number(item.totalLength) || 0,
+    duration: Number(item.totalDurations) || 0,
+  }));
+
+  // Đẩy vào lõi tính toán
+  return calculatePerformanceSummary(unifiedData);
+};
+
+// HÀM 2: Lấy trực tiếp từ kết quả Meilisearch để tính toán
+export const getPerformanceSearchSummary = (searchRows: any[]): Record<string, any> => {
+  if (!searchRows || searchRows.length === 0) return {};
+
+  // Chuẩn hóa data từ các đơn hàng về dạng chung
+  const unifiedData: UnifiedPerfInput[] = searchRows.map((row: any) => {
+    const fluteRaw = row.PlanningPaper?.Order?.flute || "";
+
+    return {
+      dateKey: new Date(row.dayReport).toISOString().split("T")[0],
+      fluteLayer: parseInt(fluteRaw.charAt(0)),
+      length: Number(row.totalLength) || 0,
+      duration: Number(row.durations) || 0,
+    };
+  });
+
+  // Đẩy vào lõi tính toán
+  return calculatePerformanceSummary(unifiedData);
+};
+
+// HÀM 3: Tạo báo cáo mới và cập nhật performance
 export const createReportPlanning = async ({
   planning,
   model,
