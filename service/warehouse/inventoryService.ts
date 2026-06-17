@@ -344,7 +344,6 @@ export const inventoryService = {
         await inventory.update(
           {
             qtyInventory: inventory.qtyInventory - qtyTransfer,
-            totalQtyOutbound: inventory.totalQtyOutbound + qtyTransfer,
             valueInventory: inventory.valueInventory - transferValue,
           },
           { transaction },

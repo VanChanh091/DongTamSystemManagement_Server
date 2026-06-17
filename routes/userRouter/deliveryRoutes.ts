@@ -3,7 +3,6 @@ import authenticate from "../../middlewares/authMiddleware";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 import {
   cancelOrCompleteDeliveryPlan,
-  confirmForDeliveryPlanning,
   handlePostDeliveryRequest,
   exportScheduleDelivery,
   getAllScheduleDelivery,
@@ -14,6 +13,7 @@ import {
   notifyPrepareGoods,
   requestOrPreparedGoods,
   getDeliveryItemsByOrderId,
+  implementDeliveryPlan,
 } from "../../controller/user/delivery/deliveryController";
 
 const router = Router();
@@ -32,7 +32,7 @@ router.put("/estimate", authenticate, authorizeAnyPermission(["plan", "sale"]), 
 
 router.get("/planning", authenticate, getPlanningRequest);
 router.post("/planning", authenticate, authorizeAnyPermission(["plan"]), handlePostDeliveryRequest);
-router.put("/planning", authenticate, authorizeAnyPermission(["plan"]), confirmForDeliveryPlanning);
+router.put("/planning", authenticate, authorizeAnyPermission(["plan"]), implementDeliveryPlan);
 
 //=================================SCHEDULE DELIVERY=====================================
 router.get("/schedule", authenticate, getAllScheduleDelivery);

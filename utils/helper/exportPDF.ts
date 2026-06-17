@@ -687,6 +687,6 @@ function formatDate(date: Date | string) {
 export function formatDimension(value?: number): string {
   if (value == null) return "0000";
 
-  const num = Math.round(value * 10); // 62.5 -> 625
+  const num = Math.trunc(value * 10); // 62.5 -> 625
   return String(num).padStart(4, "0");
 }

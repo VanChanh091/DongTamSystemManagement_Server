@@ -310,13 +310,19 @@ export const reportService = {
   },
 
   //====================================EXPORT EXCEL========================================
-  exportReportPaper: async (
-    res: Response,
-    fromDate: string | Date,
-    toDate: string | Date,
-    machine: string,
-    userName: string,
-  ) => {
+  exportReportPaper: async ({
+    res,
+    fromDate,
+    toDate,
+    userName,
+    machine,
+  }: {
+    res: Response;
+    fromDate: string | Date;
+    toDate: string | Date;
+    userName: string;
+    machine?: string;
+  }) => {
     try {
       let whereCondition: any = {};
 
@@ -332,13 +338,16 @@ export const reportService = {
 
       const baseQuery: any = reportRepository.buildReportPaperOptions({ machine, whereCondition });
 
-      const safeMachineName = machine.replace(/\s+/g, "-");
+      const safeMachineName =
+        machine && machine.trim() !== ""
+          ? normalizeVN(machine.replace(/\s+/g, "-"))
+          : "all_machines";
 
       await exportExcelStreamResponse(res, {
         baseQuery: baseQuery,
         model: ReportPlanningPaper,
         sheetName: "Báo cáo sản xuất giấy tấm",
-        fileName: `bao-cao-${normalizeVN(safeMachineName)}`,
+        fileName: `report_paper_${safeMachineName}`,
         columns: reportPaperColumns,
         rows: mapReportPaperRow,
         userName: userName,
@@ -354,8 +363,8 @@ export const reportService = {
     res: Response,
     fromDate: string | Date,
     toDate: string | Date,
-    machine: string,
     userName: string,
+    machine?: string,
   ) => {
     try {
       let whereCondition: any = { machine: machine };
@@ -372,13 +381,16 @@ export const reportService = {
 
       const baseQuery: any = reportRepository.buildReportBoxOptions({ machine, whereCondition });
 
-      const safeMachineName = machine.replace(/\s+/g, "-");
+      const safeMachineName =
+        machine && machine.trim() !== ""
+          ? normalizeVN(machine.replace(/\s+/g, "-"))
+          : "all_machines";
 
       await exportExcelStreamResponse(res, {
         baseQuery: baseQuery,
         model: ReportPlanningBox,
         sheetName: "Báo cáo sản xuất thùng",
-        fileName: `bao-cao-${normalizeVN(safeMachineName)}`,
+        fileName: `report_box_${safeMachineName}`,
         columns: reportBoxColumns,
         rows: mapReportBoxRow,
         userName: userName,

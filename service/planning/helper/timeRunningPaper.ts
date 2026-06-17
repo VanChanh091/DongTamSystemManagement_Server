@@ -49,7 +49,6 @@ export const calculateTimeRunning = async ({
   dayStart,
   timeStart,
   totalTimeWorking,
-  isNewDay,
   transaction,
 }: {
   plannings: any[];
@@ -58,55 +57,19 @@ export const calculateTimeRunning = async ({
   dayStart: string | Date;
   timeStart: string;
   totalTimeWorking: number;
-  isNewDay: boolean;
   transaction: any;
 }) => {
   const updated = [];
-  let currentTime, currentDay, lastGhepKho;
 
-  if (isNewDay) {
-    currentDay = new Date(dayStart);
-    const [hh, mm] = timeStart.split(":").map(Number);
+  const currentDay = new Date(dayStart);
+  const [hh, mm] = timeStart.split(":").map(Number);
 
-    currentTime = new Date(currentDay);
-    currentTime.setHours(hh, mm, 0, 0);
+  const currentTime = new Date(currentDay);
+  currentTime.setHours(hh, mm, 0, 0);
 
-    lastGhepKho = null;
-  } else {
-    // Xác định con trỏ bắt đầu
-    const feComplete = plannings
-      .filter((p) => p.status === "complete")
-      .sort((a, b) => new Date(b.dayStart as any).getTime() - new Date(a.dayStart).getTime())[0];
-
-    if (feComplete) {
-      const overflowRecord = feComplete.hasOverFlow
-        ? await planningHelper.getModelById({
-            model: timeOverflowPlanning,
-            where: { planningId: feComplete.planningId },
-            options: { transaction },
-          })
-        : null;
-
-      if (overflowRecord?.overflowTimeRunning && overflowRecord?.overflowDayStart) {
-        // Sử dụng overflow day + time làm con trỏ
-        currentDay = new Date(overflowRecord.overflowDayStart);
-        currentTime = combineDateAndHHMMSS(currentDay, overflowRecord.overflowTimeRunning);
-        lastGhepKho = feComplete.ghepKho ?? null;
-      } else if (feComplete.dayStart && feComplete.timeRunning) {
-        // fallback: nếu không tìm thấy record overflow trong DB, dùng dayStart/timeRunning từ FE
-        currentDay = new Date(feComplete.dayStart);
-        currentTime = combineDateAndHHMMSS(currentDay, feComplete.timeRunning);
-        lastGhepKho = feComplete.ghepKho ?? null;
-      } else {
-        // fallback cuối cùng: dùng logic cũ lấy cursor từ DB
-        const initCursor = await getInitialCursor({ machine, dayStart, timeStart, transaction });
-        ({ currentTime, currentDay, lastGhepKho } = initCursor);
-      }
-    } else {
-      const initCursor = await getInitialCursor({ machine, dayStart, timeStart, transaction });
-      ({ currentTime, currentDay, lastGhepKho } = initCursor);
-    }
-  }
+  let lastGhepKho: number | null = null;
+  let loopTime = currentTime;
+  let loopDay = currentDay;
 
   // Tính từng đơn
   for (let i = 0; i < plannings.length; i++) {
@@ -117,8 +80,8 @@ export const calculateTimeRunning = async ({
       planning,
       machine,
       machineMap,
-      currentTime,
-      currentDay,
+      currentTime: loopTime,
+      currentDay: loopDay,
       timeStart,
       totalTimeWorking,
       lastGhepKho,
@@ -126,9 +89,9 @@ export const calculateTimeRunning = async ({
       isFirst: i === 0,
     });
 
-    currentTime = data.nextTime;
-    currentDay = data.nextDay;
-    lastGhepKho = data.ghepKho;
+    loopTime = data.nextTime;
+    loopDay = data.nextDay;
+    lastGhepKho = data.ghepKho ?? null;
 
     updated.push(data.result);
   }

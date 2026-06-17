@@ -7,6 +7,7 @@ import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { DeliveryRequest } from "../../models/delivery/deliveryRequest";
 import { deliveryRepository } from "../../repository/deliveryRepository";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
+import { Request } from "express";
 
 export const deliveryRequestService = {
   getDeliveryRequest: async () => {
@@ -208,14 +209,15 @@ export const deliveryRequestService = {
   },
 
   //triển khai kế hoạch giao hàng
-  confirmForDeliveryPlanning: async (deliveryDate: Date) => {
+  implementDeliveryPlan: async (req: Request, deliveryDate: Date) => {
+    console.log(`deliveryDate: ${deliveryDate} - typeOf: ${typeof deliveryDate}`);
+
     try {
       return await runInTransaction(async (transaction) => {
         const existedPlan = await deliveryRepository.findOneDeliveryPlanByDate(
           deliveryDate,
           transaction,
         );
-
         if (!existedPlan) {
           throw AppError.NotFound("Không tìm thấy kế hoạch để xác nhận", "DELIVERY_PLAN_NOT_FOUND");
         }
@@ -229,6 +231,15 @@ export const deliveryRequestService = {
           whereCondition: { deliveryId: existedPlan.deliveryId, status: "none" },
           transaction,
         });
+
+        //socket
+        const item: any = { message: "Lịch Giao Hàng Đã Được Cập Nhật" };
+        const dateStr = deliveryDate.toISOString().split("T")[0];
+
+        console.log(`dateStr: ${dateStr}`);
+
+        //bắt buộc có event để socket.on bên client có thể nhận, nếu không có event sẽ không nhận được data
+        req.io?.to(`delivery-${dateStr}`).emit("delivery-schedule-event", item);
 
         return { message: "Chốt kế hoạch giao hàng thành công" };
       });

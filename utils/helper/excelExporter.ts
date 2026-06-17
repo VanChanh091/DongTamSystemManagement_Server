@@ -107,6 +107,8 @@ export const exportExcelStreamResponse = async <T>(
         offset: (page - 1) * limit,
       });
 
+      // console.log(`chunkData: ${JSON.stringify(chunkData[0])}`);
+
       // Nếu không còn dữ liệu nữa thì dừng vòng lặp
       if (!chunkData || chunkData.length === 0) {
         hasMore = false;

@@ -145,15 +145,12 @@ export const handlePostDeliveryRequest = async (
   }
 };
 
-export const confirmForDeliveryPlanning = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+export const implementDeliveryPlan = async (req: Request, res: Response, next: NextFunction) => {
   const { deliveryDate } = req.query as { deliveryDate: string };
 
   try {
-    const response = await deliveryRequestService.confirmForDeliveryPlanning(
+    const response = await deliveryRequestService.implementDeliveryPlan(
+      req,
       new Date(deliveryDate),
     );
     return res.status(200).json(response);

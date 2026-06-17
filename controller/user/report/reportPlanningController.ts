@@ -103,17 +103,19 @@ export const exportExcelReportPaper = async (req: Request, res: Response, next: 
   const { fromDate, toDate, machine } = req.body as {
     fromDate: string | Date;
     toDate: string | Date;
-    machine: string;
+    machine?: string | undefined;
   };
 
+  console.log(`fromDate: ${fromDate} - toDate: ${toDate}`);
+
   try {
-    const response = await reportService.exportReportPaper(
+    const response = await reportService.exportReportPaper({
       res,
       fromDate,
       toDate,
+      userName: req.user.email,
       machine,
-      req.user.email,
-    );
+    });
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -125,7 +127,7 @@ export const exportExcelReportBox = async (req: Request, res: Response, next: Ne
   const { fromDate, toDate, machine } = req.body as {
     fromDate: string | Date;
     toDate: string | Date;
-    machine: string;
+    machine?: string | undefined;
   };
 
   try {
@@ -133,8 +135,8 @@ export const exportExcelReportBox = async (req: Request, res: Response, next: Ne
       res,
       fromDate,
       toDate,
-      machine,
       req.user.email,
+      machine,
     );
     return res.status(200).json(response);
   } catch (error) {

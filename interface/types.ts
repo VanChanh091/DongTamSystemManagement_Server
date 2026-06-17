@@ -57,3 +57,10 @@ export interface searchFieldAtribute {
   endDate?: string;
   filter?: "gtZero" | "ltZero";
 }
+
+export interface UnifiedPerfInput {
+  dateKey: string;
+  fluteLayer: number;
+  length: number;
+  duration: number;
+}

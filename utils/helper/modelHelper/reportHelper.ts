@@ -3,13 +3,7 @@ import { PlanningPaper } from "../../../models/planning/planningPaper";
 import { DailyReportPerformance } from "../../../models/report/dailyReportPerformance";
 import { sequelize } from "../../../assets/configs/connect/database.connect";
 import { dayjsUtc } from "../../../assets/configs/dayjs/dayjs.config";
-
-interface UnifiedPerfInput {
-  dateKey: string;
-  fluteLayer: number;
-  length: number;
-  duration: number;
-}
+import { UnifiedPerfInput } from "../../../interface/types";
 
 // Hàm làm tròn số thông minh
 const smartRound = (val: number): number => {

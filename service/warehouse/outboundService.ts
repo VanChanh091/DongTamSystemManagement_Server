@@ -25,6 +25,11 @@ import { inventoryRepository } from "../../repository/inventoryRepository";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
 import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
+import { Customer } from "../../models/customer/customer";
+import {
+  mappingOutboundDetailRow,
+  outboundDetailColumns,
+} from "../../utils/mapping/outboundDetailRowAndColumn";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { outbound } = CacheKey.warehouse;
@@ -787,11 +792,83 @@ export const outboundService = {
     }
   },
 
-  exportFileOutbound: async (res: Response, outboundId: number, hasMoney: boolean) => {
+  exportFilePDFOutbound: async (res: Response, outboundId: number, hasMoney: boolean) => {
     try {
       await exportWarehouse(res, outboundId, hasMoney);
     } catch (error) {
       console.error("Error export file outbound:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  exportExcelOutboundDetail: async (
+    res: Response,
+    fromDate: string | Date,
+    toDate: string | Date,
+    userName: string,
+  ) => {
+    try {
+      let whereCondition: any = {};
+
+      if (fromDate && toDate) {
+        const startTimestamp = dayjsUtc(fromDate).startOf("day").toDate();
+        const endTimestamp = dayjsUtc(toDate).endOf("day").toDate();
+
+        // console.log(`start: ${fromDate} - end: ${toDate}`);
+        // console.log(`startTimestamp: ${startTimestamp} - endTimestamp: ${endTimestamp}`);
+
+        whereCondition.dateOutbound = { [Op.between]: [startTimestamp, endTimestamp] };
+      }
+
+      const baseQuery: any = {
+        attributes: [
+          "outboundDetailId",
+          "orderId",
+          "outboundQty",
+          "price",
+          "totalPriceOutbound",
+          "deliveredQty",
+          "isPromotion",
+        ],
+        include: [
+          {
+            model: OutboundHistory,
+            where: whereCondition,
+            attributes: ["outboundSlipCode", "dateOutbound"],
+            required: true,
+          },
+          {
+            model: Order,
+            attributes: [
+              "orderId",
+              "dvt",
+              "flute",
+              "QC_box",
+              "discount",
+              "lengthPaperManufacture",
+              "paperSizeManufacture",
+            ],
+            required: true,
+            include: [
+              { model: Customer, attributes: ["customerName"] },
+              { model: Product, attributes: ["typeProduct", "productName"] },
+            ],
+          },
+        ],
+      };
+
+      await exportExcelStreamResponse(res, {
+        baseQuery: baseQuery,
+        model: OutboundDetail,
+        sheetName: "Chi tiết xuất kho",
+        fileName: `outbound_detail`,
+        columns: outboundDetailColumns,
+        rows: mappingOutboundDetailRow,
+        userName: userName,
+      });
+    } catch (error) {
+      console.error("Error export Excel outbound detail:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }

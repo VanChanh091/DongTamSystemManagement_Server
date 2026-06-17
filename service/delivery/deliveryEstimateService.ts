@@ -70,9 +70,6 @@ export const deliveryEstimateService = {
         estimateTime,
       });
 
-      console.log(`plannings: ${plannings.length}`);
-      console.log(`filtered: ${filtered.length}`);
-
       //PAGING DATA
       const totalPlannings = filtered.length;
       const totalPages = Math.ceil(totalPlannings / pageSize);

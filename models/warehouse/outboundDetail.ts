@@ -47,7 +47,7 @@ export class OutboundDetail
   declare Order: Order;
 
   declare outboundId: number;
-  declare outbound: OutboundHistory;
+  declare OutboundHistory: OutboundHistory;
 
   declare deliveryItemId?: number;
   declare DeliveryItem: DeliveryItem[];

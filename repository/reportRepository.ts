@@ -16,25 +16,29 @@ export const reportRepository = {
     whereCondition,
     isExport = false,
   }: {
-    machine: string;
+    machine?: string;
     page?: number;
     pageSize?: number;
     whereCondition?: any;
     isExport?: boolean;
   }): FindOptions => {
+    const reportPaperWhere: any = {};
+    if (machine) {
+      reportPaperWhere.chooseMachine = machine;
+    }
+
     const queryOptions: FindOptions = {
       where: whereCondition,
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {
           model: PlanningPaper,
-          where: { chooseMachine: machine },
+          where: reportPaperWhere,
           attributes: {
             exclude: [
               "createdAt",
               "updatedAt",
               "dayCompleted",
-              "shiftProduction",
               "shiftProduction",
               "shiftManagement",
               "status",
@@ -87,12 +91,25 @@ export const reportRepository = {
     whereCondition,
     isExport = false,
   }: {
-    machine: string;
+    machine?: string;
     page?: number;
     pageSize?: number;
     whereCondition?: any;
     isExport?: boolean;
   }): FindOptions => {
+    const boxTimesWhere: any = {};
+    const allBoxTimesWhere: any = {};
+
+    if (machine && machine.trim() !== "") {
+      boxTimesWhere.machine = machine;
+      allBoxTimesWhere.machine = { [Op.ne]: machine };
+    } else {
+      // Nếu KHÔNG truyền máy (Xuất tất cả):
+      // boxTimesWhere để trống để lấy tất cả các máy.
+      // allBoxTimesWhere đặt một giá trị không tồn tại để trả về mảng rỗng [],
+      allBoxTimesWhere.machine = "__ALL_MACHINES_SELECTED__";
+    }
+
     const queryOptions: FindOptions = {
       where: whereCondition, //machine: machine
       attributes: { exclude: ["createdAt", "updatedAt"] },
@@ -116,16 +133,14 @@ export const reportRepository = {
           include: [
             {
               model: PlanningBoxTime,
-              where: { machine: machine }, //tìm machine thỏa điều kiện
+              where: boxTimesWhere, //tìm machine thỏa điều kiện
               as: "boxTimes",
               attributes: { exclude: ["createdAt", "updatedAt"] },
             },
             {
               model: PlanningBoxTime,
               as: "allBoxTimes",
-              where: {
-                machine: { [Op.ne]: machine }, //lọc machine ra khỏi danh sách
-              },
+              where: allBoxTimesWhere,
               attributes: {
                 exclude: [
                   "timeRunning",

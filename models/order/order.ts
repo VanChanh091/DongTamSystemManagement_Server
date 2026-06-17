@@ -128,23 +128,31 @@ export class Order
   implements OrderAttributes
 {
   declare orderId: string;
+
+  //date
   declare dayReceiveOrder: Date;
   declare dateRequestShipping: Date;
   declare dayApproved?: Date;
+
+  //order info
   declare lengthPaperCustomer: number;
   declare lengthPaperManufacture: number;
   declare paperSizeCustomer: number;
   declare paperSizeManufacture: number;
   declare quantityCustomer: number;
   declare quantityManufacture: number;
+
   declare numberChild: number;
   declare acreage: number;
   declare dvt: string;
+
+  //price
   declare price: number;
   declare pricePaper: number;
   declare profit: number;
   declare totalPrice: number;
   declare totalPriceVAT: number;
+
   declare volume: number;
   declare status: OrderStatus;
 
@@ -158,6 +166,8 @@ export class Order
   declare QC_box?: string | null;
   declare canLan?: string | null;
   declare daoXa?: string | null;
+
+  //structure
   declare day?: string | null;
   declare matE?: string | null;
   declare matB?: string | null;
@@ -167,8 +177,10 @@ export class Order
   declare songB?: string | null;
   declare songC?: string | null;
   declare songE2?: string | null;
+
   declare discount?: number | null;
   declare vat?: number | null;
+
   declare instructSpecial?: string | null;
   declare rejectReason?: string | null;
   declare orderIdCustomer?: string | null;

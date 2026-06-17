@@ -7,7 +7,8 @@ import {
 } from "../../controller/user/warehouse/inboundHistoryController";
 import {
   deleteOutbound,
-  exportFileOutbound,
+  exportFilePDFOutbound,
+  exportOutboundDetail,
   getOutboundDetail,
   getOutboundHistory,
   handleAddOrUpdateOutbound,
@@ -36,7 +37,6 @@ router.post("/inbound/export", authenticate, exportExcelInbounds);
 
 router.get("/outbound", authenticate, getOutboundHistory);
 router.get("/outbound/detail", authenticate, getOutboundDetail);
-router.post("/outbound/export", authenticate, exportFileOutbound);
 router.post(
   "/outbound",
   authorizeAnyPermission(["delivery", "accountant"]),
@@ -58,6 +58,15 @@ router.delete(
 
 //auto complete dialog
 router.get("/outbound/get-search", authenticate, outboundAutoComplete);
+
+//export file
+router.post("/outbound/export", authenticate, exportFilePDFOutbound);
+router.post(
+  "/outbound/export-detail",
+  authenticate,
+  authorizeAnyPermission(["accountant"]),
+  exportOutboundDetail,
+);
 
 //========================INVENTORY & LIQUIDATION===========================
 router.get("/inventory", authenticate, getAllInventory);

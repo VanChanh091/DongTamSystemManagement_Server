@@ -554,14 +554,12 @@ export const planningPaperService = {
     dayStart,
     timeStart,
     totalTimeWorking,
-    isNewDay,
   }: {
     updateIndex: any[];
     machine: string;
     dayStart: string | Date;
     timeStart: string;
     totalTimeWorking: number;
-    isNewDay: boolean;
   }) => {
     try {
       return await runInTransaction(async (transaction) => {
@@ -597,7 +595,6 @@ export const planningPaperService = {
           dayStart,
           timeStart,
           totalTimeWorking,
-          isNewDay,
           transaction,
         });
 

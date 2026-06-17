@@ -116,11 +116,25 @@ export const outboundAutoComplete = async (req: Request, res: Response, next: Ne
   }
 };
 
-export const exportFileOutbound = async (req: Request, res: Response, next: NextFunction) => {
+export const exportFilePDFOutbound = async (req: Request, res: Response, next: NextFunction) => {
   const { outboundId, hasMoney } = req.body as { outboundId: string; hasMoney: boolean };
 
   try {
-    await outboundService.exportFileOutbound(res, Number(outboundId), hasMoney);
+    await outboundService.exportFilePDFOutbound(res, Number(outboundId), hasMoney);
+  } catch (error) {
+    next(error);
+  }
+};
+
+//export excel
+export const exportOutboundDetail = async (req: Request, res: Response, next: NextFunction) => {
+  const { fromDate, toDate } = req.body as {
+    fromDate: string | Date;
+    toDate: string | Date;
+  };
+
+  try {
+    await outboundService.exportExcelOutboundDetail(res, fromDate, toDate, req.user.email);
   } catch (error) {
     next(error);
   }
