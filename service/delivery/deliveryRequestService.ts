@@ -1,13 +1,14 @@
 import { Op } from "sequelize";
+import { Request } from "express";
 import { meiliService } from "../meiliService";
 import { AppError } from "../../utils/appError";
 import { MEILI_INDEX } from "../../assets/labelFields";
 import { PlanningPaper } from "../../models/planning/planningPaper";
+import { OutboundDetail } from "../../models/warehouse/outboundDetail";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { DeliveryRequest } from "../../models/delivery/deliveryRequest";
 import { deliveryRepository } from "../../repository/deliveryRepository";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
-import { Request } from "express";
 
 export const deliveryRequestService = {
   getDeliveryRequest: async () => {
@@ -114,6 +115,19 @@ export const deliveryRequestService = {
         if (itemsToDelete.length > 0) {
           const deleteItemIds = itemsToDelete.map((i) => i.deliveryItemId);
 
+          //check item đã được xuất kho chưa
+          const hasOutboundDetail = await OutboundDetail.findOne({
+            where: { deliveryItemId: { [Op.in]: deleteItemIds } },
+            transaction,
+          });
+
+          if (hasOutboundDetail) {
+            throw AppError.BadRequest(
+              "Không thể di chuyển đơn hàng đã được xuất kho",
+              "HAS_DELIVERY_ITEM_OUTBOUND",
+            );
+          }
+
           const requestIdsToReset = itemsToDelete.map((i) => i.requestId);
           const planningIdsToReset = [
             ...new Set(itemsToDelete.map((i) => i.DeliveryRequest?.planningId).filter(Boolean)),
@@ -210,8 +224,6 @@ export const deliveryRequestService = {
 
   //triển khai kế hoạch giao hàng
   implementDeliveryPlan: async (req: Request, deliveryDate: Date) => {
-    console.log(`deliveryDate: ${deliveryDate} - typeOf: ${typeof deliveryDate}`);
-
     try {
       return await runInTransaction(async (transaction) => {
         const existedPlan = await deliveryRepository.findOneDeliveryPlanByDate(

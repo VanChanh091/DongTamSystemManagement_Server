@@ -283,6 +283,7 @@ export const deliveryRepository = {
               ],
             },
             { model: Vehicle, attributes: ["vehicleName", "licensePlate"] },
+            {model: OutboundDetail, attributes: ["outboundQty"]},
           ],
         },
       ],
