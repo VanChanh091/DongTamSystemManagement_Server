@@ -15,7 +15,7 @@ import cloudinary from "../../assets/configs/connect/cloudinary.connect";
 import { MEILI_INDEX, validPermissions } from "../../assets/labelFields";
 import { inventoryRepository } from "../../repository/inventoryRepository";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
-import { inventoryService } from "../warehouse/inventoryService";
+import { inventoryService } from "../inventory/inventoryService";
 import { OrderApproved } from "../../models/order/orderApproved";
 
 const devEnvironment = process.env.NODE_ENV !== "production";

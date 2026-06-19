@@ -248,8 +248,6 @@ export const deliveryRequestService = {
         const item: any = { message: "Lịch Giao Hàng Đã Được Cập Nhật" };
         const dateStr = deliveryDate.toISOString().split("T")[0];
 
-        console.log(`dateStr: ${dateStr}`);
-
         //bắt buộc có event để socket.on bên client có thể nhận, nếu không có event sẽ không nhận được data
         req.io?.to(`delivery-${dateStr}`).emit("delivery-schedule-event", item);
 

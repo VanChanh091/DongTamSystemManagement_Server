@@ -29,7 +29,8 @@ import {
   inboundColumns,
   mappingInboundRow,
 } from "../../utils/mapping/warehouse/inboundRowAndColumn";
-import { inventoryService } from "./inventoryService";
+import { inventoryService } from "../inventory/inventoryService";
+import { inventoryLogService } from "../inventory/inventoryLogService";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inbound } = CacheKey.warehouse;
@@ -238,6 +239,13 @@ export const inboundService = {
         );
       }
 
+      //inventory log
+      await inventoryLogService.followInventoryChange({
+        items: [{ inventoryId: inventory.inventoryId, changeQty: inboundQty }],
+        type: "INBOUND",
+        transaction,
+      });
+
       //xóa cache
       await CacheManager.clear("checkPaper");
 
@@ -345,6 +353,12 @@ export const inboundService = {
           { where: { orderId: planning.orderId }, transaction },
         );
       }
+
+      await inventoryLogService.followInventoryChange({
+        items: [{ inventoryId: inventory.inventoryId, changeQty: inboundQty }],
+        type: "INBOUND",
+        transaction,
+      });
 
       //xóa cache
       await CacheManager.clear("checkBox");

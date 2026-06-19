@@ -161,8 +161,10 @@ export const manufactureRepo = {
     shiftProduction: "Ca 1" | "Ca 2" | "Ca 3";
     transaction?: Transaction;
   }) => {
-    const startDate = dayjsUtc(dayCompleted).startOf("day").toDate();
-    const endDate = dayjsUtc(dayCompleted).endOf("day").toDate();
+    const startDate = dayjsUtc.utc(dayCompleted).format("YYYY-MM-DD 00:00:00");
+    const endDate = dayjsUtc.utc(dayCompleted).format("YYYY-MM-DD 23:59:59");
+
+    // console.log(`start: ${startDate} - end: ${endDate}`);
 
     return await PlanningPaper.findAll({
       where: {

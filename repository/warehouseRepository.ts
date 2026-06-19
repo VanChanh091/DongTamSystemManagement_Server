@@ -262,8 +262,8 @@ export const warehouseRepository = {
   //====================================OUTBOUND HISTORY========================================
 
   getOutboundByPage: async ({
-    page = 1,
-    pageSize = 20,
+    page,
+    pageSize,
     whereCondition,
   }: {
     page?: number;

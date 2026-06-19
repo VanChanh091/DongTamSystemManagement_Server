@@ -30,6 +30,7 @@ import {
   mappingOutboundDetailRow,
   outboundDetailColumns,
 } from "../../utils/mapping/outboundDetailRowAndColumn";
+import { inventoryLogService } from "../inventory/inventoryLogService";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { outbound } = CacheKey.warehouse;
@@ -144,6 +145,7 @@ export const outboundService = {
       const searchResult = await index.search(searchKeyword, searchOptions);
 
       const outboundIds = searchResult.hits.map((hit: any) => hit.outboundId);
+
       if (outboundIds.length === 0) {
         return {
           message: "No outbound records found",
@@ -248,7 +250,10 @@ export const outboundService = {
         }[] = [];
 
         // Dùng Map để theo dõi và cập nhật tồn kho lũy kế của từng orderId trong vòng lặp
-        const inventoryMap = new Map<string, { qtyInventory: number; totalQtyOutbound: number }>();
+        const inventoryMap = new Map<
+          string,
+          { inventoryId: number; qtyInventory: number; totalQtyOutbound: number }
+        >();
 
         for (const item of outboundDetails) {
           // check order is exist
@@ -320,6 +325,7 @@ export const outboundService = {
             }
 
             inventory = {
+              inventoryId: dbInventory.inventoryId,
               qtyInventory: dbInventory.qtyInventory,
               totalQtyOutbound: dbInventory.totalQtyOutbound,
             };
@@ -444,6 +450,21 @@ export const outboundService = {
           }
         }
 
+        //inventory logs
+        const logItems = preparedDetails.map((item) => {
+          const inv = inventoryMap.get(item.orderId);
+          return {
+            inventoryId: inv!.inventoryId,
+            changeQty: -item.outboundQty,
+          };
+        });
+
+        await inventoryLogService.followInventoryChange({
+          items: logItems,
+          type: "OUTBOUND",
+          transaction,
+        });
+
         //--------------------MEILISEARCH-----------------------
         const orderIds = preparedDetails.map((item) => item.orderId);
         await outboundService.syncDataOutbound(outbound.outboundId, orderIds, transaction);
@@ -484,6 +505,8 @@ export const outboundService = {
         if (!outbound) {
           throw AppError.NotFound("Phiếu xuất kho không tồn tại", "OUTBOUND_NOT_FOUND");
         }
+
+        const logItems: { inventoryId: number; changeQty: number }[] = [];
 
         const oldDetails = outbound.detail ?? [];
         const usedOldDetailIds = new Set<number>();
@@ -550,6 +573,15 @@ export const outboundService = {
             },
             { where: { orderId: item.orderId }, transaction },
           );
+
+          //inventory logs
+          const netChangeQty = oldQty - item.outboundQty;
+          if (netChangeQty !== 0) {
+            logItems.push({
+              inventoryId: inventory.inventoryId,
+              changeQty: netChangeQty,
+            });
+          }
 
           const vatRate = isPromotion ? 0 : (order.vat ?? 0) / 100;
           const vatAmount = currentTotalPrice * vatRate;
@@ -625,6 +657,9 @@ export const outboundService = {
                 },
                 { where: { orderId: oldDetail.orderId }, transaction },
               );
+
+              //inventory logs
+              logItems.push({ inventoryId: inv.inventoryId, changeQty: oldDetail.outboundQty });
             }
 
             if (oldDetail.deliveryItemId) {
@@ -651,6 +686,15 @@ export const outboundService = {
           },
           { transaction },
         );
+
+        // Cập nhật log inventory
+        if (logItems.length > 0) {
+          await inventoryLogService.followInventoryChange({
+            items: logItems,
+            type: "ADJUSTMENT_OUTBOUND",
+            transaction,
+          });
+        }
 
         //--------------------MEILISEARCH-----------------------
         // Thu thập TẤT CẢ orderId bị ảnh hưởng (bao gồm đơn hàng trong đợt update này VÀ đơn hàng cũ có thể đã bị xóa)
@@ -712,11 +756,11 @@ export const outboundService = {
           transaction,
           lock: transaction.LOCK.UPDATE,
         });
-
         if (!outbound) {
           throw AppError.NotFound("Phiếu xuất kho không tồn tại", "OUTBOUND_NOT_FOUND");
         }
 
+        const logItems: { inventoryId: number; changeQty: number }[] = [];
         const details = outbound.detail ?? [];
 
         // Hoàn kho cho từng order
@@ -744,6 +788,11 @@ export const outboundService = {
                 transaction,
               },
             );
+
+            logItems.push({
+              inventoryId: inv.inventoryId,
+              changeQty: detail.outboundQty,
+            });
           }
 
           if (detail.deliveryItemId) {
@@ -762,6 +811,15 @@ export const outboundService = {
 
         // Xóa outbound history
         await outbound.destroy({ transaction });
+
+        // Cập nhật log inventory
+        if (logItems.length > 0) {
+          await inventoryLogService.followInventoryChange({
+            items: logItems,
+            type: "CANCEL_OUTBOUND",
+            transaction,
+          });
+        }
 
         //--------------------MEILISEARCH-----------------------
         await meiliService.deleteMeiliData(MEILI_INDEX.OUTBOUNDS, outboundId, transaction);
@@ -848,6 +906,7 @@ export const outboundService = {
               "discount",
               "lengthPaperManufacture",
               "paperSizeManufacture",
+              "vat",
             ],
             required: true,
             include: [

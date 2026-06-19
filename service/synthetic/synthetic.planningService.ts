@@ -14,23 +14,22 @@ import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { PlanningPaper } from "../../models/planning/planningPaper";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { exportExcelDbPlanning } from "../../utils/helper/excelExporter";
-
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { syntheticRepository } from "../../repository/syntheticRepository";
 import { buildStagesDetails } from "../../utils/helper/modelHelper/planningHelper";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
-const { planning } = CacheKey.dashboard;
+const { planning } = CacheKey.synthetic;
 
 export const syntheticPlanningService = {
   getAllSyntheticPlanning: async (page: number, pageSize: number, status: string) => {
     const cacheKey = planning.all(status, page);
 
     try {
-      const { isChanged } = await CacheManager.check(PlanningPaper, "dbPlanning");
+      const { isChanged } = await CacheManager.check(PlanningPaper, "syntheticPlanning");
 
       if (isChanged) {
-        await CacheManager.clear("dbPlanning");
+        await CacheManager.clear("syntheticPlanning");
       } else {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {

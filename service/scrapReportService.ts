@@ -396,14 +396,14 @@ export const scrapReportService = {
           );
         }
 
-        const dateStr = dayjsUtc(dayCompleted).format("YYYY-MM-DD");
-        const startDay = dayjsUtc.utc(dateStr).startOf("day").toDate();
-        const endDay = dayjsUtc.utc(dateStr).endOf("day").toDate();
+        const dateStr = dayjsUtc.utc(dayCompleted).format("YYYY-MM-DD");
+        const startDate = dayjsUtc.utc(dateStr).format("YYYY-MM-DD 00:00:00");
+        const endDate = dayjsUtc.utc(dateStr).format("YYYY-MM-DD 23:59:59");
 
         const missingScrap = await ScrapReport.findOne({
           where: {
             machine,
-            dayCompleted: { [Op.between]: [startDay, endDay] },
+            dayCompleted: { [Op.between]: [startDate, endDate] },
             shiftProduction,
             status: "confirmed",
             scrapId: { [Op.notIn]: scrapId },

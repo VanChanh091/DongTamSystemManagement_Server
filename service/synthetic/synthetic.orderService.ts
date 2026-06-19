@@ -5,15 +5,21 @@ import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
 import { MEILI_INDEX } from "../../assets/labelFields";
 import { Product } from "../../models/product/product";
+import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
 import { orderRepository } from "../../repository/orderRepository";
+import redisCache from "../../assets/configs/connect/redis.connect";
 import { PlanningPaper } from "../../models/planning/planningPaper";
+import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { Inventory } from "../../models/warehouse/inventory/inventory";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { syntheticRepository } from "../../repository/syntheticRepository";
 import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { mappingOrderRow, orderColumns } from "../../utils/mapping/orderRowAndColumn";
+
+const devEnvironment = process.env.NODE_ENV !== "production";
+const { order } = CacheKey.synthetic;
 
 export const syntheticOrderService = {
   getAllOrderByStatus: async ({
@@ -28,6 +34,27 @@ export const syntheticOrderService = {
     allOrders?: string;
   }) => {
     try {
+      // const cacheKey = order.all(status, page);
+      // const { isChanged } = await CacheManager.check(
+      //   [
+      //    { model: Order, as: "Order" },
+      //   ],
+      //   "syntheticOrder",
+      // );
+
+      // if (isChanged) {
+      //   await CacheManager.clear("syntheticOrder");
+      // } else {
+      //   const cachedData = await redisCache.get(cacheKey);
+      //   if (cachedData) {
+      //     if (devEnvironment) console.log("✅ Data PlanningPaper from Redis");
+      //     return {
+      //       ...JSON.parse(cachedData),
+      //       message: `get all cache planning:machine:${machine}`,
+      //     };
+      //   }
+      // }
+
       const { rows, count } = await syntheticRepository.getAllOrderByStatus({
         page,
         pageSize,
@@ -42,6 +69,8 @@ export const syntheticOrderService = {
         totalPages: Math.ceil(count / pageSize),
         currentPage: page,
       };
+
+      // await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 1800);
 
       return responseData;
     } catch (error) {

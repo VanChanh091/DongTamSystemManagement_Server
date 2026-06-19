@@ -23,7 +23,9 @@ export const outboundDetailColumns: Partial<ExcelJS.Column>[] = [
 
   { header: "Đơn Giá", key: "price", style: { numFmt: "#,##0" } },
   { header: "Chiết Khấu", key: "discount", style: { numFmt: "#,##0" } },
+  { header: "VAT", key: "vat", style: { numFmt: "#,##0" } },
   { header: "Thành Tiền", key: "totalPrice", style: { numFmt: "#,##0" } },
+  { header: "Thành Tiền (VAT)", key: "totalPriceVAT", style: { numFmt: "#,##0" } },
 
   { header: "Loại", key: "isPromotion" },
 ];
@@ -38,6 +40,8 @@ export const mappingOutboundDetailRow = (item: OutboundDetail, index: number) =>
   product?.typeProduct === "Phí Khác"
     ? (dimension = 0)
     : (dimension = `${order?.flute ?? ""}-${formatDimension(order?.lengthPaperManufacture)}x${formatDimension(order?.paperSizeManufacture)}`);
+
+  const totalPriceVAT = item.totalPriceOutbound * (1 + (order.vat || 0) / 100);
 
   return {
     index: index + 1,
@@ -59,7 +63,10 @@ export const mappingOutboundDetailRow = (item: OutboundDetail, index: number) =>
 
     price: item.price || 0,
     discount: order.discount || 0,
+    vat: order.vat || 0,
+
     totalPrice: item.totalPriceOutbound || 0,
+    totalPriceVAT: totalPriceVAT || 0,
 
     isPromotion: item.isPromotion ? "Khuyến Mãi" : "Hàng Bán",
   };

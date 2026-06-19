@@ -170,6 +170,7 @@ export const createReportPlanning = async ({
   let lackOfQtyValue = planning.runningPlan - totalProduced;
 
   let report;
+
   if (isBox) {
     report = await model.create(
       {
@@ -209,13 +210,25 @@ export const createReportPlanning = async ({
       transaction,
     });
 
+    let calculatedFromPrev = false;
+
     if (prevReport) {
       //đơn thứ 2 trở đi
       const rawDayReport = prevReport.getDataValue("dayReport");
       const prevDateTime = new Date(rawDayReport);
+      const diffMinutes = (currentDateTime.getTime() - prevDateTime.getTime()) / (1000 * 60);
 
-      durationMinutes = (currentDateTime.getTime() - prevDateTime.getTime()) / (1000 * 60);
-    } else {
+      // Nếu thời gian chờ vượt quá 8 tiếng, coi như là bắt đầu ngày mới/ca mới
+      const MAX_IDLE_MINUTES = 480;
+
+      if (diffMinutes > 0 && diffMinutes <= MAX_IDLE_MINUTES) {
+        durationMinutes = diffMinutes;
+        calculatedFromPrev = true;
+      }
+    }
+
+    // Nếu là đơn đầu tiên của ngày mới/ca mới
+    if (!calculatedFromPrev) {
       if (planning.timeStart) {
         const startDateTime = new Date(currentDateTime); // Tạo bản sao cùng ngày
         const [hours, minutes, seconds] = planning.timeStart.split(":").map(Number);

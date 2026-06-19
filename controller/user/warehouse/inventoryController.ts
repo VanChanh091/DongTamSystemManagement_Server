@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
-import { inventoryService } from "../../../service/warehouse/inventoryService";
+import { inventoryService } from "../../../service/inventory/inventoryService";
 import { AppError } from "../../../utils/appError";
-import { liquidationInvService } from "../../../service/warehouse/liquidationInvService";
+import { liquidationInvService } from "../../../service/inventory/liquidationInvService";
 
 //====================================INVENTORY========================================
 export const getAllInventory = async (req: Request, res: Response, next: NextFunction) => {

@@ -76,7 +76,6 @@ export const syntheticRepository = {
         { model: Customer, attributes: ["customerName"] },
         { model: Product, attributes: ["productName"] },
         { model: Inventory, attributes: ["totalQtyOutbound", "qtyInventory", "qtyVariance"] },
-        { model: PlanningPaper, attributes: ["planningId", "qtyProduced", "qtyWasteNorm"] },
         { model: User, attributes: ["fullName"] },
       ],
     };

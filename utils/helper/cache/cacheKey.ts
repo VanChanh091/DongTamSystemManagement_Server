@@ -105,10 +105,14 @@ export const CacheKey = {
     },
   },
 
-  dashboard: {
+  synthetic: {
     planning: {
-      all: (status: string, page: number) => `dashboard:planning:${status}:${page}`,
-      lastUpdated: "db:planning:lastUpdated", //planning paper
+      all: (status: string, page: number) => `syntheticPlanning:${status}:${page}`,
+      lastUpdated: "synthetic:planning:lastUpdated", //planning paper
+    },
+    order: {
+      all: (status: string, page: number) => `syntheticOrder:${status}:${page}`,
+      lastUpdated: "synthetic:order:lastUpdated",
     },
   },
 };

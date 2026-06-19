@@ -24,6 +24,7 @@ import {
   inventoryColumns,
   mappingInventoryRow,
 } from "../../utils/mapping/warehouse/inventoryRowAndColumn";
+import { inventoryLogService } from "./inventoryLogService";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inventory_gt, inventory_lt } = CacheKey.warehouse;
@@ -269,6 +270,16 @@ export const inventoryService = {
           { transaction },
         );
 
+        //inventory logs
+        await inventoryLogService.followInventoryChange({
+          items: [
+            { inventoryId: sourceInv.inventoryId, changeQty: -qtyTransfer },
+            { inventoryId: targetInv?.inventoryId || 0, changeQty: qtyTransfer },
+          ],
+          type: "TRANSFER",
+          transaction,
+        });
+
         //--------------------MEILISEARCH-----------------------
         const [source, target] = await Promise.all([
           inventoryRepository.findInvByOrderId({ orderId: sourceOrderId, transaction }),
@@ -377,6 +388,24 @@ export const inventoryService = {
             { transaction },
           );
         }
+
+        //inventory logs
+        await inventoryLogService.followInventoryChange({
+          items: [{ inventoryId: inventory.inventoryId, changeQty: -qtyTransfer }],
+          type: "LIQUIDATION",
+          transaction,
+        });
+
+        //--------------------MEILISEARCH-----------------------
+        await meiliService.syncOrUpdateMeiliData({
+          indexKey: MEILI_INDEX.INVENTORIES,
+          data: {
+            inventoryId: inventory.inventoryId,
+            qtyInventory: inventory.qtyInventory,
+          },
+          transaction,
+          isUpdate: true,
+        });
 
         return { message: "Transfer quantity to liquidation inventory successfully" };
       });

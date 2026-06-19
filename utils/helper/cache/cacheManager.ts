@@ -32,9 +32,9 @@ const CACHE_CONFIG = {
   reportBox: ["reportBox:"],
   reportScrap: ["reportScrap:"],
 
-  //dashboard
-  dbPlanning: ["dashboard:planning:", "dashboard:search:all"],
-  dbPlanningDetail: ["dashboard:detail:"],
+  //synthetic
+  syntheticPlanning: ["syntheticPlanning:"],
+  syntheticOrder: ["syntheticOrder:"],
 
   //waiting check
   checkPaper: ["waitingCheck:Paper:all"],
@@ -124,8 +124,9 @@ export const CacheManager = {
       reportBox: CacheKey.report.box.lastUpdated,
       reportScrap: CacheKey.report.scrap.lastUpdated,
 
-      //dashboard
-      dbPlanning: CacheKey.dashboard.planning.lastUpdated,
+      //synthetic
+      syntheticPlanning: CacheKey.synthetic.planning.lastUpdated,
+      syntheticOrder: CacheKey.synthetic.order.lastUpdated,
 
       //waiting check
       checkPaper: CacheKey.waitingCheck.paper.lastUpdated,

@@ -32,6 +32,7 @@ import { initScrapReportModel } from "./scrap/scrapReport";
 import { initUserModel } from "./user/user";
 import { initInboundHistoryModel } from "./warehouse/inboundHistory";
 import { initInventoryModel } from "./warehouse/inventory/inventory";
+import { initInventoryLogModel } from "./warehouse/inventory/inventoryLog";
 import { initInventoryTransfersModel } from "./warehouse/inventory/inventoryTransfers";
 import { initLiquidationInventoryModel } from "./warehouse/inventory/liquidationInventory";
 import { initOutboundDetailModel } from "./warehouse/outboundDetail";
@@ -90,6 +91,7 @@ const OutboundDetail = initOutboundDetailModel(sequelize);
 
 //inventory
 const Inventory = initInventoryModel(sequelize);
+const InventoryLog = initInventoryLogModel(sequelize);
 const InventoryTransfers = initInventoryTransfersModel(sequelize);
 const LiquidationInv = initLiquidationInventoryModel(sequelize);
 
@@ -325,6 +327,13 @@ Inventory.hasMany(InventoryTransfers, {
   onDelete: "CASCADE",
 });
 InventoryTransfers.belongsTo(Inventory, { foreignKey: "inventoryId" });
+
+//===============================INVENTORY LOGS=================================
+Inventory.hasMany(InventoryLog, { foreignKey: "inventoryId", as: "invLogs", onDelete: "CASCADE" });
+InventoryLog.belongsTo(Inventory, { foreignKey: "inventoryId" });
+
+Order.hasMany(InventoryLog, { foreignKey: "orderId", as: "invLogs", onDelete: "CASCADE" });
+InventoryLog.belongsTo(Order, { foreignKey: "orderId" });
 
 //===============================DELIVERY=================================
 PlanningPaper.hasMany(DeliveryRequest, { foreignKey: "planningId", onDelete: "CASCADE" });
