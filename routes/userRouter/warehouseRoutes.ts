@@ -16,9 +16,10 @@ import {
 } from "../../controller/user/warehouse/outboundHistoryController";
 import {
   createNewInventory,
-  exportInventory,
+  exportInventoryByDate,
   getAllInventory,
   getAllLiquidationInventory,
+  migrateInitialInventoryLogs,
 } from "../../controller/user/warehouse/inventoryController";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 
@@ -68,11 +69,20 @@ router.post(
   exportOutboundDetail,
 );
 
-//========================INVENTORY & LIQUIDATION===========================
+//=====================INVENTORY & LOGS=========================
 router.get("/inventory", authenticate, getAllInventory);
 router.post("/inventory", authenticate, createNewInventory);
-router.post("/inventory/export", authenticate, authorizeAnyPermission(["plan"]), exportInventory);
 
+//inventory logs
+router.post("/inventory-logs/migrate", authenticate, migrateInitialInventoryLogs);
+router.post(
+  "/inventory-logs/export",
+  authenticate,
+  authorizeAnyPermission(["plan"]),
+  exportInventoryByDate,
+);
+
+//========================LIQUIDATION===========================
 router.get("/liquidation", authenticate, getAllLiquidationInventory);
 
 //========================TEST CRASH===========================

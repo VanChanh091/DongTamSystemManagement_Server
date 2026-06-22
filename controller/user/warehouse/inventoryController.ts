@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { inventoryService } from "../../../service/inventory/inventoryService";
 import { AppError } from "../../../utils/appError";
 import { liquidationInvService } from "../../../service/inventory/liquidationInvService";
+import { inventoryLogService } from "../../../service/inventory/inventoryLogService";
 
 //====================================INVENTORY========================================
 export const getAllInventory = async (req: Request, res: Response, next: NextFunction) => {
@@ -81,18 +82,33 @@ export const createNewInventory = async (req: Request, res: Response, next: Next
   }
 };
 
-//export excel
-export const exportInventory = async (req: Request, res: Response, next: NextFunction) => {
-  const { date } = req.body;
-
+//================================INVENTORY LOGS=======================================
+//migrate inventory log
+export const migrateInitialInventoryLogs = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
-    await inventoryService.exportExcelInventory(res, req.user.email, date);
+    const response = await inventoryLogService.migrateInitialInventoryLogs();
+    return res.status(200).json(response);
   } catch (error) {
     next(error);
   }
 };
 
-//====================================LIQUIDATION INVENTORY========================================
+//export excel
+export const exportInventoryByDate = async (req: Request, res: Response, next: NextFunction) => {
+  const { targetDate } = req.body;
+
+  try {
+    await inventoryLogService.exportInventoryByDate(res, req.user.email, targetDate);
+  } catch (error) {
+    next(error);
+  }
+};
+
+//=============================LIQUIDATION INVENTORY===================================
 export const getAllLiquidationInventory = async (
   req: Request,
   res: Response,

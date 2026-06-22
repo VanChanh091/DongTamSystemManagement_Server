@@ -3,6 +3,7 @@ import { Order } from "../../order/order";
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 
 export type actionInvType =
+  | "INITIAL"
   | "INBOUND"
   | "OUTBOUND"
   | "ADJUSTMENT_OUTBOUND"
@@ -63,6 +64,7 @@ export function initInventoryLogModel(sequelize: Sequelize): typeof InventoryLog
       valueAfter: { type: DataTypes.INTEGER, allowNull: false },
       type: {
         type: DataTypes.ENUM(
+          "INITIAL",
           "INBOUND",
           "OUTBOUND",
           "ADJUSTMENT_OUTBOUND",
@@ -86,8 +88,8 @@ export function initInventoryLogModel(sequelize: Sequelize): typeof InventoryLog
         { fields: ["inventoryId"] },
         { fields: ["orderId"] },
 
-        //indexes
-        { fields: ["createdAt"] },
+        //composite indexes
+        { fields: ["inventoryId", "createdAt"] },
       ],
     },
   );

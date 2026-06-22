@@ -1,8 +1,9 @@
 import ExcelJS from "exceljs";
-import { Inventory } from "../../../models/warehouse/inventory/inventory";
 import { formatterStructureOrder } from "../../helper/modelHelper/orderHelpers";
+import { InventoryLog } from "../../../models/warehouse/inventory/inventoryLog";
 
 export const inventoryColumns: Partial<ExcelJS.Column>[] = [
+  { key: "index", header: "STT" },
   { key: "orderId", header: "Mã Đơn Hàng" },
 
   { key: "customerName", header: "Khách Hàng" },
@@ -23,11 +24,11 @@ export const inventoryColumns: Partial<ExcelJS.Column>[] = [
   { key: "price", header: "Đơn Giá", style: { numFmt: "#,##0" } },
 
   { key: "valueInventory", header: "Giá Trị Tồn", style: { numFmt: "#,##0" } },
-  { key: "dateInbound", header: "Ngày Nhập Kho", style: { numFmt: "dd/mm/yyyy hh:mm" } },
 ];
 
-export const mappingInventoryRow = (item: Inventory, index: number) => {
-  const order = item.Order;
+export const mappingInventoryRow = (item: InventoryLog, index: number) => {
+  const inventory = item.Inventory || {};
+  const order = item.Order || {};
 
   return {
     index: index + 1,
@@ -43,14 +44,13 @@ export const mappingInventoryRow = (item: Inventory, index: number) => {
     size: order.paperSizeManufacture ?? "",
     length: order.lengthPaperManufacture ?? "",
 
-    totalQtyInbound: item.totalQtyInbound ?? 0,
-    totalQtyOutbound: item.totalQtyOutbound ?? 0,
-    qtyInventory: item.qtyInventory ?? 0,
+    totalQtyInbound: inventory.totalQtyInbound ?? 0,
+    totalQtyOutbound: inventory.totalQtyOutbound ?? 0,
+    qtyInventory: item.balanceAfter ?? 0,
 
     dvt: order.dvt ?? "",
     price: order.pricePaper ?? 0,
 
-    valueInventory: item.valueInventory ?? 0,
-    dateInbound: item.dateInbound ? item.dateInbound : null,
+    valueInventory: item.valueAfter ?? 0,
   };
 };

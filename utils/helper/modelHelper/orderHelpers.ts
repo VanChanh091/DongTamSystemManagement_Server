@@ -93,7 +93,7 @@ export const calculateOrderMetrics = async (data: any, transaction: Transaction)
 
   // price paper
   let totalPricePaper = 0;
-  if (data.dvt === "M2" || data.dvt === "Tấm") {
+  if (data.dvt === "M2") {
     totalPricePaper = Math.round((length * size * price) / 10000);
   } else if (data.dvt === "Tấm Bao Khổ") {
     totalPricePaper = pricePaper;

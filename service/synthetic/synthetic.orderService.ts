@@ -17,6 +17,7 @@ import { syntheticRepository } from "../../repository/syntheticRepository";
 import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { mappingOrderRow, orderColumns } from "../../utils/mapping/orderRowAndColumn";
+import { inventoryLogService } from "../inventory/inventoryLogService";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { order } = CacheKey.synthetic;
@@ -278,7 +279,21 @@ export const syntheticOrderService = {
 
           if (inventoryUpdates.length > 0) {
             await Inventory.bulkCreate(inventoryUpdates, {
-              updateOnDuplicate: ["qtyInventory", "qtyVariance"], // Chỉ cập nhật 2 cột này khi trùng ID
+              updateOnDuplicate: ["qtyInventory", "qtyVariance"], 
+              transaction,
+            });
+
+            //inventory logs
+            const logItems = inventories
+              .filter((inv) => inv.qtyInventory < 0)
+              .map((inv) => ({
+                inventoryId: inv.inventoryId,
+                changeQty: -inv.qtyInventory,
+              }));
+
+            await inventoryLogService.followInventoryChange({
+              type: "ADJUSTMENT_OUTBOUND",
+              items: logItems,
               transaction,
             });
           }

@@ -396,9 +396,8 @@ export const scrapReportService = {
           );
         }
 
-        const dateStr = dayjsUtc.utc(dayCompleted).format("YYYY-MM-DD");
-        const startDate = dayjsUtc.utc(dateStr).format("YYYY-MM-DD 00:00:00");
-        const endDate = dayjsUtc.utc(dateStr).format("YYYY-MM-DD 23:59:59");
+        const startDate = dayjsUtc.utc(dayCompleted).format("YYYY-MM-DD 00:00:00");
+        const endDate = dayjsUtc.utc(dayCompleted).format("YYYY-MM-DD 23:59:59");
 
         const missingScrap = await ScrapReport.findOne({
           where: {

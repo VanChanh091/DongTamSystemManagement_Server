@@ -58,12 +58,12 @@ export const exportExcelResponse = async <T>(
 
 export const exportExcelStreamResponse = async <T>(
   res: Response,
-  { baseQuery, model, sheetName, fileName, columns, rows, userName }: any,
+  { baseQuery, model, sheetName, fileName, columns, rows, userName, includeDate = true }: any,
 ) => {
   try {
     const now = new Date();
     const dateStr = now.toISOString().split("T")[0];
-    const fullName = `${fileName}_${dateStr}`;
+    const fullName = includeDate ? `${fileName}_${dateStr}` : fileName;
 
     // Thiết lập Header cho Response để trình duyệt hiểu là đang tải file Excel
     res.setHeader(
