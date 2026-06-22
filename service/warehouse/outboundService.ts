@@ -31,6 +31,7 @@ import {
   outboundDetailColumns,
 } from "../../utils/mapping/outboundDetailRowAndColumn";
 import { inventoryLogService } from "../inventory/inventoryLogService";
+import { calculateTotalPriceByDate } from "../../utils/helper/modelHelper/warehouseHelper";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { outbound } = CacheKey.warehouse;
@@ -54,6 +55,7 @@ export const outboundService = {
       }
 
       const { rows, count } = await warehouseRepository.getOutboundByPage({ page, pageSize });
+      const totalPriceByDate = await calculateTotalPriceByDate(rows, "dateOutbound", "");
 
       const responseData = {
         message: "Get all outbound history successfully",
@@ -61,6 +63,7 @@ export const outboundService = {
         totalOutbounds: count,
         totalPages: Math.ceil(count / pageSize),
         currentPage: page,
+        totalPriceByDate,
       };
 
       await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
@@ -108,7 +111,7 @@ export const outboundService = {
     endDate?: string;
   }) => {
     try {
-      const validFields = ["dateOutbound", "customerName", "outboundSlipCode"];
+      const validFields = ["dateOutbound", "customerName"];
       if (!validFields.includes(field)) {
         throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
       }
@@ -166,12 +169,22 @@ export const outboundService = {
         .map((id) => rows.find((o) => o.outboundId === id))
         .filter(Boolean);
 
+      //total price by date
+      let extraFilter: any = {};
+
+      if (field !== "dateOutbound" && keyword) {
+        extraFilter[field] = { [Op.like]: `%${keyword}%` };
+      }
+
+      const totalPriceByDate = await calculateTotalPriceByDate(finalData, field, keyword);
+
       return {
         message: "Get outbound records from Meilisearch & DB successfully",
         data: finalData,
         totalOutbounds: searchResult.totalHits,
         totalPages: searchResult.totalPages,
         currentPage: searchResult.page,
+        totalPriceByDate,
       };
     } catch (error) {
       console.error(`Failed to get outbound history by ${field}:`, error);
