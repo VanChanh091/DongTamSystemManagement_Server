@@ -26,6 +26,7 @@ import {
   planningPaperColumns,
 } from "../../utils/mapping/planningPaperRowAndColumn";
 import { exportExcelResponse } from "../../utils/helper/excelExporter";
+import { updateStatusPaper } from "../../utils/helper/modelHelper/manufactureHelper";
 // import { exportExcelResponse } from "../../utils/helper/excelExporter";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
@@ -228,96 +229,30 @@ export const planningPaperService = {
     }
   },
 
-  confirmCompletePlanningPaper: async (planningId: number | number[], role: any) => {
-    return await planningPaperService._updateStatusPaper(planningId, "complete", (papers) => {
+  completePlanningPaper: async (planningId: number | number[], forceComplete: boolean = false) => {
+    return await updateStatusPaper(planningId, "complete", (papers) => {
       for (const p of papers) {
-        if (p.status !== "requested") {
-          throw AppError.BadRequest(
-            `Đơn ${p.orderId} chưa được yêu cầu hoàn thành`,
-            "PLANNING_NOT_REQUESTED",
-          );
+        if (forceComplete) {
+          const qtyManufacture = p.Order.quantityManufacture ?? 0;
+          if (qtyManufacture !== 0) {
+            throw AppError.BadRequest(
+              `Đơn ${p.orderId} còn số lượng chưa sản xuất`,
+              "PLANNING_NOT_PRODUCED",
+            );
+          }
+        } else {
+          if (p.status !== "requested") {
+            throw AppError.BadRequest(
+              `Đơn ${p.orderId} chưa được yêu cầu hoàn thành`,
+              "PLANNING_NOT_REQUESTED",
+            );
+          }
+
+          if ((p.qtyProduced ?? 0) < p.runningPlan) {
+            throw AppError.BadRequest(`Đơn ${p.orderId} sản xuất thiếu số lượng`, "LACK_QUANTITY");
+          }
         }
-
-        // if (role !== "admin") {
-        //   if (p.qtyWasteNorm == 0) {
-        //     throw AppError.BadRequest(
-        //       `Đơn ${p.orderId} chưa cập nhật phế liệu`,
-        //       "PLANNING_NO_WASTE",
-        //     );
-        //   }
-        // }
-
-        if ((p.qtyProduced ?? 0) < p.runningPlan) {
-          throw AppError.BadRequest(`Đơn ${p.orderId} sản xuất thiếu số lượng`, "LACK_QUANTITY");
-        }
       }
-    });
-  },
-
-  _updateStatusPaper: async (
-    planningId: number | number[],
-    targetStatus: "requested" | "complete",
-    extraValidator: (papers: PlanningPaper[]) => void,
-  ) => {
-    return await runInTransaction(async (transaction) => {
-      const ids = Array.isArray(planningId) ? planningId : [planningId];
-
-      const planningPapers = await planningPaperRepository.getPapersById({
-        planningIds: ids,
-        options: {
-          attributes: [
-            "planningId",
-            "runningPlan",
-            "qtyProduced",
-            "qtyWasteNorm",
-            "status",
-            "orderId",
-            "statusRequest",
-          ],
-        },
-        transaction,
-      });
-
-      if (planningPapers.length !== ids.length) {
-        throw AppError.BadRequest("Một hoặc nhiều planning không tồn tại", "PLANNING_NOT_FOUND");
-      }
-
-      // Thực thi validator riêng
-      extraValidator(planningPapers);
-
-      await planningHelper.updateDataModel({
-        model: PlanningPaper,
-        data: { status: targetStatus },
-        options: { where: { planningId: ids }, transaction },
-      });
-
-      const overflowRows = await timeOverflowPlanning.findAll({
-        where: { planningId: ids },
-        transaction,
-      });
-
-      if (overflowRows.length > 0) {
-        await planningHelper.updateDataModel({
-          model: timeOverflowPlanning,
-          data: { status: targetStatus },
-          options: { where: { planningId: ids }, transaction },
-        });
-      }
-
-      //--------------------MEILISEARCH-----------------------
-      const dataForMeili = planningPapers.map((p) => ({
-        planningId: p.planningId,
-        status: targetStatus,
-      }));
-
-      await meiliService.syncOrUpdateMeiliData({
-        indexKey: MEILI_INDEX.PLANNING_PAPERS,
-        data: dataForMeili,
-        transaction,
-        isUpdate: true,
-      });
-
-      return { message: `Planning status updated to ${targetStatus}`, ids };
     });
   },
 
@@ -663,6 +598,7 @@ export const planningPaperService = {
     }
   },
 
+  //export excel
   exportExcelPlanningOrder: async (res: Response, machine: string) => {
     try {
       const data = await planningPaperRepository.getPaperToExportFile(machine);

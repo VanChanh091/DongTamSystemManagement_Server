@@ -37,12 +37,13 @@ export const handleUpdatePlanningPapers = async (
   res: Response,
   next: NextFunction,
 ) => {
-  const { action, planningIds, newMachine, newStatus, note } = req.body as {
+  const { action, planningIds, newMachine, newStatus, note, forceComplete } = req.body as {
     action: string;
     planningIds: number | number[];
     newMachine?: machinePaperType;
     newStatus?: OrderStatus;
     note?: string;
+    forceComplete?: boolean;
   };
 
   try {
@@ -61,10 +62,7 @@ export const handleUpdatePlanningPapers = async (
         }
         break;
       case "CONFIRM_COMPLETE":
-        response = await planningPaperService.confirmCompletePlanningPaper(
-          planningIdsArrs,
-          req.user.role,
-        );
+        response = await planningPaperService.completePlanningPaper(planningIdsArrs, forceComplete);
         break;
       case "PAUSE_OR_ACCEPT_LACK":
         if (newStatus) {

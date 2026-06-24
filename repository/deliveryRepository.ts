@@ -283,7 +283,7 @@ export const deliveryRepository = {
               ],
             },
             { model: Vehicle, attributes: ["vehicleName", "licensePlate"] },
-            {model: OutboundDetail, attributes: ["outboundQty"]},
+            { model: OutboundDetail, attributes: ["outboundQty"] },
           ],
         },
       ],
@@ -366,7 +366,7 @@ export const deliveryRepository = {
 
   bulkUpsert: async (item: any, transaction: Transaction) => {
     return await DeliveryItem.bulkCreate(item, {
-      updateOnDuplicate: ["vehicleId", "sequence", "status", "idxOrder"],
+      updateOnDuplicate: ["deliveryId", "vehicleId", "sequence", "status", "idxOrder"],
       transaction,
     });
   },

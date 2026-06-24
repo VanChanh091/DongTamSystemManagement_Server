@@ -76,9 +76,16 @@ export const handleAddOrUpdateOutbound = async (
     let response;
 
     if (outboundId) {
-      response = await outboundService.updateOutbound({ outboundId, outboundDetails });
+      response = await outboundService.updateOutbound({
+        outboundId,
+        outboundDetails,
+        updatedBy: req.user.fullName,
+      });
     } else {
-      response = await outboundService.createOutbound({ outboundDetails });
+      response = await outboundService.createOutbound({
+        outboundBy: req.user.fullName,
+        outboundDetails,
+      });
     }
     return res.status(200).json(response);
   } catch (error) {

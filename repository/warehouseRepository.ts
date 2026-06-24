@@ -336,14 +336,28 @@ export const warehouseRepository = {
     });
   },
 
+  //total price by date
   getTotalPriceByDateRanges: async ({ whereCondition }: { whereCondition: any }) => {
     return await OutboundHistory.findAll({
       where: whereCondition,
       attributes: [
         [Sequelize.fn("DATE", Sequelize.col("dateOutbound")), "dateStr"],
-        [Sequelize.fn("SUM", Sequelize.col("totalPricePayment")), "total"],
+        [Sequelize.fn("SUM", Sequelize.col("totalPriceOrder")), "total"],
       ],
       group: [Sequelize.fn("DATE", Sequelize.col("dateOutbound"))],
+      raw: true,
+    });
+  },
+
+  //total price 3 cols
+  getTotalPriceGrandTotal: async (whereCondition?: any) => {
+    return await OutboundHistory.findOne({
+      where: whereCondition,
+      attributes: [
+        [Sequelize.fn("SUM", Sequelize.col("totalPriceOrder")), "totalPriceOrder"],
+        [Sequelize.fn("SUM", Sequelize.col("totalPriceVAT")), "totalPriceVAT"],
+        [Sequelize.fn("SUM", Sequelize.col("totalPricePayment")), "totalPricePayment"],
+      ],
       raw: true,
     });
   },

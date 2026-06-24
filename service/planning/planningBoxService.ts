@@ -187,7 +187,7 @@ export const planningBoxService = {
     }
   },
 
-  confirmCompletePlanningBox: async (planningBoxId: number | number[], machine: string) => {
+  completePlanningBox: async (planningBoxId: number | number[], machine: string) => {
     return await planningBoxService._updateStatusBox(
       planningBoxId,
       machine,

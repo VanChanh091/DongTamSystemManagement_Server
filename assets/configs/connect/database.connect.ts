@@ -36,6 +36,13 @@ const sequelize = new Sequelize(dbConfig.database, dbConfig.username, dbConfig.p
   port: 3306,
   timezone: "+07:00",
   logging: false,
+
+  pool: {
+    max: 20, // Số lượng kết nối tối đa được phép mở đồng thời
+    min: 0, // Số lượng kết nối tối thiểu được duy trì (ngay cả khi rảnh rỗi)
+    acquire: 30000, // Thời gian tối đa (ms) mà một request phải đợi để mượn được connection trước khi báo lỗi (Timeout)
+    idle: 10000, // Thời gian tối đa (ms) một kết nối được phép giải phóng/rảnh rỗi trước khi bị đóng để tiết kiệm tài nguyên
+  },
 });
 
 const connectDB = async (): Promise<void> => {

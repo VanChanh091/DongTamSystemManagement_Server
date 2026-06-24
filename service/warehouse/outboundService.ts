@@ -31,7 +31,11 @@ import {
   outboundDetailColumns,
 } from "../../utils/mapping/outboundDetailRowAndColumn";
 import { inventoryLogService } from "../inventory/inventoryLogService";
-import { calculateTotalPriceByDate } from "../../utils/helper/modelHelper/warehouseHelper";
+import {
+  buildSearchWhereCondition,
+  calculateGrandTotal,
+  calculateTotalPriceByDate,
+} from "../../utils/helper/modelHelper/warehouseHelper";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { outbound } = CacheKey.warehouse;
@@ -40,11 +44,13 @@ export const outboundService = {
   getAllOutboundHistory: async (page: number, pageSize: number) => {
     try {
       const cacheKey = outbound.page(page);
+      const globalGrandTotalKey = "outbound:grand_total";
 
       const { isChanged } = await CacheManager.check(OutboundHistory, "outbound");
 
       if (isChanged) {
         await CacheManager.clear("outbound");
+        await redisCache.del(globalGrandTotalKey);
       } else {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {
@@ -55,7 +61,20 @@ export const outboundService = {
       }
 
       const { rows, count } = await warehouseRepository.getOutboundByPage({ page, pageSize });
-      const totalPriceByDate = await calculateTotalPriceByDate(rows, "dateOutbound", "");
+
+      //tính tổng tiền theo ngày
+      const totalPriceByDate = await calculateTotalPriceByDate(rows);
+
+      //tính tổng 3 cột tiền
+      let grandTotal: any = null;
+      const cachedGrandTotal = await redisCache.get(globalGrandTotalKey);
+
+      if (cachedGrandTotal) {
+        grandTotal = JSON.parse(cachedGrandTotal);
+      } else {
+        grandTotal = await calculateGrandTotal();
+        await redisCache.set(globalGrandTotalKey, JSON.stringify(grandTotal), "EX", 3600);
+      }
 
       const responseData = {
         message: "Get all outbound history successfully",
@@ -64,6 +83,7 @@ export const outboundService = {
         totalPages: Math.ceil(count / pageSize),
         currentPage: page,
         totalPriceByDate,
+        grandTotal,
       };
 
       await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
@@ -146,7 +166,6 @@ export const outboundService = {
       };
 
       const searchResult = await index.search(searchKeyword, searchOptions);
-
       const outboundIds = searchResult.hits.map((hit: any) => hit.outboundId);
 
       if (outboundIds.length === 0) {
@@ -170,13 +189,18 @@ export const outboundService = {
         .filter(Boolean);
 
       //total price by date
-      let extraFilter: any = {};
+      const searchWhereCondition = await buildSearchWhereCondition(
+        field,
+        keyword,
+        startDate,
+        endDate,
+      );
 
-      if (field !== "dateOutbound" && keyword) {
-        extraFilter[field] = { [Op.like]: `%${keyword}%` };
-      }
+      // console.log("condition:", searchWhereCondition);
 
-      const totalPriceByDate = await calculateTotalPriceByDate(finalData, field, keyword);
+      //dùng bộ lọc chung đó vào cho để tự tính toán độc lập
+      const totalPriceByDate = await calculateTotalPriceByDate(finalData, searchWhereCondition);
+      const grandTotal = await calculateGrandTotal(searchWhereCondition);
 
       return {
         message: "Get outbound records from Meilisearch & DB successfully",
@@ -185,6 +209,7 @@ export const outboundService = {
         totalPages: searchResult.totalPages,
         currentPage: searchResult.page,
         totalPriceByDate,
+        grandTotal,
       };
     } catch (error) {
       console.error(`Failed to get outbound history by ${field}:`, error);
@@ -228,8 +253,10 @@ export const outboundService = {
   },
 
   createOutbound: async ({
+    outboundBy,
     outboundDetails,
   }: {
+    outboundBy: string;
     outboundDetails: {
       orderId: string;
       outboundQty: number;
@@ -417,12 +444,23 @@ export const outboundService = {
             totalPricePayment,
             totalOutboundQty,
             dueDate: timePayment,
+            outboundBy,
           },
           transaction,
         });
 
         // Tạo outbound detail
         for (const item of preparedDetails) {
+          if (item.deliveryItemId) {
+            const itemIdExists = await DeliveryItem.findByPk(item.deliveryItemId, { transaction });
+            if (!itemIdExists) {
+              throw AppError.BadRequest(
+                `Mã tham chiếu giao hàng cho đơn hàng đã bị xóa hoặc thay đổi. Vui lòng tải lại trang!`,
+                "DELIVERY_ITEM_NOT_FOUND",
+              );
+            }
+          }
+
           await planningHelper.createData({
             model: OutboundDetail,
             data: {
@@ -493,9 +531,11 @@ export const outboundService = {
 
   updateOutbound: async ({
     outboundId,
+    updatedBy,
     outboundDetails,
   }: {
     outboundId: number;
+    updatedBy: string;
     outboundDetails: {
       orderId: string;
       outboundQty: number;
@@ -687,7 +727,6 @@ export const outboundService = {
         }
 
         // Cập nhật outbound header
-        const finalDueDate = timePayment || outbound.dueDate;
 
         await outbound.update(
           {
@@ -695,7 +734,8 @@ export const outboundService = {
             totalPriceVAT,
             totalPricePayment,
             totalOutboundQty,
-            dueDate: finalDueDate,
+            dueDate: timePayment || outbound.dueDate,
+            updatedBy,
           },
           { transaction },
         );

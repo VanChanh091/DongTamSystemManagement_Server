@@ -12,12 +12,12 @@ import redisCache from "../../assets/configs/connect/redis.connect";
 import { PlanningPaper } from "../../models/planning/planningPaper";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { Inventory } from "../../models/warehouse/inventory/inventory";
+import { inventoryLogService } from "../inventory/inventoryLogService";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { syntheticRepository } from "../../repository/syntheticRepository";
 import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { mappingOrderRow, orderColumns } from "../../utils/mapping/orderRowAndColumn";
-import { inventoryLogService } from "../inventory/inventoryLogService";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { order } = CacheKey.synthetic;
@@ -35,26 +35,50 @@ export const syntheticOrderService = {
     allOrders?: string;
   }) => {
     try {
-      // const cacheKey = order.all(status, page);
-      // const { isChanged } = await CacheManager.check(
-      //   [
-      //    { model: Order, as: "Order" },
-      //   ],
-      //   "syntheticOrder",
-      // );
+      const volatileStatuses = ["accept", "planning"];
+      const isVolatile = Array.isArray(status)
+        ? status.some((s) => volatileStatuses.includes(s))
+        : volatileStatuses.includes(status);
 
-      // if (isChanged) {
-      //   await CacheManager.clear("syntheticOrder");
-      // } else {
-      //   const cachedData = await redisCache.get(cacheKey);
-      //   if (cachedData) {
-      //     if (devEnvironment) console.log("✅ Data PlanningPaper from Redis");
-      //     return {
-      //       ...JSON.parse(cachedData),
-      //       message: `get all cache planning:machine:${machine}`,
-      //     };
-      //   }
-      // }
+      if (isVolatile) {
+        const { rows, count } = await syntheticRepository.getAllOrderByStatus({
+          page,
+          pageSize,
+          status,
+          allOrders,
+        });
+
+        return {
+          message: "Get all orders successfully",
+          data: rows,
+          totalOrders: count,
+          totalPages: Math.ceil(count / pageSize),
+          currentPage: page,
+        };
+      }
+
+      const statusString = Array.isArray(status) ? status.join(",") : status;
+      const key = allOrders === "all" ? "all" : statusString;
+
+      const cacheKey = order.all(key, page);
+
+      const { isChanged } = await CacheManager.check(
+        [{ model: Order, as: "Order" }, { model: Inventory }],
+        "syntheticOrder",
+      );
+
+      if (isChanged) {
+        await CacheManager.clear("syntheticOrder");
+      } else {
+        const cachedData = await redisCache.get(cacheKey);
+        if (cachedData) {
+          if (devEnvironment) console.log("✅ Data PlanningPaper from Redis");
+          return {
+            ...JSON.parse(cachedData),
+            message: `get all orders with status: ${key} from cache successfully`,
+          };
+        }
+      }
 
       const { rows, count } = await syntheticRepository.getAllOrderByStatus({
         page,
@@ -71,7 +95,7 @@ export const syntheticOrderService = {
         currentPage: page,
       };
 
-      // await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 1800);
+      await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 1800);
 
       return responseData;
     } catch (error) {
@@ -238,12 +262,17 @@ export const syntheticOrderService = {
               "statusRequest",
               "deliveryPlanned",
             ],
+            include: [{ model: Order, attributes: ["quantityManufacture"] }],
             transaction,
           });
 
           if (papers.length > 0) {
-            const hasZeroQty = papers.some((p) => p.qtyProduced === null || p.qtyProduced === 0);
-            if (hasZeroQty) {
+            const hasInvalidQty = papers.some((p) => {
+              if (p.Order?.quantityManufacture === 0) return false;
+              return p.qtyProduced === null || p.qtyProduced === 0;
+            });
+
+            if (hasInvalidQty) {
               throw AppError.BadRequest(
                 "Không thể hoàn thành đơn hàng khi có số lượng chưa sản xuất",
                 "ZERO_QTY_PRODUCED",
@@ -279,7 +308,7 @@ export const syntheticOrderService = {
 
           if (inventoryUpdates.length > 0) {
             await Inventory.bulkCreate(inventoryUpdates, {
-              updateOnDuplicate: ["qtyInventory", "qtyVariance"], 
+              updateOnDuplicate: ["qtyInventory", "qtyVariance"],
               transaction,
             });
 

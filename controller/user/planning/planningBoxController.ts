@@ -83,7 +83,7 @@ export const updatePlanningBoxes = async (req: Request, res: Response, next: Nex
 
     switch (action) {
       case "CONFIRM_COMPLETE":
-        response = await planningBoxService.confirmCompletePlanningBox(planningBoxIds, machine);
+        response = await planningBoxService.completePlanningBox(planningBoxIds, machine);
         break;
       case "ACCEPT_LACK_QTY":
         if (newStatus) {

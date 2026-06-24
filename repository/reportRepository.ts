@@ -61,6 +61,7 @@ export const reportRepository = {
                 "flute",
                 "canLan",
                 "daoXa",
+                "dvt",
                 "instructSpecial",
               ],
               include: [{ model: Customer, attributes: ["customerName"] }],

@@ -3,10 +3,14 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.6.7</title>
-            <sparkle:version>4.6.7</sparkle:version> 
-            <description></description>
-            <pubDate>Wed, 17 Jun 2026</pubDate>
+            <title>Version 4.6.9</title>
+            <sparkle:version>4.6.9</sparkle:version> 
+            <description>
+            Thêm chức năng cho phép hoàn thành đơn nhưng không cần sản xuất
+            Thêm tổng tiền hàng, thuế, tiền phải trả vào trang xuất kho
+            Thêm trường ghi vết người xuất kho
+            </description>
+            <pubDate>Mon, 22 Jun 2026</pubDate>
             <enclosure url="dongtam.exe" 
                     sparkle:os="windows" 
                     length="12345678" 

@@ -19,7 +19,7 @@ import { mergeShiftField } from "../../utils/helper/modelHelper/planningHelper";
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
 import { createReportPlanning } from "../../utils/helper/modelHelper/reportHelper";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
-import { aggregateReportFields } from "../../utils/helper/modelHelper/manufactureHelper";
+import { aggregateReportFields, updateStatusPaper } from "../../utils/helper/modelHelper/manufactureHelper";
 
 export const manuPaperService = {
   getPlanningPaper: async (machine: string, filterType: string = "all") => {
@@ -512,7 +512,7 @@ export const manuPaperService = {
 
   requestCompletePlanningPaper: async (planningId: number | number[]) => {
     try {
-      return await planningPaperService._updateStatusPaper(planningId, "requested", (papers) => {
+      return await updateStatusPaper(planningId, "requested", (papers) => {
         for (const p of papers) {
           if (p.status === "requested") {
             throw AppError.BadRequest(

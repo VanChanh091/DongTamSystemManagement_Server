@@ -15,6 +15,8 @@ interface OutboundHistoryAttributes {
   dueDate?: Date | null;
   paidAmount?: number;
   remainingAmount?: number;
+  outboundBy: string;
+  updatedBy?: string;
   status: statusOutbound;
 
   createdAt?: Date;
@@ -24,7 +26,7 @@ interface OutboundHistoryAttributes {
 //cho phép bỏ qua id khi tạo
 export type OutboundHistoryCreationAttributes = Optional<
   OutboundHistoryAttributes,
-  "outboundId" | "createdAt" | "updatedAt"
+  "outboundId" | "outboundBy" | "updatedBy" | "createdAt" | "updatedAt"
 >;
 
 //định nghĩa kiểu OOP
@@ -42,6 +44,8 @@ export class OutboundHistory
   declare dueDate?: Date | null;
   declare paidAmount?: number;
   declare remainingAmount?: number;
+  declare outboundBy: string;
+  declare updatedBy?: string;
   declare status: statusOutbound;
 
   declare readonly createdAt?: Date;
@@ -61,9 +65,11 @@ export function initOutboundHistoryModel(sequelize: Sequelize): typeof OutboundH
       totalPriceVAT: { type: DataTypes.DOUBLE },
       totalPricePayment: { type: DataTypes.DOUBLE, allowNull: false },
       totalOutboundQty: { type: DataTypes.INTEGER, allowNull: false },
-      dueDate: { type: DataTypes.DATE }, //thời hạn thanh toán PXK
+      dueDate: { type: DataTypes.DATE }, //thời hạn thanh toán PXKi
       paidAmount: { type: DataTypes.DOUBLE }, //số tiền đã thanh toán
       remainingAmount: { type: DataTypes.DOUBLE }, //số tiền còn lại phải thanh toán
+      outboundBy: { type: DataTypes.STRING, allowNull: false },
+      updatedBy: { type: DataTypes.STRING },
       status: {
         type: DataTypes.ENUM("paid", "unpaid", "partial"),
         defaultValue: "unpaid",
