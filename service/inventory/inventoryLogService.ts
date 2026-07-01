@@ -107,7 +107,10 @@ export const inventoryLogService = {
     try {
       // const endDate = dayjsUtc.utc(targetDate).format("YYYY-MM-DD 23:59:59");
       // const dateTimestamp = dayjsUtc(targetDate).endOf("day").toDate();
-      const dateTimestamp = dayjsUtc(targetDate).toDate();
+      // const dateTimestamp = dayjsUtc(targetDate).toDate();
+      const dateTimestamp = dayjsUtc(targetDate).format("YYYY-MM-DD HH:mm:ss");
+
+      console.log(`time: ${dateTimestamp}`);
 
       const baseQuery: any = {
         where: {

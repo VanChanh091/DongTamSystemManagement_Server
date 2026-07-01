@@ -28,31 +28,7 @@ export const manufactureRepo = {
   },
 
   //====================================PAPER========================================
-
-  getManufacturePaper: async (machine: string, filterType: string = "all") => {
-    const whereCondition: any = {
-      chooseMachine: machine,
-      dayStart: { [Op.ne]: null },
-      status: { [Op.in]: ["planning", "lackQty", "producing", "requested"] },
-    };
-
-    const operatorMap: Record<string, string> = {
-      gtZero: ">",
-      ltZero: "<=",
-    };
-
-    const operator = operatorMap[filterType];
-
-    if (operator) {
-      whereCondition[Op.and] = [
-        Sequelize.where(
-          Sequelize.col("runningPlan"),
-          operator,
-          Sequelize.fn("COALESCE", Sequelize.col("qtyProduced"), 0),
-        ),
-      ];
-    }
-
+  buildQueryManuPapers: async (whereCondition?: any) => {
     return await PlanningPaper.findAll({
       where: whereCondition,
       attributes: { exclude: ["createdAt", "updatedAt"] },
@@ -77,21 +53,38 @@ export const manufactureRepo = {
             "instructSpecial",
             "isBox",
             "chongTham",
-            "customerId",
-            "productId",
           ],
-          include: [
-            { model: Customer, attributes: ["customerName", "companyName"] },
-            {
-              model: Box,
-              as: "box",
-              attributes: { exclude: ["createdAt", "updatedAt", "orderId"] },
-            },
-          ],
+          include: [{ model: Customer, attributes: ["customerName"] }],
         },
       ],
       order: [["sortPlanning", "ASC"]],
     });
+  },
+
+  getManufacturePaper: async (machine: string, filterType: string = "all") => {
+    const whereCondition: any = {
+      chooseMachine: machine,
+      status: { [Op.in]: ["planning", "lackQty", "producing", "requested"] },
+      dayStart: { [Op.ne]: null },
+    };
+
+    const operatorMap: Record<string, string> = {
+      gtZero: ">",
+      ltZero: "<=",
+    };
+
+    const operator = operatorMap[filterType];
+    if (operator) {
+      whereCondition[Op.and] = [
+        Sequelize.where(
+          Sequelize.col("runningPlan"),
+          operator,
+          Sequelize.fn("COALESCE", Sequelize.col("qtyProduced"), 0),
+        ),
+      ];
+    }
+
+    return await manufactureRepo.buildQueryManuPapers(whereCondition);
   },
 
   getPapersById: async (planningId: number, transaction?: Transaction) => {
@@ -199,7 +192,85 @@ export const manufactureRepo = {
 
   //====================================BOX========================================
 
-  getManufactureBox: async (machine: string) => {
+  // buildQueryManuBoxes: async () => {
+  //   return await PlanningBox.findAll({
+  //     attributes: {
+  //       exclude: [
+  //         "dayStart",
+  //         "dayCompleted",
+  //         "hasIn",
+  //         "hasBe",
+  //         "hasXa",
+  //         "hasDan",
+  //         "hasCanLan",
+  //         "hasCatKhe",
+  //         "hasCanMang",
+  //         "hasDongGhim",
+  //         "createdAt",
+  //         "updatedAt",
+  //       ],
+  //     },
+  //     include: [
+  //       {
+  //         model: PlanningBoxTime,
+  //         where: {
+  //           machine: machine,
+  //           dayStart: { [Op.ne]: null },
+  //           status: targetStatus,
+  //         },
+  //         as: "boxTimes",
+  //         required: true,
+  //         attributes: { exclude: ["createdAt", "updatedAt"] },
+  //       },
+  //       {
+  //         model: PlanningBoxTime,
+  //         as: "allBoxTimes",
+  //         where: { machine: { [Op.ne]: machine } },
+  //         required: false,
+  //         attributes: ["boxTimeId", "qtyProduced", "machine"],
+  //       },
+  //       {
+  //         model: timeOverflowPlanning,
+  //         as: "timeOverFlow",
+  //         required: false,
+  //         where: { machine: machine },
+  //         attributes: { exclude: ["createdAt", "updatedAt", "status"] },
+  //       },
+  //       {
+  //         model: Order,
+  //         attributes: [
+  //           "orderId",
+  //           "dayReceiveOrder",
+  //           "flute",
+  //           "QC_box",
+  //           "numberChild",
+  //           "instructSpecial",
+  //           "dateRequestShipping",
+  //           "quantityCustomer",
+  //           "customerId",
+  //           "productId",
+  //         ],
+  //         include: [
+  //           {
+  //             model: Customer,
+  //             attributes: ["customerName", "companyName"],
+  //           },
+  //           {
+  //             model: Box,
+  //             as: "box",
+  //             attributes: { exclude: ["createdAt", "updatedAt", "orderId"] },
+  //           },
+  //         ],
+  //       },
+  //     ],
+  //     order: [[{ model: PlanningBoxTime, as: "boxTimes" }, "sortPlanning", "ASC"]],
+  //   });
+  // },
+
+  getManufactureBox: async (machine: string, options?: { status: string | string[] }) => {
+    const targetStatus =
+      options?.status !== undefined ? options.status : { [Op.notIn]: ["complete", "stop"] };
+
     return await PlanningBox.findAll({
       attributes: {
         exclude: [
@@ -223,7 +294,7 @@ export const manufactureRepo = {
           where: {
             machine: machine,
             dayStart: { [Op.ne]: null },
-            status: { [Op.notIn]: ["complete", "stop"] },
+            status: targetStatus,
           },
           as: "boxTimes",
           required: true,

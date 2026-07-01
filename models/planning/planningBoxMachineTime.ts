@@ -17,6 +17,7 @@ export type machineBoxType =
   | "Máy Cắt Khe"
   | "Máy Cán Màng"
   | "Máy Đóng Ghim";
+export type statusQCCheck = "none" | "failed" | "fixed" | "passed";
 
 //định nghĩa trường trong bảng
 interface PlanningBoxTimeAttributes {
@@ -31,6 +32,7 @@ interface PlanningBoxTimeAttributes {
   machine: machineBoxType;
   shiftManagement?: string | null;
   status: statusBoxType;
+  statusCheck: statusQCCheck;
   sortPlanning?: number | null;
   isRequest: boolean;
 
@@ -55,6 +57,8 @@ export type PlanningBoxTimeCreationAttributes = Optional<
   | "shiftManagement"
   | "sortPlanning"
   | "isRequest"
+  | "status"
+  | "statusCheck"
   | "createdAt"
   | "updatedAt"
 >;
@@ -75,6 +79,7 @@ export class PlanningBoxTime
   declare machine: machineBoxType;
   declare shiftManagement?: string | null;
   declare status: statusBoxType;
+  declare statusCheck: statusQCCheck;
   declare sortPlanning?: number | null;
   declare isRequest: boolean;
 
@@ -127,6 +132,10 @@ export function initPlanningBoxTimeModel(sequelize: Sequelize): typeof PlanningB
         type: DataTypes.ENUM("planning", "lackOfQty", "producing", "requested", "complete", "stop"),
         allowNull: false,
         defaultValue: "planning",
+      },
+      statusCheck: {
+        type: DataTypes.ENUM("none", "failed", "fixed", "passed"),
+        defaultValue: "none",
       },
       sortPlanning: { type: DataTypes.INTEGER },
       isRequest: { type: DataTypes.BOOLEAN, defaultValue: false },

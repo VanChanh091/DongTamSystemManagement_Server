@@ -55,6 +55,7 @@ export interface searchFieldAtribute {
   pageSize?: number;
   startDate?: string;
   endDate?: string;
+  machine?: string;
   filter?: "gtZero" | "ltZero";
 }
 

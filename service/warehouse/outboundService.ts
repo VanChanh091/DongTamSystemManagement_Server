@@ -415,9 +415,10 @@ export const outboundService = {
 
         const prefix = `XKBH${year}${month}`;
 
+        //index chỉ có tác dụng với like có dấu % ở cuối
         const lastOutbound = await OutboundHistory.findOne({
           where: { outboundSlipCode: { [Op.like]: `${prefix}%` } },
-          order: [["outboundId", "DESC"]],
+          order: [["outboundSlipCode", "DESC"]],
           transaction,
         });
 
@@ -440,8 +441,8 @@ export const outboundService = {
             dateOutbound: now,
             outboundSlipCode: slipCode,
             totalPriceOrder,
-            totalPriceVAT,
-            totalPricePayment,
+            totalPriceVAT: Math.round(totalPriceVAT * 100) / 100, // làm tròn 2 chữ số thập phân
+            totalPricePayment: Math.round(totalPricePayment * 100) / 100,
             totalOutboundQty,
             dueDate: timePayment,
             outboundBy,
@@ -727,12 +728,11 @@ export const outboundService = {
         }
 
         // Cập nhật outbound header
-
         await outbound.update(
           {
             totalPriceOrder,
-            totalPriceVAT,
-            totalPricePayment,
+            totalPriceVAT: Math.round(totalPriceVAT * 100) / 100, // làm tròn 2 chữ số thập phân
+            totalPricePayment: Math.round(totalPricePayment * 100) / 100,
             totalOutboundQty,
             dueDate: timePayment || outbound.dueDate,
             updatedBy,

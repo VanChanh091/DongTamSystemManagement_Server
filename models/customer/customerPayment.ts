@@ -55,7 +55,15 @@ export function initCustomerPaymentModel(sequelize: Sequelize): typeof CustomerP
       },
       debtCurrent: { type: DataTypes.DOUBLE },
       debtLimit: { type: DataTypes.DOUBLE },
-      timePayment: { type: DataTypes.DATE, allowNull: false },
+      timePayment: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        get() {
+          const rawValue = this.getDataValue("timePayment");
+          if (!rawValue) return null;
+          return new Date(rawValue.getTime() - rawValue.getTimezoneOffset() * 60000).toISOString();
+        },
+      },
       paymentType: { type: DataTypes.ENUM("daily", "monthly"), allowNull: false },
       closingDate: { type: DataTypes.INTEGER, allowNull: false },
 

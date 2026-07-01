@@ -197,10 +197,7 @@ export const deliveryScheduleService = {
 
                 updateTasks.push(
                   PlanningPaper.update(
-                    {
-                      statusRequest: "finalize",
-                      deliveryPlanned: isFullyDelivered ? "delivered" : "planned",
-                    },
+                    { deliveryPlanned: isFullyDelivered ? "delivered" : "planned" },
                     { where: { planningId }, transaction },
                   ),
                 );

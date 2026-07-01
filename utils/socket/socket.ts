@@ -69,6 +69,7 @@ export const initSocket = (server: HttpServer) => {
       if (devEnvironment) console.log(`🔔 User joined delivery notification for room: ${room}`);
     });
 
+    //leave room
     socket.on("leave-room", (room: string) => {
       socket.leave(room);
       if (devEnvironment) console.log(`📌 socket left: ${room}`);

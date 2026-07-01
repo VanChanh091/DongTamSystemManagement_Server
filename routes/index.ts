@@ -33,7 +33,10 @@ export {
   qcRoutes,
   deliveryRoutes,
   badgeRoutes,
+
+  //QC
   scrapRoutes,
+
   //process
   processingRoutes,
 

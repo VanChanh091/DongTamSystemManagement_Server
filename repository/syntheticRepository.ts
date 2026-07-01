@@ -8,6 +8,7 @@ import { PlanningPaper } from "../models/planning/planningPaper";
 import { Inventory } from "../models/warehouse/inventory/inventory";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
+import { InventoryTransfers } from "../models/warehouse/inventory/inventoryTransfers";
 
 export const syntheticRepository = {
   //====================================ORDERS========================================

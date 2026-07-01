@@ -21,8 +21,8 @@ export const adminCriteriaService = {
 
   createNewCriteria: async (data: QcCriteriaCreationAttributes) => {
     try {
-      return await runInTransaction(async (transcation) => {
-        const newCriteria = await QcCriteria.create({ ...data }, { transaction: transcation });
+      return await runInTransaction(async (transaction) => {
+        const newCriteria = await QcCriteria.create({ ...data }, { transaction: transaction });
 
         return { message: "Create Qc Criteria successfully", data: newCriteria };
       });

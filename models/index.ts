@@ -1,4 +1,6 @@
 import { sequelize } from "../assets/configs/connect/database.connect";
+import { initCriteriaBoxCheckModel } from "./admin/criteriaCheck/criteriaBoxCheck";
+import { initCriteriaPaperCheckModel } from "./admin/criteriaCheck/criteriaPaperCheck";
 import { initFluteRatioCoefficientModel } from "./admin/fluteRatio";
 import { initMachineBoxModel } from "./admin/machineBox";
 import { initMachinePaperModel } from "./admin/machinePaper";
@@ -23,6 +25,8 @@ import { initPlanningPaperModel } from "./planning/planningPaper";
 import { initTimeOverflowPlanningModel } from "./planning/timeOverflowPlanning";
 import { initProductModel } from "./product/product";
 import { initQcCriteriaModel } from "./qualityControl/qcCriteria";
+import { initQcInspectionBoxModel } from "./qualityControl/qcInspection/qcInspectionBox";
+import { initQcInspectionPaperModel } from "./qualityControl/qcInspection/qcInspectionPaper";
 import { initQcSamepleResultModel } from "./qualityControl/qcSampleResult";
 import { initQcSessionModel } from "./qualityControl/qcSession";
 import { initDailyReportModel } from "./report/dailyReportPerformance";
@@ -37,6 +41,19 @@ import { initInventoryTransfersModel } from "./warehouse/inventory/inventoryTran
 import { initLiquidationInventoryModel } from "./warehouse/inventory/liquidationInventory";
 import { initOutboundDetailModel } from "./warehouse/outboundDetail";
 import { initOutboundHistoryModel } from "./warehouse/outboundHistory";
+
+//admin
+const MachinePaper = initMachinePaperModel(sequelize);
+const MachineBox = initMachineBoxModel(sequelize);
+const WasteNormPaper = initWasteNormPaperModel(sequelize);
+const WasteNormBox = initWasteNormBoxModel(sequelize);
+const WaveCrestCoefficient = initWaveCrestCoefficientModel(sequelize);
+const Vehicle = initVehicleModel(sequelize);
+const FluteRatio = initFluteRatioCoefficientModel(sequelize);
+
+//admin criteria check
+const CriteriaPaperCheck = initCriteriaPaperCheckModel(sequelize);
+const CriteriaBoxCheck = initCriteriaBoxCheckModel(sequelize);
 
 //other
 const User = initUserModel(sequelize);
@@ -70,19 +87,14 @@ const ScrapReport = initScrapReportModel(sequelize);
 const EmployeeBasicInfo = initEmployeeBasicInfoModel(sequelize);
 const EmployeeCompanyInfo = initEmployeeCompanyInfoModel(sequelize);
 
-//admin
-const MachinePaper = initMachinePaperModel(sequelize);
-const MachineBox = initMachineBoxModel(sequelize);
-const WasteNormPaper = initWasteNormPaperModel(sequelize);
-const WasteNormBox = initWasteNormBoxModel(sequelize);
-const WaveCrestCoefficient = initWaveCrestCoefficientModel(sequelize);
-const Vehicle = initVehicleModel(sequelize);
-const FluteRatio = initFluteRatioCoefficientModel(sequelize);
-
 //QC
 const QcSession = initQcSessionModel(sequelize);
 const QcCriteria = initQcCriteriaModel(sequelize);
 const QcSampleResult = initQcSamepleResultModel(sequelize);
+
+//QC Inspection
+const QcInspectionPaper = initQcInspectionPaperModel(sequelize);
+const QcInspectionBox = initQcInspectionBoxModel(sequelize);
 
 //warehouse
 const InboundHistory = initInboundHistoryModel(sequelize);
@@ -101,6 +113,19 @@ const DeliveryPlan = initDeliveryPlanModel(sequelize);
 const DeliveryItem = initDeliveryItemModel(sequelize);
 
 const models = {
+  //admin
+  MachinePaper,
+  MachineBox,
+  WasteNormPaper,
+  WasteNormBox,
+  WaveCrestCoefficient,
+  Vehicle,
+  FluteRatio,
+
+  //admin criteria check
+  CriteriaPaperCheck,
+  CriteriaBoxCheck,
+
   User,
   Product,
 
@@ -137,6 +162,10 @@ const models = {
   QcSession,
   QcSampleResult,
 
+  //QC Inspection
+  QcInspectionPaper,
+  QcInspectionBox,
+
   //warehouse
   InboundHistory,
   OutboundHistory,
@@ -151,15 +180,6 @@ const models = {
   DeliveryRequest,
   DeliveryPlan,
   DeliveryItem,
-
-  //admin
-  MachinePaper,
-  MachineBox,
-  WasteNormPaper,
-  WasteNormBox,
-  WaveCrestCoefficient,
-  Vehicle,
-  FluteRatio,
 };
 
 //===============================CUSTOMER=================================
@@ -274,6 +294,21 @@ QcSession.hasMany(InboundHistory, {
   onDelete: "CASCADE",
 });
 InboundHistory.belongsTo(QcSession, { foreignKey: "qcSessionId" });
+
+//===============================QC INSPECTION=================================
+PlanningPaper.hasMany(QcInspectionPaper, {
+  foreignKey: "planningId",
+  as: "inspecPaper",
+  onDelete: "CASCADE",
+});
+QcInspectionPaper.belongsTo(PlanningPaper, { foreignKey: "planningId" });
+
+PlanningBoxTime.hasMany(QcInspectionBox, {
+  foreignKey: "boxtimeId",
+  as: "inspecBox",
+  onDelete: "CASCADE",
+});
+QcInspectionBox.belongsTo(PlanningBoxTime, { foreignKey: "boxtimeId" });
 
 //===============================INBOUND=================================
 Order.hasMany(InboundHistory, { foreignKey: "orderId", onDelete: "CASCADE" });

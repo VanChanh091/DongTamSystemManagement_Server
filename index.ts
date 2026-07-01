@@ -101,6 +101,8 @@ app.use("/api/meilisearch", meilisearchRoutes);
 //BADGE
 app.use("/api/badge", badgeRoutes);
 
+//xóa index cho các bảng sau nếu dùng alter: true quá nhiều
+//user, deliveryPlan, outboundHistory
 sequelize
   // .sync({ alter: true })
   .sync()

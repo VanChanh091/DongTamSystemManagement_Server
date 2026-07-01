@@ -238,7 +238,7 @@ export const productService = {
         if (orderCount > 0) {
           if (role != "admin") {
             throw AppError.Conflict(
-              `Product with ID '${productId}' has associated orders and cannot be deleted.`,
+              `Sản phẩm: '${product.productName}' có ${orderCount} đơn hàng, không thể xóa`,
               "PRODUCT_HAS_ORDERS",
             );
           }

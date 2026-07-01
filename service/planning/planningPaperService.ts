@@ -27,7 +27,6 @@ import {
 } from "../../utils/mapping/planningPaperRowAndColumn";
 import { exportExcelResponse } from "../../utils/helper/excelExporter";
 import { updateStatusPaper } from "../../utils/helper/modelHelper/manufactureHelper";
-// import { exportExcelResponse } from "../../utils/helper/excelExporter";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper } = CacheKey.planning;
@@ -514,6 +513,8 @@ export const planningPaperService = {
         });
         if (!machineInfo) throw AppError.NotFound("Machine not found", "MACHINE_NOT_FOUND");
 
+        // console.log(`machineInfo: ${JSON.stringify(machineInfo)}`);
+
         const machineMap = {
           m2: machineInfo.find((m) => m.type === "M2"),
           kg: machineInfo.find((m) => m.type === "Kg"),
@@ -539,6 +540,7 @@ export const planningPaperService = {
         };
       });
     } catch (error) {
+      console.log("Error in updateIndex_TimeRunning:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
@@ -555,6 +557,7 @@ export const planningPaperService = {
 
       return { message: "Note updated successfully" };
     } catch (error) {
+      console.log("Error in addNoteToPlanning:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }

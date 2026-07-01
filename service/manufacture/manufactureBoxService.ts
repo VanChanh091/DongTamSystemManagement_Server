@@ -519,4 +519,34 @@ export const manuBoxService = {
       },
     );
   },
+
+  //confirm fixed err from qc check
+  confirmFixedErr: async (boxTimeId: number, machine: string) => {
+    try {
+      return await runInTransaction(async (transaction) => {
+        const planningBoxTime = await PlanningBoxTime.findOne({
+          where: { boxTimeId, machine },
+          transaction,
+        });
+        if (!planningBoxTime) {
+          throw AppError.NotFound("Planning Box Time not found", "PLANNING_BOX_TIME_NOT_FOUND");
+        }
+
+        if (planningBoxTime.statusCheck !== "failed") {
+          throw AppError.BadRequest(
+            "Chỉ có thể xác nhận cho công đoạn đang bị lỗi",
+            "PLANNING_NOT_FAILED",
+          );
+        }
+
+        await planningBoxTime.update({ statusCheck: "fixed" }, { transaction });
+
+        return { message: "Confirm fixed error successfully" };
+      });
+    } catch (error) {
+      console.error("Error confirming fixed error:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
 };

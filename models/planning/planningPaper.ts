@@ -15,6 +15,7 @@ export type planningPaperStatus =
   | "cancel";
 export type statusRequestInbound = "none" | "requested" | "inbounded" | "finalize";
 export type statusDeliveryPlanned = "none" | "pending" | "planned" | "delivered";
+export type statusQCCheck = "none" | "failed" | "fixed" | "passed";
 
 //định nghĩa trường trong bảng
 interface PlanningPaperAttributes {
@@ -60,11 +61,12 @@ interface PlanningPaperAttributes {
   note?: string | null;
 
   status: planningPaperStatus;
+  statusCheck: statusQCCheck;
   statusRequest: statusRequestInbound;
+  deliveryPlanned: statusDeliveryPlanned;
 
   hasBox?: boolean | null;
   hasOverFlow?: boolean | null;
-  deliveryPlanned: statusDeliveryPlanned;
   sortPlanning?: number | null;
 
   createdAt?: Date;
@@ -107,6 +109,7 @@ export type PlanningPaperCreationAttributes = Optional<
   | "note"
   | "status"
   | "statusRequest"
+  | "statusCheck"
   | "hasOverFlow"
   | "hasBox"
   | "deliveryPlanned"
@@ -160,7 +163,9 @@ export class PlanningPaper
   declare shiftProduction?: string | null;
   declare shiftManagement?: string | null;
   declare note?: string | null;
+
   declare status: planningPaperStatus;
+  declare statusCheck: statusQCCheck;
   declare statusRequest: statusRequestInbound;
   declare deliveryPlanned: statusDeliveryPlanned;
 
@@ -259,6 +264,10 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
         type: DataTypes.ENUM("none", "requested", "inbounded", "finalize"),
         defaultValue: "none",
       },
+      statusCheck: {
+        type: DataTypes.ENUM("none", "failed", "fixed", "passed"),
+        defaultValue: "none",
+      },
       hasOverFlow: {
         type: DataTypes.BOOLEAN,
         allowNull: false,
@@ -289,12 +298,14 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
         //Composite indexes
         { fields: ["chooseMachine", "status"] },
         { fields: ["chooseMachine", "dayStart"] },
+        { fields: ["chooseMachine", "status", "dayStart"] },
         { fields: ["deliveryPlanned", "dayStart", "status"] },
         { fields: ["dayStart", "timeRunning"] },
         { fields: ["dayCompleted", "shiftProduction"] },
 
         //get paper waiting check
         { fields: ["statusRequest", "hasBox"] },
+        { fields: ["chooseMachine", "status", "statusCheck"] },
       ],
     },
   );

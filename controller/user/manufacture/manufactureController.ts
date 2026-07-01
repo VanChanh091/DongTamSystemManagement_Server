@@ -79,6 +79,9 @@ export const updateReportPaper = async (req: Request, res: Response, next: NextF
       case "CONFIRM_PRODUCING":
         response = await manuPaperService.confirmProducingPaper(req, idArray[0], req.user);
         break;
+      case "CONFIRM_FIXED":
+        response = await manuPaperService.confirmFixedErr(idArray[0]);
+        break;
 
       default:
         throw AppError.BadRequest("Invalid action parameter", "INVALID_ACTION");
@@ -156,6 +159,10 @@ export const updateReportBox = async (req: Request, res: Response, next: NextFun
       case "CONFIRM_PRODUCING":
         response = await manuBoxService.confirmProducingBox(req, idArray[0], machine, req.user);
         break;
+      case "CONFIRM_FIXED":
+        response = await manuBoxService.confirmFixedErr(idArray[0], machine);
+        break;
+
       default:
         throw AppError.BadRequest("Invalid action parameter", "INVALID_ACTION");
     }

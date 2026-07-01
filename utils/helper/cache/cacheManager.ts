@@ -51,6 +51,9 @@ const CACHE_CONFIG = {
   //delivery
   estimate: ["estimate:"],
   schedule: ["schedule:"],
+
+  //qcInspection
+  inspectionPaper: ["inspection:paper:"],
 };
 
 export const CacheManager = {
@@ -143,6 +146,9 @@ export const CacheManager = {
       //delivery
       estimate: CacheKey.delivery.estimate.lastUpdated,
       schedule: CacheKey.delivery.schedule.lastUpdated,
+
+      //qcInspection
+      inspectionPaper: CacheKey.qcInspection.paper.lastUpdated,
     };
 
     const key = map[module];

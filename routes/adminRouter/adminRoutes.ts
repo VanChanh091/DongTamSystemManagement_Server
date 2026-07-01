@@ -51,6 +51,12 @@ import {
   getAllVehicle,
   updateVehicle,
 } from "../../controller/admin/adminVehicleController";
+import {
+  createNewCriteriaCheck,
+  deleteCriteriaCheck,
+  getAllCriteriaCheck,
+  updateCriteriaCheck,
+} from "../../controller/admin/adminCriteriaCheckController";
 
 const router = Router();
 
@@ -99,6 +105,12 @@ router.get("/criterias", authenticate, authorizeAnyPermission(["QC"]), getAllQcC
 router.post("/criterias", authenticate, authorizeRole(["admin"]), createNewCriteria);
 router.put("/criterias", authenticate, authorizeRole(["admin"]), updateCriteria);
 router.delete("/criterias", authenticate, authorizeRole(["admin"]), deleteCriteria);
+
+//===============================CRITERIA CHECK=====================================
+router.get("/criteria-check", authenticate, authorizeAnyPermission(["QC"]), getAllCriteriaCheck);
+router.post("/criteria-check", authenticate, authorizeRole(["admin"]), createNewCriteriaCheck);
+router.put("/criteria-check", authenticate, authorizeRole(["admin"]), updateCriteriaCheck);
+router.delete("/criteria-check", authenticate, authorizeRole(["admin"]), deleteCriteriaCheck);
 
 //===============================FLUTE RATIO=====================================
 router.get("/flute-ratios", authenticate, authorizeRole(["admin"]), getAllFluteRatio);

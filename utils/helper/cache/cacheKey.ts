@@ -115,4 +115,11 @@ export const CacheKey = {
       lastUpdated: "synthetic:order:lastUpdated",
     },
   },
+
+  qcInspection: {
+    paper: {
+      page: (machine: string, page: number) => `inspection:paper:${machine}:${page}`,
+      lastUpdated: "qcInspectionPaper:lastUpdated",
+    },
+  },
 };

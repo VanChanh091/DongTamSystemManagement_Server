@@ -19,7 +19,10 @@ import { mergeShiftField } from "../../utils/helper/modelHelper/planningHelper";
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
 import { createReportPlanning } from "../../utils/helper/modelHelper/reportHelper";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
-import { aggregateReportFields, updateStatusPaper } from "../../utils/helper/modelHelper/manufactureHelper";
+import {
+  aggregateReportFields,
+  updateStatusPaper,
+} from "../../utils/helper/modelHelper/manufactureHelper";
 
 export const manuPaperService = {
   getPlanningPaper: async (machine: string, filterType: string = "all") => {
@@ -531,6 +534,37 @@ export const manuPaperService = {
       });
     } catch (error) {
       console.log(`error request complete planning paper`, error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  //confirm fixed err from qc check
+  confirmFixedErr: async (planningId: number) => {
+    try {
+      return await runInTransaction(async (transaction) => {
+        const planning = await PlanningPaper.findOne({
+          where: { planningId },
+          transaction,
+          lock: transaction?.LOCK.UPDATE,
+        });
+        if (!planning) {
+          throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
+        }
+
+        if (planning.statusCheck !== "failed") {
+          throw AppError.BadRequest(
+            `Chỉ có thể xác nhận đơn hàng đang bị lỗi`,
+            "PLANNING_NOT_FAILED",
+          );
+        }
+
+        await planning.update({ statusCheck: "fixed" }, { transaction });
+
+        return { message: "Confirm fixed error successfully" };
+      });
+    } catch (error) {
+      console.log(`error confirm fixed error`, error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }

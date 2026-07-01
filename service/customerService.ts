@@ -289,7 +289,7 @@ export const customerService = {
         if (orderCount > 0) {
           if (role != "admin") {
             throw AppError.Conflict(
-              `CustomerId: ${customerId} has order and cannot be deleted`,
+              `Khách hàng: ${customer.customerName} có ${orderCount} đơn hàng, không thể xóa`,
               "CUSTOMER_HAS_ORDERS",
             );
           }

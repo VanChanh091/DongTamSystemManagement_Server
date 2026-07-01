@@ -11,6 +11,11 @@ import {
 } from "../../controller/user/QC/qcController";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 import { handleUpdateScrapReport } from "../../controller/user/scrap/scrapReportController";
+import {
+  checkingInspection,
+  getManufactureToCheck,
+  getQcInspection,
+} from "../../controller/user/QC/qcInspectionController";
 
 const router = Router();
 
@@ -27,7 +32,17 @@ router.put("/result", authorizeAnyPermission(["QC"]), authenticate, updateResult
 //==================ORCHESTRATOR=======================
 router.post("/submit", authenticate, authorizeAnyPermission(["QC"]), submitQC);
 
-//==================SCRAP REPORT====================
+//==================INSPECTION CHECK====================
+router.get(
+  "/inspection/manufacture",
+  authenticate,
+  authorizeAnyPermission(["QC"]),
+  getManufactureToCheck,
+);
+router.get("/inspection", authenticate, authorizeAnyPermission(["QC"]), getQcInspection);
+router.post("/inspection", authenticate, authorizeAnyPermission(["QC"]), checkingInspection);
+
+//====================SCRAP REPORT======================
 router.put("/scrap-report", authenticate, authorizeAnyPermission(["QC"]), handleUpdateScrapReport);
 
 export default router;

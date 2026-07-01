@@ -108,7 +108,7 @@ export const qcSampleService = {
 
       await QcSampleResult.bulkCreate(rowsToUpsert, {
         transaction,
-        updateOnDuplicate: ["checklist", "hasFail", "updatedAt"],
+        updateOnDuplicate: ["checklist", "updatedAt"],
       });
 
       const sessionHasFail = rowsToUpsert.some((r) => r.hasFail);

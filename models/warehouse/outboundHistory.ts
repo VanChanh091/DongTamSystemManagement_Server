@@ -59,8 +59,16 @@ export function initOutboundHistoryModel(sequelize: Sequelize): typeof OutboundH
   OutboundHistory.init(
     {
       outboundId: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-      dateOutbound: { type: DataTypes.DATE, allowNull: false },
-      outboundSlipCode: { type: DataTypes.STRING, allowNull: false },
+      dateOutbound: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        get() {
+          const rawValue = this.getDataValue("dateOutbound");
+          if (!rawValue) return null;
+          return new Date(rawValue.getTime() - rawValue.getTimezoneOffset() * 60000).toISOString();
+        },
+      },
+      outboundSlipCode: { type: DataTypes.STRING, allowNull: false, unique: true },
       totalPriceOrder: { type: DataTypes.DOUBLE, allowNull: false },
       totalPriceVAT: { type: DataTypes.DOUBLE },
       totalPricePayment: { type: DataTypes.DOUBLE, allowNull: false },
@@ -83,6 +91,7 @@ export function initOutboundHistoryModel(sequelize: Sequelize): typeof OutboundH
       indexes: [
         //indexes
         { fields: ["dateOutbound"] },
+        { fields: ["outboundSlipCode"] },
       ],
     },
   );

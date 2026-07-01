@@ -227,9 +227,12 @@ export const inventoryService = {
         });
 
         if (targetInv) {
-          // Đã có record: Tăng cả lượng và tổng giá trị
+          const newQtyTarget = targetInv.qtyInventory + qtyTransfer;
+          const newValueTarget = newQtyTarget > 0 ? newQtyTarget * unitPrice : 0;
+          const valueDeltaTarget = newValueTarget - targetInv.valueInventory;
+
           await targetInv.increment(
-            { qtyInventory: qtyTransfer, valueInventory: addedValue },
+            { qtyInventory: qtyTransfer, valueInventory: valueDeltaTarget },
             { transaction },
           );
         } else {
