@@ -76,11 +76,11 @@ export const getQcInspection = async (req: Request, res: Response, next: NextFun
 //create
 export const checkingInspection = async (req: Request, res: Response, next: NextFunction) => {
   const { isPaper } = req.query as { isPaper: string };
-  const { checking, errProgress, planningId, boxTimeId, machine } = req.body as {
+  const { checking, errProgress, planningId, planningBoxId, machine } = req.body as {
     checking?: Record<string, number>;
     errProgress: qcCheckPaper | qcCheckBox;
     planningId?: number;
-    boxTimeId?: number;
+    planningBoxId?: number;
     machine: string;
   };
 
@@ -99,7 +99,7 @@ export const checkingInspection = async (req: Request, res: Response, next: Next
       response = await qcInspectionService.checkingInspectionBox({
         req,
         machine,
-        boxTimeId: boxTimeId!,
+        planningBoxId: planningBoxId!,
         errProgress: errProgress as qcCheckBox,
         username: req.user.fullName,
       });

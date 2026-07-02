@@ -1,16 +1,16 @@
-import { Op, Sequelize, Transaction } from "sequelize";
-import { Order } from "../models/order/order";
-import { PlanningPaper } from "../models/planning/planningPaper";
-import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
-import { Customer } from "../models/customer/customer";
 import { Box } from "../models/order/box";
-import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
+import { Order } from "../models/order/order";
+import { Customer } from "../models/customer/customer";
+import { Op, Sequelize, Transaction } from "sequelize";
 import { PlanningBox } from "../models/planning/planningBox";
-import { ReportPlanningPaper } from "../models/report/reportPlanningPaper";
+import { dayjsUtc } from "../assets/configs/dayjs/dayjs.config";
+import { PlanningPaper } from "../models/planning/planningPaper";
 import { ReportPlanningBox } from "../models/report/reportPlanningBox";
 import { EmployeeBasicInfo } from "../models/employee/employeeBasicInfo";
+import { ReportPlanningPaper } from "../models/report/reportPlanningPaper";
+import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { EmployeeCompanyInfo } from "../models/employee/employeeCompanyInfo";
-import { dayjsUtc } from "../assets/configs/dayjs/dayjs.config";
+import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
 
 export const manufactureRepo = {
   //====================================HELPER=======================================
@@ -192,85 +192,13 @@ export const manufactureRepo = {
 
   //====================================BOX========================================
 
-  // buildQueryManuBoxes: async () => {
-  //   return await PlanningBox.findAll({
-  //     attributes: {
-  //       exclude: [
-  //         "dayStart",
-  //         "dayCompleted",
-  //         "hasIn",
-  //         "hasBe",
-  //         "hasXa",
-  //         "hasDan",
-  //         "hasCanLan",
-  //         "hasCatKhe",
-  //         "hasCanMang",
-  //         "hasDongGhim",
-  //         "createdAt",
-  //         "updatedAt",
-  //       ],
-  //     },
-  //     include: [
-  //       {
-  //         model: PlanningBoxTime,
-  //         where: {
-  //           machine: machine,
-  //           dayStart: { [Op.ne]: null },
-  //           status: targetStatus,
-  //         },
-  //         as: "boxTimes",
-  //         required: true,
-  //         attributes: { exclude: ["createdAt", "updatedAt"] },
-  //       },
-  //       {
-  //         model: PlanningBoxTime,
-  //         as: "allBoxTimes",
-  //         where: { machine: { [Op.ne]: machine } },
-  //         required: false,
-  //         attributes: ["boxTimeId", "qtyProduced", "machine"],
-  //       },
-  //       {
-  //         model: timeOverflowPlanning,
-  //         as: "timeOverFlow",
-  //         required: false,
-  //         where: { machine: machine },
-  //         attributes: { exclude: ["createdAt", "updatedAt", "status"] },
-  //       },
-  //       {
-  //         model: Order,
-  //         attributes: [
-  //           "orderId",
-  //           "dayReceiveOrder",
-  //           "flute",
-  //           "QC_box",
-  //           "numberChild",
-  //           "instructSpecial",
-  //           "dateRequestShipping",
-  //           "quantityCustomer",
-  //           "customerId",
-  //           "productId",
-  //         ],
-  //         include: [
-  //           {
-  //             model: Customer,
-  //             attributes: ["customerName", "companyName"],
-  //           },
-  //           {
-  //             model: Box,
-  //             as: "box",
-  //             attributes: { exclude: ["createdAt", "updatedAt", "orderId"] },
-  //           },
-  //         ],
-  //       },
-  //     ],
-  //     order: [[{ model: PlanningBoxTime, as: "boxTimes" }, "sortPlanning", "ASC"]],
-  //   });
-  // },
-
-  getManufactureBox: async (machine: string, options?: { status: string | string[] }) => {
-    const targetStatus =
-      options?.status !== undefined ? options.status : { [Op.notIn]: ["complete", "stop"] };
-
+  buildQueryManuBoxes: async ({
+    machine,
+    targetStatus,
+  }: {
+    machine: string;
+    targetStatus: string[];
+  }) => {
     return await PlanningBox.findAll({
       attributes: {
         exclude: [
@@ -294,7 +222,7 @@ export const manufactureRepo = {
           where: {
             machine: machine,
             dayStart: { [Op.ne]: null },
-            status: targetStatus,
+            status: { [Op.in]: targetStatus },
           },
           as: "boxTimes",
           required: true,
@@ -342,6 +270,13 @@ export const manufactureRepo = {
         },
       ],
       order: [[{ model: PlanningBoxTime, as: "boxTimes" }, "sortPlanning", "ASC"]],
+    });
+  },
+
+  getManufactureBox: async (machine: string) => {
+    return await manufactureRepo.buildQueryManuBoxes({
+      machine,
+      targetStatus: ["complete", "stop"],
     });
   },
 

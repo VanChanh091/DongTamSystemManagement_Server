@@ -127,6 +127,17 @@ export const handleUpdateScrapReport = async (req: Request, res: Response, next:
   }
 };
 
+export const deleteScrapReport = async (req: Request, res: Response, next: NextFunction) => {
+  const { scrapId } = req.query as { scrapId: string };
+
+  try {
+    const response = await scrapReportService.deleteScrapReport({ scrapId: Number(scrapId) });
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
 //export excel
 export const exportExcelScrapReports = async (req: Request, res: Response, next: NextFunction) => {
   const { fromDate, toDate } = req.body;

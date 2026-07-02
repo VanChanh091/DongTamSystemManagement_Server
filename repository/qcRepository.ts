@@ -5,6 +5,10 @@ import { QcSession } from "../models/qualityControl/qcSession";
 import { PlanningPaper } from "../models/planning/planningPaper";
 import { Order } from "../models/order/order";
 import { Customer } from "../models/customer/customer";
+import { QcInspectionBox } from "../models/qualityControl/qcInspection/qcInspectionBox";
+import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
+import { PlanningBox } from "../models/planning/planningBox";
+import { Product } from "../models/product/product";
 
 export const qcRepository = {
   //===============================CRITERIA=================================
@@ -128,8 +132,62 @@ export const qcRepository = {
     return queryOptions;
   },
 
-  buildInspectionBoxOptions: ({}: {}): FindOptions => {
-    const queryOptions: FindOptions = {};
+  buildInspectionBoxOptions: ({
+    page,
+    pageSize,
+    machine,
+    whereCondition,
+  }: {
+    page: number;
+    pageSize: number;
+    machine: string;
+    whereCondition?: any;
+  }): FindOptions => {
+    const queryOptions: FindOptions = {
+      where: whereCondition,
+      attributes: { exclude: ["boxTimeId", "createdAt", "updatedAt"] },
+      include: [
+        {
+          model: PlanningBoxTime,
+          where: { machine },
+          attributes: ["boxTimeId", "dayStart"],
+          include: [
+            {
+              model: PlanningBox,
+              attributes: [
+                "planningBoxId",
+                "orderId",
+                "day",
+                "matE",
+                "matB",
+                "matC",
+                "matE2",
+                "songE",
+                "songB",
+                "songC",
+                "songE2",
+              ],
+              include: [
+                {
+                  model: Order,
+                  attributes: ["QC_box", "quantityManufacture"],
+                  include: [
+                    { model: Customer, attributes: ["customerName"] },
+                    { model: Product, attributes: ["productName"] },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    if (page && pageSize) {
+      queryOptions.offset = (page - 1) * pageSize;
+      queryOptions.limit = pageSize;
+      queryOptions.order = [["inspecBoxId", "DESC"]];
+    }
 
     return queryOptions;
   },

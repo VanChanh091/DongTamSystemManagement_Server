@@ -29,7 +29,8 @@ export const qcInspectionService = {
     try {
       const plannings = await manufactureRepo.buildQueryManuPapers({
         chooseMachine: machine,
-        status: { [Op.in]: ["planning", "lackQty", "producing", "requested"] },
+        status: { [Op.in]: ["planning", "lackQty", "producing"] },
+        dayStart: { [Op.ne]: null },
         statusCheck: { [Op.in]: ["none", "failed"] },
       });
 
@@ -72,7 +73,10 @@ export const qcInspectionService = {
 
   getManuBoxToCheck: async (machine: string) => {
     try {
-      const data = await manufactureRepo.getManufactureBox(machine, { status: "producing" });
+      const data = await manufactureRepo.buildQueryManuBoxes({
+        machine,
+        targetStatus: ["planning", "lackOfQty", "producing"],
+      });
       return { message: "get manufacture box to check successfully", data };
     } catch (error) {
       console.error("get manufacture box to check failed:", error);
@@ -262,12 +266,12 @@ export const qcInspectionService = {
   checkingInspectionBox: async ({
     req,
     machine,
-    boxTimeId,
+    planningBoxId,
     username,
     errProgress,
   }: {
     req: Request;
-    boxTimeId: number;
+    planningBoxId: number;
     machine: string;
     username: string;
     errProgress: qcCheckBox;
@@ -275,10 +279,25 @@ export const qcInspectionService = {
     try {
       return runInTransaction(async (transaction) => {
         const dbData: any = {
-          boxTimeId: boxTimeId,
           timeInspection: new Date(),
           checkedBy: username,
         };
+
+        const boxTime = await PlanningBoxTime.findOne({
+          attributes: ["boxTimeId"],
+          where: { planningBoxId },
+          transaction,
+        });
+        if (!boxTime) {
+          throw AppError.NotFound(
+            `Planning Box with ID ${planningBoxId} not found`,
+            "PLANNING_BOX_NOT_FOUND",
+          );
+        }
+
+        const boxTimeId = boxTime.boxTimeId;
+        dbData.boxTimeId = boxTimeId;
+
 
         //lay criteria check
         const requiredCriteria = await CriteriaBoxCheck.findAll({

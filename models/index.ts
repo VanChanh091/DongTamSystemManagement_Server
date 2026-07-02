@@ -304,11 +304,11 @@ PlanningPaper.hasMany(QcInspectionPaper, {
 QcInspectionPaper.belongsTo(PlanningPaper, { foreignKey: "planningId" });
 
 PlanningBoxTime.hasMany(QcInspectionBox, {
-  foreignKey: "boxtimeId",
+  foreignKey: "boxTimeId",
   as: "inspecBox",
   onDelete: "CASCADE",
 });
-QcInspectionBox.belongsTo(PlanningBoxTime, { foreignKey: "boxtimeId" });
+QcInspectionBox.belongsTo(PlanningBoxTime, { foreignKey: "boxTimeId" });
 
 //===============================INBOUND=================================
 Order.hasMany(InboundHistory, { foreignKey: "orderId", onDelete: "CASCADE" });

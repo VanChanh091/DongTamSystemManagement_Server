@@ -14,13 +14,13 @@ interface QcInspectionBoxAttributes {
   updatedAt?: Date;
 
   //FK
-  boxtimeId: number;
+  boxTimeId: number;
 }
 
 //cho phép bỏ qua id khi tạo
 export type QcInspectionBoxCreationAttributes = Optional<
   QcInspectionBoxAttributes,
-  "inspecBoxId" | "timeInspection" | "checkedBy" | "boxtimeId" | "createdAt" | "updatedAt"
+  "inspecBoxId" | "timeInspection" | "checkedBy" | "boxTimeId" | "createdAt" | "updatedAt"
 >;
 
 //định nghĩa kiểu OOP
@@ -37,8 +37,8 @@ export class QcInspectionBox
   declare readonly updatedAt?: Date;
 
   //FK
-  declare boxtimeId: number;
-  declare boxTimes: PlanningBoxTime;
+  declare boxTimeId: number;
+  declare PlanningBoxTime: PlanningBoxTime;
 }
 
 export function initQcInspectionBoxModel(sequelize: Sequelize): typeof QcInspectionBox {
@@ -58,7 +58,7 @@ export function initQcInspectionBoxModel(sequelize: Sequelize): typeof QcInspect
       checkedBy: { type: DataTypes.STRING, allowNull: false }, //người kiểm tra
 
       //FK
-      boxtimeId: { type: DataTypes.INTEGER },
+      boxTimeId: { type: DataTypes.INTEGER },
     },
     {
       sequelize,
@@ -66,7 +66,7 @@ export function initQcInspectionBoxModel(sequelize: Sequelize): typeof QcInspect
       timestamps: true,
       indexes: [
         //FK
-        { fields: ["boxtimeId"] },
+        { fields: ["boxTimeId"] },
       ],
     },
   );

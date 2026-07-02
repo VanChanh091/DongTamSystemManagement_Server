@@ -2,6 +2,7 @@ import { Router } from "express";
 import authenticate from "../../middlewares/authMiddleware";
 import {
   createScrapReport,
+  deleteScrapReport,
   exportExcelScrapReports,
   getAllScrapReports,
   updateScrapReport,
@@ -12,6 +13,7 @@ const router = Router();
 router.get("/", authenticate, getAllScrapReports);
 router.post("/", authenticate, createScrapReport);
 router.put("/", authenticate, updateScrapReport);
+router.delete("/", authenticate, deleteScrapReport);
 router.post("/export", authenticate, exportExcelScrapReports);
 
 export default router;
