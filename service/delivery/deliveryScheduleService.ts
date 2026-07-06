@@ -54,7 +54,7 @@ export const deliveryScheduleService = {
 
       const finalData = await deliveryRepository.getAllDeliveryPlanByDate({
         deliveryDate,
-        status: "planned",
+        status: ["planned", "completed"],
       });
 
       //save

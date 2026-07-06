@@ -1,26 +1,7 @@
 import { NextFunction, Request, Response } from "express";
-import { qcInspectionService } from "../../../service/qualityControl/qcInspectionCheckService";
-import { qcCheckPaper } from "../../../models/qualityControl/qcInspection/qcInspectionPaper";
 import { qcCheckBox } from "../../../models/qualityControl/qcInspection/qcInspectionBox";
-
-//====================================MANUFACTURE========================================
-export const getManufactureToCheck = async (req: Request, res: Response, next: NextFunction) => {
-  const { machine, isPaper } = req.query as { machine: string; isPaper: string };
-
-  try {
-    let response;
-
-    if (isPaper === "paper") {
-      response = await qcInspectionService.getManuPaperToCheck(machine);
-    } else if (isPaper === "box") {
-      response = await qcInspectionService.getManuBoxToCheck(machine);
-    }
-
-    return res.status(200).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
+import { qcCheckPaper } from "../../../models/qualityControl/qcInspection/qcInspectionPaper";
+import { qcInspectionService } from "../../../service/qualityControl/qcInspectionCheckService";
 
 //====================================INSPECTION PAPER========================================
 export const getQcInspection = async (req: Request, res: Response, next: NextFunction) => {
@@ -66,6 +47,29 @@ export const getQcInspection = async (req: Request, res: Response, next: NextFun
 
     // const response = hasSearch ? await targetService.search() : await targetService.all();
     const response = await targetService.all();
+
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getQcInspectionErr = async (req: Request, res: Response, next: NextFunction) => {
+  const { planningId, planningBoxId, machine, isPaper } = req.query as {
+    planningId?: string;
+    planningBoxId?: string;
+    machine?: string;
+    isPaper: string;
+  };
+
+  try {
+    let response;
+
+    if (isPaper === "paper") {
+      response = await qcInspectionService.getInspectionPaperErr(Number(planningId));
+    } else if (isPaper === "box") {
+      response = await qcInspectionService.getInspectionBoxErr(Number(planningBoxId), machine!);
+    }
 
     return res.status(200).json(response);
   } catch (error) {

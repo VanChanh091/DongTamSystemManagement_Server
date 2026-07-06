@@ -16,74 +16,12 @@ import { AppError } from "../../utils/appError";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
-import { manufactureRepo } from "../../repository/manufactureRepository";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
-import { Op } from "sequelize";
 
 const { paper } = CacheKey.qcInspection;
 const devEnvironment = process.env.NODE_ENV !== "production";
 
 export const qcInspectionService = {
-  //=================================MANUFACTURE=====================================
-  getManuPaperToCheck: async (machine: string) => {
-    try {
-      const plannings = await manufactureRepo.buildQueryManuPapers({
-        chooseMachine: machine,
-        status: { [Op.in]: ["planning", "lackQty", "producing"] },
-        dayStart: { [Op.ne]: null },
-        statusCheck: { [Op.in]: ["none", "failed"] },
-      });
-
-      // const allPlannings: any[] = [];
-      // const overflowRemoveFields = ["runningPlan", "quantityManufacture"];
-
-      // plannings.forEach((planning) => {
-      //   const original = {
-      //     ...planning.toJSON(),
-      //     timeRunning: planning.timeRunning,
-      //     dayStart: planning.dayStart,
-      //   };
-      //   allPlannings.push(original);
-
-      //   if (planning.timeOverFlow) {
-      //     const overflow: any = { ...planning.toJSON() };
-
-      //     overflow.isOverflow = true;
-      //     overflow.dayStart = planning.timeOverFlow.overflowDayStart;
-      //     overflow.timeRunning = planning.timeOverFlow.overflowTimeRunning;
-      //     overflow.dayCompleted = planning.timeOverFlow.overflowDayCompleted;
-
-      //     overflowRemoveFields.forEach((f) => delete overflow[f]);
-      //     if (overflow.Order) {
-      //       ["quantityManufacture", "totalPrice", "totalPriceVAT"].forEach(
-      //         (item) => delete overflow.Order[item],
-      //       );
-      //     }
-
-      //     allPlannings.push(overflow);
-      //   }
-      // });
-
-      return { message: "get manufacture paper to check successfully", data: plannings };
-    } catch (error) {
-      console.error("get manufacture paper to check failed:", error);
-      throw AppError.ServerError();
-    }
-  },
-
-  getManuBoxToCheck: async (machine: string) => {
-    try {
-      const data = await manufactureRepo.buildQueryManuBoxes({
-        machine,
-        targetStatus: ["planning", "lackOfQty", "producing"],
-      });
-      return { message: "get manufacture box to check successfully", data };
-    } catch (error) {
-      console.error("get manufacture box to check failed:", error);
-      throw AppError.ServerError();
-    }
-  },
-
   //===============================INSPECTION PAPER===================================
   getAllQcInspectionPaper: async ({
     page,
@@ -131,6 +69,20 @@ export const qcInspectionService = {
       return responseData;
     } catch (error) {
       console.error("get all Qc Inspection Paper failed:", error);
+      throw AppError.ServerError();
+    }
+  },
+
+  getInspectionPaperErr: async (planningId: number) => {
+    try {
+      const inspectionPaper = await QcInspectionPaper.findOne({
+        attributes: { exclude: ["createdAt", "updatedAt", "timeInspection", "checkedBy"] },
+        where: { planningId },
+        order: [["inspecPaperId", "DESC"]],
+      });
+      return { message: "get inspection paper errors successfully", data: inspectionPaper };
+    } catch (error) {
+      console.error("get inspection paper errors failed:", error);
       throw AppError.ServerError();
     }
   },
@@ -193,11 +145,18 @@ export const qcInspectionService = {
           { where: { planningId }, transaction },
         );
 
+        const planning = await PlanningPaper.findOne({
+          attributes: ["orderId"],
+          where: { planningId },
+          transaction,
+        });
+
         //socket
         if (currentStatusCheck === "failed") {
           const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
           const item: any = {
-            message: `Có lỗi hàng hóa khi kiểm tra tại ${machine}: ${failedCriteria.join(", ")}`,
+            from: "QC",
+            message: `Đơn hàng: ${planning?.orderId} đang bị lỗi tại ${machine}`,
           };
 
           req.io?.to(roomName).emit("qc-inspection-paper", item);
@@ -263,6 +222,31 @@ export const qcInspectionService = {
     }
   },
 
+  getInspectionBoxErr: async (planningBoxId: number, machine: string) => {
+    try {
+      const boxTime = await PlanningBoxTime.findOne({
+        attributes: ["boxTimeId"],
+        where: { planningBoxId, machine },
+      });
+      if (!boxTime) {
+        throw AppError.NotFound(
+          `Planning Box with ID ${planningBoxId} not found`,
+          "PLANNING_BOX_NOT_FOUND",
+        );
+      }
+
+      const inspectionBox = await QcInspectionBox.findOne({
+        attributes: { exclude: ["createdAt", "updatedAt", "timeInspection", "checkedBy"] },
+        where: { boxTimeId: boxTime.boxTimeId },
+        order: [["inspecBoxId", "DESC"]],
+      });
+      return { message: "get inspection box errors successfully", data: inspectionBox };
+    } catch (error) {
+      console.error("get inspection box errors failed:", error);
+      throw AppError.ServerError();
+    }
+  },
+
   checkingInspectionBox: async ({
     req,
     machine,
@@ -285,7 +269,7 @@ export const qcInspectionService = {
 
         const boxTime = await PlanningBoxTime.findOne({
           attributes: ["boxTimeId"],
-          where: { planningBoxId },
+          where: { planningBoxId, machine },
           transaction,
         });
         if (!boxTime) {
@@ -297,7 +281,6 @@ export const qcInspectionService = {
 
         const boxTimeId = boxTime.boxTimeId;
         dbData.boxTimeId = boxTimeId;
-
 
         //lay criteria check
         const requiredCriteria = await CriteriaBoxCheck.findAll({
@@ -335,7 +318,8 @@ export const qcInspectionService = {
         if (currentStatusCheck === "failed") {
           const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
           const item: any = {
-            message: `Có lỗi hàng hóa khi kiểm tra tại ${machine}: ${failedCriteria.join(", ")}`,
+            from: "QC",
+            message: `Có đơn hàng sản xuất đang bị lỗi tại ${machine}`,
           };
 
           req.io?.to(roomName).emit("qc-inspection-box", item);

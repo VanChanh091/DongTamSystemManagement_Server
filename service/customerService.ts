@@ -121,6 +121,7 @@ export const customerService = {
         filter: filters.join(" AND "),
         attributesToRetrieve: ["customerId"],
         attributesToSearchOn: searchKeyword ? [field] : [],
+        sort: ["customerSeq:desc"],
         page: Number(page) || 1,
         hitsPerPage: Number(pageSize) || 25, //pageSize
       });
@@ -140,11 +141,11 @@ export const customerService = {
       const options = customerRepository.buildCustomersOptions({
         whereCondition: { customerId: { [Op.in]: customerIds } },
       });
-      const { rows } = await Customer.findAndCountAll(options);
+      const customers = await Customer.findAll(options);
 
       // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
       const finalData = customerIds
-        .map((id) => rows.find((customer) => customer.customerId === id))
+        .map((id) => customers.find((customer) => customer.customerId === id))
         .filter(Boolean);
 
       return {

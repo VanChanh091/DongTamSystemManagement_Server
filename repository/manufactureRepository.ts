@@ -197,7 +197,7 @@ export const manufactureRepo = {
     targetStatus,
   }: {
     machine: string;
-    targetStatus: string[];
+    targetStatus: any;
   }) => {
     return await PlanningBox.findAll({
       attributes: {
@@ -222,7 +222,7 @@ export const manufactureRepo = {
           where: {
             machine: machine,
             dayStart: { [Op.ne]: null },
-            status: { [Op.in]: targetStatus },
+            status: targetStatus,
           },
           as: "boxTimes",
           required: true,
@@ -276,7 +276,7 @@ export const manufactureRepo = {
   getManufactureBox: async (machine: string) => {
     return await manufactureRepo.buildQueryManuBoxes({
       machine,
-      targetStatus: ["complete", "stop"],
+      targetStatus: { [Op.notIn]: ["complete", "stop"] },
     });
   },
 

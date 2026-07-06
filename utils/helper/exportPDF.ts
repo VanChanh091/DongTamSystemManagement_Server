@@ -4,6 +4,7 @@ import PDFDocument from "pdfkit";
 import { Response } from "express";
 import { AppError } from "../appError";
 import { warehouseRepository } from "../../repository/warehouseRepository";
+import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
 
 let LOGO_BUFFER: Buffer;
 let FONT_REGULAR_BUFFER: Buffer;
@@ -41,6 +42,8 @@ try {
 export async function exportWarehouse(res: Response, outboundId: number, hasMoney: boolean) {
   const outbound = await warehouseRepository.findOneForExportPDF(outboundId);
   if (!outbound) throw AppError.NotFound("Outbound not found", "OUTBOUND_NOT_FOUND");
+
+  console.log(`dateOutbound: ${outbound.dateOutbound}`);
 
   return buildWarehouseSalePDF({
     res,
@@ -102,6 +105,8 @@ function buildWarehouseSalePDF({
     );
 
   doc.moveDown(0.6);
+
+  console.log(`dateFormat: ${formatDate(outbound.dateOutbound)}`);
 
   doc.font("MainBold").fontSize(header_1).text("PHIẾU XUẤT KHO BÁN HÀNG", { align: "center" });
   doc
@@ -680,13 +685,12 @@ function drawSignArea(doc: PDFKit.PDFDocument) {
 
 //======================HELPER===========================
 function formatDate(date: Date | string) {
-  const d = new Date(date);
-  return `${d.getDate()} tháng ${d.getMonth() + 1} năm ${d.getFullYear()}`;
+  return dayjsUtc.utc(date).format("D [tháng] M [năm] YYYY");
 }
 
 export function formatDimension(value?: number): string {
   if (value == null) return "0000";
 
-  const num = Math.trunc(value * 10); // 62.5 -> 625
+  const num = Math.round(value * 10); // 62.5 -> 625
   return String(num).padStart(4, "0");
 }

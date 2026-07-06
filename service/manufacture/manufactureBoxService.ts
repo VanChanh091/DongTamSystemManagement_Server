@@ -521,11 +521,11 @@ export const manuBoxService = {
   },
 
   //confirm fixed err from qc check
-  confirmFixedErr: async (boxTimeId: number, machine: string) => {
+  confirmFixedErr: async (planningBoxId: number, machine: string) => {
     try {
       return await runInTransaction(async (transaction) => {
         const planningBoxTime = await PlanningBoxTime.findOne({
-          where: { boxTimeId, machine },
+          where: { planningBoxId, machine },
           transaction,
         });
         if (!planningBoxTime) {

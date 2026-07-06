@@ -115,8 +115,11 @@ export const qcRepository = {
           include: [
             {
               model: Order,
-              attributes: ["flute"],
-              include: [{ model: Customer, attributes: ["customerName"] }],
+              attributes: ["flute", "dayReceiveOrder"],
+              include: [
+                { model: Customer, attributes: ["customerName"] },
+                { model: Product, attributes: ["productName"] },
+              ],
             },
           ],
         },
@@ -145,18 +148,20 @@ export const qcRepository = {
   }): FindOptions => {
     const queryOptions: FindOptions = {
       where: whereCondition,
-      attributes: { exclude: ["boxTimeId", "createdAt", "updatedAt"] },
+      attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {
           model: PlanningBoxTime,
           where: { machine },
-          attributes: ["boxTimeId", "dayStart"],
+          attributes: ["dayStart", "runningPlan", "machine"],
           include: [
             {
               model: PlanningBox,
               attributes: [
                 "planningBoxId",
                 "orderId",
+                "length",
+                "size",
                 "day",
                 "matE",
                 "matB",
@@ -170,7 +175,7 @@ export const qcRepository = {
               include: [
                 {
                   model: Order,
-                  attributes: ["QC_box", "quantityManufacture"],
+                  attributes: ["QC_box", "dayReceiveOrder"],
                   include: [
                     { model: Customer, attributes: ["customerName"] },
                     { model: Product, attributes: ["productName"] },

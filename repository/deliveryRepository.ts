@@ -437,13 +437,13 @@ export const deliveryRepository = {
     itemStatus,
   }: {
     deliveryDate: Date;
-    status?: string;
+    status?: string | string[];
     itemStatus?: string;
   }) => {
     const whereCondition: any = { deliveryDate: new Date(deliveryDate) };
 
     if (status) {
-      whereCondition.status = status;
+      whereCondition.status = { [Op.in]: Array.isArray(status) ? status : [status] };
     }
 
     const itemWhereCondition: any = {};

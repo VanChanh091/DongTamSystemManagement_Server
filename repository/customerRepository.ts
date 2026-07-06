@@ -37,8 +37,7 @@ export const customerRepository = {
     if (page && pageSize) {
       queryOptions.offset = (page - 1) * pageSize;
       queryOptions.limit = pageSize;
-
-      queryOptions.order = [["customerSeq", "ASC"]];
+      queryOptions.order = [["customerSeq", "DESC"]];
     }
 
     if (isExport) {
