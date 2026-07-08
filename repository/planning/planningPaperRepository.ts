@@ -5,6 +5,9 @@ import { Customer } from "../../models/customer/customer";
 import { PlanningBox } from "../../models/planning/planningBox";
 import { PlanningPaper } from "../../models/planning/planningPaper";
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
+import { DeliveryRequest } from "../../models/delivery/deliveryRequest";
+import { DeliveryItem } from "../../models/delivery/deliveryItem";
+import { OutboundDetail } from "../../models/warehouse/outboundDetail";
 
 export const planningPaperRepository = {
   getPlanningPaper: async ({
@@ -199,7 +202,7 @@ export const planningPaperRepository = {
       where: {
         chooseMachine: machine,
         status: { [Op.notIn]: ["complete", "stop", "cancel"] },
-        statusRequest: { [Op.ne]: 'delivered' },
+        statusRequest: { [Op.ne]: "delivered" },
         sortPlanning: { [Op.ne]: null },
 
         //qtyProduced < quantityManufacture
@@ -246,6 +249,26 @@ export const planningPaperRepository = {
           include: [{ model: Customer, attributes: ["customerName"] }],
         },
       ],
+    });
+  },
+
+  countObDetailByPlanningId: async (planningId: number, transaction?: any) => {
+    return await DeliveryRequest.count({
+      where: { planningId: planningId },
+      include: [
+        {
+          model: DeliveryItem,
+          required: true,
+          include: [
+            {
+              model: OutboundDetail,
+              required: true,
+            },
+          ],
+        },
+      ],
+      distinct: true, // Đảm bảo đếm chính xác số lượng Request riêng biệt theo planningId
+      transaction,
     });
   },
 

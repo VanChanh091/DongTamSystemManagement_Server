@@ -6,7 +6,7 @@ import { Request } from "express";
 import { Box } from "../models/order/box";
 import { AppError } from "../utils/appError";
 import { Order } from "../models/order/order";
-import { meiliService } from "./meiliService";
+import { meiliService } from "./system/meiliService";
 import { OrderImage } from "../models/order/orderImage";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { orderRepository } from "../repository/orderRepository";

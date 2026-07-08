@@ -4,7 +4,7 @@ dotenv.config();
 import { Op } from "sequelize";
 import { Request, Response } from "express";
 import { User } from "../../models/user/user";
-import { meiliService } from "../meiliService";
+import { meiliService } from "../system/meiliService";
 import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
 import { MEILI_INDEX } from "../../assets/labelFields";

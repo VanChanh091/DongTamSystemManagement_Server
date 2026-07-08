@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { badgeService } from "../../service/badge/badgeService";
+import { badgeService } from "../../service/system/badgeService";
 import { AppError } from "../../utils/appError";
 
 //pending order

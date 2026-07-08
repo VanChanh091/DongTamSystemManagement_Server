@@ -20,7 +20,7 @@ import { exportExcelStreamResponse } from "../utils/helper/excelExporter";
 import { mappingProductRow, productColumns } from "../utils/mapping/productRowAndColumn";
 import { runInTransaction } from "../utils/helper/transactionHelper";
 import { meiliClient } from "../assets/configs/connect/meilisearch.connect";
-import { meiliService } from "./meiliService";
+import { meiliService } from "./system/meiliService";
 import { searchFieldAtribute } from "../interface/types";
 import { MEILI_INDEX } from "../assets/labelFields";
 

@@ -2,7 +2,7 @@ import { describe, beforeEach, test, expect, jest, afterAll } from "@jest/global
 import { Customer } from "../models/customer/customer";
 import { runInTransaction } from "../utils/helper/transactionHelper";
 import { customerRepository } from "../repository/customerRepository";
-import { meiliService } from "../service/meiliService";
+import { meiliService } from "../service/system/meiliService";
 import { customerService } from "../service/customerService";
 import { Transaction } from "sequelize";
 import { sequelize } from "../assets/configs/connect/database.connect";

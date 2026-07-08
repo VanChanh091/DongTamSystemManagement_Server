@@ -6,7 +6,7 @@ import { Request } from "express";
 import { User } from "../../models/user/user";
 import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
-import { meiliService } from "../meiliService";
+import { meiliService } from "../system/meiliService";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { PlanningBox } from "../../models/planning/planningBox";
 import { WasteNormPaper } from "../../models/admin/wasteNormPaper";

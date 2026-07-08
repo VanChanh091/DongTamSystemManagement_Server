@@ -3,7 +3,7 @@ dotenv.config();
 
 import bcrypt from "bcrypt";
 import { Request } from "express";
-import { meiliService } from "../meiliService";
+import { meiliService } from "../system/meiliService";
 import { AppError } from "../../utils/appError";
 import { userRole } from "../../models/user/user";
 import { Order, OrderStatus } from "../../models/order/order";

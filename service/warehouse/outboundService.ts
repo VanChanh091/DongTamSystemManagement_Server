@@ -3,7 +3,7 @@ dotenv.config();
 
 import { Response } from "express";
 import { Op, Transaction } from "sequelize";
-import { meiliService } from "../meiliService";
+import { meiliService } from "../system/meiliService";
 import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
 import { MEILI_INDEX } from "../../assets/labelFields";

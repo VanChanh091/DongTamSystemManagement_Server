@@ -1,9 +1,4 @@
 import { NextFunction, Request, Response } from "express";
-import {
-  parseCustomerData,
-  parseOrderData,
-  parseProductData,
-} from "../../service/processingData/processingData";
 import { Customer } from "../../models/customer/customer";
 import { Product } from "../../models/product/product";
 import { Order } from "../../models/order/order";
@@ -12,6 +7,11 @@ import { Inventory } from "../../models/warehouse/inventory/inventory";
 import { CustomerPayment } from "../../models/customer/customerPayment";
 import { User } from "../../models/user/user";
 import { AppError } from "../../utils/appError";
+import {
+  parseCustomerData,
+  parseOrderData,
+  parseProductData,
+} from "../../service/system/processingData";
 
 const getDebugInfo = (str: string) => {
   const s = str || "";

@@ -1,6 +1,6 @@
 import { Op } from "sequelize";
 import { Request } from "express";
-import { meiliService } from "../meiliService";
+import { meiliService } from "../system/meiliService";
 import { AppError } from "../../utils/appError";
 import { MEILI_INDEX } from "../../assets/labelFields";
 import { PlanningPaper } from "../../models/planning/planningPaper";

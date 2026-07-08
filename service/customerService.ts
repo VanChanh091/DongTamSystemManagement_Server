@@ -5,7 +5,7 @@ import { Op } from "sequelize";
 import { Response } from "express";
 import { AppError } from "../utils/appError";
 import { Order } from "../models/order/order";
-import { meiliService } from "./meiliService";
+import { meiliService } from "./system/meiliService";
 import { MEILI_INDEX } from "../assets/labelFields";
 import { Customer } from "../models/customer/customer";
 import { searchFieldAtribute } from "../interface/types";

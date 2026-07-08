@@ -25,7 +25,7 @@ import {
   qcRoutes,
   deliveryRoutes,
   badgeRoutes,
-  processingRoutes,
+  systemRoutes,
   meilisearchRoutes,
   syntheticRoutes,
   scrapRoutes,
@@ -93,7 +93,7 @@ app.use("/api/warehouse", warehouseRoutes);
 app.use("/api/qc", qcRoutes);
 app.use("/api/delivery", deliveryRoutes);
 app.use("/api/scrapReports", scrapRoutes);
-app.use("/api/process", processingRoutes);
+app.use("/api/system", systemRoutes);
 
 //sync meilisearch
 app.use("/api/meilisearch", meilisearchRoutes);
@@ -149,9 +149,8 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 });
 
 server.listen({ port: Number(process.env.PORT) || 5000, host: "0.0.0.0" }, async (err?: Error) => {
-  if (err) {
-    console.log(err);
-  }
+  if (err) console.log(err);
+
   await connectDB();
 
   //setup meilisearch

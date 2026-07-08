@@ -4,7 +4,7 @@ import { PlanningPaper } from "../../../models/planning/planningPaper";
 import { timeOverflowPlanning } from "../../../models/planning/timeOverflowPlanning";
 import { planningHelper } from "../../../repository/planning/planningHelper";
 import { planningPaperRepository } from "../../../repository/planning/planningPaperRepository";
-import { meiliService } from "../../../service/meiliService";
+import { meiliService } from "../../../service/system/meiliService";
 import { runInTransaction } from "../transactionHelper";
 import { Order } from "../../../models/order/order";
 

@@ -3,7 +3,7 @@ dotenv.config();
 
 import { Op } from "sequelize";
 import { Request, Response } from "express";
-import { meiliService } from "../meiliService";
+import { meiliService } from "../system/meiliService";
 import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
 import { MEILI_INDEX } from "../../assets/labelFields";
@@ -263,6 +263,8 @@ export const planningPaperService = {
           throw AppError.NotFound("planning not found", "PLANNING_NOT_FOUND");
         }
 
+        console.log(`status: ${newStatus}`);
+
         if (newStatus !== "complete") {
           for (const planning of plannings) {
             if (planning.orderId) {
@@ -291,7 +293,6 @@ export const planningPaperService = {
                   });
 
                   // Trừ công nợ khách hàng
-                  //thêm transaction vào đây
                   // const customer = await planningRepository.getModelById(
                   //   Customer,
                   //   { customerId: order.customerId },
@@ -306,6 +307,7 @@ export const planningPaperService = {
                   // }
 
                   // Xoá dữ liệu phụ thuộc
+
                   const dependents = await planningPaperRepository.getBoxByPlanningId(
                     planning.planningId,
                     transaction,
@@ -342,6 +344,20 @@ export const planningPaperService = {
                 //if qtyProduced = 0 -> delete planning paper&box -> status:accept order
                 //if qtyProduced > 0 -> status:stop order -> status:stop planning paper&box
                 else if (newStatus === "stop") {
+                  const hasOutbound = await planningPaperRepository.countObDetailByPlanningId(
+                    planning.planningId,
+                    transaction,
+                  );
+
+                  console.log(`count:${hasOutbound}`);
+
+                  if (hasOutbound > 0) {
+                    throw AppError.Conflict(
+                      `Không thể hủy đơn ${planning.orderId} vì đã được xuất kho`,
+                      "PLANNING_HAS_OUTBOUND_DETAILS",
+                    );
+                  }
+
                   const dependents = await planningPaperRepository.getBoxByPlanningId(
                     planning.planningId,
                     transaction,

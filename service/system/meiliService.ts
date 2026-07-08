@@ -1,5 +1,5 @@
 import { Transaction } from "sequelize";
-import { meiliClient } from "../assets/configs/connect/meilisearch.connect";
+import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 
 export const meiliService = {
   syncOrUpdateMeiliData: async ({

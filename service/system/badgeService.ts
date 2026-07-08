@@ -1,8 +1,6 @@
-import { Op } from "sequelize";
 import { Order } from "../../models/order/order";
 import { PlanningPaper } from "../../models/planning/planningPaper";
 import { AppError } from "../../utils/appError";
-import { PlanningBox } from "../../models/planning/planningBox";
 import { DeliveryRequest } from "../../models/delivery/deliveryRequest";
 import { DeliveryItem } from "../../models/delivery/deliveryItem";
 import { warehouseRepository } from "../../repository/warehouseRepository";

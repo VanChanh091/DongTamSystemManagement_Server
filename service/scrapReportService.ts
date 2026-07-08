@@ -4,7 +4,7 @@ dotenv.config();
 import { Response } from "express";
 import { Op, Transaction } from "sequelize";
 import { AppError } from "../utils/appError";
-import { meiliService } from "./meiliService";
+import { meiliService } from "./system/meiliService";
 import { MEILI_INDEX } from "../assets/labelFields";
 import { ScrapReport } from "../models/scrap/scrapReport";
 import { dayjsUtc } from "../assets/configs/dayjs/dayjs.config";
