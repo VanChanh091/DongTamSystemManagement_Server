@@ -3,7 +3,6 @@ import { BreakTime } from "../../../interface/types";
 import { PlanningPaper } from "../../../models/planning/planningPaper";
 import { planningHelper } from "../../../repository/planning/planningHelper";
 import { timeOverflowPlanning } from "../../../models/planning/timeOverflowPlanning";
-import { planningPaperRepository } from "../../../repository/planning/planningPaperRepository";
 import { AppError } from "../../../utils/appError";
 
 //Công thức tính thời gian: time = (Thời gian A/B + (tổng dài / tốc độ)) / (hiệu suất / 100)

@@ -136,11 +136,10 @@ export const notifyUpdatePlanning = async (req: Request, res: Response, next: Ne
 };
 
 export const exportExcelPlanningPaper = async (req: Request, res: Response, next: NextFunction) => {
-  const { machine } = req.query as { machine: string };
+  const { machine, isAll } = req.body as { machine: string; isAll: boolean };
 
   try {
-    const response = await planningPaperService.exportExcelPlanningOrder(res, machine);
-
+    const response = await planningPaperService.exportExcelPlanningOrder(res, machine, isAll);
     return res.status(200).json(response);
   } catch (error) {
     next(error);

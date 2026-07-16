@@ -1,13 +1,13 @@
-import { FindOptions, Op, Sequelize, Transaction } from "sequelize";
 import { Box } from "../../models/order/box";
 import { Order } from "../../models/order/order";
 import { Customer } from "../../models/customer/customer";
 import { PlanningBox } from "../../models/planning/planningBox";
-import { PlanningPaper } from "../../models/planning/planningPaper";
-import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
-import { DeliveryRequest } from "../../models/delivery/deliveryRequest";
 import { DeliveryItem } from "../../models/delivery/deliveryItem";
+import { PlanningPaper } from "../../models/planning/planningPaper";
+import { FindOptions, Op, Sequelize, Transaction } from "sequelize";
 import { OutboundDetail } from "../../models/warehouse/outboundDetail";
+import { DeliveryRequest } from "../../models/delivery/deliveryRequest";
+import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
 
 export const planningPaperRepository = {
   getPlanningPaper: async ({
@@ -232,6 +232,7 @@ export const planningPaperRepository = {
         "ghepKho",
         "qtyProduced",
         "runningPlan",
+        "totalPrice",
         "sortPlanning",
       ],
       include: [
@@ -242,7 +243,6 @@ export const planningPaperRepository = {
             "flute",
             "dateRequestShipping",
             "quantityManufacture",
-            "totalPrice",
             "instructSpecial",
           ],
           required: true,

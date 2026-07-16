@@ -343,10 +343,12 @@ export const deliveryScheduleService = {
     deliveryItemIds,
     isRequest,
     empCode,
+    lisencePlate,
   }: {
     deliveryItemIds: number[];
     isRequest: Boolean;
     empCode: string;
+    lisencePlate?: string;
   }) => {
     try {
       return await runInTransaction(async (transaction) => {
@@ -375,7 +377,7 @@ export const deliveryScheduleService = {
           const validIds = items.filter((i) => i.status === "planned").map((i) => i.deliveryItemId);
           if (validIds.length > 0) {
             await DeliveryItem.update(
-              { status: "requested", dayRequested: now },
+              { status: "requested", dayRequested: now, licensePlate: lisencePlate },
               { where: { deliveryItemId: { [Op.in]: validIds } }, transaction },
             );
           }
@@ -383,7 +385,6 @@ export const deliveryScheduleService = {
           return { message: `Gửi yêu cầu thành công cho ${validIds.length} đơn hàng` };
         } else {
           // Chuẩn bị hàng (Chuyển từ requested -> prepared)
-
           const employee = await manufactureRepo.getEmployeeByCode(empCode, transaction);
           if (!employee) {
             throw AppError.NotFound("Mã nhân viên không tồn tại", "EMPLOYEE_NOT_FOUND");

@@ -43,7 +43,7 @@ export async function exportWarehouse(res: Response, outboundId: number, hasMone
   const outbound = await warehouseRepository.findOneForExportPDF(outboundId);
   if (!outbound) throw AppError.NotFound("Outbound not found", "OUTBOUND_NOT_FOUND");
 
-  console.log(`dateOutbound: ${outbound.dateOutbound}`);
+  // console.log(`dateOutbound: ${outbound.dateOutbound}`);
 
   return buildWarehouseSalePDF({
     res,
@@ -106,7 +106,7 @@ function buildWarehouseSalePDF({
 
   doc.moveDown(0.6);
 
-  console.log(`dateFormat: ${formatDate(outbound.dateOutbound)}`);
+  // console.log(`dateFormat: ${formatDate(outbound.dateOutbound)}`);
 
   doc.font("MainBold").fontSize(header_1).text("PHIẾU XUẤT KHO BÁN HÀNG", { align: "center" });
   doc

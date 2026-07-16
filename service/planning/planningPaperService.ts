@@ -85,12 +85,8 @@ export const planningPaperService = {
   getPlanningPaperSorted: async (machine: string) => {
     try {
       const { rows: data } = await planningPaperRepository.getPlanningPaper({
-        whereCondition: {
-          chooseMachine: machine,
-          status: { [Op.in]: filterStatus },
-        },
+        whereCondition: { chooseMachine: machine, status: { [Op.in]: filterStatus } },
       });
-
       const allPlannings = planningPaperService.applyPlanningSortAndOverflow(data);
 
       return allPlannings;
@@ -263,8 +259,6 @@ export const planningPaperService = {
           throw AppError.NotFound("planning not found", "PLANNING_NOT_FOUND");
         }
 
-        console.log(`status: ${newStatus}`);
-
         if (newStatus !== "complete") {
           for (const planning of plannings) {
             if (planning.orderId) {
@@ -348,8 +342,6 @@ export const planningPaperService = {
                     planning.planningId,
                     transaction,
                   );
-
-                  console.log(`count:${hasOutbound}`);
 
                   if (hasOutbound > 0) {
                     throw AppError.Conflict(
@@ -618,18 +610,27 @@ export const planningPaperService = {
   },
 
   //export excel
-  exportExcelPlanningOrder: async (res: Response, machine: string) => {
+  exportExcelPlanningOrder: async (res: Response, machine: string, isAll: boolean) => {
     try {
-      const data = await planningPaperRepository.getPaperToExportFile(machine);
-      const finalData = planningPaperService.applyPlanningSortAndOverflow(data);
+      let finalData;
+      if (isAll) {
+        finalData = await planningPaperService.getPlanningPaperSorted(machine);
+      } else {
+        const data = await planningPaperRepository.getPaperToExportFile(machine);
+        finalData = planningPaperService.applyPlanningSortAndOverflow(data);
+      }
 
-      const safeMachineName = machine.replace(/\s+/g, "-");
+      const safeMachineName = machine.replace(/\s+/g, "_");
+
+      const showColumns = isAll
+        ? planningPaperColumns
+        : planningPaperColumns.filter((col) => !col.isFull);
 
       await exportExcelResponse(res, {
         data: finalData,
         sheetName: "Kế hoạch sản xuất",
-        fileName: `KHSX_${normalizeVN(safeMachineName)}`,
-        columns: planningPaperColumns,
+        fileName: `KHSX_${isAll ? "all" : "partial"}_${normalizeVN(safeMachineName)}`,
+        columns: showColumns,
         rows: mapPlanningPaperRow,
       });
     } catch (error) {

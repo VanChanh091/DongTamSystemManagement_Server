@@ -242,10 +242,11 @@ export const getRequestPrepareGoods = async (req: Request, res: Response, next: 
 };
 
 export const requestOrPreparedGoods = async (req: Request, res: Response, next: NextFunction) => {
-  const { deliveryItemIds, isRequest, empCode } = req.body as {
+  const { deliveryItemIds, isRequest, empCode, lisencePlate } = req.body as {
     deliveryItemIds: number | number[];
     isRequest: Boolean;
     empCode?: string;
+    lisencePlate?: string;
   };
 
   try {
@@ -257,6 +258,7 @@ export const requestOrPreparedGoods = async (req: Request, res: Response, next: 
       deliveryItemIds: itemIds,
       isRequest,
       empCode: empCode ?? "",
+      lisencePlate: lisencePlate ?? "",
     });
 
     return res.status(200).json(response);

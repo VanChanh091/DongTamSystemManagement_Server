@@ -327,8 +327,8 @@ export const reportService = {
       let whereCondition: any = {};
 
       if (fromDate && toDate) {
-        const startTimestamp = dayjsUtc(fromDate).startOf("day").toDate();
-        const endTimestamp = dayjsUtc(toDate).endOf("day").toDate();
+        const startTimestamp = dayjsUtc(fromDate).toDate();
+        const endTimestamp = dayjsUtc(toDate).toDate();
 
         // console.log(`start: ${fromDate} - end: ${toDate}`);
         // console.log(`startTimestamp: ${startTimestamp} - endTimestamp: ${endTimestamp}`);

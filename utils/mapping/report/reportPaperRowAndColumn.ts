@@ -22,7 +22,7 @@ export const reportPaperColumns: Partial<ExcelJS.Column>[] = [
 
   { header: "Kế Hoạch Chạy", key: "runningPlanProd" },
   { header: "SL Báo Cáo", key: "qtyReported" },
-  { header: "PL Báo Cáo", key: "qtyWasteRp" },
+  { header: "PL Báo Cáo", key: "qtyWasteNorm" },
   { header: "Doanh số", key: "totalPrice", style: { numFmt: "#,##0" } },
 
   { header: "Thời Gian Chạy", key: "timeRunningProd" },
@@ -46,9 +46,9 @@ export const mapReportPaperRow = (item: ReportPlanningPaper, index: number) => {
     customerName: orderCell.Customer.customerName,
 
     dayStartProduction: planningCell.dayStart
-      ? dayjsUtc(planningCell.dayStart).format("DD/MM/YYYY")
+      ? dayjsUtc.utc(planningCell.dayStart).format("DD/MM/YYYY")
       : "",
-    dayReported: item.dayReport ? dayjsUtc(item.dayReport).format("DD/MM/YYYY HH:mm") : "",
+    dayReported: item.dayReport ? dayjsUtc.utc(item.dayReport).format("DD/MM/YYYY HH:mm") : "",
 
     structure: formatterStructureOrder(planningCell),
     flute: orderCell.flute,
@@ -61,7 +61,7 @@ export const mapReportPaperRow = (item: ReportPlanningPaper, index: number) => {
 
     runningPlanProd: planningCell.runningPlan,
     qtyReported: item.qtyProduced,
-    qtyWasteRp: planningCell.qtyWasteNorm,
+    qtyWasteNorm: item.qtyWasteNorm,
     totalPrice: Number(item.totalPrice),
 
     timeRunningProd: planningCell.timeRunning,

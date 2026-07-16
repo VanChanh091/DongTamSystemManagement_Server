@@ -106,8 +106,6 @@ export const exportExcelReportPaper = async (req: Request, res: Response, next: 
     machine?: string | undefined;
   };
 
-  console.log(`fromDate: ${fromDate} - toDate: ${toDate}`);
-
   try {
     const response = await reportService.exportReportPaper({
       res,

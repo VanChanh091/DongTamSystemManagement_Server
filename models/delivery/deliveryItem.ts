@@ -21,6 +21,7 @@ interface DeliveryItemAttributes {
   dayRequested?: Date | null;
   dayCompleted?: Date | null;
   status: statusDeliveryItem;
+  licensePlate?: string;
 
   //FK
   deliveryId: number;
@@ -56,6 +57,7 @@ export class DeliveryItem
   declare dayRequested?: Date | null;
   declare dayCompleted?: Date | null;
   declare status: statusDeliveryItem;
+  declare licensePlate?: string;
 
   //FK
   declare deliveryId: number;
@@ -99,6 +101,7 @@ export function initDeliveryItemModel(sequelize: Sequelize): typeof DeliveryItem
         allowNull: false,
         defaultValue: "none",
       },
+      licensePlate: { type: DataTypes.STRING },
 
       //FK
       deliveryId: { type: DataTypes.INTEGER, allowNull: false },

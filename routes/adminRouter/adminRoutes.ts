@@ -107,7 +107,7 @@ router.put("/criterias", authenticate, authorizeRole(["admin"]), updateCriteria)
 router.delete("/criterias", authenticate, authorizeRole(["admin"]), deleteCriteria);
 
 //===============================CRITERIA CHECK=====================================
-router.get("/criteria-check", authenticate, authorizeAnyPermission(["QC"]), getAllCriteriaCheck);
+router.get("/criteria-check", authenticate, getAllCriteriaCheck);
 router.post("/criteria-check", authenticate, authorizeRole(["admin"]), createNewCriteriaCheck);
 router.put("/criteria-check", authenticate, authorizeRole(["admin"]), updateCriteriaCheck);
 router.delete("/criteria-check", authenticate, authorizeRole(["admin"]), deleteCriteriaCheck);

@@ -3,14 +3,17 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.6.9</title>
-            <sparkle:version>4.6.9</sparkle:version> 
+            <title>Version 4.7.1</title>
+            <sparkle:version>4.7.1</sparkle:version> 
             <description>
-            Thêm chức năng cho phép hoàn thành đơn nhưng không cần sản xuất
-            Thêm tổng tiền hàng, thuế, tiền phải trả vào trang xuất kho
-            Thêm trường ghi vết người xuất kho
+            Thêm tính năng thu/phóng trang dữ liệu
+            Thay đổi giao diện xuất file báo cáo sản xuất
+            Cho phép nhập biển số xe vào yêu cầu chuẩn bị hàng
+            Thêm hiệu ứng nhấp nháy cho các đơn bị QC đánh giá lỗi
+            Thêm tùy chọn xuất file cho kế hoạch sản xuất
+            Hightlight màu cho phần duyệt đơn
             </description>
-            <pubDate>Mon, 22 Jun 2026</pubDate>
+            <pubDate>Fri, 10 July 2026</pubDate>
             <enclosure url="dongtam.exe" 
                     sparkle:os="windows" 
                     length="12345678" 
