@@ -7,7 +7,7 @@ import productRoutes from "./userRouter/productRoutes";
 import usersRoutes from "./userRouter/usersRoutes";
 import manufactureRoutes from "./userRouter/manufactureRoutes";
 import reportRoutes from "./userRouter/reportRoutes";
-import syntheticRoutes from "./synthetic/syntheticRoutes";
+import syntheticRoutes from "./userRouter/syntheticRoutes";
 import employeeRoutes from "./userRouter/employeeRoutes";
 import warehouseRoutes from "./userRouter/warehouseRoutes";
 import qcRoutes from "./userRouter/qualityControlRoutes";
@@ -16,6 +16,7 @@ import scrapRoutes from "./userRouter/scrapReportRoutes";
 import badgeRoutes from "./badgeRouter/badgeRoutes";
 import systemRoutes from "./systemRouter/systemRoutes";
 import meilisearchRoutes from "./meilisearchRouter/meilisearchRoutes";
+import notificationRoutes from "./notification/notificationRoutes";
 
 export {
   customerRoutes,
@@ -33,8 +34,6 @@ export {
   qcRoutes,
   deliveryRoutes,
   badgeRoutes,
-
-  //QC
   scrapRoutes,
 
   //system
@@ -42,4 +41,7 @@ export {
 
   //meilisearch
   meilisearchRoutes,
+
+  //notification
+  notificationRoutes,
 };

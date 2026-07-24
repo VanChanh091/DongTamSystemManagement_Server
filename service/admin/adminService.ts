@@ -5,18 +5,19 @@ import bcrypt from "bcrypt";
 import { Request } from "express";
 import { meiliService } from "../system/meiliService";
 import { AppError } from "../../utils/appError";
-import { userRole } from "../../models/user/user";
-import { Order, OrderStatus } from "../../models/order/order";
+import { User, userRole } from "../../models/user/user";
+import { OrderStatus } from "../../models/order/order";
 import { adminRepository } from "../../repository/adminRepository";
-import { getCloudinaryPublicId } from "../../utils/image/converToWebp";
 import { Inventory } from "../../models/warehouse/inventory/inventory";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
-import cloudinary from "../../assets/configs/connect/cloudinary.connect";
 import { MEILI_INDEX, validPermissions } from "../../assets/labelFields";
 import { inventoryRepository } from "../../repository/inventoryRepository";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
 import { inventoryService } from "../inventory/inventoryService";
 import { OrderApproved } from "../../models/order/orderApproved";
+import { NotificationModel } from "../../models/notification/notification";
+import { REQUEST_CONFIG } from "../notification/requestType";
+import { UserNotifications } from "../../models/notification/userNotifications";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 
@@ -153,12 +154,19 @@ export const adminService = {
     }
   },
 
-  updateStatusOrder: async (
-    req: Request,
-    orderId: string,
-    newStatus: OrderStatus,
-    rejectReason: string,
-  ) => {
+  updateStatusOrder: async ({
+    req,
+    orderId,
+    newStatus,
+    rejectReason,
+    senderId,
+  }: {
+    req: Request;
+    orderId: string;
+    newStatus: OrderStatus;
+    rejectReason: string;
+    senderId: number;
+  }) => {
     try {
       return await runInTransaction(async (transaction) => {
         if (!["accept", "reject"].includes(newStatus)) {
@@ -174,10 +182,44 @@ export const adminService = {
         // const newDebt = Number(customer.debtCurrent || 0) + Number(order.totalPrice || 0);
 
         const ownerId = order.userId;
-        let badgeCount;
 
         if (newStatus === "reject") {
           order.set({ status: newStatus, rejectReason: rejectReason || "" });
+
+          const config = REQUEST_CONFIG["ORDER_REJECT"];
+          if (!config) {
+            throw AppError.BadRequest("Invalid request type", "INVALID_REQUEST_TYPE");
+          }
+
+          const user = await User.findOne({ where: { userId: senderId }, transaction });
+          if (!user) {
+            throw AppError.NotFound("User not found", "USER_NOT_FOUND");
+          }
+
+          const newNotif = await NotificationModel.create({
+            title: config.titleCreate(),
+            type: "ORDER_REJECT",
+            targetType: "user",
+            senderId,
+            senderName: user.fullName,
+            senderDept: user.department,
+            payload: {
+              orderId,
+              reason: rejectReason,
+              result: "RESPONSE",
+              status: "pending",
+            },
+          });
+
+          await UserNotifications.create({
+            notificationId: newNotif.notificationId,
+            receiverId: ownerId,
+            receiverDept: order.User.department || null,
+            isRead: false,
+          });
+
+          //socket
+          req.io?.to(`user-${ownerId}`).emit("new-notification", newNotif);
         } else {
           //calculate debt limit of customer
           // if (req.user.role !== "admin") {
@@ -212,7 +254,6 @@ export const adminService = {
               { transaction },
             );
           } else {
-            //create inventory
             success = await inventoryService.createNewInventory(orderId, transaction);
           }
 
@@ -241,41 +282,7 @@ export const adminService = {
           isUpdate: true,
         });
 
-        //-------------------- SOCKET -----------------------
-        if (newStatus === "reject") {
-          badgeCount = await Order.count({
-            where: { status: "reject", userId: ownerId },
-            transaction,
-          });
-
-          const roomName = `reject-order-${ownerId}`;
-          const sockets = await req.io?.in(roomName).fetchSockets();
-
-          // console.log(`-----------------------------------`);
-          // console.log(`📡 Event: updateBadgeCount`);
-          // console.log(`🏠 Room Target: ${roomName}`);
-          // console.log(`👥 Active sockets: ${sockets?.length ?? 0}`);
-          // console.log(`-----------------------------------`);
-
-          const hasSocket = sockets && sockets.length > 0;
-          if (!hasSocket) {
-            if (devEnvironment) console.log(`⚠️ No one is in room ${roomName}, skip emitting.`);
-            return { message: "Order status updated successfully, no active socket to notify" };
-          }
-
-          req.io?.to(roomName).emit("updateBadgeCount", {
-            type: "REJECTED_ORDER",
-            count: badgeCount,
-          });
-        }
-
-        return {
-          message: "Order status updated successfully",
-          notification: {
-            recipientId: ownerId,
-            badgeCount,
-          },
-        };
+        return { message: "Order status updated successfully" };
       });
     } catch (error) {
       console.error("failed to update order", error);
@@ -285,55 +292,6 @@ export const adminService = {
   },
 
   //===============================ADMIN USER======================================
-  getUsersAdmin: async (field: string, keyword: string | string[]) => {
-    try {
-      let users: any[] = [];
-      let message = "Get all users successfully (excluding admin)";
-
-      if (!field || !keyword) {
-        // Nếu không có field/keyword -> Lấy tất cả
-        users = await adminRepository.getAllUser();
-      } else {
-        switch (field) {
-          case "name":
-            users = await adminRepository.getUserByName(keyword as string);
-            message = "Get all users by name from DB";
-            break;
-          case "phone":
-            users = await adminRepository.getUserByPhone(keyword as string);
-            message = "Get user by phone from DB";
-            break;
-          case "permission":
-            const permsArray = Array.isArray(keyword) ? keyword : [keyword];
-            const lowerPermissions = permsArray.map((p) => p.toLowerCase()).filter(Boolean);
-
-            // Lấy tất cả user và lọc theo logic permission của bạn
-            const allUsers = await adminRepository.getAllUser();
-            users = allUsers.filter((user) => {
-              const userPerms: string[] = Array.isArray(user.permissions)
-                ? (user.permissions as string[])
-                : JSON.parse((user.permissions as string) || "[]");
-
-              return userPerms.some((p) => lowerPermissions.includes(p.toLowerCase()));
-            });
-            message = "Get users by permission from DB";
-            break;
-        }
-      }
-
-      const sanitizedUsers = users
-        .map((user) => (typeof user.get === "function" ? user.get({ plain: true }) : user))
-        .filter((user) => user.role?.toLowerCase() !== "admin");
-
-      return { message, data: sanitizedUsers };
-    } catch (error) {
-      console.error(`Failed to get users by ${field}`, error);
-      if (error instanceof AppError) throw error;
-      throw AppError.ServerError();
-    }
-  },
-
-  //delete
   getAllUsers: async () => {
     try {
       const data = await adminRepository.getAllUser();
@@ -345,89 +303,6 @@ export const adminService = {
       return { message: "Get all users successfully (excluding admin)", data: sanitizedData };
     } catch (error) {
       console.error("Error fetching users:", error);
-      throw AppError.ServerError();
-    }
-  },
-
-  //delete
-  getUserByName: async (name: string) => {
-    try {
-      if (!name) {
-        throw AppError.BadRequest("Name is required", "NAME_REQUIRED");
-      }
-
-      const users = await adminRepository.getUserByName(name);
-      if (users.length === 0) {
-        throw AppError.NotFound("User not found", "USER_NOT_FOUND");
-      }
-
-      const sanitizedUsers = users
-        .map((user) => user.get({ plain: true }))
-        .filter((user) => user.role?.toLowerCase() !== "admin");
-
-      return { message: "Get all users by name from DB", data: sanitizedUsers };
-    } catch (error) {
-      console.error("Error fetching user by name:", error);
-      if (error instanceof AppError) throw error;
-      throw AppError.ServerError();
-    }
-  },
-
-  //delete
-  getUserByPhone: async (phone: string) => {
-    try {
-      if (!phone) {
-        throw AppError.BadRequest("Phone number is required", "PHONE_REQUIRED");
-      }
-      const users = await adminRepository.getUserByPhone(phone);
-
-      if (users.length === 0) {
-        throw AppError.NotFound("User not found", "USER_NOT_FOUND");
-      }
-
-      const sanitizedUsers = users
-        .map((user) => user.get({ plain: true }))
-        .filter((user) => user.role?.toLowerCase() !== "admin");
-
-      return { message: "Get user by phone from DB", data: sanitizedUsers };
-    } catch (error) {
-      console.error("Error fetching user by phone:", error);
-      if (error instanceof AppError) throw error;
-      throw AppError.ServerError();
-    }
-  },
-
-  //delete
-  getUserByPermission: async (permission: string | string[]) => {
-    try {
-      if (!permission) {
-        throw AppError.BadRequest("Permission is required", "PERMISSION_REQUIRED");
-      }
-
-      if (!Array.isArray(permission)) {
-        permission = [permission as string]; // chuyển về dạng mảng nếu chỉ có 1 item
-      }
-
-      const lowerPermissions = (permission as string[]).map((p) => p.toLowerCase()).filter(Boolean);
-
-      const users = await adminRepository.getAllUser();
-
-      const matchedUsers = users.filter((user) => {
-        const perms: string[] = Array.isArray(user.permissions)
-          ? (user.permissions as string[])
-          : JSON.parse((user.permissions as string) || "[]");
-
-        return perms.some((perm: string) => lowerPermissions.includes(perm.toLowerCase()));
-      });
-
-      const sanitizedUsers = matchedUsers
-        .map((user) => user.get({ plain: true }))
-        .filter((user) => user.role?.toLowerCase() !== "admin");
-
-      return { message: "Get users by permission from DB", data: sanitizedUsers };
-    } catch (error) {
-      console.error("Error fetching users by permission:", error);
-      if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
   },
@@ -495,14 +370,30 @@ export const adminService = {
         user.permissions = permissions;
         await user.save({ transaction });
 
-        return {
-          message: "Permissions updated successfully",
-          userId: user.userId,
-          permissions: user.permissions,
-        };
+        return { message: "Permissions updated successfully", data: user };
       });
     } catch (error) {
       console.error("Error updating permissions:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  updateUserDepartment: async (userId: number, newDepartment: string) => {
+    try {
+      return await runInTransaction(async (transaction) => {
+        const user = await adminRepository.getUserByPk(userId, transaction);
+        if (!user) {
+          throw AppError.NotFound("User not found", "USER_NOT_FOUND");
+        }
+
+        user.department = newDepartment;
+        await user.save({ transaction });
+
+        return { message: "User department updated successfully", data: user };
+      });
+    } catch (error) {
+      console.error("Error updating user department:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
@@ -552,16 +443,16 @@ export const adminService = {
           throw AppError.NotFound("User not found", "USER_NOT_FOUND");
         }
 
-        const imageName = user.avatar;
+        // const imageName = user.avatar;
 
-        await user.destroy({ transaction });
+        // await user.destroy({ transaction });
 
-        if (imageName && imageName.includes("cloudinary.com")) {
-          const publicId = getCloudinaryPublicId(imageName);
-          if (publicId) {
-            await cloudinary.uploader.destroy(publicId);
-          }
-        }
+        // if (imageName && imageName.includes("cloudinary.com")) {
+        //   const publicId = getCloudinaryPublicId(imageName);
+        //   if (publicId) {
+        //     await cloudinary.uploader.destroy(publicId);
+        //   }
+        // }
 
         return { message: "User deleted successfully" };
       });

@@ -5,10 +5,11 @@ declare global {
     interface Request {
       user: {
         userId: number;
-        role: string;
-        permissions: string[];
         email: string;
         fullName: string;
+        role: string;
+        department: string;
+        permissions: string[];
       };
       io?: SocketIOServer;
       file?: MulterFile;

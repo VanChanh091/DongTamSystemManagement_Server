@@ -5,7 +5,6 @@ import {
   countDeliveryRequest,
   countOrderPending,
   countOrderPendingPlanning,
-  countOrderRejected,
   countPlanningStop,
   countRequestPrepareGoods,
   countWaitingCheck,
@@ -15,9 +14,6 @@ const router = Router();
 
 //pending order
 router.get("/count-pending", authenticate, authorizeAnyPermission(["admin"]), countOrderPending);
-
-//order reject
-router.get("/count-rejected", authenticate, authorizeAnyPermission(["sale"]), countOrderRejected);
 
 //order pending planning
 router.get(

@@ -1,6 +1,12 @@
 import { Socket } from "socket.io";
 import { JwtPayload } from "jsonwebtoken";
 
+export interface UserPayload {
+  userId: number;
+  role: string;
+  department: string;
+}
+
 export interface DecodedToken extends JwtPayload {
   userId: string;
   username?: string;

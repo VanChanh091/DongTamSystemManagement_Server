@@ -12,16 +12,6 @@ export const countOrderPending = async (req: Request, res: Response, next: NextF
   }
 };
 
-//order reject
-export const countOrderRejected = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const response = await badgeService.countOrderRejected(req.user.userId);
-    return res.status(201).json(response);
-  } catch (error) {
-    next(error);
-  }
-};
-
 //order pending planning
 export const countOrderPendingPlanning = async (
   req: Request,

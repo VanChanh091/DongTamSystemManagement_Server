@@ -1,11 +1,7 @@
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import { UserPayload } from "../interface/socket.type";
 dotenv.config();
-
-interface UserPayload {
-  userId: number;
-  role: string;
-}
 
 const generateToken = (user: UserPayload): string => {
   const key =
@@ -13,9 +9,11 @@ const generateToken = (user: UserPayload): string => {
       ? process.env.SECRET_KEY_DEV
       : process.env.SECRET_KEY_PROD;
 
-  return jwt.sign({ userId: user.userId, role: user.role }, key as string, {
-    expiresIn: "1d",
-  });
+  return jwt.sign(
+    { userId: user.userId, role: user.role, department: user.department },
+    key as string,
+    { expiresIn: "1d" },
+  );
 };
 
 export default generateToken;

@@ -113,6 +113,7 @@ export const authService = {
           userId: existUser.userId,
           email: existUser.email,
           role: existUser.role,
+          department: existUser.department,
           permissions: existUser.permissions,
         },
         token: generateToken(existUser),

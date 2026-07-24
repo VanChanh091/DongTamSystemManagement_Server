@@ -167,6 +167,7 @@ export function initPlanningBoxModel(sequelize: Sequelize): typeof PlanningBox {
         defaultValue: "none",
       },
 
+      //FK
       orderId: { type: DataTypes.STRING, allowNull: false },
       planningId: { type: DataTypes.INTEGER, allowNull: false },
     },

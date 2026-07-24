@@ -7,11 +7,11 @@ interface UserAttributes {
   fullName: string;
   email: string;
   password: string;
-  sex?: string | null;
-  phone?: string | null;
   role: userRole;
   permissions: string[];
-  avatar?: string | null;
+  department: string;
+  // avatar?: string | null;
+
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -19,7 +19,7 @@ interface UserAttributes {
 // cho phép bỏ qua các fiel này khi tạo
 export type UserCreationAttributes = Optional<
   UserAttributes,
-  "userId" | "permissions" | "avatar" | "role" | "sex" | "phone" | "createdAt" | "updatedAt"
+  "userId" | "permissions" | "role" | "createdAt" | "updatedAt"
 >;
 
 export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
@@ -27,11 +27,11 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   declare fullName: string;
   declare email: string;
   declare password: string;
-  declare sex?: string | null;
-  declare phone?: string | null;
   declare role: userRole;
   declare permissions: string[];
-  declare avatar?: string | null;
+  declare department: string;
+  // declare avatar?: string | null;
+
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
 }
@@ -39,34 +39,11 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
 export function initUserModel(sequelize: Sequelize): typeof User {
   User.init(
     {
-      userId: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true,
-      },
-      fullName: {
-        type: DataTypes.STRING,
-        allowNull: false,
-      },
-      email: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        unique: true,
-      },
-      password: {
-        type: DataTypes.STRING,
-        allowNull: false,
-      },
-      sex: {
-        type: DataTypes.STRING,
-      },
-      phone: {
-        type: DataTypes.STRING,
-      },
-      role: {
-        type: DataTypes.ENUM("admin", "user", "manager"),
-        defaultValue: "user",
-      },
+      userId: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+      fullName: { type: DataTypes.STRING, allowNull: false },
+      email: { type: DataTypes.STRING, allowNull: false, unique: true },
+      password: { type: DataTypes.STRING, allowNull: false },
+      role: { type: DataTypes.ENUM("admin", "user", "manager"), defaultValue: "user" },
       permissions: {
         type: DataTypes.TEXT,
         get() {
@@ -78,12 +55,12 @@ export function initUserModel(sequelize: Sequelize): typeof User {
         },
         defaultValue: "[]",
       },
-
-      avatar: {
-        type: DataTypes.STRING,
-        defaultValue:
-          "https://static.vecteezy.com/system/resources/previews/024/983/914/original/simple-user-default-icon-free-png.png",
-      },
+      department: { type: DataTypes.STRING, allowNull: false, defaultValue: "none" },
+      // avatar: {
+      //   type: DataTypes.STRING,
+      //   defaultValue:
+      //     "https://static.vecteezy.com/system/resources/previews/024/983/914/original/simple-user-default-icon-free-png.png",
+      // },
     },
     {
       sequelize,

@@ -100,7 +100,7 @@ export const adminRepository = {
           attributes: ["productId", "typeProduct"],
         },
         { model: Box, as: "box" },
-        { model: User, attributes: ["fullName"] },
+        { model: User, attributes: ["fullName", "department"] },
       ],
       transaction,
     });
@@ -114,22 +114,6 @@ export const adminRepository = {
 
   getAllUser: async () => {
     return await User.findAll({ attributes: { exclude: ["password", "createdAt", "updatedAt"] } });
-  },
-
-  getUserByName: async (nameLower: string) => {
-    return await User.findAll({
-      where: where(fn("LOWER", col("fullName")), {
-        [Op.like]: `%${nameLower}%`,
-      }),
-      attributes: { exclude: ["password"] },
-    });
-  },
-
-  getUserByPhone: async (phone: string) => {
-    return await User.findAll({
-      where: { phone },
-      attributes: { exclude: ["password"] },
-    });
   },
 
   getUserByPk: async (userId: number, transaction?: Transaction) => {

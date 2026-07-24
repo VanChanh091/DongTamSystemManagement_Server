@@ -29,6 +29,7 @@ import {
   meilisearchRoutes,
   syntheticRoutes,
   scrapRoutes,
+  notificationRoutes,
 } from "./routes/index";
 
 //create table
@@ -94,6 +95,7 @@ app.use("/api/qc", qcRoutes);
 app.use("/api/delivery", deliveryRoutes);
 app.use("/api/scrapReports", scrapRoutes);
 app.use("/api/system", systemRoutes);
+app.use("/api/notification", notificationRoutes);
 
 //sync meilisearch
 app.use("/api/meilisearch", meilisearchRoutes);

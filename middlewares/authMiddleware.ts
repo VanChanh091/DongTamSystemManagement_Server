@@ -31,6 +31,7 @@ const authenticate = async (req: Request, res: Response, next: NextFunction) => 
       permissions: user.permissions,
       email: user.email,
       fullName: user.fullName,
+      department: user.department,
     };
 
     next();

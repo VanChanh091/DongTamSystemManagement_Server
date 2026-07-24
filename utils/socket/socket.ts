@@ -33,6 +33,7 @@ export const initSocket = (server: HttpServer) => {
           : process.env.SECRET_KEY_PROD;
 
       const decoded = jwt.verify(token, key as string) as DecodedToken;
+
       socket.user = decoded;
       next();
     } catch (err) {
@@ -43,16 +44,39 @@ export const initSocket = (server: HttpServer) => {
 
   // Connection logic
   io.on("connection", (socket: AuthenticatedSocket) => {
+    if (!socket.user) return;
+
+    const { userId, role, department } = socket.user;
+
+    // console.log(`\n================ INSPECT ROOMS FOR USER ${userId} ================`);
+    // console.log(`ID Socket hiện tại: ${socket.id}`);
+    // console.log(`==================================================================\n`);
+
+    // 1. Phòng Cá Nhân Đích Danh
+    socket.join(`user-${userId}`);
+
+    // 2. Phòng theo Bộ Phận
+    if (department) {
+      socket.join(`department-${department.toLowerCase()}`);
+    }
+
+    // 3. Phòng theo Chức Vụ
+    if (role) {
+      socket.join(`role-${role.toLowerCase()}`);
+    }
+
+    if (devEnvironment) {
+      console.log(
+        `📌 User ${userId} auto-joined: user-${userId} | department-${department.toLowerCase()} | role-${role?.toLowerCase() ?? ""}`,
+      );
+    }
+
+    //=============================================================================
+
     //machine
     socket.on("join-machine", (roomName: string) => {
       socket.join(roomName);
       if (devEnvironment) console.log(`📌 socket joined: ${roomName}`);
-    });
-
-    //reject order
-    socket.on("join-user", (ownerId: number) => {
-      socket.join(`reject-order-${ownerId}`);
-      if (devEnvironment) console.log(`🔔 User joined notification: ${ownerId}`);
     });
 
     //request prepare goods

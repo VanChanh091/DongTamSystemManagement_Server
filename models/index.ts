@@ -15,6 +15,8 @@ import { initDeliveryPlanModel } from "./delivery/deliveryPlan";
 import { initDeliveryRequestModel } from "./delivery/deliveryRequest";
 import { initEmployeeBasicInfoModel } from "./employee/employeeBasicInfo";
 import { initEmployeeCompanyInfoModel } from "./employee/employeeCompanyInfo";
+import { initNotificationModel } from "./notification/notification";
+import { initUserNotificationsModel } from "./notification/userNotifications";
 import { initBoxModel } from "./order/box";
 import { initOrderModel } from "./order/order";
 import { initOrderApprovedModel } from "./order/orderApproved";
@@ -112,6 +114,10 @@ const DeliveryRequest = initDeliveryRequestModel(sequelize);
 const DeliveryPlan = initDeliveryPlanModel(sequelize);
 const DeliveryItem = initDeliveryItemModel(sequelize);
 
+//notification
+const NotificationModel = initNotificationModel(sequelize);
+const UserNotifications = initUserNotificationsModel(sequelize);
+
 const models = {
   //admin
   MachinePaper,
@@ -180,6 +186,10 @@ const models = {
   DeliveryRequest,
   DeliveryPlan,
   DeliveryItem,
+
+  //notification
+  NotificationModel,
+  UserNotifications,
 };
 
 //===============================CUSTOMER=================================
@@ -388,5 +398,16 @@ DeliveryItem.belongsTo(DeliveryRequest, { foreignKey: "requestId" });
 
 Vehicle.hasOne(DeliveryItem, { foreignKey: "vehicleId", onDelete: "CASCADE" });
 DeliveryItem.belongsTo(Vehicle, { foreignKey: "vehicleId" });
+
+//===============================NOTIFICATION=================================
+NotificationModel.hasMany(UserNotifications, {
+  foreignKey: "notificationId",
+  onDelete: "CASCADE",
+  as: "userNotify",
+});
+UserNotifications.belongsTo(NotificationModel, {
+  foreignKey: "notificationId",
+  as: "notification",
+});
 
 export default models;

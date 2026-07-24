@@ -19,18 +19,6 @@ export const badgeService = {
     }
   },
 
-  //order reject
-  countOrderRejected: async (userId: number) => {
-    try {
-      const count = await Order.count({ where: { status: "reject", userId: userId } });
-
-      return { message: "Count order rejected successfully", data: count };
-    } catch (error) {
-      console.error(`Count order rejected failed:`, error);
-      throw AppError.ServerError();
-    }
-  },
-
   //order pending planning
   countOrderPendingPlanning: async () => {
     try {
