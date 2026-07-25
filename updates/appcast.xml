@@ -3,17 +3,13 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.7.1</title>
-            <sparkle:version>4.7.1</sparkle:version> 
+            <title>Version 4.7.2</title>
+            <sparkle:version>4.7.2</sparkle:version> 
             <description>
-            Thêm tính năng thu/phóng trang dữ liệu
-            Thay đổi giao diện xuất file báo cáo sản xuất
-            Cho phép nhập biển số xe vào yêu cầu chuẩn bị hàng
-            Thêm hiệu ứng nhấp nháy cho các đơn bị QC đánh giá lỗi
-            Thêm tùy chọn xuất file cho kế hoạch sản xuất
-            Hightlight màu cho phần duyệt đơn
+            Thay đổi giao diện cho phần menu theo phòng ban
+            Xây dựng phần quản lý thông báo giao tiếp giữa người dùng
             </description>
-            <pubDate>Fri, 10 July 2026</pubDate>
+            <pubDate>Sat, 25 Julys 2026</pubDate>
             <enclosure url="dongtam.exe" 
                     sparkle:os="windows" 
                     length="12345678" 

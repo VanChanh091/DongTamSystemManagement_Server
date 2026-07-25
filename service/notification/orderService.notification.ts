@@ -18,8 +18,6 @@ export const OrderServiceNotification = {
   }) => {
     const { orderId, requestType, newDeliveryDate, reason } = req.body;
 
-    let createdNotifData: any = null;
-
     // console.log(
     //   `body: ${JSON.stringify(req.body)}, senderId: ${senderId}, receiverId: ${receiverId}`,
     // );
@@ -28,6 +26,29 @@ export const OrderServiceNotification = {
     if (!config) {
       throw AppError.BadRequest("Loại yêu cầu không hợp lệ", "INVALID_REQUEST_TYPE");
     }
+
+    if (!orderId) {
+      throw AppError.BadRequest("Mã đơn hàng không được để trống", "ORDER_ID_REQUIRED");
+    }
+
+    if (requestType === "ORDER_CHANGE_DATE" && !newDeliveryDate) {
+      throw AppError.BadRequest(
+        "Ngày giao hàng mới không được để trống",
+        "NEW_DELIVERY_DATE_REQUIRED",
+      );
+    }
+
+    const payload: Record<string, any> = {
+      orderId,
+      reason,
+      action: "REQUEST",
+    };
+
+    if (requestType === "ORDER_CHANGE_DATE") {
+      payload.newDeliveryDate = newDeliveryDate;
+    }
+
+    let createdNotifData: any = null;
 
     try {
       await runInTransaction(async (transaction) => {
@@ -45,7 +66,7 @@ export const OrderServiceNotification = {
           senderName: req.user.fullName,
           senderDept: req.user.department,
           status: "pending",
-          payload: { orderId, newDeliveryDate, reason, action: "REQUEST" },
+          payload,
           transaction,
         });
 
@@ -65,7 +86,12 @@ export const OrderServiceNotification = {
         req.io?.to(`user-${receiverId}`).emit("new-notification", createdNotifData);
       }
 
-      return { message: "Đã gửi yêu cầu thay đổi đến phòng Kế hoạch thành công." };
+      const successMessage =
+        requestType === "ORDER_CANCEL"
+          ? "Đã gửi yêu cầu hủy đơn hàng thành công."
+          : "Đã gửi yêu cầu thay đổi ngày giao hàng thành công.";
+
+      return { message: successMessage };
     } catch (error) {
       console.error("Error in request change info order:", error);
       if (error instanceof AppError) throw error;

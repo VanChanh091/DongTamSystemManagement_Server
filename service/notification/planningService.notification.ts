@@ -6,6 +6,8 @@ import { NotificationModel } from "../../models/notification/notification";
 import { REQUEST_CONFIG, RequestType } from "./requestType";
 import { UserNotifications } from "../../models/notification/userNotifications";
 import { notificationRepository } from "../../repository/notificationRepository";
+import { Order } from "../../models/order/order";
+import { CacheManager } from "../../utils/helper/cache/cacheManager";
 
 export const planningServiceNotification = {
   //notification
@@ -46,6 +48,20 @@ export const planningServiceNotification = {
         const rootNotificationId = originalNotif.notificationId;
         originalSenderId = originalNotif.senderId;
 
+        //update order
+        if (action === "approved") {
+          if (originalNotif.type === RequestType.ORDER_CHANGE_DATE) {
+            const [updatedRows] = await Order.update(
+              { dateRequestShipping: payload.newDeliveryDate },
+              { where: { orderId: payload.orderId }, transaction },
+            );
+
+            if (updatedRows === 0) {
+              throw AppError.NotFound("Không tìm thấy đơn hàng để cập nhật", "ORDER_NOT_FOUND");
+            }
+          }
+        }
+
         await Promise.all([
           originalNotif.update({ payload: { ...payload, status: action } }, { transaction }),
           UserNotifications.update(
@@ -83,6 +99,7 @@ export const planningServiceNotification = {
         });
 
         createdResponseNotif = responseNoti;
+        await CacheManager.clear("planningPaper");
 
         // luồng 1-n user - accounting
         if (action === "approved") {
