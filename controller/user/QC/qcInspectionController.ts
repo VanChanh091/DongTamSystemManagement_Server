@@ -98,6 +98,7 @@ export const checkingInspection = async (req: Request, res: Response, next: Next
         planningId: planningId!,
         errProgress: errProgress as qcCheckPaper,
         username: req.user.fullName,
+        userId: req.user.userId,
       });
     } else if (isPaper === "box") {
       response = await qcInspectionService.checkingInspectionBox({
@@ -106,6 +107,7 @@ export const checkingInspection = async (req: Request, res: Response, next: Next
         planningBoxId: planningBoxId!,
         errProgress: errProgress as qcCheckBox,
         username: req.user.fullName,
+        userId: req.user.userId,
       });
     }
     return res.status(200).json(response);

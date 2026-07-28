@@ -33,7 +33,6 @@ router.put("/result", authorizeAnyPermission(["QC"]), authenticate, updateResult
 router.post("/submit", authenticate, authorizeAnyPermission(["QC"]), submitQC);
 
 //==================INSPECTION CHECK====================
-router.get("/inspection", authenticate, authorizeAnyPermission(["QC"]), getQcInspection);
 router.post("/inspection", authenticate, authorizeAnyPermission(["QC"]), checkingInspection);
 
 //using to check for producing

@@ -11,7 +11,7 @@ import {
   getRequestPrepareGoods,
   handlePutDelivery,
   notifyPrepareGoods,
-  requestOrPreparedGoods,
+  handleUpdatePreparedGoods,
   getDeliveryItemsByOrderId,
   implementDeliveryPlan,
 } from "../../controller/user/delivery/deliveryController";
@@ -51,9 +51,13 @@ router.post(
 );
 
 //=================================PREPARE GOODS=====================================
-
 router.get("/prepare", authenticate, getRequestPrepareGoods);
-router.put("/prepare", authenticate, authorizeAnyPermission(["delivery"]), requestOrPreparedGoods);
+router.put(
+  "/prepare",
+  authenticate,
+  authorizeAnyPermission(["delivery"]),
+  handleUpdatePreparedGoods,
+);
 
 //socket
 router.post(

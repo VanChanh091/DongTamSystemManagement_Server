@@ -1,5 +1,6 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { PlanningBoxTime } from "../../planning/planningBoxMachineTime";
+import { User } from "../../user/user";
 
 export type qcCheckBox = Record<string, boolean>;
 
@@ -15,12 +16,19 @@ interface QcInspectionBoxAttributes {
 
   //FK
   boxTimeId: number;
+  userId?: number;
 }
 
 //cho phép bỏ qua id khi tạo
 export type QcInspectionBoxCreationAttributes = Optional<
   QcInspectionBoxAttributes,
-  "inspecBoxId" | "timeInspection" | "checkedBy" | "boxTimeId" | "createdAt" | "updatedAt"
+  | "inspecBoxId"
+  | "timeInspection"
+  | "checkedBy"
+  | "boxTimeId"
+  | "userId"
+  | "createdAt"
+  | "updatedAt"
 >;
 
 //định nghĩa kiểu OOP
@@ -39,6 +47,9 @@ export class QcInspectionBox
   //FK
   declare boxTimeId: number;
   declare PlanningBoxTime: PlanningBoxTime;
+
+  declare userId: number;
+  declare User: User;
 }
 
 export function initQcInspectionBoxModel(sequelize: Sequelize): typeof QcInspectionBox {
@@ -58,7 +69,8 @@ export function initQcInspectionBoxModel(sequelize: Sequelize): typeof QcInspect
       checkedBy: { type: DataTypes.STRING, allowNull: false }, //người kiểm tra
 
       //FK
-      boxTimeId: { type: DataTypes.INTEGER },
+      boxTimeId: { type: DataTypes.INTEGER, allowNull: false },
+      userId: { type: DataTypes.INTEGER },
     },
     {
       sequelize,

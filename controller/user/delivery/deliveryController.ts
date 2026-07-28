@@ -241,12 +241,17 @@ export const getRequestPrepareGoods = async (req: Request, res: Response, next: 
   }
 };
 
-export const requestOrPreparedGoods = async (req: Request, res: Response, next: NextFunction) => {
-  const { deliveryItemIds, isRequest, empCode, lisencePlate } = req.body as {
+export const handleUpdatePreparedGoods = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { deliveryItemIds, isRequest, empCode, lisencePlate, action } = req.body as {
     deliveryItemIds: number | number[];
     isRequest: Boolean;
     empCode?: string;
     lisencePlate?: string;
+    action: string;
   };
 
   try {
@@ -254,12 +259,26 @@ export const requestOrPreparedGoods = async (req: Request, res: Response, next: 
       ? deliveryItemIds.map(Number)
       : [Number(deliveryItemIds)];
 
-    const response = await deliveryScheduleService.requestOrPreparedGoods({
-      deliveryItemIds: itemIds,
-      isRequest,
-      empCode: empCode ?? "",
-      lisencePlate: lisencePlate ?? "",
-    });
+    let response;
+
+    switch (action) {
+      case "REQUEST":
+        response = await deliveryScheduleService.requestOrPreparedGoods({
+          deliveryItemIds: itemIds,
+          isRequest,
+          empCode: empCode ?? "",
+          lisencePlate: lisencePlate ?? "",
+        });
+        break;
+      case "CHANGE_LICENSE_PLATE":
+        response = await deliveryScheduleService.updateLicensePlate({
+          deliveryItemId: itemIds[0],
+          newLicensePlate: lisencePlate ?? "",
+        });
+        break;
+      default:
+        throw AppError.BadRequest("Invalid action parameter", "INVALID_ACTION");
+    }
 
     return res.status(200).json(response);
   } catch (error) {

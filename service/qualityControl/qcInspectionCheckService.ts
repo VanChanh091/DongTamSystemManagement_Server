@@ -17,6 +17,8 @@ import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
+import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
+import { Op, Sequelize } from "sequelize";
 
 const { paper } = CacheKey.qcInspection;
 const devEnvironment = process.env.NODE_ENV !== "production";
@@ -94,6 +96,7 @@ export const qcInspectionService = {
     planningId,
     username,
     machine,
+    userId,
   }: {
     req: Request;
     checking: Record<string, number>;
@@ -101,6 +104,7 @@ export const qcInspectionService = {
     planningId: number;
     username: string;
     machine: string;
+    userId: number;
   }) => {
     try {
       return runInTransaction(async (transaction) => {
@@ -108,6 +112,7 @@ export const qcInspectionService = {
           planningId: planningId,
           timeInspection: new Date(),
           checkedBy: username,
+          userId: userId,
         };
 
         if (checking) {
@@ -166,6 +171,106 @@ export const qcInspectionService = {
       });
     } catch (error) {
       console.error("Error checking inspection paper:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  //paper or box
+  getReportQcInspectionSummary: async ({
+    machine,
+    startDate,
+    endDate,
+    isPaper,
+    user,
+  }: {
+    machine: string;
+    startDate: string;
+    endDate: string;
+    isPaper: string;
+    user: any;
+  }) => {
+    const { userId, role } = user;
+
+    try {
+      let whereConditions: any = [];
+
+      // console.log(`start: ${startDate} - endDate: ${endDate}`);
+
+      if (startDate && endDate) {
+        const startTimestamp = dayjsUtc.utc(startDate).startOf("day").format("YYYY-MM-DD HH:mm:ss");
+        const endTimestamp = dayjsUtc.utc(endDate).endOf("day").format("YYYY-MM-DD HH:mm:ss");
+
+        // console.log(`formatStart: ${startTimestamp} - formatEnd: ${endTimestamp}`);
+
+        whereConditions.push({
+          timeInspection: {
+            [Op.between]: [startTimestamp, endTimestamp],
+          },
+        });
+      }
+
+      const isAdminOrManager = role && ["admin", "manager"].includes(role.toLowerCase());
+      if (userId && !isAdminOrManager) {
+        whereConditions.push({ userId });
+      }
+
+      const isPaperType = isPaper === "paper";
+      const summaryMap: Record<string, { name: string; count: number }> = {};
+
+      const criteriaList: { code: string; name: string }[] = isPaperType
+        ? (
+            await CriteriaPaperCheck.findAll({
+              attributes: [
+                ["criteriaPaperCode", "code"],
+                ["criteriaPaperName", "name"],
+              ],
+              raw: true,
+            })
+          ).map((item: any) => ({ code: item.code, name: item.name }))
+        : (
+            await CriteriaBoxCheck.findAll({
+              where: { machine },
+              attributes: [
+                ["criteriaBoxCode", "code"],
+                ["criteriaBoxName", "name"],
+              ],
+              raw: true,
+            })
+          ).map((item: any) => ({ code: item.code, name: item.name }));
+
+      // Khởi tạo danh sách với count = 0
+      for (const item of criteriaList) {
+        summaryMap[item.code] = { name: item.name, count: 0 };
+      }
+
+      // Danh sách kiểm tra từ DB
+      const listInspection = isPaperType
+        ? await qcRepository.getChecklistInspectionPaper({ whereConditions, machine })
+        : await qcRepository.getChecklistInspectionBox({ whereConditions, machine });
+
+      for (const item of listInspection) {
+        const checkList = item.checkList as Record<string, boolean>;
+        if (!checkList || typeof checkList !== "object") continue;
+
+        for (const [key, value] of Object.entries(checkList)) {
+          if (!value) {
+            summaryMap[key]
+              ? (summaryMap[key].count += 1)
+              : (summaryMap[key] = { name: key, count: 1 });
+          }
+        }
+      }
+
+      const summaryData = Object.entries(summaryMap).map(([key, item]) => ({
+        key,
+        name: item.name,
+        count: item.count,
+      }));
+
+      return { message: "Summarized inspection errors successfully", data: summaryData };
+    } catch (error) {
+      console.error("Error summing errors in inspection:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
@@ -253,18 +358,21 @@ export const qcInspectionService = {
     planningBoxId,
     username,
     errProgress,
+    userId,
   }: {
     req: Request;
     planningBoxId: number;
     machine: string;
     username: string;
     errProgress: qcCheckBox;
+    userId: number;
   }) => {
     try {
       return runInTransaction(async (transaction) => {
         const dbData: any = {
           timeInspection: new Date(),
           checkedBy: username,
+          userId: userId,
         };
 
         const boxTime = await PlanningBoxTime.findOne({

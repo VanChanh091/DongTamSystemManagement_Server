@@ -9,6 +9,7 @@ import { QcInspectionBox } from "../models/qualityControl/qcInspection/qcInspect
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { PlanningBox } from "../models/planning/planningBox";
 import { Product } from "../models/product/product";
+import { QcInspectionPaper } from "../models/qualityControl/qcInspection/qcInspectionPaper";
 
 export const qcRepository = {
   //===============================CRITERIA=================================
@@ -195,5 +196,39 @@ export const qcRepository = {
     }
 
     return queryOptions;
+  },
+
+  getChecklistInspectionPaper: async ({
+    whereConditions,
+    machine,
+  }: {
+    whereConditions: any;
+    machine: string;
+  }) => {
+    return await QcInspectionPaper.findAll({
+      attributes: ["checkList"],
+      where: whereConditions,
+      include: [
+        {
+          model: PlanningPaper,
+          attributes: ["planningId", "chooseMachine"],
+          where: { chooseMachine: machine },
+        },
+      ],
+    });
+  },
+
+  getChecklistInspectionBox: async ({
+    whereConditions,
+    machine,
+  }: {
+    whereConditions: any;
+    machine: string;
+  }) => {
+    return await QcInspectionBox.findAll({
+      attributes: ["checkList"],
+      where: whereConditions,
+      include: [{ model: PlanningBoxTime, where: { machine }, attributes: [] }],
+    });
   },
 };

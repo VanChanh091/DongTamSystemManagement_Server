@@ -63,6 +63,7 @@ export const syntheticRepository = {
         "pricePaper",
         "totalPrice",
         "totalPriceVAT",
+        "volume",
         "status",
         "isBox",
         "orderSortValue",

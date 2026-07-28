@@ -328,7 +328,7 @@ export const deliveryScheduleService = {
     try {
       const finalData = await deliveryRepository.getAllDeliveryPlanByDate({
         deliveryDate,
-        itemStatus: "requested",
+        itemStatus: ["requested", "prepared"],
       });
 
       return { message: "get schedule delivery successfully", data: finalData };
@@ -413,6 +413,31 @@ export const deliveryScheduleService = {
       });
     } catch (error) {
       console.error("❌ request prepare goods failed:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  updateLicensePlate: async ({
+    deliveryItemId,
+    newLicensePlate,
+  }: {
+    deliveryItemId: number;
+    newLicensePlate: string;
+  }) => {
+    try {
+      return await runInTransaction(async (transaction) => {
+        const deliveryItem = await DeliveryItem.findByPk(deliveryItemId, { transaction });
+        if (!deliveryItem) {
+          throw AppError.NotFound("Không tìm thấy mục giao hàng", "ITEM_NOT_FOUND");
+        }
+
+        await deliveryItem.update({ licensePlate: newLicensePlate }, { transaction });
+
+        return { message: "Cập nhật biển số xe thành công" };
+      });
+    } catch (error) {
+      console.error("❌ update license plate failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }

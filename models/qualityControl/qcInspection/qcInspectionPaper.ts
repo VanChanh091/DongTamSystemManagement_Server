@@ -1,5 +1,6 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { PlanningPaper } from "../../planning/planningPaper";
+import { User } from "../../user/user";
 
 export type qcCheckPaper = Record<string, boolean>;
 
@@ -23,12 +24,19 @@ interface QcInspectionPaperAttributes {
 
   //FK
   planningId: number;
+  userId?: number;
 }
 
 //cho phép bỏ qua id khi tạo
 export type QcInspectionPaperCreationAttributes = Optional<
   QcInspectionPaperAttributes,
-  "inspecPaperId" | "timeInspection" | "checkedBy" | "planningId" | "createdAt" | "updatedAt"
+  | "inspecPaperId"
+  | "timeInspection"
+  | "checkedBy"
+  | "planningId"
+  | "userId"
+  | "createdAt"
+  | "updatedAt"
 >;
 
 //định nghĩa kiểu OOP
@@ -56,6 +64,9 @@ export class QcInspectionPaper
   //FK
   declare planningId: number;
   declare PlanningPaper: PlanningPaper;
+
+  declare userId: number;
+  declare User: User;
 }
 
 export function initQcInspectionPaperModel(sequelize: Sequelize): typeof QcInspectionPaper {
@@ -74,7 +85,7 @@ export function initQcInspectionPaperModel(sequelize: Sequelize): typeof QcInspe
 
       //user input
       numberPallet: { type: DataTypes.INTEGER },
-      machineSpeed: { type: DataTypes.INTEGER, allowNull: false },
+      machineSpeed: { type: DataTypes.DOUBLE, allowNull: false },
       moisture: { type: DataTypes.DOUBLE, allowNull: false }, //độ ẩm
       steamPressure: { type: DataTypes.DOUBLE, allowNull: false }, //áp suất hơi
       preheaterTemp: { type: DataTypes.DOUBLE, allowNull: false }, //nhiệt độ đầu sóng
@@ -85,7 +96,8 @@ export function initQcInspectionPaperModel(sequelize: Sequelize): typeof QcInspe
       checkedBy: { type: DataTypes.STRING, allowNull: false }, //người kiểm tra
 
       //FK
-      planningId: { type: DataTypes.INTEGER },
+      planningId: { type: DataTypes.INTEGER, allowNull: false },
+      userId: { type: DataTypes.INTEGER },
     },
     {
       sequelize,
@@ -94,6 +106,7 @@ export function initQcInspectionPaperModel(sequelize: Sequelize): typeof QcInspe
       indexes: [
         //FK
         { fields: ["planningId"] },
+        { fields: ["userId"] },
       ],
     },
   );

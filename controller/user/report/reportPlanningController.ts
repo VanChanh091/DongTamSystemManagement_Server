@@ -3,8 +3,9 @@ dotenv.config();
 
 import { NextFunction, Request, Response } from "express";
 import { reportService } from "../../../service/reportService";
+import { qcInspectionService } from "../../../service/qualityControl/qcInspectionCheckService";
 
-//===============================REPORT PAPER=====================================
+//===============================REPORT PAPER & PAPER=====================================
 export const getReportPapers = async (req: Request, res: Response, next: NextFunction) => {
   const {
     field,
@@ -50,7 +51,6 @@ export const getReportPapers = async (req: Request, res: Response, next: NextFun
   }
 };
 
-//===============================REPORT BOX=====================================
 export const getReportBoxes = async (req: Request, res: Response, next: NextFunction) => {
   const {
     field,
@@ -96,9 +96,37 @@ export const getReportBoxes = async (req: Request, res: Response, next: NextFunc
   }
 };
 
-//===============================EXPORT EXCEL=====================================
+//===============================REPORT INSPECTION=====================================
+export const getReportQcInspectionSummary = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { machine, startDate, endDate, isPaper } = req.query as {
+    machine: string;
+    startDate: string;
+    endDate: string;
+    isPaper: string;
+  };
 
-//export excel paper
+  try {
+    let response;
+
+    response = await qcInspectionService.getReportQcInspectionSummary({
+      machine,
+      startDate,
+      endDate,
+      isPaper,
+      user: req.user,
+    });
+
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+//===============================EXPORT EXCEL=====================================
 export const exportExcelReportPaper = async (req: Request, res: Response, next: NextFunction) => {
   const { fromDate, toDate, machine } = req.body as {
     fromDate: string | Date;
@@ -120,7 +148,6 @@ export const exportExcelReportPaper = async (req: Request, res: Response, next: 
   }
 };
 
-//export excel box
 export const exportExcelReportBox = async (req: Request, res: Response, next: NextFunction) => {
   const { fromDate, toDate, machine } = req.body as {
     fromDate: string | Date;

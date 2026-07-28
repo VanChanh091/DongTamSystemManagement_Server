@@ -438,7 +438,7 @@ export const deliveryRepository = {
   }: {
     deliveryDate: Date;
     status?: string | string[];
-    itemStatus?: string;
+    itemStatus?: string[];
   }) => {
     const whereCondition: any = { deliveryDate: new Date(deliveryDate) };
 
@@ -448,7 +448,7 @@ export const deliveryRepository = {
 
     const itemWhereCondition: any = {};
     if (itemStatus) {
-      itemWhereCondition.status = itemStatus;
+      itemWhereCondition.status = { [Op.in]: itemStatus };
     }
 
     return await DeliveryPlan.findAll({

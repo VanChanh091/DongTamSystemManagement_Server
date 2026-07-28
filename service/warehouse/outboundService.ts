@@ -280,7 +280,7 @@ export const outboundService = {
         //map inventory lại để query 1 lần
         const allInventories = await Inventory.findAll({
           where: { orderId: orderIds },
-          attributes: ["inventoryId", "qtyInventory", "totalQtyOutbound"],
+          attributes: ["orderId", "inventoryId", "qtyInventory", "totalQtyOutbound"],
           transaction,
           lock: transaction.LOCK.UPDATE,
         });
