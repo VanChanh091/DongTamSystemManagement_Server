@@ -6,6 +6,7 @@ import {
   handleRequestChanging,
   confirmRequestChanging,
 } from "../../controller/notification/notificationController";
+import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 
 const router = Router();
 
@@ -14,8 +15,8 @@ router.get("/", authenticate, getMyNofitications);
 router.put("/", authenticate, confirmRequestChanging);
 
 //=======================EVENT=======================
-router.post("/order", authenticate, requestChangeInfoOrder);
-router.post("/planning", authenticate, handleRequestChanging);
+router.post("/order", authenticate, authorizeAnyPermission(["sale"]), requestChangeInfoOrder);
+router.post("/planning", authenticate, authorizeAnyPermission(["plan"]), handleRequestChanging);
 
 // Ném đoạn này vào file route hoặc app.ts của Node.js
 router.get("/test-push", (req: any, res) => {

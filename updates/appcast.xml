@@ -3,11 +3,11 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.7.2</title>
-            <sparkle:version>4.7.2</sparkle:version> 
+            <title>Version 4.7.3</title>
+            <sparkle:version>4.7.3</sparkle:version> 
             <description>
-            Thay đổi giao diện cho phần menu theo phòng ban
-            Xây dựng phần quản lý thông báo giao tiếp giữa người dùng
+            <!-- Thay đổi giao diện cho phần menu theo phòng ban
+            Xây dựng phần quản lý thông báo giao tiếp giữa người dùng -->
             </description>
             <pubDate>Sat, 25 Julys 2026</pubDate>
             <enclosure url="dongtam.exe" 

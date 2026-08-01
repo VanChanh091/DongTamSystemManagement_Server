@@ -199,7 +199,6 @@ export const reportService = {
         whereCondition: { machine },
       });
       const { rows, count } = await ReportPlanningBox.findAndCountAll(queryOptions);
-
       const totalPages = Math.ceil(count / pageSize);
 
       const responseData = {
@@ -282,6 +281,8 @@ export const reportService = {
           currentPage: page,
         };
       }
+
+      console.log(`boxIds: ${boxIds.join(", ")}`);
 
       // Truy vấn DB để lấy data dựa trên orderIds
       const queryOptions = reportRepository.buildReportBoxOptions({
