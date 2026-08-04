@@ -18,7 +18,7 @@ import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
 import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
-import { Op, Sequelize } from "sequelize";
+import { Op } from "sequelize";
 
 const { paper } = CacheKey.qcInspection;
 const devEnvironment = process.env.NODE_ENV !== "production";

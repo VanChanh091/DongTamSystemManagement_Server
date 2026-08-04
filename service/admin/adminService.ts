@@ -93,7 +93,11 @@ export const adminService = {
   }) => {
     try {
       return await runInTransaction(async (transaction) => {
-        const existedItem = await adminRepository.getItemByPk({ model, itemId, transaction });
+        const existedItem = await adminRepository.getItemByPk({
+          model,
+          itemId,
+          transaction,
+        });
         if (!existedItem) {
           throw AppError.NotFound(errMessage, errCode);
         }

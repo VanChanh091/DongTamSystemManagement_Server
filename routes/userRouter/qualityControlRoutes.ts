@@ -13,7 +13,6 @@ import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 import { handleUpdateScrapReport } from "../../controller/user/scrap/scrapReportController";
 import {
   checkingInspection,
-  getQcInspection,
   getQcInspectionErr,
 } from "../../controller/user/QC/qcInspectionController";
 

@@ -284,6 +284,7 @@ export const outboundService = {
           transaction,
           lock: transaction.LOCK.UPDATE,
         });
+
         inventoryMap = new Map(allInventories.map((inv) => [inv.orderId, inv]));
 
         //map các order lại để query 1 lần
@@ -380,10 +381,7 @@ export const outboundService = {
           const vatRate = isPromotion ? 0 : (order?.vat ?? 0) / 100;
           const vatAmount = totalPriceOutbound * vatRate;
 
-          const exportedQty = await warehouseRepository.sumOutboundQty({
-            orderId: item.orderId,
-            transaction,
-          });
+          const exportedQty = await warehouseRepository.sumOutboundQty(item.orderId, transaction);
 
           totalPriceOrder += totalPriceOutbound;
           totalPriceVAT += vatAmount;

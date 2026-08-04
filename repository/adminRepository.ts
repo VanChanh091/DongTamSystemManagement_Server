@@ -17,12 +17,14 @@ export const adminRepository = {
     model,
     itemId,
     transaction,
+    options,
   }: {
     model: any;
     itemId: number;
     transaction?: Transaction;
+    options?: any;
   }) => {
-    return await model.findByPk(itemId, { transaction });
+    return await model.findByPk(itemId, { transaction, ...options });
   },
 
   createNewItem: async ({
@@ -117,6 +119,9 @@ export const adminRepository = {
   },
 
   getUserByPk: async (userId: number, transaction?: Transaction) => {
-    return await User.findByPk(userId, { transaction });
+    return await User.findByPk(userId, {
+      attributes: { exclude: ["password", "createdAt", "updatedAt"] },
+      transaction,
+    });
   },
 };

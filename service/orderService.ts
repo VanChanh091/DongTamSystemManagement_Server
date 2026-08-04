@@ -37,7 +37,7 @@ export const orderService = {
 
     try {
       const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
-      const cacheKey = order.accept(keyRole); //orders:all:accept:page:1
+      const cacheKey = order.accept(keyRole, ownOnly); //orders:all:accept:page:1
 
       const { isChanged } = await CacheManager.check(
         [{ model: Order, where: { status: ["accept"] } }],
@@ -78,7 +78,7 @@ export const orderService = {
 
     try {
       const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
-      const cacheKey = order.pendingReject(keyRole);
+      const cacheKey = order.pendingReject(keyRole, ownOnly);
 
       const { isChanged } = await CacheManager.check(
         [{ model: Order, where: { status: ["pending", "reject"] } }],
@@ -90,8 +90,8 @@ export const orderService = {
       } else {
         const cachedResult = await cachedStatus(redisCache, "pending", "reject", userId, role);
 
-        if (cachedResult) {
-          if (devEnvironment) console.log("✅ Data Order pending_reject from Redis");
+        if (cachedResult && devEnvironment) {
+          console.log("✅ Data Order pending_reject from Redis");
           return { message: "Get Order from cache", data: cachedResult };
         }
       }

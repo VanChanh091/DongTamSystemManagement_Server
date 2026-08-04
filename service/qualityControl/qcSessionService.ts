@@ -48,14 +48,6 @@ export const qcSessionService = {
     }
   },
 
-  getSessionByField: async (field: string) => {
-    try {
-    } catch (error) {
-      console.error(`get all QC session by ${field} failed:`, error);
-      throw AppError.ServerError();
-    }
-  },
-
   createNewSession: async ({
     processType,
     planningId,

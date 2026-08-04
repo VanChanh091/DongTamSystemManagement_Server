@@ -17,14 +17,6 @@ export const qcSampleService = {
     }
   },
 
-  getResultByField: async (field: string) => {
-    try {
-    } catch (error) {
-      console.error(`get all QC result by ${field} failed:`, error);
-      throw AppError.ServerError();
-    }
-  },
-
   createNewResult: async ({
     qcSessionId,
     samples,

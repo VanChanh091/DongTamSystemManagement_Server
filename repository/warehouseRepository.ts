@@ -406,13 +406,7 @@ export const warehouseRepository = {
   },
   ///end autoComplete
 
-  sumOutboundQty: async ({
-    orderId,
-    transaction,
-  }: {
-    orderId: string;
-    transaction: Transaction;
-  }) => {
+  sumOutboundQty: async (orderId: string, transaction: Transaction) => {
     return await OutboundDetail.sum("outboundQty", {
       where: { orderId },
       transaction,

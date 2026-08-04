@@ -51,7 +51,10 @@ export const manuBoxService = {
       //   }
       // }
 
-      const planning = await manufactureRepo.getManufactureBox(machine);
+      const planning = await manufactureRepo.buildQueryManuBoxes({
+        machine,
+        targetStatus: { [Op.notIn]: ["complete", "stop"] },
+      });
 
       const allPlannings: any[] = [];
 

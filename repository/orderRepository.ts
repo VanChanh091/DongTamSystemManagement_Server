@@ -76,6 +76,7 @@ export const orderRepository = {
       where: { orderId: { [Op.like]: `%${orderId}%` } },
       attributes: ["orderId", "dayReceiveOrder"],
       include: [{ model: Customer, attributes: ["customerName"] }],
+      order: [["createdAt", "DESC"]],
       limit: 15,
     });
   },

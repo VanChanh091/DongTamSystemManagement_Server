@@ -273,13 +273,6 @@ export const manufactureRepo = {
     });
   },
 
-  getManufactureBox: async (machine: string) => {
-    return await manufactureRepo.buildQueryManuBoxes({
-      machine,
-      targetStatus: { [Op.notIn]: ["complete", "stop"] },
-    });
-  },
-
   getBoxById: async (planningBoxId: number, machine: string, transaction?: Transaction) => {
     return await PlanningBoxTime.findOne({
       where: { planningBoxId: planningBoxId, machine: machine },
