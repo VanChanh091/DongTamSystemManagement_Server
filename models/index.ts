@@ -8,6 +8,7 @@ import { initVehicleModel } from "./admin/vehicle";
 import { initWasteNormBoxModel } from "./admin/wasteNormBox";
 import { initWasteNormPaperModel } from "./admin/wasteNormPaper";
 import { initWaveCrestCoefficientModel } from "./admin/waveCrestCoefficient";
+import { setupAssociations } from "./associations";
 import { initCustomerModel } from "./customer/customer";
 import { initCustomerPaymentModel } from "./customer/customerPayment";
 import { initDeliveryItemModel } from "./delivery/deliveryItem";
@@ -41,8 +42,10 @@ import { initInventoryModel } from "./warehouse/inventory/inventory";
 import { initInventoryLogModel } from "./warehouse/inventory/inventoryLog";
 import { initInventoryTransfersModel } from "./warehouse/inventory/inventoryTransfers";
 import { initLiquidationInventoryModel } from "./warehouse/inventory/liquidationInventory";
-import { initOutboundDetailModel } from "./warehouse/outboundDetail";
-import { initOutboundHistoryModel } from "./warehouse/outboundHistory";
+import { initOutboundDetailModel } from "./warehouse/outbound/outboundDetail";
+import { initOutboundHistoryModel } from "./warehouse/outbound/outboundHistory";
+import { initPaymentAllocationModel } from "./warehouse/payment/paymentAllocation";
+import { initPaymentReceiptModel } from "./warehouse/payment/paymentReceipt";
 
 //admin
 const MachinePaper = initMachinePaperModel(sequelize);
@@ -102,6 +105,10 @@ const QcInspectionBox = initQcInspectionBoxModel(sequelize);
 const InboundHistory = initInboundHistoryModel(sequelize);
 const OutboundHistory = initOutboundHistoryModel(sequelize);
 const OutboundDetail = initOutboundDetailModel(sequelize);
+
+// payment and allocation
+const PaymentReceipt = initPaymentReceiptModel(sequelize);
+const PaymentAllocation = initPaymentAllocationModel(sequelize);
 
 //inventory
 const Inventory = initInventoryModel(sequelize);
@@ -177,10 +184,15 @@ const models = {
   OutboundHistory,
   OutboundDetail,
 
+  // payment and allocation
+  PaymentReceipt,
+  PaymentAllocation,
+
   //inventory
   Inventory,
   InventoryTransfers,
   LiquidationInv,
+  InventoryLog,
 
   //Delivery
   DeliveryRequest,
@@ -192,236 +204,7 @@ const models = {
   UserNotifications,
 };
 
-//===============================CUSTOMER=================================
-Customer.hasOne(CustomerPayment, { foreignKey: "customerId", as: "payment", onDelete: "CASCADE" });
-CustomerPayment.belongsTo(Customer, { foreignKey: "customerId" });
-
-//1 customer have many orders and 1 order belongs to 1 customer
-Customer.hasMany(Order, { foreignKey: "customerId", onDelete: "CASCADE" });
-Order.belongsTo(Customer, { foreignKey: "customerId" });
-
-//===============================PRODUCT=================================
-Product.hasMany(Order, { foreignKey: "productId", onDelete: "CASCADE" });
-Order.belongsTo(Product, { foreignKey: "productId" });
-
-//===============================ORDER=================================
-Order.hasOne(Box, { foreignKey: "orderId", as: "box", onDelete: "CASCADE" });
-Box.belongsTo(Order, { foreignKey: "orderId" });
-
-Order.hasOne(OrderImage, { foreignKey: "orderId", onDelete: "CASCADE" });
-OrderImage.belongsTo(Order, { foreignKey: "orderId" });
-
-Order.hasMany(OrderApproved, { foreignKey: "orderId", onDelete: "CASCADE" });
-OrderApproved.belongsTo(Order, { foreignKey: "orderId" });
-
-//===============================USER=================================
-User.hasMany(Order, { foreignKey: "userId" });
-Order.belongsTo(User, { foreignKey: "userId" });
-
-//===============================PLANNING PAPER=================================
-Order.hasMany(PlanningPaper, { foreignKey: "orderId" }); //hasMany to create timeOverflow planning
-PlanningPaper.belongsTo(Order, { foreignKey: "orderId" });
-
-Order.hasMany(PlanningBox, { foreignKey: "orderId" });
-PlanningBox.belongsTo(Order, { foreignKey: "orderId" });
-
-//===============================PLANNING BOX=================================
-PlanningPaper.hasOne(PlanningBox, { foreignKey: "planningId", onDelete: "CASCADE" });
-PlanningBox.belongsTo(PlanningPaper, { foreignKey: "planningId" });
-
-PlanningBox.hasMany(PlanningBoxTime, {
-  foreignKey: "planningBoxId",
-  as: "boxTimes",
-  onDelete: "CASCADE",
-});
-PlanningBoxTime.belongsTo(PlanningBox, { foreignKey: "planningBoxId" });
-
-//created to get all box times
-PlanningBox.hasMany(PlanningBoxTime, {
-  foreignKey: "planningBoxId",
-  as: "allBoxTimes",
-  onDelete: "CASCADE",
-});
-PlanningBoxTime.belongsTo(PlanningBox, { foreignKey: "planningBoxId" });
-
-//===============================TIME OVERFLOW=================================
-PlanningPaper.hasOne(timeOverflowPlanning, {
-  foreignKey: "planningId",
-  as: "timeOverFlow",
-  onDelete: "CASCADE",
-  constraints: false,
-});
-timeOverflowPlanning.belongsTo(PlanningPaper, { foreignKey: "planningId", constraints: false });
-
-PlanningBox.hasMany(timeOverflowPlanning, {
-  foreignKey: "planningBoxId",
-  as: "timeOverFlow",
-  onDelete: "CASCADE",
-  constraints: false,
-});
-timeOverflowPlanning.belongsTo(PlanningBox, { foreignKey: "planningBoxId", constraints: false });
-
-//===============================REPORT=================================
-PlanningPaper.hasMany(ReportPlanningPaper, {
-  foreignKey: "planningId",
-  as: "reportPaper",
-  onDelete: "CASCADE",
-});
-ReportPlanningPaper.belongsTo(PlanningPaper, { foreignKey: "planningId" });
-
-PlanningBox.hasMany(ReportPlanningBox, {
-  foreignKey: "planningBoxId",
-  as: "reportBox",
-  onDelete: "CASCADE",
-});
-ReportPlanningBox.belongsTo(PlanningBox, { foreignKey: "planningBoxId" });
-
-//===============================EMPLOYEE=================================
-EmployeeBasicInfo.hasOne(EmployeeCompanyInfo, {
-  foreignKey: "employeeId",
-  as: "companyInfo",
-  onDelete: "CASCADE",
-});
-EmployeeCompanyInfo.belongsTo(EmployeeBasicInfo, { foreignKey: "employeeId", as: "basicInfo" });
-
-//===============================QC SESSION=================================
-PlanningPaper.hasMany(QcSession, { foreignKey: "planningId", onDelete: "CASCADE" });
-QcSession.belongsTo(PlanningPaper, { foreignKey: "planningId" });
-
-PlanningBox.hasOne(QcSession, { foreignKey: "planningBoxId", onDelete: "CASCADE" });
-QcSession.belongsTo(PlanningBox, { foreignKey: "planningBoxId" });
-
-QcSession.hasMany(QcSampleResult, {
-  foreignKey: "qcSessionId",
-  as: "samples",
-  onDelete: "CASCADE",
-});
-QcSampleResult.belongsTo(QcSession, { foreignKey: "qcSessionId" });
-
-QcSession.hasMany(InboundHistory, {
-  foreignKey: "qcSessionId",
-  as: "inbound",
-  onDelete: "CASCADE",
-});
-InboundHistory.belongsTo(QcSession, { foreignKey: "qcSessionId" });
-
-//===============================QC INSPECTION=================================
-PlanningPaper.hasMany(QcInspectionPaper, {
-  foreignKey: "planningId",
-  as: "inspecPaper",
-  onDelete: "CASCADE",
-});
-QcInspectionPaper.belongsTo(PlanningPaper, { foreignKey: "planningId" });
-
-PlanningBoxTime.hasMany(QcInspectionBox, {
-  foreignKey: "boxTimeId",
-  as: "inspecBox",
-  onDelete: "CASCADE",
-});
-QcInspectionBox.belongsTo(PlanningBoxTime, { foreignKey: "boxTimeId" });
-
-User.hasMany(QcInspectionPaper, {
-  foreignKey: "userId",
-  as: "inspecPaper",
-  onDelete: "set null",
-});
-QcInspectionPaper.belongsTo(User, { foreignKey: "userId" });
-
-User.hasMany(QcInspectionBox, {
-  foreignKey: "userId",
-  as: "inspecBox",
-  onDelete: "set null",
-});
-QcInspectionBox.belongsTo(User, { foreignKey: "userId" });
-
-//===============================INBOUND=================================
-Order.hasMany(InboundHistory, { foreignKey: "orderId", onDelete: "CASCADE" });
-InboundHistory.belongsTo(Order, { foreignKey: "orderId" });
-
-PlanningPaper.hasMany(InboundHistory, {
-  foreignKey: "planningId",
-  as: "inbound",
-  onDelete: "CASCADE",
-});
-InboundHistory.belongsTo(PlanningPaper, { foreignKey: "planningId" });
-
-PlanningBox.hasMany(InboundHistory, {
-  foreignKey: "planningBoxId",
-  as: "inbound",
-  onDelete: "CASCADE",
-});
-InboundHistory.belongsTo(PlanningBox, { foreignKey: "planningBoxId" });
-
-//===============================OUTBOUND=================================
-OutboundHistory.hasMany(OutboundDetail, {
-  foreignKey: "outboundId",
-  as: "detail",
-  onDelete: "CASCADE",
-});
-OutboundDetail.belongsTo(OutboundHistory, { foreignKey: "outboundId" });
-
-Order.hasMany(OutboundDetail, { foreignKey: "orderId", onDelete: "CASCADE" });
-OutboundDetail.belongsTo(Order, { foreignKey: "orderId" });
-
-DeliveryItem.hasMany(OutboundDetail, { foreignKey: "deliveryItemId", onDelete: "SET NULL" });
-OutboundDetail.belongsTo(DeliveryItem, { foreignKey: "deliveryItemId" });
-
-//===============================INVENTORY=================================
-Order.hasOne(Inventory, { foreignKey: "orderId", onDelete: "CASCADE" });
-Inventory.belongsTo(Order, { foreignKey: "orderId" });
-
-Order.hasOne(LiquidationInv, { foreignKey: "orderId", onDelete: "CASCADE" });
-LiquidationInv.belongsTo(Order, { foreignKey: "orderId" });
-
-Inventory.hasOne(LiquidationInv, {
-  foreignKey: "inventoryId",
-  as: "liquidation",
-  onDelete: "CASCADE",
-});
-LiquidationInv.belongsTo(Inventory, { foreignKey: "inventoryId" });
-
-Inventory.hasMany(InventoryTransfers, {
-  foreignKey: "inventoryId",
-  as: "invTransfers",
-  onDelete: "CASCADE",
-});
-InventoryTransfers.belongsTo(Inventory, { foreignKey: "inventoryId" });
-
-//===============================INVENTORY LOGS=================================
-Inventory.hasMany(InventoryLog, { foreignKey: "inventoryId", as: "invLogs", onDelete: "CASCADE" });
-InventoryLog.belongsTo(Inventory, { foreignKey: "inventoryId" });
-
-Order.hasMany(InventoryLog, { foreignKey: "orderId", as: "invLogs", onDelete: "CASCADE" });
-InventoryLog.belongsTo(Order, { foreignKey: "orderId" });
-
-//===============================DELIVERY=================================
-PlanningPaper.hasMany(DeliveryRequest, { foreignKey: "planningId", onDelete: "CASCADE" });
-DeliveryRequest.belongsTo(PlanningPaper, { foreignKey: "planningId" });
-
-User.hasOne(DeliveryRequest, { foreignKey: "userId", onDelete: "CASCADE" });
-DeliveryRequest.belongsTo(User, { foreignKey: "userId" });
-
-Order.hasMany(DeliveryRequest, { foreignKey: "orderId", onDelete: "CASCADE" });
-DeliveryRequest.belongsTo(Order, { foreignKey: "orderId" });
-
-DeliveryPlan.hasMany(DeliveryItem, { foreignKey: "deliveryId", onDelete: "CASCADE" });
-DeliveryItem.belongsTo(DeliveryPlan, { foreignKey: "deliveryId" });
-
-DeliveryRequest.hasOne(DeliveryItem, { foreignKey: "requestId", onDelete: "CASCADE" });
-DeliveryItem.belongsTo(DeliveryRequest, { foreignKey: "requestId" });
-
-Vehicle.hasOne(DeliveryItem, { foreignKey: "vehicleId", onDelete: "CASCADE" });
-DeliveryItem.belongsTo(Vehicle, { foreignKey: "vehicleId" });
-
-//===============================NOTIFICATION=================================
-NotificationModel.hasMany(UserNotifications, {
-  foreignKey: "notificationId",
-  onDelete: "CASCADE",
-  as: "userNotify",
-});
-UserNotifications.belongsTo(NotificationModel, {
-  foreignKey: "notificationId",
-  as: "notification",
-});
+// Setup relationships
+setupAssociations(models);
 
 export default models;

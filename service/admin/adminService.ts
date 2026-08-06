@@ -210,7 +210,7 @@ export const adminService = {
             payload: {
               orderId,
               reason: rejectReason,
-              result: "RESPONSE",
+              action: "RESPONSE",
               status: "pending",
             },
           });

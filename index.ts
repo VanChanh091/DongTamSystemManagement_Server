@@ -30,6 +30,7 @@ import {
   syntheticRoutes,
   scrapRoutes,
   notificationRoutes,
+  debtManagementRoutes,
 } from "./routes/index";
 
 //create table
@@ -94,6 +95,8 @@ app.use("/api/warehouse", warehouseRoutes);
 app.use("/api/qc", qcRoutes);
 app.use("/api/delivery", deliveryRoutes);
 app.use("/api/scrapReports", scrapRoutes);
+app.use("/api/debts", debtManagementRoutes);
+
 app.use("/api/system", systemRoutes);
 app.use("/api/notification", notificationRoutes);
 

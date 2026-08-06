@@ -11,7 +11,7 @@ import { Inventory } from "../models/warehouse/inventory/inventory";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { DeliveryItem, statusDeliveryItem } from "../models/delivery/deliveryItem";
 import { DeliveryRequest, statusDelivery } from "../models/delivery/deliveryRequest";
-import { OutboundDetail } from "../models/warehouse/outboundDetail";
+import { OutboundDetail } from "../models/warehouse/outbound/outboundDetail";
 
 export const deliveryRepository = {
   //================================PLANNING ESTIMATE TIME==================================

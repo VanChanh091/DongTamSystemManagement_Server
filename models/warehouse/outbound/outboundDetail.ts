@@ -1,14 +1,16 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
-import { Order } from "../order/order";
+import { Order } from "../../order/order";
+import { DeliveryItem } from "../../delivery/deliveryItem";
 import { OutboundHistory } from "./outboundHistory";
-import { DeliveryItem } from "../delivery/deliveryItem";
 
 //định nghĩa trường trong bảng
 interface OutboundDetailAttributes {
   outboundDetailId: number;
+
   outboundQty: number;
   price: number;
   totalPriceOutbound: number;
+
   deliveredQty: number;
   isPromotion: boolean;
 

@@ -5,7 +5,7 @@ import { PlanningBox } from "../../models/planning/planningBox";
 import { DeliveryItem } from "../../models/delivery/deliveryItem";
 import { PlanningPaper } from "../../models/planning/planningPaper";
 import { FindOptions, Op, Sequelize, Transaction } from "sequelize";
-import { OutboundDetail } from "../../models/warehouse/outboundDetail";
+import { OutboundDetail } from "../../models/warehouse/outbound/outboundDetail";
 import { DeliveryRequest } from "../../models/delivery/deliveryRequest";
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
 

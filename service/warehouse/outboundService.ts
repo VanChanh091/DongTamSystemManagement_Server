@@ -15,11 +15,11 @@ import { DeliveryItem } from "../../models/delivery/deliveryItem";
 import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
-import { OutboundDetail } from "../../models/warehouse/outboundDetail";
+import { OutboundDetail } from "../../models/warehouse/outbound/outboundDetail";
 import { Inventory } from "../../models/warehouse/inventory/inventory";
 import { customerRepository } from "../../repository/customerRepository";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
-import { OutboundHistory } from "../../models/warehouse/outboundHistory";
+import { OutboundHistory } from "../../models/warehouse/outbound/outboundHistory";
 import { planningHelper } from "../../repository/planning/planningHelper";
 import { warehouseRepository } from "../../repository/warehouseRepository";
 import { inventoryRepository } from "../../repository/inventoryRepository";
@@ -300,7 +300,6 @@ export const outboundService = {
         let totalPriceVAT = 0;
         let totalPricePayment = 0;
         let totalOutboundQty = 0;
-        let timePayment: Date | null = null;
 
         const preparedDetails: {
           orderId: string;
@@ -356,11 +355,6 @@ export const outboundService = {
           // check customer
           if (customerId === null) {
             customerId = order.customerId;
-            const customer = await customerRepository.findCusPaymentByPk(customerId, transaction);
-
-            if (customer && customer.payment) {
-              timePayment = customer.payment.timePayment;
-            }
           } else if (customerId !== order.customerId) {
             throw AppError.BadRequest("Các đơn hàng không cùng khách hàng", "CUSTOMER_MISMATCH");
           }
@@ -432,17 +426,21 @@ export const outboundService = {
 
         const slipCode = `${prefix}${number.toString().padStart(4, "0")}`; //XKBH26040001
 
+        const roundedTotalPrice = Math.round(totalPricePayment * 100) / 100;
+
         // Tạo outbound
         const outbound = await planningHelper.createData({
           model: OutboundHistory,
           data: {
+            customerId,
             dateOutbound: now,
             outboundSlipCode: slipCode,
             totalPriceOrder,
             totalPriceVAT: Math.round(totalPriceVAT * 100) / 100, // làm tròn 2 chữ số thập phân
-            totalPricePayment: Math.round(totalPricePayment * 100) / 100,
+            totalPricePayment: roundedTotalPrice,
+            paidAmount: 0,
+            remainingAmount: roundedTotalPrice,
             totalOutboundQty,
-            dueDate: timePayment,
             outboundBy,
           },
           transaction,
@@ -564,7 +562,6 @@ export const outboundService = {
         const usedOldDetailIds = new Set<number>();
 
         let customerId: string | null = null;
-        let timePayment: Date | null = null;
         let totalPriceOrder = 0;
         let totalPriceVAT = 0;
         let totalPricePayment = 0;
@@ -580,11 +577,6 @@ export const outboundService = {
           // check customer
           if (customerId === null) {
             customerId = order.customerId;
-            const customer = await customerRepository.findCusPaymentByPk(customerId, transaction);
-
-            if (customer && customer.payment) {
-              timePayment = customer.payment.timePayment;
-            }
           } else if (customerId !== order.customerId) {
             throw AppError.BadRequest("Các đơn hàng không cùng khách hàng", "CUSTOMER_MISMATCH");
           }
@@ -725,14 +717,19 @@ export const outboundService = {
           }
         }
 
+        // Tính toán lại tổng tiền thanh toán và số tiền còn lại
+        const roundedTotalPrice = Math.round(totalPricePayment * 100) / 100;
+        const paidAmount = Number(outbound.paidAmount ?? 0);
+        const remainingAmount = Math.round((roundedTotalPrice - paidAmount) * 100) / 100;
+
         // Cập nhật outbound header
         await outbound.update(
           {
             totalPriceOrder,
             totalPriceVAT: Math.round(totalPriceVAT * 100) / 100, // làm tròn 2 chữ số thập phân
-            totalPricePayment: Math.round(totalPricePayment * 100) / 100,
+            totalPricePayment: roundedTotalPrice,
+            remainingAmount,
             totalOutboundQty,
-            dueDate: timePayment || outbound.dueDate,
             updatedBy,
           },
           { transaction },
@@ -809,6 +806,13 @@ export const outboundService = {
         });
         if (!outbound) {
           throw AppError.NotFound("Phiếu xuất kho không tồn tại", "OUTBOUND_NOT_FOUND");
+        }
+
+        if (outbound.status !== "unpaid" || (outbound.paidAmount && outbound.paidAmount > 0)) {
+          throw AppError.BadRequest(
+            "Không thể hủy phiếu xuất kho đã có thanh toán!",
+            "OUTBOUND_ALREADY_PAID",
+          );
         }
 
         const logItems: { inventoryId: number; changeQty: number }[] = [];

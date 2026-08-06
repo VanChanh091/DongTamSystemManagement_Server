@@ -81,20 +81,6 @@ export const customerRepository = {
     });
   },
 
-  findCusPaymentByPk: async (customerId: string, transaction: Transaction) => {
-    return await Customer.findByPk(customerId, {
-      attributes: ["customerId"],
-      include: [
-        {
-          model: CustomerPayment,
-          as: "payment",
-          attributes: ["cusPaymentId", "timePayment"],
-        },
-      ],
-      transaction,
-    });
-  },
-
   //------------------------MEILISEARCH-----------------------------
   buildMeiliCustomerOptions: ({
     whereCondition,

@@ -15,7 +15,7 @@ import { orderRepository } from "../../repository/orderRepository";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { PlanningPaper } from "../../models/planning/planningPaper";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
-import { OutboundDetail } from "../../models/warehouse/outboundDetail";
+import { OutboundDetail } from "../../models/warehouse/outbound/outboundDetail";
 import { DeliveryRequest } from "../../models/delivery/deliveryRequest";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { deliveryRepository } from "../../repository/deliveryRepository";

@@ -1,16 +1,17 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { Customer } from "./customer";
 
-export type paymentType = "daily" | "monthly";
+export type PaymentType = "daily" | "weekly" | "monthly" | "custom_days";
 
 //định nghĩa trường trong bảng
 interface CustomerPaymentAttributes {
   cusPaymentId: string;
   debtCurrent?: number | null;
   debtLimit?: number | null;
-  timePayment: Date;
-  paymentType: paymentType;
-  closingDate: number;
+  paymentType: PaymentType;
+
+  closingDays?: number[] | null;
+  paymentTermDays: number;
 
   //FK
   customerId: string;
@@ -22,7 +23,7 @@ interface CustomerPaymentAttributes {
 //cho phép bỏ qua id khi tạo
 export type CustomerPaymentCreationAttributes = Optional<
   CustomerPaymentAttributes,
-  "debtCurrent" | "debtLimit" | "timePayment" | "closingDate" | "createdAt" | "updatedAt"
+  "debtCurrent" | "debtLimit" | "closingDays" | "createdAt" | "updatedAt"
 >;
 
 //định nghĩa kiểu OOP
@@ -33,9 +34,10 @@ export class CustomerPayment
   declare cusPaymentId: string;
   declare debtCurrent?: number | null;
   declare debtLimit?: number | null;
-  declare timePayment: Date;
-  declare paymentType: paymentType;
-  declare closingDate: number;
+  declare paymentType: PaymentType;
+
+  declare closingDays?: number[];
+  declare paymentTermDays: number;
 
   //FK
   declare customerId: string;
@@ -53,19 +55,24 @@ export function initCustomerPaymentModel(sequelize: Sequelize): typeof CustomerP
         autoIncrement: true,
         primaryKey: true,
       },
+      closingDays: {
+        type: DataTypes.JSON,
+        defaultValue: [],
+        comment: "Mảng lưu các ngày chốt nợ. VD: [15, 30] hoặc [0] cho Chủ Nhật",
+      },
+      paymentTermDays: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+        comment: "Số ngày được nợ thêm kể từ ngày xuất/chốt",
+      },
+      paymentType: {
+        type: DataTypes.ENUM("daily", "weekly", "monthly", "custom_days"),
+        allowNull: false,
+        defaultValue: "daily",
+      },
       debtCurrent: { type: DataTypes.DOUBLE },
       debtLimit: { type: DataTypes.DOUBLE },
-      timePayment: {
-        type: DataTypes.DATE,
-        allowNull: false,
-        get() {
-          const rawValue = this.getDataValue("timePayment");
-          if (!rawValue) return null;
-          return new Date(rawValue.getTime() - rawValue.getTimezoneOffset() * 60000).toISOString();
-        },
-      },
-      paymentType: { type: DataTypes.ENUM("daily", "monthly"), allowNull: false },
-      closingDate: { type: DataTypes.INTEGER, allowNull: false },
 
       //FK
       customerId: { type: DataTypes.STRING, allowNull: false },
@@ -74,11 +81,7 @@ export function initCustomerPaymentModel(sequelize: Sequelize): typeof CustomerP
       sequelize,
       tableName: "CustomerPayments",
       timestamps: true,
-      indexes: [
-        { unique: true, fields: ["customerId"] },
-        { fields: ["paymentType"] },
-        { fields: ["closingDate"] },
-      ],
+      indexes: [{ unique: true, fields: ["customerId"] }, { fields: ["paymentType"] }],
     },
   );
 

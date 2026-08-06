@@ -10,8 +10,8 @@ import { PlanningPaper } from "../models/planning/planningPaper";
 import { FindOptions, Op, Sequelize, Transaction } from "sequelize";
 import { InboundHistory } from "../models/warehouse/inboundHistory";
 import { Inventory } from "../models/warehouse/inventory/inventory";
-import { OutboundDetail } from "../models/warehouse/outboundDetail";
-import { OutboundHistory } from "../models/warehouse/outboundHistory";
+import { OutboundDetail } from "../models/warehouse/outbound/outboundDetail";
+import { OutboundHistory } from "../models/warehouse/outbound/outboundHistory";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
 

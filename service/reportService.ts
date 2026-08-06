@@ -282,8 +282,6 @@ export const reportService = {
         };
       }
 
-      console.log(`boxIds: ${boxIds.join(", ")}`);
-
       // Truy vấn DB để lấy data dựa trên orderIds
       const queryOptions = reportRepository.buildReportBoxOptions({
         machine,

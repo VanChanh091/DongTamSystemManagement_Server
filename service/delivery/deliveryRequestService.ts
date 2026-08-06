@@ -4,7 +4,7 @@ import { meiliService } from "../system/meiliService";
 import { AppError } from "../../utils/appError";
 import { MEILI_INDEX } from "../../assets/labelFields";
 import { PlanningPaper } from "../../models/planning/planningPaper";
-import { OutboundDetail } from "../../models/warehouse/outboundDetail";
+import { OutboundDetail } from "../../models/warehouse/outbound/outboundDetail";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { DeliveryRequest } from "../../models/delivery/deliveryRequest";
 import { deliveryRepository } from "../../repository/deliveryRepository";

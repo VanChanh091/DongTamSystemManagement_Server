@@ -2,8 +2,8 @@ import { Op } from "sequelize";
 import { Order } from "../../../models/order/order";
 import { Customer } from "../../../models/customer/customer";
 import { dayjsUtc } from "../../../assets/configs/dayjs/dayjs.config";
-import { OutboundDetail } from "../../../models/warehouse/outboundDetail";
-import { OutboundHistory } from "../../../models/warehouse/outboundHistory";
+import { OutboundDetail } from "../../../models/warehouse/outbound/outboundDetail";
+import { OutboundHistory } from "../../../models/warehouse/outbound/outboundHistory";
 import { warehouseRepository } from "../../../repository/warehouseRepository";
 
 export const buildSearchWhereCondition = async (

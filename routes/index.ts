@@ -17,6 +17,7 @@ import badgeRoutes from "./badgeRouter/badgeRoutes";
 import systemRoutes from "./systemRouter/systemRoutes";
 import meilisearchRoutes from "./meilisearchRouter/meilisearchRoutes";
 import notificationRoutes from "./notification/notificationRoutes";
+import debtManagementRoutes from "./userRouter/debtManagementRoutes";
 
 export {
   customerRoutes,
@@ -35,6 +36,7 @@ export {
   deliveryRoutes,
   badgeRoutes,
   scrapRoutes,
+  debtManagementRoutes,
 
   //system
   systemRoutes,

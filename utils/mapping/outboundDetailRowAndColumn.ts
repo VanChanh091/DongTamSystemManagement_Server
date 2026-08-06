@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import { formatDimension } from "../helper/exportPDF";
 import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
-import { OutboundDetail } from "../../models/warehouse/outboundDetail";
+import { OutboundDetail } from "../../models/warehouse/outbound/outboundDetail";
 
 export const outboundDetailColumns: Partial<ExcelJS.Column>[] = [
   { header: "STT", key: "index" },

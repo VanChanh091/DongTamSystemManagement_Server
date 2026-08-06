@@ -3,7 +3,7 @@ import { User } from "../user/user.js";
 import { Product } from "../product/product.js";
 import { Customer } from "../customer/customer.js";
 import { Inventory } from "../warehouse/inventory/inventory.js";
-import { OutboundHistory } from "../warehouse/outboundHistory.js";
+import { OutboundHistory } from "../warehouse/outbound/outboundHistory.js";
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 
 export type OrderStatus = "pending" | "accept" | "reject" | "planning" | "stop" | "completed";

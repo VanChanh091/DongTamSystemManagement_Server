@@ -1,5 +1,6 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { OutboundDetail } from "./outboundDetail";
+import { Customer } from "../../customer/customer";
 
 export type statusOutbound = "paid" | "unpaid" | "partial";
 
@@ -8,16 +9,26 @@ interface OutboundHistoryAttributes {
   outboundId: number;
   dateOutbound: Date;
   outboundSlipCode: string;
+
   totalPriceOrder: number;
   totalPriceVAT?: number;
   totalPricePayment: number;
   totalOutboundQty: number;
-  dueDate?: Date | null;
+
   paidAmount?: number;
   remainingAmount?: number;
+
   outboundBy: string;
   updatedBy?: string;
+
+  dueDate?: Date | null;
   status: statusOutbound;
+
+  writeOffAmount?: number;
+  writeOffNote?: string;
+
+  //FK
+  customerId: string;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -26,7 +37,7 @@ interface OutboundHistoryAttributes {
 //cho phép bỏ qua id khi tạo
 export type OutboundHistoryCreationAttributes = Optional<
   OutboundHistoryAttributes,
-  "outboundId" | "outboundBy" | "updatedBy" | "createdAt" | "updatedAt"
+  "outboundId" | "customerId" | "outboundBy" | "updatedBy" | "createdAt" | "updatedAt"
 >;
 
 //định nghĩa kiểu OOP
@@ -37,22 +48,32 @@ export class OutboundHistory
   declare outboundId: number;
   declare dateOutbound: Date;
   declare outboundSlipCode: string;
+
   declare totalPriceOrder: number;
   declare totalPriceVAT?: number;
   declare totalPricePayment: number;
   declare totalOutboundQty: number;
-  declare dueDate?: Date | null;
+
   declare paidAmount?: number;
   declare remainingAmount?: number;
+
   declare outboundBy: string;
   declare updatedBy?: string;
+
+  declare dueDate?: Date | null;
   declare status: statusOutbound;
+
+  declare writeOffAmount?: number;
+  declare writeOffNote?: string;
 
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
 
   //association
   declare detail: OutboundDetail[];
+
+  declare customerId: string;
+  declare Customer: Customer;
 }
 
 export function initOutboundHistoryModel(sequelize: Sequelize): typeof OutboundHistory {
@@ -73,9 +94,9 @@ export function initOutboundHistoryModel(sequelize: Sequelize): typeof OutboundH
       totalPriceVAT: { type: DataTypes.DOUBLE },
       totalPricePayment: { type: DataTypes.DOUBLE, allowNull: false },
       totalOutboundQty: { type: DataTypes.INTEGER, allowNull: false },
-      dueDate: { type: DataTypes.DATE }, //thời hạn thanh toán PXKi
-      paidAmount: { type: DataTypes.DOUBLE }, //số tiền đã thanh toán
-      remainingAmount: { type: DataTypes.DOUBLE }, //số tiền còn lại phải thanh toán
+      dueDate: { type: DataTypes.DATE, comment: "Thời hạn thanh toán PXK" },
+      paidAmount: { type: DataTypes.DOUBLE, comment: "Số tiền đã thanh toán" },
+      remainingAmount: { type: DataTypes.DOUBLE, comment: "Số tiền còn lại phải thanh toán" },
       outboundBy: { type: DataTypes.STRING, allowNull: false },
       updatedBy: { type: DataTypes.STRING },
       status: {
@@ -83,6 +104,11 @@ export function initOutboundHistoryModel(sequelize: Sequelize): typeof OutboundH
         defaultValue: "unpaid",
         allowNull: false,
       },
+      writeOffAmount: { type: DataTypes.DOUBLE, comment: "Số tiền đã xóa nợ" },
+      writeOffNote: { type: DataTypes.STRING, comment: "Ghi chú xóa nợ" },
+
+      //FK
+      customerId: { type: DataTypes.STRING, allowNull: true },
     },
     {
       sequelize,
@@ -92,6 +118,18 @@ export function initOutboundHistoryModel(sequelize: Sequelize): typeof OutboundH
         //indexes
         { fields: ["dateOutbound"] },
         { fields: ["outboundSlipCode"] },
+
+        //composite index
+        {
+          //index phục vụ cho việc tìm các KH chưa chốt công nợ
+          name: "idx_outbound_unpaid_summary",
+          fields: ["customerId", "dueDate", "status", "dateOutbound", "remainingAmount"],
+        },
+        {
+          //index phục vụ cho việc tìm các PXK chưa thanh toán
+          name: "idx_outbound_debt_summary",
+          fields: ["customerId", "status", "remainingAmount", "dateOutbound"],
+        },
       ],
     },
   );
