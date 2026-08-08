@@ -4,7 +4,6 @@ export default function customerOrderAssociations(models: any) {
     CustomerPayment,
     Order,
     OutboundHistory,
-    PaymentReceipt,
     Product,
     Box,
     OrderImage,
@@ -27,9 +26,6 @@ export default function customerOrderAssociations(models: any) {
   Customer.hasMany(OutboundHistory, { foreignKey: "customerId", onDelete: "RESTRICT" });
   OutboundHistory.belongsTo(Customer, { foreignKey: "customerId" });
 
-  Customer.hasMany(PaymentReceipt, { foreignKey: "customerId", onDelete: "RESTRICT" });
-  PaymentReceipt.belongsTo(Customer, { foreignKey: "customerId" });
-
   // PRODUCT
   Product.hasMany(Order, { foreignKey: "productId", onDelete: "CASCADE" });
   Order.belongsTo(Product, { foreignKey: "productId" });
@@ -48,14 +44,7 @@ export default function customerOrderAssociations(models: any) {
   User.hasMany(Order, { foreignKey: "userId" });
   Order.belongsTo(User, { foreignKey: "userId" });
 
-  // PAYMENT & ALLOCATION
-  PaymentReceipt.hasMany(PaymentAllocation, {
-    foreignKey: "receiptId",
-    as: "allocations",
-    onDelete: "CASCADE",
-  });
-  PaymentAllocation.belongsTo(PaymentReceipt, { foreignKey: "receiptId", as: "receipt" });
-
+  // PAYMENT ALLOCATION
   OutboundHistory.hasMany(PaymentAllocation, {
     foreignKey: "outboundId",
     as: "allocations",

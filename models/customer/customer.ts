@@ -1,7 +1,6 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { CustomerPayment } from "./customerPayment";
 import { OutboundHistory } from "../warehouse/outbound/outboundHistory";
-import { PaymentReceipt } from "../warehouse/payment/paymentReceipt";
 
 //định nghĩa trường trong bảng
 interface CustomerAttributes {
@@ -52,7 +51,6 @@ export class Customer
   //association
   declare payment?: CustomerPayment;
   declare OutboundHistory?: OutboundHistory[];
-  declare PaymentReceipt?: PaymentReceipt[];
 
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;

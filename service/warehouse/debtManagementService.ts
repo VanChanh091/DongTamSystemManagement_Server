@@ -1,16 +1,23 @@
 import { Op, Transaction } from "sequelize";
-import { CustomerPayment, PaymentType } from "../../models/customer/customerPayment";
-import { OutboundHistory } from "../../models/warehouse/outbound/outboundHistory";
 import { AppError } from "../../utils/appError";
-import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { Customer } from "../../models/customer/customer";
-import { DebtItemDTO } from "../../interface/debtSummary.type";
 import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
+import { runInTransaction } from "../../utils/helper/transactionHelper";
+import { OutboundHistory } from "../../models/warehouse/outbound/outboundHistory";
+import { CustomerPayment, PaymentType } from "../../models/customer/customerPayment";
+import {
+  PaymentAllocation,
+  PaymentMethodType,
+} from "../../models/warehouse/payment/paymentAllocation";
+import { DebtItemDTO, DeductionInput, ParsedExcelRow } from "../../interface/debt.type";
+import * as xlsx from "xlsx";
+import { debtRepository } from "../../repository/debtRepository";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 // const { outbound } = CacheKey.warehouse;
 
 export const debtManagementService = {
+  //================================DEBT CLOSING=================================
   checkIsClosingDay: ({
     paymentType,
     closingDays,
@@ -74,63 +81,57 @@ export const debtManagementService = {
     closingDate: Date;
     overridePaymentTermDays?: number;
   }) => {
-    return await runInTransaction(async (transaction: Transaction) => {
-      let termDays = overridePaymentTermDays;
-      if (termDays === undefined) {
-        const config = await CustomerPayment.findOne({
-          where: { customerId },
-          attributes: ["paymentTermDays"],
-          raw: true,
+    try {
+      return await runInTransaction(async (transaction: Transaction) => {
+        let termDays = overridePaymentTermDays;
+        if (termDays === undefined) {
+          const config = await debtRepository.findOneCustomerPayment(customerId, transaction);
+          if (!config) {
+            throw AppError.NotFound(
+              "Chưa cấu hình công nợ cho khách hàng này",
+              "DEBT_CONFIG_NOT_FOUND",
+            );
+          }
+
+          termDays = config.paymentTermDays;
+        }
+
+        // Đưa closingDate về mốc cuối ngày 23:59:59.999
+        const effectiveClosingDate = dayjsUtc(closingDate).endOf("day").toDate();
+
+        // Tính hạn thanh toán (dueDate)
+        const dueDate = dayjsUtc(effectiveClosingDate)
+          .add(Number(termDays) || 0, "day")
+          .endOf("day")
+          .toDate();
+
+        // Tìm tất cả các Phiếu Xuất Kho (PXK) <= closingDate chưa được chưa chốt
+        const [updatedCount] = await debtRepository.updateDueDateForOutbound({
+          dueDate,
+          customerId,
+          closingDate: effectiveClosingDate,
           transaction,
         });
 
-        if (!config) {
-          throw AppError.NotFound(
-            "Chưa cấu hình công nợ cho khách hàng này",
-            "DEBT_CONFIG_NOT_FOUND",
-          );
-        }
-        termDays = config.paymentTermDays;
-      }
-
-      // Đưa closingDate về mốc cuối ngày 23:59:59.999
-      const effectiveClosingDate = dayjsUtc(closingDate).endOf("day").toDate();
-
-      // Tính hạn thanh toán (dueDate)
-      const dueDate = dayjsUtc(effectiveClosingDate)
-        .add(Number(termDays) || 0, "day")
-        .endOf("day")
-        .toDate();
-
-      // Tìm tất cả các Phiếu Xuất Kho (PXK) <= closingDate chưa được chưa chốt
-      const [updatedCount] = await OutboundHistory.update(
-        { dueDate },
-        {
-          where: {
+        if (updatedCount === 0) {
+          return {
             customerId,
-            dueDate: null,
-            remainingAmount: { [Op.gt]: 0 },
-            dateOutbound: { [Op.lte]: effectiveClosingDate },
-            status: { [Op.in]: ["unpaid", "partial"] },
-          },
-          transaction,
-        },
-      );
+            closedCount: 0,
+            message: "Không có đơn hàng mới nào cần chốt trong kỳ này",
+          };
+        }
 
-      if (updatedCount === 0) {
         return {
           customerId,
-          closedCount: 0,
-          message: "Không có đơn hàng mới nào cần chốt trong kỳ này",
+          closedCount: updatedCount,
+          dueDateCalculated: dayjsUtc(dueDate).format("YYYY-MM-DD HH:mm:ss"),
         };
-      }
-
-      return {
-        customerId,
-        closedCount: updatedCount,
-        dueDateCalculated: dayjsUtc(dueDate).format("YYYY-MM-DD HH:mm:ss"),
-      };
-    });
+      });
+    } catch (error) {
+      console.error("Error occurred while closing debt for single customer:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
   },
 
   processAutoDebtClosing: async (targetDate: Date = new Date()) => {
@@ -140,10 +141,7 @@ export const debtManagementService = {
         const formattedDate = dayjsUtc(closingDate).format("YYYY-MM-DD HH:mm:ss");
 
         // Lấy toàn bộ cấu hình công nợ của khách hàng
-        const configs = await CustomerPayment.findAll({
-          attributes: ["customerId", "paymentType", "closingDays", "paymentTermDays"],
-          raw: true,
-        });
+        const configs = await debtRepository.findAllRawCustomerPayment();
 
         const dueDateGroups = new Map<string, { dueDate: Date; customerIds: string[] }>();
 
@@ -178,19 +176,12 @@ export const debtManagementService = {
         let totalUpdatedCount = 0;
 
         for (const { dueDate, customerIds } of dueDateGroups.values()) {
-          const [updatedCount] = await OutboundHistory.update(
-            { dueDate },
-            {
-              where: {
-                customerId: { [Op.in]: customerIds },
-                dueDate: null,
-                remainingAmount: { [Op.gt]: 0 },
-                dateOutbound: { [Op.lte]: closingDate },
-                status: { [Op.in]: ["unpaid", "partial"] },
-              },
-              transaction,
-            },
-          );
+          const [updatedCount] = await debtRepository.updateDueDateForOutbound({
+            dueDate,
+            customerId: customerIds,
+            closingDate,
+            transaction,
+          });
           totalUpdatedCount += updatedCount;
         }
 
@@ -208,154 +199,285 @@ export const debtManagementService = {
   },
 
   getCustomerDebtSummary: async (customerId?: string) => {
-    const whereCondition: any = {
-      status: { [Op.in]: ["unpaid", "partial"] },
-      remainingAmount: { [Op.gt]: 0 },
-    };
+    try {
+      // lấy tất cả các PXK chưa thanh toán và chưa chốt công nợ
+      const unpaidOutbounds = await debtRepository.findOutboundUnpaid({ customerId });
 
-    if (customerId) {
-      whereCondition.customerId = customerId;
-    }
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
 
-    // lấy tất cả các PXK chưa thanh toán và chưa chốt công nợ
-    const unpaidOutbounds = await OutboundHistory.findAll({
-      where: whereCondition,
-      include: [
+      const customerMap = new Map<
+        string,
         {
-          model: Customer,
-          attributes: { exclude: ["createdAt", "updatedAt"] },
-        },
-      ],
-      order: [["dateOutbound", "ASC"]],
-      raw: true,
-      nest: true, // cần có để lấy được thông tin customer
-    });
-
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-
-    const customerMap = new Map<
-      string,
-      {
-        customerId: string;
-        customerName: string;
-        totalDebt: number;
-        closedDebt: number;
-        currentPeriodDebt: number;
-        dueDebt: number;
-        notDueDebt: number;
-        unpaidOutboundCount: number;
-        aging: {
-          inTerm: number;
-          overdue1_30: number;
-          overdue31_60: number;
-          overdue61_90: number;
-          overdueOver90: number;
-        };
-      }
-    >();
-
-    const grandTotal = {
-      totalDebt: 0,
-      closedDebt: 0,
-      currentPeriodDebt: 0,
-      dueDebt: 0,
-      notDueDebt: 0,
-      unpaidOutboundCount: unpaidOutbounds.length,
-      aging: {
-        inTerm: 0,
-        overdue1_30: 0,
-        overdue31_60: 0,
-        overdue61_90: 0,
-        overdueOver90: 0,
-      },
-    };
-
-    for (const pxk of unpaidOutbounds) {
-      const remaining = Number(pxk.remainingAmount || 0);
-      const custId = pxk.customerId;
-
-      if (!customerMap.has(custId)) {
-        customerMap.set(custId, {
-          customerId: custId,
-          customerName: pxk.Customer?.customerName || "",
-          totalDebt: 0,
-          closedDebt: 0,
-          currentPeriodDebt: 0,
-          dueDebt: 0,
-          notDueDebt: 0,
-          unpaidOutboundCount: 0,
+          customerId: string;
+          customerName: string;
+          totalDebt: number;
+          closedDebt: number;
+          currentPeriodDebt: number;
+          dueDebt: number;
+          notDueDebt: number;
+          unpaidOutboundCount: number;
           aging: {
-            inTerm: 0,
-            overdue1_30: 0,
-            overdue31_60: 0,
-            overdue61_90: 0,
-            overdueOver90: 0,
-          },
-        });
-      }
+            inTerm: number;
+            overdue1_30: number;
+            overdue31_60: number;
+            overdue61_90: number;
+            overdueOver90: number;
+          };
+        }
+      >();
 
-      const summary = customerMap.get(custId)!;
+      const grandTotal = {
+        totalDebt: 0,
+        closedDebt: 0,
+        currentPeriodDebt: 0,
+        dueDebt: 0,
+        notDueDebt: 0,
+        unpaidOutboundCount: unpaidOutbounds.length,
+        aging: {
+          inTerm: 0,
+          overdue1_30: 0,
+          overdue31_60: 0,
+          overdue61_90: 0,
+          overdueOver90: 0,
+        },
+      };
 
-      summary.totalDebt += remaining;
-      summary.unpaidOutboundCount += 1;
-      grandTotal.totalDebt += remaining;
+      for (const pxk of unpaidOutbounds) {
+        const remaining = Number(pxk.remainingAmount || 0);
+        const custId = pxk.customerId;
 
-      if (pxk.dueDate) {
-        summary.closedDebt += remaining;
-        grandTotal.closedDebt += remaining;
+        if (!customerMap.has(custId)) {
+          customerMap.set(custId, {
+            customerId: custId,
+            customerName: pxk.Customer?.customerName || "",
+            totalDebt: 0,
+            closedDebt: 0,
+            currentPeriodDebt: 0,
+            dueDebt: 0,
+            notDueDebt: 0,
+            unpaidOutboundCount: 0,
+            aging: {
+              inTerm: 0,
+              overdue1_30: 0,
+              overdue31_60: 0,
+              overdue61_90: 0,
+              overdueOver90: 0,
+            },
+          });
+        }
 
-        const dueDate = new Date(pxk.dueDate);
-        dueDate.setHours(0, 0, 0, 0);
+        const summary = customerMap.get(custId)!;
 
-        const diffTime = now.getTime() - dueDate.getTime();
-        const daysOverdue = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        summary.totalDebt += remaining;
+        summary.unpaidOutboundCount += 1;
+        grandTotal.totalDebt += remaining;
 
-        if (daysOverdue <= 0) {
+        if (pxk.dueDate) {
+          summary.closedDebt += remaining;
+          grandTotal.closedDebt += remaining;
+
+          const dueDate = new Date(pxk.dueDate);
+          dueDate.setHours(0, 0, 0, 0);
+
+          const diffTime = now.getTime() - dueDate.getTime();
+          const daysOverdue = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+          if (daysOverdue <= 0) {
+            summary.notDueDebt += remaining;
+            summary.aging.inTerm += remaining;
+
+            grandTotal.notDueDebt += remaining;
+            grandTotal.aging.inTerm += remaining;
+          } else {
+            summary.dueDebt += remaining;
+            grandTotal.dueDebt += remaining;
+
+            if (daysOverdue <= 30) {
+              summary.aging.overdue1_30 += remaining;
+              grandTotal.aging.overdue1_30 += remaining;
+            } else if (daysOverdue <= 60) {
+              summary.aging.overdue31_60 += remaining;
+              grandTotal.aging.overdue31_60 += remaining;
+            } else if (daysOverdue <= 90) {
+              summary.aging.overdue61_90 += remaining;
+              grandTotal.aging.overdue61_90 += remaining;
+            } else {
+              summary.aging.overdueOver90 += remaining;
+              grandTotal.aging.overdueOver90 += remaining;
+            }
+          }
+        } else {
+          // Đơn chưa chốt nợ -> Gom vào nợ trong kỳ và tính trong hạn
+          summary.currentPeriodDebt += remaining;
           summary.notDueDebt += remaining;
           summary.aging.inTerm += remaining;
 
+          grandTotal.currentPeriodDebt += remaining;
           grandTotal.notDueDebt += remaining;
           grandTotal.aging.inTerm += remaining;
-        } else {
-          summary.dueDebt += remaining;
-          grandTotal.dueDebt += remaining;
-
-          if (daysOverdue <= 30) {
-            summary.aging.overdue1_30 += remaining;
-            grandTotal.aging.overdue1_30 += remaining;
-          } else if (daysOverdue <= 60) {
-            summary.aging.overdue31_60 += remaining;
-            grandTotal.aging.overdue31_60 += remaining;
-          } else if (daysOverdue <= 90) {
-            summary.aging.overdue61_90 += remaining;
-            grandTotal.aging.overdue61_90 += remaining;
-          } else {
-            summary.aging.overdueOver90 += remaining;
-            grandTotal.aging.overdueOver90 += remaining;
-          }
         }
-      } else {
-        // Đơn chưa chốt nợ -> Gom vào nợ trong kỳ và tính trong hạn
-        summary.currentPeriodDebt += remaining;
-        summary.notDueDebt += remaining;
-        summary.aging.inTerm += remaining;
-
-        grandTotal.currentPeriodDebt += remaining;
-        grandTotal.notDueDebt += remaining;
-        grandTotal.aging.inTerm += remaining;
       }
+
+      const formattedItems = Array.from(customerMap.values()).map(mapToDebtItemDTO);
+      const formattedGrandTotal = mapToDebtItemDTO(grandTotal);
+
+      return {
+        message: "Lấy danh sách công nợ khách hàng thành công",
+        items: formattedItems,
+        grandTotal: formattedGrandTotal,
+        totalCustomers: formattedItems.length,
+      };
+    } catch (error) {
+      console.error("Error occurred while fetching customer debt information:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
     }
+  },
 
-    const formattedItems = Array.from(customerMap.values()).map(mapToDebtItemDTO);
-    const formattedGrandTotal = mapToDebtItemDTO(grandTotal);
+  //================================PAYMENT DEBT=================================
+  paymentDebtByCustomerId: async ({
+    customerId,
+    amount,
+    paymentMethod,
+    outboundSlipCodes,
+  }: {
+    customerId: string;
+    amount: number;
+    paymentMethod: PaymentMethodType;
+    outboundSlipCodes?: string[];
+  }) => {
+    try {
+      return await runInTransaction(async (transaction: Transaction) => {
+        if (amount <= 0) throw AppError.BadRequest("Số tiền phải lớn hơn 0");
 
-    return {
-      message: "Lấy danh sách công nợ khách hàng thành công",
-      items: formattedItems,
-      grandTotal: formattedGrandTotal,
-      totalCustomers: formattedItems.length,
-    };
+        // lấy danh sách PXK chưa thanh toán của khách hàng
+        const outbounds = await debtRepository.findOutboundUnpaid({
+          customerId,
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+          includeCustomer: false,
+        });
+
+        const updatedOutboundMap = new Map();
+        const allocationsToCreate: any[] = [];
+
+        // gọi core engine để xử lý cấn trừ công nợ
+        const excessAmount = coreCustomerPayment({
+          amount,
+          paymentMethod,
+          outboundSlipCodes,
+          customerOutbounds: outbounds,
+          updatedOutboundMap,
+          allocationsToCreate,
+        });
+
+        if (updatedOutboundMap.size > 0) {
+          const bulkUpdateData = Array.from(updatedOutboundMap.values()).map(
+            ({ outbound, paidAmount, remainingAmount }) => ({
+              ...outbound,
+              paidAmount,
+              remainingAmount,
+              status: remainingAmount === 0 ? "paid" : "partial",
+            }),
+          );
+
+          await debtRepository.bulkUpdateOutboundStatus(bulkUpdateData, transaction);
+        }
+        if (allocationsToCreate.length > 0) {
+          await debtRepository.bulkCreatePaymentAllocation(allocationsToCreate, transaction);
+        }
+
+        return {
+          message: `Cấn trừ cho khách hàng: ${customerId} thành công`,
+          totalPayment: round2(amount),
+          allocatedTotal: round2(amount - excessAmount),
+          excessAmount,
+        };
+      });
+    } catch (error) {
+      console.error("Error occurred while processing customer payment:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  importAmountPaymentFromExcel: async (fileBuffer: Buffer) => {
+    try {
+      return await runInTransaction(async (transaction: Transaction) => {
+        const workbook = xlsx.read(fileBuffer, { type: "buffer" });
+        const rawData = xlsx.utils.sheet_to_json<Record<string, any>>(
+          workbook.Sheets[workbook.SheetNames[0]],
+        );
+
+        if (!rawData || rawData.length === 0) throw AppError.BadRequest("File rỗng");
+
+        // Parse Excel sang array
+        const parsedRows = parseExcelRows(rawData); // Hàm đọc Excel
+        const uniqueCustomerIds = Array.from(new Set(parsedRows.map((r) => r.customerId)));
+
+        // Lấy tất cả các PXK chưa thanh toán của các khách hàng
+        const allOutbounds = await debtRepository.findOutboundUnpaid({
+          customerId: uniqueCustomerIds,
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+          includeCustomer: false,
+        });
+
+        // Group theo CustomerId
+        const customerOutboundsMap = new Map<string, OutboundHistory[]>();
+        for (const ob of allOutbounds) {
+          const list = customerOutboundsMap.get(ob.customerId) || [];
+          list.push(ob);
+          customerOutboundsMap.set(ob.customerId, list);
+        }
+
+        const updatedOutboundMap = new Map();
+        const allocationsToCreate: any[] = [];
+        let totalAllocated = 0;
+
+        for (const row of parsedRows) {
+          const customerOutbounds = customerOutboundsMap.get(row.customerId) || [];
+
+          const excess = coreCustomerPayment({
+            amount: row.amount,
+            paymentMethod: row.paymentMethod,
+            outboundSlipCodes: undefined,
+            customerOutbounds,
+            updatedOutboundMap,
+            allocationsToCreate,
+          });
+
+          totalAllocated += round2(row.amount - excess);
+        }
+
+        if (updatedOutboundMap.size > 0) {
+          const bulkUpdateData = Array.from(updatedOutboundMap.values()).map(
+            ({ outbound, paidAmount, remainingAmount }) => ({
+              ...outbound,
+              paidAmount,
+              remainingAmount,
+              status: remainingAmount === 0 ? "paid" : "partial",
+            }),
+          );
+
+          await debtRepository.bulkUpdateOutboundStatus(bulkUpdateData, transaction);
+        }
+        if (allocationsToCreate.length > 0) {
+          await debtRepository.bulkCreatePaymentAllocation(allocationsToCreate, transaction);
+        }
+
+        return {
+          message: "Import thành công",
+          totalProcessedRows: parsedRows.length,
+          totalAllocatedAmount: totalAllocated,
+        };
+      });
+    } catch (error) {
+      console.error("Error occurred while importing payment amounts from Excel:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
   },
 };
 
@@ -381,4 +503,125 @@ const mapToDebtItemDTO = (rawItem: any): DebtItemDTO => {
       overdueOver90: round2(aging?.overdueOver90 || 0),
     },
   };
+};
+
+const coreCustomerPayment = ({
+  amount,
+  paymentMethod,
+  outboundSlipCodes,
+  customerOutbounds,
+  updatedOutboundMap,
+  allocationsToCreate,
+}: DeductionInput) => {
+  let remainingPaymentPool = round2(amount);
+
+  // cấn trừ công nợ theo PXK được chỉ định
+  if (outboundSlipCodes && outboundSlipCodes.length > 0) {
+    for (const slipCode of outboundSlipCodes) {
+      if (remainingPaymentPool <= 0) break;
+
+      const outbound = customerOutbounds.find((o) => o.outboundSlipCode === slipCode);
+      if (!outbound) {
+        throw AppError.BadRequest(`Không tìm thấy PXK: ${slipCode}`, "OUTBOUND_NOT_FOUND");
+      }
+
+      const existedId = updatedOutboundMap.get(outbound.outboundId);
+      const currentRemaining = existedId
+        ? existedId.remainingAmount
+        : Number(outbound.remainingAmount || 0);
+      const currentPaid = existedId ? existedId.paidAmount : Number(outbound.paidAmount || 0);
+
+      if (currentRemaining <= 0) {
+        throw AppError.BadRequest(
+          `PXK: ${slipCode} đã được thanh toán hết`,
+          "OUTBOUND_ALREADY_PAID",
+        );
+      }
+
+      const payAmount = round2(Math.min(currentRemaining, remainingPaymentPool));
+      const newPaid = round2(currentPaid + payAmount);
+      const newRemaining = Math.max(0, round2(currentRemaining - payAmount));
+
+      updatedOutboundMap.set(outbound.outboundId, {
+        outbound,
+        paidAmount: newPaid,
+        remainingAmount: newRemaining,
+      });
+
+      allocationsToCreate.push({
+        outboundId: outbound.outboundId,
+        amountAllocation: payAmount,
+        paymentMethod,
+      });
+
+      remainingPaymentPool = Math.max(0, round2(remainingPaymentPool - payAmount));
+    }
+  }
+
+  // cấn trừ công nợ từ file import (FIFO)
+  if (remainingPaymentPool > 0) {
+    for (const outbound of customerOutbounds) {
+      if (remainingPaymentPool <= 0) break;
+
+      const existedId = updatedOutboundMap.get(outbound.outboundId);
+      const currentRemaining = existedId
+        ? existedId.remainingAmount
+        : Number(outbound.remainingAmount || 0);
+      const currentPaid = existedId ? existedId.paidAmount : Number(outbound.paidAmount || 0);
+
+      if (currentRemaining <= 0) continue;
+
+      const payAmount = round2(Math.min(currentRemaining, remainingPaymentPool));
+      const newPaid = round2(currentPaid + payAmount);
+      const newRemaining = Math.max(0, round2(currentRemaining - payAmount));
+
+      updatedOutboundMap.set(outbound.outboundId, {
+        outbound,
+        paidAmount: newPaid,
+        remainingAmount: newRemaining,
+      });
+
+      allocationsToCreate.push({
+        outboundId: outbound.outboundId,
+        amountAllocation: payAmount,
+        paymentMethod,
+      });
+
+      remainingPaymentPool = Math.max(0, round2(remainingPaymentPool - payAmount));
+    }
+  }
+
+  return remainingPaymentPool;
+};
+
+// HELPER: ĐỌC VÀ CHUẨN HÓA DỮ LIỆU TỪ EXCEL
+const parseExcelRows = (rawData: Record<string, any>[]): ParsedExcelRow[] => {
+  return rawData.map((row, index) => {
+    const rowNumber = index + 2; // Dòng 1 là tiêu đề, dữ liệu bắt đầu từ dòng 2
+
+    const customerId = String(row["Mã Khách Hàng"] || "").trim();
+    const amount = Number(row["Số tiền thu"] || 0);
+
+    // Validate dữ liệu bắt buộc
+    if (!customerId) {
+      throw AppError.BadRequest(
+        `Dòng ${rowNumber}: Thiếu thông tin Mã khách hàng`,
+        "INVALID_EXCEL_ROW",
+      );
+    }
+
+    if (isNaN(amount) || amount <= 0) {
+      throw AppError.BadRequest(
+        `Dòng ${rowNumber} (Mã KH: ${customerId}): Số tiền cấn trừ phải lớn hơn 0`,
+        "INVALID_EXCEL_ROW",
+      );
+    }
+
+    return {
+      rowNumber,
+      customerId,
+      amount,
+      paymentMethod: "IMPORT",
+    };
+  });
 };

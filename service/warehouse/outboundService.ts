@@ -400,10 +400,8 @@ export const outboundService = {
 
         // Generate slip code
         const now = new Date();
-
         const month = (now.getMonth() + 1).toString().padStart(2, "0");
         const year = now.getFullYear().toString().slice(-2);
-        let number = 1;
 
         const prefix = `XKBH${year}${month}`;
 
@@ -412,8 +410,10 @@ export const outboundService = {
           where: { outboundSlipCode: { [Op.like]: `${prefix}%` } },
           order: [["outboundSlipCode", "DESC"]],
           transaction,
+          lock: transaction.LOCK.UPDATE,
         });
 
+        let number = 1;
         if (lastOutbound && lastOutbound.outboundSlipCode) {
           const lastCode = lastOutbound.outboundSlipCode;
           const lastNumberStr = lastCode.replace(prefix, "");
@@ -424,8 +424,10 @@ export const outboundService = {
           }
         }
 
+        // tạo slipCode với số thứ tự tăng dần và có 4 số
         const slipCode = `${prefix}${number.toString().padStart(4, "0")}`; //XKBH26040001
 
+        //làm tròn 2 chữ số thập phân
         const roundedTotalPrice = Math.round(totalPricePayment * 100) / 100;
 
         // Tạo outbound

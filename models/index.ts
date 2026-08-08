@@ -45,7 +45,6 @@ import { initLiquidationInventoryModel } from "./warehouse/inventory/liquidation
 import { initOutboundDetailModel } from "./warehouse/outbound/outboundDetail";
 import { initOutboundHistoryModel } from "./warehouse/outbound/outboundHistory";
 import { initPaymentAllocationModel } from "./warehouse/payment/paymentAllocation";
-import { initPaymentReceiptModel } from "./warehouse/payment/paymentReceipt";
 
 //admin
 const MachinePaper = initMachinePaperModel(sequelize);
@@ -105,9 +104,6 @@ const QcInspectionBox = initQcInspectionBoxModel(sequelize);
 const InboundHistory = initInboundHistoryModel(sequelize);
 const OutboundHistory = initOutboundHistoryModel(sequelize);
 const OutboundDetail = initOutboundDetailModel(sequelize);
-
-// payment and allocation
-const PaymentReceipt = initPaymentReceiptModel(sequelize);
 const PaymentAllocation = initPaymentAllocationModel(sequelize);
 
 //inventory
@@ -184,8 +180,7 @@ const models = {
   OutboundHistory,
   OutboundDetail,
 
-  // payment and allocation
-  PaymentReceipt,
+  // Allocation
   PaymentAllocation,
 
   //inventory

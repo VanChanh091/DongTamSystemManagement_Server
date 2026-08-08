@@ -119,7 +119,8 @@ export function initOutboundHistoryModel(sequelize: Sequelize): typeof OutboundH
         { fields: ["dateOutbound"] },
         { fields: ["outboundSlipCode"] },
 
-        //composite index
+        //composite indexes
+        { fields: ["customerId", "status", "outboundSlipCode"] },
         {
           //index phục vụ cho việc tìm các KH chưa chốt công nợ
           name: "idx_outbound_unpaid_summary",
@@ -128,7 +129,7 @@ export function initOutboundHistoryModel(sequelize: Sequelize): typeof OutboundH
         {
           //index phục vụ cho việc tìm các PXK chưa thanh toán
           name: "idx_outbound_debt_summary",
-          fields: ["customerId", "status", "remainingAmount", "dateOutbound"],
+          fields: ["status", "customerId", "remainingAmount", "dateOutbound"],
         },
       ],
     },
