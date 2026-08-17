@@ -15,6 +15,10 @@ module.exports = {
       // instances: "max", // chạy với số core CPU được cấp
       instances: 4,
 
+      // dùng cho socket adapter, để các instance socket có thể giao tiếp với nhau
+      kill_timeout: 3000, // Chờ 3s cho các socket đóng trước khi kill hẳn
+      listen_timeout: 5000,
+
       // Log files (PM2 sẽ lưu trong C:\\Users\userName\.pm2\logs\)
       error_file: "./logs/err/dongtam-api-error.log",
       out_file: "./logs/out/dongtam-api-out.log",

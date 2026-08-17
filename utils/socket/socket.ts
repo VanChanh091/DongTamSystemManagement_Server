@@ -4,17 +4,26 @@ dotenv.config();
 import jwt from "jsonwebtoken";
 import { Server } from "socket.io";
 import { Server as HttpServer } from "http";
+import { createAdapter } from "@socket.io/redis-adapter";
 import { AuthenticatedSocket, DecodedToken, SocketAuth } from "../../interface/socket.type";
+import { pubClient, subClient } from "../../assets/configs/connect/redis.connect";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 
+let io: Server | null = null;
+
 export const initSocket = (server: HttpServer) => {
-  const io = new Server(server, {
+  io = new Server(server, {
     cors: {
       origin: "*",
       methods: ["GET", "POST"],
     },
   });
+
+  io.adapter(createAdapter(pubClient, subClient));
+  if (devEnvironment) {
+    console.log(`[PID: ${process.pid}] 🚀 Socket Redis Adapter đã được kích hoạt!`);
+  }
 
   // Middleware: Auth for socket
   io.use((socket: AuthenticatedSocket, next) => {
@@ -100,5 +109,13 @@ export const initSocket = (server: HttpServer) => {
     });
   });
 
+  return io;
+};
+
+// Hàm lấy instance IO để bắn thông báo từ Controller / Service API
+export const getIO = (): Server => {
+  if (!io) {
+    throw new Error("Socket.io chưa được khởi tạo! Hãy gọi initSocket() trước.");
+  }
   return io;
 };
