@@ -3,9 +3,9 @@ dotenv.config();
 
 import { Response } from "express";
 import { Op, Transaction } from "sequelize";
-import { meiliService } from "../system/meiliService";
 import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
+import { meiliService } from "../system/meiliService";
 import { MEILI_INDEX } from "../../assets/labelFields";
 import { Product } from "../../models/product/product";
 import { Customer } from "../../models/customer/customer";
@@ -15,16 +15,15 @@ import { DeliveryItem } from "../../models/delivery/deliveryItem";
 import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
-import { OutboundDetail } from "../../models/warehouse/outbound/outboundDetail";
 import { Inventory } from "../../models/warehouse/inventory/inventory";
-import { customerRepository } from "../../repository/customerRepository";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
-import { OutboundHistory } from "../../models/warehouse/outbound/outboundHistory";
 import { planningHelper } from "../../repository/planning/planningHelper";
 import { warehouseRepository } from "../../repository/warehouseRepository";
 import { inventoryRepository } from "../../repository/inventoryRepository";
 import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
+import { OutboundDetail } from "../../models/warehouse/outbound/outboundDetail";
+import { OutboundHistory } from "../../models/warehouse/outbound/outboundHistory";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
 import {
   mappingOutboundDetailRow,
@@ -771,27 +770,54 @@ export const outboundService = {
     transaction: Transaction,
   ) => {
     try {
+      const listOrderIds = Array.isArray(orderIds) ? orderIds : [orderIds];
+
       const [outbound, inventories] = await Promise.all([
         warehouseRepository.syncOutboundForMeili(outboundId, transaction),
-        inventoryRepository.syncAllInventoryToMeili(
-          Array.isArray(orderIds) ? orderIds : [orderIds],
-          transaction,
-        ),
+        inventoryRepository.syncAllInventoryToMeili(listOrderIds, transaction),
       ]);
 
-      const meiliFormatted = meiliTransformer.outbound(outbound);
       const flattenInventory = inventories.map(meiliTransformer.inventory);
 
-      await meiliService.syncOrUpdateMeiliData({
-        indexKey: MEILI_INDEX.OUTBOUNDS,
-        data: meiliFormatted,
-        transaction,
-      });
-      await meiliService.syncOrUpdateMeiliData({
-        indexKey: MEILI_INDEX.INVENTORIES,
-        data: flattenInventory,
-        transaction,
-      });
+      if (outbound) {
+        const meiliFormatted = meiliTransformer.outbound(outbound);
+        await meiliService.syncOrUpdateMeiliData({
+          indexKey: MEILI_INDEX.OUTBOUNDS,
+          data: meiliFormatted,
+          transaction,
+        });
+      }
+
+      // Phân loại: Khác 0 thì giữ/cập nhật, Bằng 0 thì xóa
+      const validInventories: any[] = [];
+      const deleteInventoryIds: number[] = [];
+
+      for (const inv of inventories) {
+        if (inv.qtyInventory !== 0) {
+          validInventories.push(inv);
+        } else {
+          deleteInventoryIds.push(inv.inventoryId);
+        }
+      }
+
+      // Upsert các đơn còn tồn kho
+      if (validInventories.length > 0) {
+        const flattenInventory = validInventories.map(meiliTransformer.inventory);
+        await meiliService.syncOrUpdateMeiliData({
+          indexKey: MEILI_INDEX.INVENTORIES,
+          data: flattenInventory,
+          transaction,
+        });
+      }
+
+      // Delete khỏi Meilisearch các đơn đã hết tồn kho
+      if (deleteInventoryIds.length > 0) {
+        await meiliService.deleteMeiliData(
+          MEILI_INDEX.INVENTORIES,
+          deleteInventoryIds,
+          transaction,
+        );
+      }
     } catch (error) {
       console.log("err to sync data outbound: ", error);
       throw AppError.ServerError();
@@ -890,12 +916,33 @@ export const outboundService = {
             transaction,
           );
 
-          const flattenInventory = updatedInvs.map(meiliTransformer.inventory);
-          await meiliService.syncOrUpdateMeiliData({
-            indexKey: MEILI_INDEX.INVENTORIES,
-            data: flattenInventory,
-            transaction,
-          });
+          const validInventories: any[] = [];
+          const deleteInventoryIds: number[] = [];
+
+          for (const inv of updatedInvs) {
+            if (inv.qtyInventory !== 0) {
+              validInventories.push(inv);
+            } else {
+              deleteInventoryIds.push(inv.inventoryId);
+            }
+          }
+
+          if (validInventories.length > 0) {
+            const flattenInventory = validInventories.map(meiliTransformer.inventory);
+            await meiliService.syncOrUpdateMeiliData({
+              indexKey: MEILI_INDEX.INVENTORIES,
+              data: flattenInventory,
+              transaction,
+            });
+          }
+
+          if (deleteInventoryIds.length > 0) {
+            await meiliService.deleteMeiliData(
+              MEILI_INDEX.INVENTORIES,
+              deleteInventoryIds,
+              transaction,
+            );
+          }
         }
 
         return { message: "Hủy phiếu xuất kho thành công" };

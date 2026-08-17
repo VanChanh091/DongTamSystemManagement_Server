@@ -25,6 +25,7 @@ import {
   mappingInventoryRow,
 } from "../../utils/mapping/warehouse/inventoryRowAndColumn";
 import { inventoryLogService } from "./inventoryLogService";
+import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inventory_gt, inventory_lt } = CacheKey.warehouse;
@@ -221,13 +222,16 @@ export const inventoryService = {
         await sourceInv.reload({ transaction });
 
         // Xử lý cộng kho đích
-        const targetInv = await inventoryRepository.findInvByOrderId({
+        let targetInv = await inventoryRepository.findInvByOrderId({
           orderId: targetOrderId,
           transaction,
+          options: { lock: transaction.LOCK.UPDATE },
         });
 
+        let newQtyTarget = 0;
+
         if (targetInv) {
-          const newQtyTarget = targetInv.qtyInventory + qtyTransfer;
+          newQtyTarget = targetInv.qtyInventory + qtyTransfer;
           const newValueTarget = newQtyTarget > 0 ? newQtyTarget * unitPrice : 0;
           const valueDeltaTarget = newValueTarget - targetInv.valueInventory;
 
@@ -236,7 +240,8 @@ export const inventoryService = {
             { transaction },
           );
         } else {
-          await Inventory.create(
+          newQtyTarget = qtyTransfer;
+          targetInv = await Inventory.create(
             {
               orderId: targetOrderId,
               qtyInventory: qtyTransfer,
@@ -284,29 +289,48 @@ export const inventoryService = {
         });
 
         //--------------------MEILISEARCH-----------------------
-        const [source, target] = await Promise.all([
-          inventoryRepository.findInvByOrderId({ orderId: sourceOrderId, transaction }),
-          inventoryRepository.findInvByOrderId({ orderId: targetOrderId, transaction }),
-        ]);
-
-        const meiliUpdate = async (data: any) =>
+        //  Xử lý Source Inventory
+        if (remainingQty === 0) {
+          // bằng 0 -> Xóa khỏi Meilisearch
+          await meiliService.deleteMeiliData(
+            MEILI_INDEX.INVENTORIES,
+            sourceInv.inventoryId,
+            transaction,
+          );
+        } else {
+          // Vẫn khác 0 -> Cập nhật lại số lượng
           await meiliService.syncOrUpdateMeiliData({
             indexKey: MEILI_INDEX.INVENTORIES,
-            data: data,
+            data: {
+              inventoryId: sourceInv.inventoryId,
+              qtyInventory: sourceInv.qtyInventory,
+            },
             transaction,
             isUpdate: true,
           });
+        }
 
-        if (source && target) {
-          await meiliUpdate({
-            inventoryId: source.inventoryId,
-            qtyInventory: source.qtyInventory,
-          });
+        // Xử lý Target Inventory:
+        if (newQtyTarget === 0) {
+          const targetFullInvs = await inventoryRepository.syncInventoryForMeili(
+            targetOrderId,
+            transaction,
+          );
 
-          await meiliUpdate({
-            inventoryId: target.inventoryId,
-            qtyInventory: target.qtyInventory,
-          });
+          if (!targetFullInvs) {
+            await meiliService.syncOrUpdateMeiliData({
+              indexKey: MEILI_INDEX.INVENTORIES,
+              data: targetFullInvs,
+              transaction,
+            });
+          }
+        } else {
+          // Nếu sau khi cộng mà bù vừa khớp về đúng 0 -> Xóa khỏi Meilisearch
+          await meiliService.deleteMeiliData(
+            MEILI_INDEX.INVENTORIES,
+            targetInv.inventoryId,
+            transaction,
+          );
         }
 
         return {
@@ -355,10 +379,11 @@ export const inventoryService = {
           (inventory.valueInventory / inventory.qtyInventory) * qtyTransfer,
         );
 
+        const remainingQty = inventory.qtyInventory - qtyTransfer;
         await inventory.update(
           {
+            valueInventory: remainingQty,
             qtyInventory: inventory.qtyInventory - qtyTransfer,
-            valueInventory: inventory.valueInventory - transferValue,
           },
           { transaction },
         );
@@ -400,15 +425,22 @@ export const inventoryService = {
         });
 
         //--------------------MEILISEARCH-----------------------
-        await meiliService.syncOrUpdateMeiliData({
-          indexKey: MEILI_INDEX.INVENTORIES,
-          data: {
-            inventoryId: inventory.inventoryId,
-            qtyInventory: inventory.qtyInventory,
-          },
-          transaction,
-          isUpdate: true,
-        });
+        if (remainingQty === 0) {
+          // Hết tồn kho do thanh lý toàn bộ
+          await meiliService.deleteMeiliData(
+            MEILI_INDEX.INVENTORIES,
+            inventory.inventoryId,
+            transaction,
+          );
+        } else {
+          // Vẫn còn tồn kho một phầ
+          await meiliService.syncOrUpdateMeiliData({
+            indexKey: MEILI_INDEX.INVENTORIES,
+            data: { inventoryId: inventory.inventoryId, qtyInventory: remainingQty },
+            transaction,
+            isUpdate: true,
+          });
+        }
 
         return { message: "Transfer quantity to liquidation inventory successfully" };
       });

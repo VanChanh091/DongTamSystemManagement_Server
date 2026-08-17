@@ -6,6 +6,7 @@ import {
   handleClosingDebt,
   importAmountPayment,
   paymentDebtByCustomerId,
+  writeOffDebt,
 } from "../../controller/user/warehouse/debtManagementController";
 import upload from "../../utils/image/uploadImage";
 
@@ -19,8 +20,6 @@ router.post(
   authorizeAnyPermission(["accountant"]),
   handleClosingDebt,
 );
-// router.put("/", authenticate, authorizeAnyPermission(["sale", "accountant"]), updateCustomer);
-// router.delete("/", authenticate, authorizeAnyPermission(["sale"]), deleteCustomer);
 
 //=================================PAYMENT=======================================
 router.post(
@@ -36,5 +35,6 @@ router.post(
   authorizeAnyPermission(["accountant"]),
   importAmountPayment,
 );
+router.put("/payment", authenticate, authorizeAnyPermission(["accountant"]), writeOffDebt);
 
 export default router;

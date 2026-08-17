@@ -1,6 +1,7 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { CustomerPayment } from "./customerPayment";
 import { OutboundHistory } from "../warehouse/outbound/outboundHistory";
+import { User } from "../user/user";
 
 //định nghĩa trường trong bảng
 interface CustomerAttributes {
@@ -18,6 +19,9 @@ interface CustomerAttributes {
   phone?: string | null;
   contactPerson?: string | null;
   rateCustomer?: string | null;
+
+  //FK
+  userId?: number;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -52,6 +56,9 @@ export class Customer
   declare payment?: CustomerPayment;
   declare OutboundHistory?: OutboundHistory[];
 
+  declare userId?: number;
+  declare User?: User;
+
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
 }
@@ -76,15 +83,15 @@ export function initCustomerModel(sequelize: Sequelize): typeof Customer {
       customerSource: { type: DataTypes.STRING, allowNull: false },
       cskh: { type: DataTypes.STRING, allowNull: false },
       customerSeq: { type: DataTypes.INTEGER, allowNull: false },
+
+      //FK
+      userId: { type: DataTypes.INTEGER, allowNull: true },
     },
     {
       sequelize,
       tableName: "Customers",
       timestamps: true,
-      indexes: [
-        //get
-        { fields: ["customerSeq"] },
-      ],
+      indexes: [{ fields: ["userId"] }, { fields: ["customerSeq"] }],
     },
   );
 

@@ -1,7 +1,6 @@
 import { Order } from "../../../models/order/order";
 import { NextFunction, Request, Response } from "express";
 import { customerService } from "../../../service/customerService";
-import { CustomerCreationAttributes } from "../../../models/customer/customer";
 
 export const getCustomers = async (req: Request, res: Response, next: NextFunction) => {
   const {
@@ -64,10 +63,19 @@ export const checkCustomerInOrders = async (req: Request, res: Response, next: N
   }
 };
 
+export const getUserSales = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const users = await customerService.getUserSales();
+    return res.status(200).json({ message: "Get user sales successfully", data: users });
+  } catch (error) {
+    next(error);
+  }
+};
+
 //create customer
 export const createCustomer = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await customerService.createCustomer(req.body as CustomerCreationAttributes);
+    const response = await customerService.createCustomer(req.body);
     return res.status(201).json(response);
   } catch (error) {
     next(error);

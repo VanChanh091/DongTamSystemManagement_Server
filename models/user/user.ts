@@ -1,4 +1,5 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
+import { Customer } from "../customer/customer";
 
 export type userRole = "admin" | "user" | "manager";
 
@@ -31,6 +32,9 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   declare permissions: string[];
   declare department: string;
   // declare avatar?: string | null;
+
+  // association
+  declare Customer: Customer[];
 
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;

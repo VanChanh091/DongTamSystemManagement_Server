@@ -216,8 +216,10 @@ export const inventoryRepository = {
     );
   },
 
-  syncAllInventoryForMeili: async () => {
-    return await Inventory.findAll(inventoryRepository.buildMeiliInventoryOptions({}));
+  syncAllInventoryForMeili: async (whereCondition?: any) => {
+    return await Inventory.findAll(
+      inventoryRepository.buildMeiliInventoryOptions({ whereCondition }),
+    );
   },
 
   //====================================LIQUIDATION INVENTORY========================================

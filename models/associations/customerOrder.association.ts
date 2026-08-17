@@ -41,8 +41,11 @@ export default function customerOrderAssociations(models: any) {
   OrderApproved.belongsTo(Order, { foreignKey: "orderId" });
 
   // USER
-  User.hasMany(Order, { foreignKey: "userId" });
+  User.hasMany(Order, { foreignKey: "userId", onDelete: "RESTRICT" });
   Order.belongsTo(User, { foreignKey: "userId" });
+
+  User.hasMany(Customer, { foreignKey: "userId", onDelete: "RESTRICT" });
+  Customer.belongsTo(User, { foreignKey: "userId" });
 
   // PAYMENT ALLOCATION
   OutboundHistory.hasMany(PaymentAllocation, {

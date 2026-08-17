@@ -25,7 +25,6 @@ interface OutboundHistoryAttributes {
   status: statusOutbound;
 
   writeOffAmount?: number;
-  writeOffNote?: string;
 
   //FK
   customerId: string;
@@ -64,7 +63,6 @@ export class OutboundHistory
   declare status: statusOutbound;
 
   declare writeOffAmount?: number;
-  declare writeOffNote?: string;
 
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
@@ -90,22 +88,27 @@ export function initOutboundHistoryModel(sequelize: Sequelize): typeof OutboundH
         },
       },
       outboundSlipCode: { type: DataTypes.STRING, allowNull: false, unique: true },
+
       totalPriceOrder: { type: DataTypes.DOUBLE, allowNull: false },
       totalPriceVAT: { type: DataTypes.DOUBLE },
       totalPricePayment: { type: DataTypes.DOUBLE, allowNull: false },
       totalOutboundQty: { type: DataTypes.INTEGER, allowNull: false },
+
       dueDate: { type: DataTypes.DATE, comment: "Thời hạn thanh toán PXK" },
+
       paidAmount: { type: DataTypes.DOUBLE, comment: "Số tiền đã thanh toán" },
       remainingAmount: { type: DataTypes.DOUBLE, comment: "Số tiền còn lại phải thanh toán" },
+
       outboundBy: { type: DataTypes.STRING, allowNull: false },
       updatedBy: { type: DataTypes.STRING },
+
       status: {
         type: DataTypes.ENUM("paid", "unpaid", "partial"),
         defaultValue: "unpaid",
         allowNull: false,
       },
+
       writeOffAmount: { type: DataTypes.DOUBLE, comment: "Số tiền đã xóa nợ" },
-      writeOffNote: { type: DataTypes.STRING, comment: "Ghi chú xóa nợ" },
 
       //FK
       customerId: { type: DataTypes.STRING, allowNull: true },
@@ -129,7 +132,7 @@ export function initOutboundHistoryModel(sequelize: Sequelize): typeof OutboundH
         {
           //index phục vụ cho việc tìm các PXK chưa thanh toán
           name: "idx_outbound_debt_summary",
-          fields: ["status", "customerId", "remainingAmount", "dateOutbound"],
+          fields: ["status", "remainingAmount", "customerId", "dateOutbound"],
         },
       ],
     },

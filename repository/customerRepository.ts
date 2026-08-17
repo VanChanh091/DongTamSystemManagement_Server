@@ -6,7 +6,7 @@ export const customerRepository = {
   //get all
   findAllCustomer: async () => {
     return await Customer.findAll({
-      attributes: ["customerId", "customerName", "companyName"],
+      attributes: ["customerName", "phone"],
     });
   },
 

@@ -19,7 +19,7 @@ interface PaymentAllocationAttributes {
 //cho phép bỏ qua id khi tạo
 export type PaymentAllocationCreationAttributes = Optional<
   PaymentAllocationAttributes,
-  "allocationId" | "outboundId" | "createdAt" | "updatedAt"
+  "allocationId" | "outboundId" | "paymentMethod" | "createdAt" | "updatedAt"
 >;
 
 //định nghĩa kiểu OOP
@@ -44,7 +44,7 @@ export function initPaymentAllocationModel(sequelize: Sequelize): typeof Payment
     {
       allocationId: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
       amountAllocation: { type: DataTypes.DOUBLE, allowNull: false },
-      paymentMethod: { type: DataTypes.STRING, allowNull: false },
+      paymentMethod: { type: DataTypes.STRING, allowNull: false, defaultValue: "MANUAL" },
 
       //FK
       outboundId: { type: DataTypes.INTEGER, allowNull: false },

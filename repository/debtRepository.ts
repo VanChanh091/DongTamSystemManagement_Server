@@ -23,11 +23,13 @@ export const debtRepository = {
 
   findOutboundUnpaid: async ({
     customerId,
+    userId,
     lock,
     transaction,
     includeCustomer = true,
   }: {
     customerId?: string | string[];
+    userId?: number;
     lock?: FindOptions["lock"]; // lấy kiểu lock của Sequelize
     transaction?: Transaction;
     includeCustomer?: boolean;
@@ -48,6 +50,7 @@ export const debtRepository = {
         ? [
             {
               model: Customer,
+              where: userId ? { userId } : {},
               attributes: ["customerId", "customerName"],
             },
           ]
@@ -55,8 +58,25 @@ export const debtRepository = {
       order: [["dateOutbound", "ASC"]],
       raw: true,
       nest: true, // cần có để lấy được thông tin customer
-      transaction,
       lock,
+      transaction,
+    });
+  },
+
+  findOutboundById: async ({
+    outboundSlipCode,
+    options,
+  }: {
+    outboundSlipCode: string;
+    options: FindOptions;
+  }) => {
+    return await OutboundHistory.findOne({
+      where: {
+        status: { [Op.in]: ["unpaid", "partial"] },
+        remainingAmount: { [Op.gt]: 0 },
+        outboundSlipCode,
+      },
+      ...options,
     });
   },
 

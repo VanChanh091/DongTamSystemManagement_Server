@@ -23,7 +23,13 @@ interface CustomerPaymentAttributes {
 //cho phép bỏ qua id khi tạo
 export type CustomerPaymentCreationAttributes = Optional<
   CustomerPaymentAttributes,
-  "debtCurrent" | "debtLimit" | "closingDays" | "createdAt" | "updatedAt"
+  | "debtCurrent"
+  | "debtLimit"
+  | "debtCurrent"
+  | "debtLimit"
+  | "closingDays"
+  | "createdAt"
+  | "updatedAt"
 >;
 
 //định nghĩa kiểu OOP
@@ -71,8 +77,8 @@ export function initCustomerPaymentModel(sequelize: Sequelize): typeof CustomerP
         allowNull: false,
         defaultValue: "daily",
       },
-      debtCurrent: { type: DataTypes.DOUBLE },
-      debtLimit: { type: DataTypes.DOUBLE },
+      debtCurrent: { type: DataTypes.DOUBLE, defaultValue: 0 },
+      debtLimit: { type: DataTypes.DOUBLE, defaultValue: 0 },
 
       //FK
       customerId: { type: DataTypes.STRING, allowNull: false },

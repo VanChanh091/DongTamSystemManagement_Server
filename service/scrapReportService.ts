@@ -344,7 +344,7 @@ export const scrapReportService = {
         const isAllPending = scrapReports.every((r) => r.status === "pending");
         if (!isAllPending) {
           throw AppError.BadRequest(
-            "Chỉ có thể xác nhận báo cáo đang chờ kiểm tra",
+            `Chỉ có thể ${status == "confirmed" ? "xác nhận" : "từ chối"} báo cáo đang chờ kiểm tra`,
             "INVALID_SCRAP_REPORT_STATUS",
           );
         }
@@ -471,7 +471,7 @@ export const scrapReportService = {
 
       if (plannings.length === 0) {
         throw AppError.NotFound(
-          "No production reports found for this date and shift",
+          "Không tìm thấy kế hoạch sản xuất cho ca này. Vui lòng kiểm tra lại!",
           "REPORTS_NOT_FOUND",
         );
       }

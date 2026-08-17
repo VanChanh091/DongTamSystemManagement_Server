@@ -204,7 +204,9 @@ export const syncOutboundToMeili = async (isDeleteAll: boolean) => {
 
 //sync inventory
 export const syncInventoryToMeili = async (isDeleteAll: boolean) => {
-  const inventories = await inventoryRepository.syncAllInventoryForMeili();
+  const inventories = await inventoryRepository.syncAllInventoryForMeili({
+    qtyInventory: { [Op.ne]: 0 },
+  });
   const flattenData = inventories.map(meiliTransformer.inventory);
 
   return await syncMeiliData({

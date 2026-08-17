@@ -1,13 +1,34 @@
+import { AppError } from "../../../utils/appError";
 import { NextFunction, Request, Response } from "express";
 import { debtManagementService } from "../../../service/warehouse/debtManagementService";
-import { AppError } from "../../../utils/appError";
 
 //=================================CLOSING DEBT=======================================
 export const getCustomerDebtSummary = async (req: Request, res: Response, next: NextFunction) => {
-  const { customerId } = req.query as { customerId?: string };
+  const {
+    customerId,
+    userId,
+    page = 1,
+    pageSize = 30,
+  } = req.query as {
+    customerId?: string;
+    userId?: string;
+    search?: string;
+    page?: string;
+    pageSize?: string;
+  };
 
   try {
-    const response = await debtManagementService.getCustomerDebtSummary(customerId);
+    const isSale = req.user.permissions.includes("sale");
+    const rawUserId = isSale ? req.user.userId : userId;
+
+    const targetUserId =
+      rawUserId !== undefined && rawUserId !== "" ? Number(rawUserId) : undefined;
+
+    const response = await debtManagementService.getCustomerDebtSummary({
+      page: Number(page),
+      pageSize: Number(pageSize),
+      userId: targetUserId,
+    });
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -15,20 +36,19 @@ export const getCustomerDebtSummary = async (req: Request, res: Response, next: 
 };
 
 export const handleClosingDebt = async (req: Request, res: Response, next: NextFunction) => {
-  const { customerId, closingDate, paymentTermDays, targetDate, isAuto } = req.body as {
-    customerId: string;
-    closingDate: Date;
-    paymentTermDays?: number;
-    targetDate?: Date;
+  const { customerId, targetDate, isAuto } = req.body as {
+    customerId?: string;
+    targetDate: Date;
     isAuto: boolean;
   };
 
   try {
     let response;
 
+    const formatDate = targetDate ? new Date(targetDate) : new Date();
+
     if (isAuto) {
-      const parsedTargetDate = targetDate ? new Date(targetDate) : new Date();
-      response = await debtManagementService.processAutoDebtClosing(parsedTargetDate);
+      response = await debtManagementService.processAutoDebtClosing(formatDate);
     } else {
       if (!customerId) {
         throw AppError.BadRequest(
@@ -37,12 +57,9 @@ export const handleClosingDebt = async (req: Request, res: Response, next: NextF
         );
       }
 
-      const parsedClosingDate = closingDate ? new Date(closingDate) : new Date();
-
       response = await debtManagementService.closeDebtForSingleCustomer({
         customerId,
-        closingDate: parsedClosingDate,
-        overridePaymentTermDays: paymentTermDays,
+        closingDate: formatDate,
       });
     }
 
@@ -88,7 +105,16 @@ export const importAmountPayment = async (req: Request, res: Response, next: Nex
     }
 
     const response = await debtManagementService.importAmountPaymentFromExcel(req.file.buffer);
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
 
+export const writeOffDebt = async (req: Request, res: Response, next: NextFunction) => {
+  const { outboundSlipCode } = req.query as { outboundSlipCode: string };
+  try {
+    const response = await debtManagementService.writeOffDebt(outboundSlipCode);
     return res.status(200).json(response);
   } catch (error) {
     next(error);

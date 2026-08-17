@@ -5,6 +5,7 @@ import {
   deleteCustomer,
   exportExcelCustomer,
   getCustomers,
+  getUserSales,
   updateCustomer,
 } from "../../controller/user/customer/customerController";
 import authenticate from "../../middlewares/authMiddleware";
@@ -14,6 +15,7 @@ const router = Router();
 
 router.get("/", authenticate, getCustomers);
 router.get("/order-count", authenticate, checkCustomerInOrders);
+router.get("/user-sales", authenticate, getUserSales);
 
 router.post("/", authenticate, authorizeAnyPermission(["sale"]), createCustomer);
 router.post("/export", authenticate, exportExcelCustomer);

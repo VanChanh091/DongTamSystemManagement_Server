@@ -39,8 +39,10 @@ import { initSocket } from "./utils/socket/socket";
 import { AppError } from "./utils/appError";
 import { cleanStackTrace, sendTelegramAlert } from "./utils/telegram/telegramSending";
 
-//cron job auto delete image on Cloudinary
+//cron job
 import "./utils/cronJob/autoDeleteImage";
+import "./utils/cronJob/autoClosingDate";
+
 import { connectMeilisearch } from "./assets/configs/connect/meilisearch.connect";
 import { setupMeilisearch } from "./assets/configs/meilisearch/configs";
 
@@ -160,7 +162,7 @@ server.listen({ port: Number(process.env.PORT) || 5000, host: "0.0.0.0" }, async
 
   //setup meilisearch
   await connectMeilisearch();
-  await setupMeilisearch();
+  // await setupMeilisearch();
 
   console.log("✅ Cron Job đã được kích hoạt!");
 });

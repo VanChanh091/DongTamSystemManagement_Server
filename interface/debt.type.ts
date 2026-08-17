@@ -2,7 +2,7 @@ import { OutboundHistory } from "../models/warehouse/outbound/outboundHistory";
 import { PaymentMethodType } from "../models/warehouse/payment/paymentAllocation";
 
 interface AgingBucket {
-  inTerm: number;
+  dueIn1_3: number; // Sắp tới hạn (≤ 3 ngày)
   overdue1_30: number;
   overdue31_60: number;
   overdue61_90: number;

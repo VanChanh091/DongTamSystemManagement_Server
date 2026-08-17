@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 import { Response } from "express";
 import { AppError } from "../utils/appError";
 import { Order } from "../models/order/order";
@@ -21,6 +21,7 @@ import { meiliClient } from "../assets/configs/connect/meilisearch.connect";
 import { meiliTransformer } from "../assets/configs/meilisearch/meiliTransformer";
 import { customerColumns, mappingCustomerRow } from "../utils/mapping/customerRowAndColumn";
 import { createDataTable, updateChildTable } from "../utils/helper/modelHelper/orderHelpers";
+import { User } from "../models/user/user";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { customer } = CacheKey;
@@ -39,7 +40,10 @@ export const customerService = {
     const cacheKey = noPaging === "true" ? customer.all : customer.page(page);
 
     try {
-      const { isChanged } = await CacheManager.check(Customer, "customer");
+      const { isChanged } = await CacheManager.check(
+        [{ model: Customer }, { model: CustomerPayment }],
+        "customer",
+      );
 
       if (isChanged) {
         await CacheManager.clear("customer");
@@ -162,8 +166,26 @@ export const customerService = {
     }
   },
 
+  //auto generate username and userId
+  getUserSales: async () => {
+    try {
+      return await User.findAll({
+        where: Sequelize.where(
+          Sequelize.fn("JSON_CONTAINS", Sequelize.col("permissions"), JSON.stringify("sale")),
+          1,
+        ),
+        attributes: ["userId", "fullName"],
+        raw: true,
+      });
+    } catch (error) {
+      console.error("Failed to get all user sale", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
   createCustomer: async (data: any) => {
-    const { prefix = "CUSTOM", payment, ...customerData } = data;
+    const { prefix = "CUSTOM", payment, userId, ...customerData } = data;
 
     try {
       return await runInTransaction(async (transaction) => {
@@ -199,7 +221,7 @@ export const customerService = {
         const newCustomerId = `${prefix}${String(nextId).padStart(4, "0")}`;
 
         const newCustomer = await Customer.create(
-          { customerId: newCustomerId, customerSeq: nextId, ...customerData },
+          { customerId: newCustomerId, customerSeq: nextId, userId, ...customerData },
           { transaction },
         );
 
@@ -223,7 +245,7 @@ export const customerService = {
   },
 
   updateCustomer: async (customerId: string, customerData: any) => {
-    const { payment, ...restCustomerData } = customerData;
+    const { payment, userId, ...restCustomerData } = customerData;
 
     try {
       return await runInTransaction(async (transaction) => {
@@ -235,7 +257,7 @@ export const customerService = {
           throw AppError.NotFound("Customer not found", "CUSTOMER_NOT_FOUND");
         }
 
-        await customer.update(restCustomerData, { transaction });
+        await customer.update({ userId, ...restCustomerData }, { transaction });
 
         await updateChildTable({
           model: CustomerPayment,

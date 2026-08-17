@@ -1,9 +1,9 @@
-import redisCache from "../assets/configs/connect/redis.connect";
-import { AppError } from "../utils/appError";
 import bcrypt from "bcrypt";
-import { convertToWebp, uploadImageToCloudinary } from "../utils/image/converToWebp";
 import { Request } from "express";
+import { AppError } from "../utils/appError";
 import { userRepository } from "../repository/userRepository";
+import redisCache from "../assets/configs/connect/redis.connect";
+import { convertToWebp, uploadImageToCloudinary } from "../utils/image/converToWebp";
 
 export const userService = {
   updateProfile: async ({
