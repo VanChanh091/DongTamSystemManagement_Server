@@ -44,7 +44,7 @@ export function initWasteNormPaperModel(sequelize: Sequelize): typeof WasteNormP
       lossInSheetingAndSlitting: { type: DataTypes.DOUBLE, allowNull: false }, //hao phí xả tờ - chia khổ
       machineName: { type: DataTypes.STRING },
     },
-    { sequelize, tableName: "WasteNorms", timestamps: true }
+    { sequelize, tableName: "waste_norm_papers", timestamps: true },
   );
 
   return WasteNormPaper;

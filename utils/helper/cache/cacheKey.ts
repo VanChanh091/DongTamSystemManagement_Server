@@ -34,13 +34,17 @@ export const CacheKey = {
       machine: (machine: string) => `planningPaper:machine:${machine}`,
       lastUpdated: "planningPaper:lastUpdated",
     },
+    box: {
+      machine: (machine: string) => `planningBox:machine:${machine}`,
+      lastUpdated: "planningBox:lastUpdated",
+    },
     stop: {
       page: (page: number) => `planningPaper:stop:page:${page}`,
       lastUpdated: "planningStop:lastUpdated",
     },
-    box: {
-      machine: (machine: string) => `planningBox:machine:${machine}`,
-      lastUpdated: "planningBox:lastUpdated",
+    paperRequirement: {
+      machine: (machine: string) => `paperRequirement:machine:${machine}`,
+      lastUpdated: "paperRequirement:lastUpdated",
     },
   },
 

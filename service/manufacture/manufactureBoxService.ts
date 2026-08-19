@@ -15,7 +15,7 @@ import { manufactureRepo } from "../../repository/manufactureRepository";
 import { planningHelper } from "../../repository/planning/planningHelper";
 import { ReportPlanningBox } from "../../models/report/reportPlanningBox";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
-import { mergeShiftField } from "../../utils/helper/modelHelper/planningHelper";
+import { mergeShiftField } from "../../utils/helper/modelHelper/planning.timeRunning.helper";
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
 import { createReportPlanning } from "../../utils/helper/modelHelper/reportHelper";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";

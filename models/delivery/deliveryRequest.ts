@@ -89,7 +89,7 @@ export function initDeliveryRequestModel(sequelize: Sequelize): typeof DeliveryR
     },
     {
       sequelize,
-      tableName: "DeliveryRequest",
+      tableName: "delivery_requests",
       timestamps: true,
       indexes: [
         //FK

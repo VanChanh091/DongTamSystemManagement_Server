@@ -1,0 +1,67 @@
+import { FindOptions, Op } from "sequelize";
+import { PlanningPaper } from "../../models/planning/planningPaper";
+import { Order } from "../../models/order/order";
+import { PaperRequirementLayers } from "../../models/planning/requirement/paper_requirement_layers";
+
+export const paperRequirementRepo = {
+  buildPaperRequirementsOptions: ({
+    page,
+    pageSize,
+    machine,
+    whereCondition,
+  }: {
+    page: number;
+    pageSize: number;
+    machine: string;
+    whereCondition?: any;
+  }): FindOptions => {
+    const queryOptions: FindOptions = {
+      where: whereCondition,
+      attributes: { exclude: ["createdAt", "updatedAt"] },
+      include: [
+        {
+          model: PlanningPaper,
+          where: {
+            chooseMachine: machine,
+            status: { [Op.in]: ["planning", "lackQty", "producing", "requested"] },
+          },
+          attributes: [
+            "orderId",
+            "planningId",
+            "dayStart",
+            "ghepKho",
+            "runningPlan",
+            "dayReplace",
+            "matEReplace",
+            "matBReplace",
+            "matCReplace",
+            "matE2Replace",
+            "songEReplace",
+            "songBReplace",
+            "songCReplace",
+            "songE2Replace",
+            "chooseMachine",
+            "lengthPaperPlanning",
+            "sizePaperPLaning",
+          ],
+          include: [{ model: Order, attributes: ["flute", "dvt"] }],
+        },
+      ],
+    };
+
+    if (page && pageSize) {
+      queryOptions.offset = (page - 1) * pageSize;
+      queryOptions.limit = pageSize;
+      queryOptions.order = [["requirementId", "ASC"]];
+    }
+
+    return queryOptions;
+  },
+
+  getLayerRequirementsById: async (requirementId: number) => {
+    return await PaperRequirementLayers.findAll({
+      where: { requirementId },
+      attributes: { exclude: ["createdAt", "updatedAt"] },
+    });
+  },
+};

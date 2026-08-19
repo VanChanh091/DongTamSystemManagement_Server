@@ -67,7 +67,7 @@ export function initEmployeeCompanyInfoModel(sequelize: Sequelize): typeof Emplo
     },
     {
       sequelize,
-      tableName: "EmployeeCompanyInfos",
+      tableName: "employee_company_infos",
       timestamps: true,
       indexes: [
         { fields: ["employeeId"] },

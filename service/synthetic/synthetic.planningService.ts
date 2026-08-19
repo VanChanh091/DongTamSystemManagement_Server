@@ -16,7 +16,7 @@ import redisCache from "../../assets/configs/connect/redis.connect";
 import { exportExcelDbPlanning } from "../../utils/helper/excelExporter";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { syntheticRepository } from "../../repository/syntheticRepository";
-import { buildStagesDetails } from "../../utils/helper/modelHelper/planningHelper";
+import { buildStagesDetails } from "../../utils/helper/modelHelper/planning.timeRunning.helper";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { planning } = CacheKey.synthetic;

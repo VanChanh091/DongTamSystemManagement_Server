@@ -111,11 +111,11 @@ export function initOutboundHistoryModel(sequelize: Sequelize): typeof OutboundH
       writeOffAmount: { type: DataTypes.DOUBLE, comment: "Số tiền đã xóa nợ" },
 
       //FK
-      customerId: { type: DataTypes.STRING, allowNull: true },
+      customerId: { type: DataTypes.STRING, allowNull: false },
     },
     {
       sequelize,
-      tableName: "OutboundHistory",
+      tableName: "outbound_histories",
       timestamps: true,
       indexes: [
         //indexes
@@ -123,7 +123,7 @@ export function initOutboundHistoryModel(sequelize: Sequelize): typeof OutboundH
         { fields: ["outboundSlipCode"] },
 
         //composite indexes
-        { fields: ["customerId", "status", "outboundSlipCode"] },
+        { name: "idx_outbound_summary", fields: ["customerId", "status", "outboundSlipCode"] },
         {
           //index phục vụ cho việc tìm các KH chưa chốt công nợ
           name: "idx_outbound_unpaid_summary",

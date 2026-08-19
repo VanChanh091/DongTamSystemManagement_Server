@@ -110,7 +110,7 @@ export function initDeliveryItemModel(sequelize: Sequelize): typeof DeliveryItem
     },
     {
       sequelize,
-      tableName: "DeliveryItem",
+      tableName: "delivery_items",
       timestamps: true,
       indexes: [
         //FK

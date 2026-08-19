@@ -69,7 +69,7 @@ export function initMachinePaperModel(sequelize: Sequelize): typeof MachinePaper
       machinePerformance: { type: DataTypes.DOUBLE, allowNull: false }, //hiệu suất hoạt động
       type: { type: DataTypes.ENUM("M2", "Kg"), allowNull: false, defaultValue: "M2" }, //loại dvt
     },
-    { sequelize, tableName: "MachinePapers", timestamps: true },
+    { sequelize, tableName: "machine_papers", timestamps: true },
   );
 
   return MachinePaper;

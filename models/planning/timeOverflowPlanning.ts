@@ -90,7 +90,7 @@ export function initTimeOverflowPlanningModel(sequelize: Sequelize): typeof time
     },
     {
       sequelize,
-      tableName: "timeOverflowPlannings",
+      tableName: "time_overflow_plannings",
       timestamps: true,
       indexes: [
         //FK

@@ -23,7 +23,7 @@ import { syntheticRepository } from "../../repository/syntheticRepository";
 import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
-import { buildStagesDetails } from "../../utils/helper/modelHelper/planningHelper";
+import { buildStagesDetails } from "../../utils/helper/modelHelper/planning.timeRunning.helper";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
 import {
   inboundColumns,

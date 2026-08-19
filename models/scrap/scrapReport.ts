@@ -99,7 +99,7 @@ export function initScrapReportModel(sequelize: Sequelize): typeof ScrapReport {
     },
     {
       sequelize,
-      tableName: "ScrapReports",
+      tableName: "scrap_reports",
       timestamps: true,
       indexes: [
         //get

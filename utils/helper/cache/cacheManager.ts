@@ -20,8 +20,9 @@ const CACHE_CONFIG = {
   //planning
   orderAccept: ["orders:status:accept"],
   planningPaper: ["planningPaper:machine:", "planningPaper:search:"],
-  planningStop: ["planningPaper:stop:"],
   planningBox: ["planningBox:machine:", "planningBox:search:"],
+  planningStop: ["planningPaper:stop:"],
+  paperRequirement: ["paperRequirement:machine:"],
 
   //manufacture
   manufacturePaper: ["manufacturePaper:machine:"],
@@ -117,6 +118,7 @@ export const CacheManager = {
       planningOrderPaper: CacheKey.planning.paper.lastUpdated, //using for cache planning order
       planningStop: CacheKey.planning.stop.lastUpdated,
       planningBox: CacheKey.planning.box.lastUpdated,
+      paperRequirement: CacheKey.planning.paperRequirement.lastUpdated,
 
       //manufacture
       manufacturePaper: CacheKey.manufacture.paper.lastUpdated,

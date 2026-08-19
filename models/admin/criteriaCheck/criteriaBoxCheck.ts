@@ -44,7 +44,7 @@ export function initCriteriaBoxCheckModel(sequelize: Sequelize): typeof Criteria
     },
     {
       sequelize,
-      tableName: "CriteriaBoxCheck",
+      tableName: "criteria_box_check",
       timestamps: true,
     },
   );

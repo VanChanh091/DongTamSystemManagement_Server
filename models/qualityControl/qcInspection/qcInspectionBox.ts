@@ -74,7 +74,7 @@ export function initQcInspectionBoxModel(sequelize: Sequelize): typeof QcInspect
     },
     {
       sequelize,
-      tableName: "QcInspectionBox",
+      tableName: "qc_inspection_boxes",
       timestamps: true,
       indexes: [
         //FK

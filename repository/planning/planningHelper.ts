@@ -10,15 +10,19 @@ export const planningHelper = {
     return await model.findOne({ where, ...options });
   },
 
+  createData: async ({ model, data, transaction }: RepoPayload) => {
+    return await model.create(data, { transaction });
+  },
+
+  bulkCreateData: async ({ model, data, options = {} }: RepoPayload) => {
+    return await model.bulkCreate(data, options);
+  },
+
   updateDataModel: async ({ model, data, options = {} }: RepoPayload) => {
     return await model.update(data, options);
   },
 
   deleteModelData: async ({ model, where, transaction }: RepoPayload) => {
     return await model.destroy({ where, transaction });
-  },
-
-  createData: async ({ model, data, transaction }: RepoPayload) => {
-    return await model.create(data, { transaction });
   },
 };

@@ -81,7 +81,7 @@ export function initInventoryLogModel(sequelize: Sequelize): typeof InventoryLog
     },
     {
       sequelize,
-      tableName: "InventoryLogs",
+      tableName: "inventory_logs",
       timestamps: true,
       indexes: [
         //FK

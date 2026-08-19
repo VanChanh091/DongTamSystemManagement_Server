@@ -52,7 +52,7 @@ export function initQcSamepleResultModel(sequelize: Sequelize): typeof QcSampleR
     },
     {
       sequelize,
-      tableName: "QcSampleResult",
+      tableName: "qc_sample_results",
       timestamps: true,
       indexes: [
         //FK

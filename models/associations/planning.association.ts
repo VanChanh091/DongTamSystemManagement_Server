@@ -7,6 +7,8 @@ export default function planningAssociations(models: any) {
     timeOverflowPlanning,
     ReportPlanningPaper,
     ReportPlanningBox,
+    PaperRequirements,
+    PaperRequirementLayers,
   } = models;
 
   // PLANNING PAPER & BOX
@@ -32,6 +34,24 @@ export default function planningAssociations(models: any) {
     onDelete: "CASCADE",
   });
   PlanningBoxTime.belongsTo(PlanningBox, { foreignKey: "planningBoxId" });
+
+  // PAPER REQUIREMENT
+  PlanningPaper.hasOne(PaperRequirements, {
+    foreignKey: "planningId",
+    as: "paperRequirements",
+    onDelete: "CASCADE",
+  });
+  PaperRequirements.belongsTo(PlanningPaper, { foreignKey: "planningId" });
+
+  PaperRequirements.hasMany(PaperRequirementLayers, {
+    foreignKey: "requirementId",
+    as: "layers",
+    onDelete: "CASCADE",
+  });
+  PaperRequirementLayers.belongsTo(PaperRequirements, {
+    foreignKey: "requirementId",
+    as: "requirement",
+  });
 
   // TIME OVERFLOW
   PlanningPaper.hasOne(timeOverflowPlanning, {

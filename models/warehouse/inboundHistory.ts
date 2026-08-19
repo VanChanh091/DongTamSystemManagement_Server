@@ -69,7 +69,7 @@ export function initInboundHistoryModel(sequelize: Sequelize): typeof InboundHis
     },
     {
       sequelize,
-      tableName: "InboundHistory",
+      tableName: "inbound_histories",
       timestamps: true,
       indexes: [
         //FK

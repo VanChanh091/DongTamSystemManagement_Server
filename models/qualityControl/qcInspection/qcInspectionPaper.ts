@@ -101,7 +101,7 @@ export function initQcInspectionPaperModel(sequelize: Sequelize): typeof QcInspe
     },
     {
       sequelize,
-      tableName: "QcInspectionPaper",
+      tableName: "qc_inspection_papers",
       timestamps: true,
       indexes: [
         //FK

@@ -173,7 +173,7 @@ export function initPlanningBoxModel(sequelize: Sequelize): typeof PlanningBox {
     },
     {
       sequelize,
-      tableName: "PlanningBoxes",
+      tableName: "planning_boxes",
       timestamps: true,
       indexes: [
         //FK

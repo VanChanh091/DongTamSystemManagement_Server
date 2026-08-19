@@ -55,7 +55,7 @@ export function initDailyReportModel(sequelize: Sequelize): typeof DailyReportPe
     },
     {
       sequelize,
-      tableName: "ReportPerformances",
+      tableName: "report_performances",
       timestamps: true,
       indexes: [
         //indexes

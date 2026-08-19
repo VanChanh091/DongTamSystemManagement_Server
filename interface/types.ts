@@ -65,3 +65,24 @@ export interface UnifiedPerfInput {
   length: number;
   duration: number;
 }
+
+export interface PlanningOrderInput {
+  // Thông số máy & Khổ chạy
+  chooseMachine: string;
+  runningPlan: number;
+  ghepKho: number;
+
+  lengthPaperPlanning: number;
+  sizePaperPLaning: number;
+
+  // Cấu trúc giấy các lớp
+  dayReplace?: string;
+  songEReplace?: string;
+  matEReplace?: string;
+  songBReplace?: string;
+  matBReplace?: string;
+  songCReplace?: string;
+  matCReplace?: string;
+  songE2Replace?: string;
+  matE2Replace?: string;
+}

@@ -51,7 +51,7 @@ export function initWaveCrestCoefficientModel(sequelize: Sequelize) {
       fluteC: { type: DataTypes.DOUBLE },
       machineName: { type: DataTypes.STRING },
     },
-    { sequelize, tableName: "WaveCrestCoefficients", timestamps: true }
+    { sequelize, tableName: "wave_crest_coefficients", timestamps: true },
   );
 
   return WaveCrestCoefficient;

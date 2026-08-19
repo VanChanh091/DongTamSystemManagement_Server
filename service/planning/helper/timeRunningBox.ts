@@ -12,7 +12,7 @@ import {
   getWorkShift,
   parseTimeOnly,
   setTimeOnDay,
-} from "../../../utils/helper/modelHelper/planningHelper";
+} from "../../../utils/helper/modelHelper/planning.timeRunning.helper";
 
 // công thức:
 // Nếu là máy in thì totalTime = thời gian in + time

@@ -46,7 +46,7 @@ export function initOrderApprovedModel(sequelize: Sequelize): typeof OrderApprov
     },
     {
       sequelize,
-      tableName: "OrderApproved",
+      tableName: "order_approved",
       timestamps: true,
       indexes: [
         //get

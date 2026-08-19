@@ -58,7 +58,7 @@ export function initInventoryTransfersModel(sequelize: Sequelize): typeof Invent
     },
     {
       sequelize,
-      tableName: "InventoryTransfers",
+      tableName: "inventory_transfers",
       timestamps: true,
       indexes: [
         //FK

@@ -3,7 +3,7 @@ import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 export type processTypeQC = "paper" | "box";
 
 //định nghĩa trường trong bảng
- interface QcCriteriaAttributes {
+interface QcCriteriaAttributes {
   qcCriteriaId: number;
   processType: processTypeQC;
   criteriaCode: string;
@@ -44,7 +44,7 @@ export function initQcCriteriaModel(sequelize: Sequelize): typeof QcCriteria {
       criteriaName: { type: DataTypes.STRING, allowNull: false },
       isRequired: { type: DataTypes.BOOLEAN, allowNull: false },
     },
-    { sequelize, tableName: "QcCriteria", timestamps: true }
+    { sequelize, tableName: "qc_criteria", timestamps: true },
   );
 
   return QcCriteria;

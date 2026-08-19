@@ -55,7 +55,7 @@ export function initOrderImageModel(sequelize: Sequelize): typeof OrderImage {
     },
     {
       sequelize,
-      tableName: "OrderImages",
+      tableName: "order_images",
       timestamps: true,
       indexes: [{ fields: ["orderId"] }],
     },

@@ -72,7 +72,7 @@ export function initOutboundDetailModel(sequelize: Sequelize): typeof OutboundDe
     },
     {
       sequelize,
-      tableName: "OutboundDetail",
+      tableName: "outbound_details",
       timestamps: true,
       indexes: [
         //FK

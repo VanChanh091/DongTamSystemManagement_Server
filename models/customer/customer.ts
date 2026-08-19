@@ -85,7 +85,7 @@ export function initCustomerModel(sequelize: Sequelize): typeof Customer {
       customerSeq: { type: DataTypes.INTEGER, allowNull: false },
 
       //FK
-      userId: { type: DataTypes.INTEGER, allowNull: true },
+      userId: { type: DataTypes.INTEGER, allowNull: false },
     },
     {
       sequelize,

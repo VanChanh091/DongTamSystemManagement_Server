@@ -20,6 +20,7 @@ import {
   cancelOrContinuePlannning,
   backOrderToReject,
 } from "../../controller/user/planning/planningStatusController";
+import { getPaperRequirements } from "../../controller/user/planning/paperRequirementController";
 
 const router = Router();
 
@@ -63,6 +64,9 @@ router.post(
   updateIndex_TimeRunningBox,
 );
 router.put("/planning-boxes", authenticate, authorizeAnyPermission(["plan"]), updatePlanningBoxes);
+
+//=========================PAPER REQUIREMENTS=========================
+router.get("/paper-requirements", authenticate, getPaperRequirements);
 
 //socket
 router.post(

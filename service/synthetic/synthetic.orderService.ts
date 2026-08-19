@@ -107,7 +107,6 @@ export const syntheticOrderService = {
   getPlanningBoxDetail: async (orderId: string) => {
     try {
       const data = await syntheticRepository.getPlanningBoxDetail(orderId);
-
       if (!data) {
         return { message: "No planning box found for this order", data: null };
       }

@@ -25,6 +25,8 @@ import { initOrderImageModel } from "./order/orderImage";
 import { initPlanningBoxModel } from "./planning/planningBox";
 import { initPlanningBoxTimeModel } from "./planning/planningBoxMachineTime";
 import { initPlanningPaperModel } from "./planning/planningPaper";
+import { initPaperRequirementLayersModel } from "./planning/requirement/paper_requirement_layers";
+import { initPaperRequirementsModel } from "./planning/requirement/paperRequirements";
 import { initTimeOverflowPlanningModel } from "./planning/timeOverflowPlanning";
 import { initProductModel } from "./product/product";
 import { initQcCriteriaModel } from "./qualityControl/qcCriteria";
@@ -78,6 +80,10 @@ const PlanningPaper = initPlanningPaperModel(sequelize);
 const PlanningBox = initPlanningBoxModel(sequelize);
 const timeOverflowPlanning = initTimeOverflowPlanningModel(sequelize);
 const PlanningBoxTime = initPlanningBoxTimeModel(sequelize);
+
+//paper requirement
+const PaperRequirements = initPaperRequirementsModel(sequelize);
+const PaperRequirementLayers = initPaperRequirementLayersModel(sequelize);
 
 //report
 const ReportPlanningPaper = initReportPlanningPaperModel(sequelize);
@@ -153,6 +159,10 @@ const models = {
   PlanningBox,
   timeOverflowPlanning,
   PlanningBoxTime,
+
+  //paper requirement
+  PaperRequirements,
+  PaperRequirementLayers,
 
   //report
   ReportPlanningPaper,

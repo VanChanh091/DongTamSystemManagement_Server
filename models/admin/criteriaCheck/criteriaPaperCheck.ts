@@ -44,7 +44,7 @@ export function initCriteriaPaperCheckModel(sequelize: Sequelize): typeof Criter
     },
     {
       sequelize,
-      tableName: "CriteriaPaperCheck",
+      tableName: "criteria_paper_check",
       timestamps: true,
     },
   );

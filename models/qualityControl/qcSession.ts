@@ -62,7 +62,7 @@ export function initQcSessionModel(sequelize: Sequelize): typeof QcSession {
     },
     {
       sequelize,
-      tableName: "QcSession",
+      tableName: "qc_sessions",
       timestamps: true,
       indexes: [
         //FK

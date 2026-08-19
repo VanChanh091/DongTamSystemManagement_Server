@@ -48,7 +48,7 @@ export function initDeliveryPlanModel(sequelize: Sequelize): typeof DeliveryPlan
     },
     {
       sequelize,
-      tableName: "DeliveryPlan",
+      tableName: "delivery_plans",
       timestamps: true,
       indexes: [{ fields: ["deliveryDate"] }, { fields: ["status"] }],
     },

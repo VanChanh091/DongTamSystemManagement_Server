@@ -81,7 +81,7 @@ export function initLiquidationInventoryModel(sequelize: Sequelize): typeof Liqu
     },
     {
       sequelize,
-      tableName: "LiquidationInventory",
+      tableName: "liquidation_inventories",
       timestamps: true,
       indexes: [
         //FK

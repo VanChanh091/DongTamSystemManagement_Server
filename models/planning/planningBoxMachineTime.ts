@@ -145,7 +145,7 @@ export function initPlanningBoxTimeModel(sequelize: Sequelize): typeof PlanningB
     },
     {
       sequelize,
-      tableName: "PlanningBoxTimes",
+      tableName: "planning_box_times",
       timestamps: true,
       indexes: [
         //FK

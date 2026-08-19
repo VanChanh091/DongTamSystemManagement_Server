@@ -37,7 +37,7 @@ export function initFluteRatioCoefficientModel(sequelize: Sequelize) {
       fluteName: { type: DataTypes.STRING, allowNull: false },
       ratio: { type: DataTypes.DOUBLE, allowNull: false },
     },
-    { sequelize, tableName: "fluteRatio", timestamps: true }
+    { sequelize, tableName: "flute_ratio", timestamps: true },
   );
 
   return FluteRatio;

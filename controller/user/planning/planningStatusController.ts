@@ -47,14 +47,13 @@ export const getOrderAcceptByField = async (req: Request, res: Response, next: N
 //planning order
 export const planningOrder = async (req: Request, res: Response, next: NextFunction) => {
   const { orderId } = req.query as { orderId: string };
-  const planningData = req.body;
 
   try {
     if (!orderId) {
       throw AppError.BadRequest("Missing orderId or newStatus", "MISSING_PARAMETERS");
     }
 
-    const response = await planningStatusService.planningOrder(orderId, planningData);
+    const response = await planningStatusService.planningOrder(orderId, req.body);
     return res.status(201).json(response);
   } catch (error) {
     next(error);

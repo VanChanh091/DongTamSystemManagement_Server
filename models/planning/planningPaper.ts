@@ -285,7 +285,7 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
     },
     {
       sequelize,
-      tableName: "Plannings",
+      tableName: "planning_papers",
       timestamps: true,
       indexes: [
         //FK

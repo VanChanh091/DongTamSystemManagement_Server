@@ -38,7 +38,7 @@ export function initMachineBoxModel(sequelize: Sequelize): typeof MachineBox {
       speedOfMachine: { type: DataTypes.INTEGER, allowNull: false },
       machineName: { type: DataTypes.STRING, allowNull: false },
     },
-    { sequelize, tableName: "MachineBoxes", timestamps: true }
+    { sequelize, tableName: "machine_boxes", timestamps: true },
   );
 
   return MachineBox;

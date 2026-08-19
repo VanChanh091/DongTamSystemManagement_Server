@@ -74,7 +74,7 @@ export function initReportPlanningBoxModel(sequelize: Sequelize): typeof ReportP
     },
     {
       sequelize,
-      tableName: "ReportPlanningBoxes",
+      tableName: "report_planning_boxes",
       timestamps: true,
       indexes: [
         //FK

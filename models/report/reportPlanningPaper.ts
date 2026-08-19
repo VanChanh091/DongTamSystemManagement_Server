@@ -92,7 +92,7 @@ export function initReportPlanningPaperModel(sequelize: Sequelize): typeof Repor
     },
     {
       sequelize,
-      tableName: "ReportPlanningPapers",
+      tableName: "report_planning_papers",
       timestamps: true,
       indexes: [
         //FK

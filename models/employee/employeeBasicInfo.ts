@@ -81,7 +81,7 @@ export function initEmployeeBasicInfoModel(sequelize: Sequelize): typeof Employe
     },
     {
       sequelize,
-      tableName: "EmployeeBasicInfos",
+      tableName: "employee_basic_infos",
       timestamps: true,
     },
   );

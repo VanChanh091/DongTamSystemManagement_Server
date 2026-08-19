@@ -44,7 +44,7 @@ export function initWasteNormBoxModel(sequelize: Sequelize): typeof WasteNormBox
       totalLossOnTotalQty: { type: DataTypes.DOUBLE, allowNull: false },
       machineName: { type: DataTypes.STRING, allowNull: false },
     },
-    { sequelize, tableName: "WasteNormBoxes", timestamps: true }
+    { sequelize, tableName: "waste_norm_boxes", timestamps: true },
   );
 
   return WasteNormBox;

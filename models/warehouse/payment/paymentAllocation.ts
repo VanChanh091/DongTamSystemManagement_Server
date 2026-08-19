@@ -51,7 +51,7 @@ export function initPaymentAllocationModel(sequelize: Sequelize): typeof Payment
     },
     {
       sequelize,
-      tableName: "PaymentAllocation",
+      tableName: "payment_allocations",
       timestamps: true,
       indexes: [{ fields: ["outboundId"] }],
     },

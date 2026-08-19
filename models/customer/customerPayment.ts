@@ -5,7 +5,7 @@ export type PaymentType = "daily" | "weekly" | "monthly" | "custom_days";
 
 //định nghĩa trường trong bảng
 interface CustomerPaymentAttributes {
-  cusPaymentId: string;
+  cusPaymentId: number;
   debtCurrent?: number | null;
   debtLimit?: number | null;
   paymentType: PaymentType;
@@ -23,6 +23,7 @@ interface CustomerPaymentAttributes {
 //cho phép bỏ qua id khi tạo
 export type CustomerPaymentCreationAttributes = Optional<
   CustomerPaymentAttributes,
+  | "cusPaymentId"
   | "debtCurrent"
   | "debtLimit"
   | "debtCurrent"
@@ -37,7 +38,7 @@ export class CustomerPayment
   extends Model<CustomerPaymentAttributes, CustomerPaymentCreationAttributes>
   implements CustomerPaymentAttributes
 {
-  declare cusPaymentId: string;
+  declare cusPaymentId: number;
   declare debtCurrent?: number | null;
   declare debtLimit?: number | null;
   declare paymentType: PaymentType;
@@ -85,7 +86,7 @@ export function initCustomerPaymentModel(sequelize: Sequelize): typeof CustomerP
     },
     {
       sequelize,
-      tableName: "CustomerPayments",
+      tableName: "customer_payments",
       timestamps: true,
       indexes: [{ unique: true, fields: ["customerId"] }, { fields: ["paymentType"] }],
     },
