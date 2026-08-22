@@ -97,6 +97,7 @@ export const qcInspectionService = {
     username,
     machine,
     userId,
+    note,
   }: {
     req: Request;
     checking: Record<string, number>;
@@ -105,6 +106,7 @@ export const qcInspectionService = {
     username: string;
     machine: string;
     userId: number;
+    note?: string;
   }) => {
     try {
       return runInTransaction(async (transaction) => {
@@ -113,6 +115,7 @@ export const qcInspectionService = {
           timeInspection: new Date(),
           checkedBy: username,
           userId: userId,
+          note: note || null,
         };
 
         if (checking) {
@@ -359,6 +362,7 @@ export const qcInspectionService = {
     username,
     errProgress,
     userId,
+    note,
   }: {
     req: Request;
     planningBoxId: number;
@@ -366,6 +370,7 @@ export const qcInspectionService = {
     username: string;
     errProgress: qcCheckBox;
     userId: number;
+    note?: string;
   }) => {
     try {
       return runInTransaction(async (transaction) => {
@@ -373,6 +378,7 @@ export const qcInspectionService = {
           timeInspection: new Date(),
           checkedBy: username,
           userId: userId,
+          note: note || null,
         };
 
         const boxTime = await PlanningBoxTime.findOne({

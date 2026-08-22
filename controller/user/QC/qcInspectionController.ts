@@ -80,12 +80,13 @@ export const getQcInspectionErr = async (req: Request, res: Response, next: Next
 //create
 export const checkingInspection = async (req: Request, res: Response, next: NextFunction) => {
   const { isPaper } = req.query as { isPaper: string };
-  const { checking, errProgress, planningId, planningBoxId, machine } = req.body as {
+  const { checking, errProgress, planningId, planningBoxId, machine, note } = req.body as {
     checking?: Record<string, number>;
     errProgress: qcCheckPaper | qcCheckBox;
     planningId?: number;
     planningBoxId?: number;
     machine: string;
+    note?: string;
   };
 
   try {
@@ -99,6 +100,7 @@ export const checkingInspection = async (req: Request, res: Response, next: Next
         errProgress: errProgress as qcCheckPaper,
         username: req.user.fullName,
         userId: req.user.userId,
+        note: note,
       });
     } else if (isPaper === "box") {
       response = await qcInspectionService.checkingInspectionBox({
@@ -108,6 +110,7 @@ export const checkingInspection = async (req: Request, res: Response, next: Next
         errProgress: errProgress as qcCheckBox,
         username: req.user.fullName,
         userId: req.user.userId,
+        note: note,
       });
     }
     return res.status(200).json(response);

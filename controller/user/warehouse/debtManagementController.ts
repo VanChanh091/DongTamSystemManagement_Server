@@ -69,6 +69,15 @@ export const handleClosingDebt = async (req: Request, res: Response, next: NextF
   }
 };
 
+//export excel
+export const exportDebtCustomer = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await debtManagementService.exportCustomerDebtSummaryToExcel(res);
+  } catch (error) {
+    next(error);
+  }
+};
+
 //=================================PAYMENT=======================================
 export const paymentDebtByCustomerId = async (req: Request, res: Response, next: NextFunction) => {
   const { customerId, amount, outboundSlipCodes } = req.body as {

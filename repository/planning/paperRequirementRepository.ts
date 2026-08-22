@@ -2,6 +2,7 @@ import { FindOptions, Op } from "sequelize";
 import { PlanningPaper } from "../../models/planning/planningPaper";
 import { Order } from "../../models/order/order";
 import { PaperRequirementLayers } from "../../models/planning/requirement/paper_requirement_layers";
+import { Customer } from "../../models/customer/customer";
 
 export const paperRequirementRepo = {
   buildPaperRequirementsOptions: ({
@@ -27,7 +28,6 @@ export const paperRequirementRepo = {
           },
           attributes: [
             "orderId",
-            "planningId",
             "dayStart",
             "ghepKho",
             "runningPlan",
@@ -44,7 +44,13 @@ export const paperRequirementRepo = {
             "lengthPaperPlanning",
             "sizePaperPLaning",
           ],
-          include: [{ model: Order, attributes: ["flute", "dvt"] }],
+          include: [
+            {
+              model: Order,
+              attributes: ["flute", "dateRequestShipping"],
+              include: [{ model: Customer, attributes: ["customerName"] }],
+            },
+          ],
         },
       ],
     };

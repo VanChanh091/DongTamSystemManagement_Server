@@ -11,6 +11,8 @@ interface QcInspectionBoxAttributes {
   checkList: qcCheckBox;
   checkedBy: string;
 
+  note?: string;
+
   createdAt?: Date;
   updatedAt?: Date;
 
@@ -25,6 +27,7 @@ export type QcInspectionBoxCreationAttributes = Optional<
   | "inspecBoxId"
   | "timeInspection"
   | "checkedBy"
+  | "note"
   | "boxTimeId"
   | "userId"
   | "createdAt"
@@ -40,6 +43,8 @@ export class QcInspectionBox
   declare timeInspection: Date;
   declare checkList: qcCheckBox;
   declare checkedBy: string;
+
+  declare note?: string;
 
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
@@ -67,6 +72,8 @@ export function initQcInspectionBoxModel(sequelize: Sequelize): typeof QcInspect
       },
       checkList: { type: DataTypes.JSON, allowNull: false }, //danh sách kiểm tra
       checkedBy: { type: DataTypes.STRING, allowNull: false }, //người kiểm tra
+
+      note: { type: DataTypes.STRING }, //ghi chú
 
       //FK
       boxTimeId: { type: DataTypes.INTEGER, allowNull: false },

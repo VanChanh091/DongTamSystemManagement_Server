@@ -19,6 +19,8 @@ interface QcInspectionPaperAttributes {
   checkList: qcCheckPaper;
   checkedBy: string;
 
+  note?: string;
+
   createdAt?: Date;
   updatedAt?: Date;
 
@@ -33,6 +35,7 @@ export type QcInspectionPaperCreationAttributes = Optional<
   | "inspecPaperId"
   | "timeInspection"
   | "checkedBy"
+  | "note"
   | "planningId"
   | "userId"
   | "createdAt"
@@ -57,6 +60,8 @@ export class QcInspectionPaper
 
   declare checkList: qcCheckPaper;
   declare checkedBy: string;
+
+  declare note?: string;
 
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
@@ -94,6 +99,8 @@ export function initQcInspectionPaperModel(sequelize: Sequelize): typeof QcInspe
 
       checkList: { type: DataTypes.JSON, allowNull: false }, //danh sách kiểm tra
       checkedBy: { type: DataTypes.STRING, allowNull: false }, //người kiểm tra
+
+      note: { type: DataTypes.STRING }, //ghi chú
 
       //FK
       planningId: { type: DataTypes.INTEGER, allowNull: false },

@@ -1,4 +1,5 @@
 import * as xlsx from "xlsx";
+import ExcelJS from "exceljs";
 import { Transaction } from "sequelize";
 import { AppError } from "../../utils/appError";
 import { debtRepository } from "../../repository/debtRepository";
@@ -11,6 +12,12 @@ import {
   PaymentMethodType,
 } from "../../models/warehouse/payment/paymentAllocation";
 import { DebtItemDTO, DeductionInput, ParsedExcelRow } from "../../interface/debt.type";
+import { Response } from "express";
+import {
+  debtCustomerColumns,
+  mappingDebtCustomerRow,
+} from "../../utils/mapping/warehouse/debtCustomerRowAndColumn";
+import { styleHeaderStream } from "../../utils/helper/excelExporter";
 
 export const debtManagementService = {
   //================================DEBT CLOSING=================================
@@ -250,6 +257,96 @@ export const debtManagementService = {
     }
   },
 
+  exportCustomerDebtSummaryToExcel: async (res: Response) => {
+    try {
+      // 1. Kéo toàn bộ dữ liệu & chạy logic tổng hợp như getCustomerDebtSummary
+      const unpaidOutbounds = await debtRepository.findOutboundUnpaid({});
+      const { sortedCustomers, grandTotal } = processDebtAggregation(unpaidOutbounds);
+
+      const dateStr = dayjsUtc().format("DD-MM-YYYY");
+      const fileName = `debt_customer_${dateStr}`;
+
+      // 2. Cấu hình Header HTTP Response
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+      res.setHeader("Content-Disposition", `attachment; filename=${fileName}.xlsx`);
+
+      // 3. Khởi tạo Stream Workbook
+      const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({
+        stream: res,
+        useStyles: true,
+      });
+
+      const worksheet = workbook.addWorksheet("Tổng Hợp Công Nợ");
+
+      // 4. Cấu hình các cột tương ứng với DebtItemDTO
+      worksheet.columns = debtCustomerColumns as ExcelJS.Column[];
+
+      //header style
+      styleHeaderStream(worksheet);
+
+      const cellBorder = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
+      };
+      const cellFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2F2F2" } };
+
+      // 5. Ghi từng dòng Khách hàng
+      const totalColumns = debtCustomerColumns.length;
+
+      sortedCustomers.forEach((rawItem, index) => {
+        const item = mapToDebtItemDTO(rawItem);
+        const rowData = mappingDebtCustomerRow(item, index);
+
+        const excelRow = worksheet.addRow(rowData);
+
+        for (let i = 1; i <= totalColumns; i++) {
+          const cell = excelRow.getCell(i);
+          cell.border = cellBorder as any;
+          cell.fill = cellFill as any;
+        }
+
+        excelRow.commit();
+      });
+
+      // 6. Ghi dòng TỔNG CỘNG toàn hệ thống ở cuối file
+      const grandItem = mapToDebtItemDTO(grandTotal);
+      const grandRowData = {
+        ...mappingDebtCustomerRow(grandItem, 0),
+        index: "",
+        customerId: "",
+        customerName: "TỔNG CỘNG",
+      };
+
+      const totalRow = worksheet.addRow(grandRowData);
+      totalRow.font = { bold: true };
+
+      for (let i = 1; i <= totalColumns; i++) {
+        const cell = totalRow.getCell(i);
+        cell.border = cellBorder as any;
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFF2F2F2" },
+        };
+      }
+      totalRow.commit();
+
+      // 7. Đóng stream hoàn tất file
+      worksheet.commit();
+      await workbook.commit();
+    } catch (error) {
+      console.error("Export Debt Excel error:", error);
+      if (!res.headersSent) {
+        res.status(500).send("Lỗi trong quá trình xuất file");
+      }
+    }
+  },
+
   //================================PAYMENT DEBT=================================
   paymentDebtByCustomerId: async ({
     customerId,
@@ -446,7 +543,7 @@ const mapToDebtItemDTO = (rawItem: any): DebtItemDTO => {
     totalDebt: roundInt(rawItem.totalDebt),
     closedDebt: roundInt(rawItem.closedDebt),
     currentPeriodDebt: roundInt(rawItem.currentPeriodDebt),
-    dueDebt: roundInt(rawItem.dueDebt),
+    overdueDebt: roundInt(rawItem.dueDebt),
     notDueDebt: roundInt(rawItem.notDueDebt),
     unpaidOutboundCount: rawItem.unpaidOutboundCount || 0,
     aging: {
@@ -454,9 +551,128 @@ const mapToDebtItemDTO = (rawItem: any): DebtItemDTO => {
       overdue1_30: roundInt(aging?.overdue1_30),
       overdue31_60: roundInt(aging?.overdue31_60),
       overdue61_90: roundInt(aging?.overdue61_90),
-      overdueOver90: roundInt(aging?.overdueOver90),
+      overdue91_120: roundInt(aging?.overdue91_120),
+      overdueOver120: roundInt(aging?.overdueOver120),
     },
   };
+};
+
+// Helper tính toán công nợ và gom nhóm từ danh sách PXK
+const processDebtAggregation = (unpaidOutbounds: any[]) => {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  const customerMap = new Map<string, any>();
+
+  const grandTotal = {
+    customerId: "",
+    customerName: "TỔNG CỘNG",
+    totalDebt: 0,
+    closedDebt: 0,
+    currentPeriodDebt: 0,
+    dueDebt: 0,
+    notDueDebt: 0,
+    unpaidOutboundCount: unpaidOutbounds.length,
+    aging: {
+      dueIn1_3: 0,
+      overdue1_30: 0,
+      overdue31_60: 0,
+      overdue61_90: 0,
+      overdue91_120: 0,
+      overdueOver120: 0,
+    },
+  };
+
+  for (const pxk of unpaidOutbounds) {
+    const remaining = Number(pxk.remainingAmount || 0);
+    const custId = pxk.customerId;
+
+    if (!customerMap.has(custId)) {
+      customerMap.set(custId, {
+        customerId: custId,
+        customerName: pxk.Customer?.customerName || "",
+        totalDebt: 0,
+        closedDebt: 0,
+        currentPeriodDebt: 0,
+        dueDebt: 0,
+        notDueDebt: 0,
+        unpaidOutboundCount: 0,
+        aging: {
+          dueIn1_3: 0,
+          overdue1_30: 0,
+          overdue31_60: 0,
+          overdue61_90: 0,
+          overdueOver90: 0,
+        },
+      });
+    }
+
+    const summary = customerMap.get(custId)!;
+    summary.totalDebt += remaining;
+    summary.unpaidOutboundCount += 1;
+    grandTotal.totalDebt += remaining;
+
+    if (pxk.dueDate) {
+      summary.closedDebt += remaining;
+      grandTotal.closedDebt += remaining;
+
+      const dueDate = new Date(pxk.dueDate);
+      dueDate.setHours(0, 0, 0, 0);
+
+      const diffTime = dueDate.getTime() - now.getTime();
+      const daysUntilDue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (daysUntilDue >= 0) {
+        // --- NỢ TRONG HẠN ---
+        summary.notDueDebt += remaining;
+        grandTotal.notDueDebt += remaining;
+
+        if (daysUntilDue <= 3) {
+          summary.aging.dueIn1_3 += remaining;
+          grandTotal.aging.dueIn1_3 += remaining;
+        }
+      } else {
+        // --- NỢ QUÁ HẠN (daysUntilDue < 0) ---
+        const daysOverdue = Math.abs(daysUntilDue);
+        summary.dueDebt += remaining;
+        grandTotal.dueDebt += remaining;
+
+        if (daysOverdue <= 30) {
+          summary.aging.overdue1_30 += remaining;
+          grandTotal.aging.overdue1_30 += remaining;
+        } else if (daysOverdue <= 60) {
+          summary.aging.overdue31_60 += remaining;
+          grandTotal.aging.overdue31_60 += remaining;
+        } else if (daysOverdue <= 90) {
+          summary.aging.overdue61_90 += remaining;
+          grandTotal.aging.overdue61_90 += remaining;
+        } else if (daysOverdue <= 120) {
+          summary.aging.overdue91_120 += remaining;
+          grandTotal.aging.overdue91_120 += remaining;
+        } else {
+          summary.aging.overdueOver120 += remaining;
+          grandTotal.aging.overdueOver120 += remaining;
+        }
+      }
+    } else {
+      // --- ĐƠN PHÁT SINH TRONG KỲ ---
+      summary.currentPeriodDebt += remaining;
+      summary.notDueDebt += remaining;
+
+      grandTotal.currentPeriodDebt += remaining;
+      grandTotal.notDueDebt += remaining;
+    }
+  }
+
+  // Sắp xếp danh sách khách hàng theo độ ưu tiên thu hồi nợ
+  const sortedCustomers = Array.from(customerMap.values()).sort((a, b) => {
+    if (b.dueDebt !== a.dueDebt) return b.dueDebt - a.dueDebt;
+    if (b.aging.dueIn1_3 !== a.aging.dueIn1_3) return b.aging.dueIn1_3 - a.aging.dueIn1_3;
+    if (b.totalDebt !== a.totalDebt) return b.totalDebt - a.totalDebt;
+    return a.customerName.localeCompare(b.customerName, "vi");
+  });
+
+  return { sortedCustomers, grandTotal };
 };
 
 //helper check ngày chốt công nợ
@@ -510,117 +726,6 @@ const checkIsClosingDay = ({
     console.error("Error occurred while checking closing day:", error);
     return false;
   }
-};
-
-// Helper tính toán công nợ và gom nhóm từ danh sách PXK
-const processDebtAggregation = (unpaidOutbounds: any[]) => {
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-
-  const customerMap = new Map<string, any>();
-
-  const grandTotal = {
-    customerId: "",
-    customerName: "TỔNG CỘNG",
-    totalDebt: 0,
-    closedDebt: 0,
-    currentPeriodDebt: 0,
-    dueDebt: 0,
-    notDueDebt: 0,
-    unpaidOutboundCount: unpaidOutbounds.length,
-    aging: {
-      dueIn1_3: 0,
-      overdue1_30: 0,
-      overdue31_60: 0,
-      overdue61_90: 0,
-      overdueOver90: 0,
-    },
-  };
-
-  for (const pxk of unpaidOutbounds) {
-    const remaining = Number(pxk.remainingAmount || 0);
-    const custId = pxk.customerId;
-
-    if (!customerMap.has(custId)) {
-      customerMap.set(custId, {
-        customerId: custId,
-        customerName: pxk.Customer?.customerName || "",
-        totalDebt: 0,
-        closedDebt: 0,
-        currentPeriodDebt: 0,
-        dueDebt: 0,
-        notDueDebt: 0,
-        unpaidOutboundCount: 0,
-        aging: {
-          dueIn1_3: 0,
-          overdue1_30: 0,
-          overdue31_60: 0,
-          overdue61_90: 0,
-          overdueOver90: 0,
-        },
-      });
-    }
-
-    const summary = customerMap.get(custId)!;
-    summary.totalDebt += remaining;
-    summary.unpaidOutboundCount += 1;
-    grandTotal.totalDebt += remaining;
-
-    if (pxk.dueDate) {
-      summary.closedDebt += remaining;
-      grandTotal.closedDebt += remaining;
-
-      const dueDate = new Date(pxk.dueDate);
-      dueDate.setHours(0, 0, 0, 0);
-
-      const diffTime = dueDate.getTime() - now.getTime();
-      const daysUntilDue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      if (daysUntilDue >= 0) {
-        summary.notDueDebt += remaining;
-        grandTotal.notDueDebt += remaining;
-
-        if (daysUntilDue <= 3) {
-          summary.aging.dueIn1_3 += remaining;
-          grandTotal.aging.dueIn1_3 += remaining;
-        }
-      } else {
-        const daysOverdue = Math.abs(daysUntilDue);
-        summary.dueDebt += remaining;
-        grandTotal.dueDebt += remaining;
-
-        if (daysOverdue <= 30) {
-          summary.aging.overdue1_30 += remaining;
-          grandTotal.aging.overdue1_30 += remaining;
-        } else if (daysOverdue <= 60) {
-          summary.aging.overdue31_60 += remaining;
-          grandTotal.aging.overdue31_60 += remaining;
-        } else if (daysOverdue <= 90) {
-          summary.aging.overdue61_90 += remaining;
-          grandTotal.aging.overdue61_90 += remaining;
-        } else {
-          summary.aging.overdueOver90 += remaining;
-          grandTotal.aging.overdueOver90 += remaining;
-        }
-      }
-    } else {
-      summary.currentPeriodDebt += remaining;
-      summary.notDueDebt += remaining;
-
-      grandTotal.currentPeriodDebt += remaining;
-      grandTotal.notDueDebt += remaining;
-    }
-  }
-
-  // Sắp xếp danh sách khách hàng theo độ ưu tiên thu hồi nợ
-  const sortedCustomers = Array.from(customerMap.values()).sort((a, b) => {
-    if (b.dueDebt !== a.dueDebt) return b.dueDebt - a.dueDebt;
-    if (b.aging.dueIn1_3 !== a.aging.dueIn1_3) return b.aging.dueIn1_3 - a.aging.dueIn1_3;
-    if (b.totalDebt !== a.totalDebt) return b.totalDebt - a.totalDebt;
-    return a.customerName.localeCompare(b.customerName, "vi");
-  });
-
-  return { sortedCustomers, grandTotal };
 };
 
 //helper payment debt

@@ -379,7 +379,7 @@ export const exportDeliveryExcelResponse = async <T>(
 };
 
 //helper functions
-const styleHeaderStream = (worksheet: ExcelJS.Worksheet) => {
+export const styleHeaderStream = (worksheet: ExcelJS.Worksheet) => {
   const headerRow = worksheet.getRow(1);
 
   // Giữ nguyên 100% logic style cũ của bạn

@@ -2,6 +2,7 @@ import Router from "express";
 import authenticate from "../../middlewares/authMiddleware";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 import {
+  exportDebtCustomer,
   getCustomerDebtSummary,
   handleClosingDebt,
   importAmountPayment,
@@ -19,6 +20,12 @@ router.post(
   authenticate,
   authorizeAnyPermission(["accountant"]),
   handleClosingDebt,
+);
+router.post(
+  "/closing-debt/export",
+  authenticate,
+  authorizeAnyPermission(["accountant"]),
+  exportDebtCustomer,
 );
 
 //=================================PAYMENT=======================================

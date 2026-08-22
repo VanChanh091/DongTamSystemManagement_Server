@@ -6,7 +6,8 @@ interface AgingBucket {
   overdue1_30: number;
   overdue31_60: number;
   overdue61_90: number;
-  overdueOver90: number;
+  overdue91_120: number;
+  overdueOver120: number;
 }
 
 export interface DebtItemDTO {
@@ -15,7 +16,7 @@ export interface DebtItemDTO {
   totalDebt: number;
   closedDebt: number;
   currentPeriodDebt: number;
-  dueDebt: number;
+  overdueDebt: number; // tổng tiền quá hạn (đã vượt ngày dueDate)
   notDueDebt: number;
   unpaidOutboundCount: number;
   aging: AgingBucket;
