@@ -19,7 +19,7 @@ interface PaperRequirementLayersAttributes {
   paperCode: paperCodeType;
   weightGsm: number;
   fluteType?: string;
-  paperRollWidth: number;
+
   availableStock: number;
   shortageQty: number;
   isEnoughQty: boolean;
@@ -48,7 +48,6 @@ export class PaperRequirementLayers
   declare paperCode: paperCodeType;
   declare weightGsm: number;
   declare fluteType?: string;
-  declare paperRollWidth: number;
   declare availableStock: number;
   declare shortageQty: number;
   declare isEnoughQty: boolean;
@@ -77,7 +76,6 @@ export function initPaperRequirementLayersModel(
       paperCode: { type: DataTypes.STRING, allowNull: false },
       weightGsm: { type: DataTypes.INTEGER, allowNull: false, comment: "Định lượng giấy (g/m2)" },
       fluteType: { type: DataTypes.ENUM("E", "B", "C"), comment: "Loại sóng" },
-      paperRollWidth: { type: DataTypes.INTEGER, allowNull: false, comment: "Khổ giấy được cấp" },
       availableStock: {
         type: DataTypes.DOUBLE,
         allowNull: false,

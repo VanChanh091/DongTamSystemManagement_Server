@@ -1,8 +1,8 @@
 import { FindOptions, Op } from "sequelize";
-import { PlanningPaper } from "../../models/planning/planningPaper";
 import { Order } from "../../models/order/order";
-import { PaperRequirementLayers } from "../../models/planning/requirement/paper_requirement_layers";
 import { Customer } from "../../models/customer/customer";
+import { PlanningPaper } from "../../models/planning/planningPaper";
+import { PaperRequirementLayers } from "../../models/planning/requirement/paper_requirement_layers";
 
 export const paperRequirementRepo = {
   buildPaperRequirementsOptions: ({
@@ -17,7 +17,7 @@ export const paperRequirementRepo = {
     whereCondition?: any;
   }): FindOptions => {
     const queryOptions: FindOptions = {
-      where: whereCondition,
+      where: { status: "PLANNING", ...whereCondition },
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
         {

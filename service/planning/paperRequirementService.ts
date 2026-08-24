@@ -1,7 +1,6 @@
 import { AppError } from "../../utils/appError";
 import { PaperRequirements } from "../../models/planning/requirement/paperRequirements";
 import { paperRequirementRepo } from "../../repository/planning/paperRequirementRepository";
-import { PaperRequirementLayers } from "../../models/planning/requirement/paper_requirement_layers";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { PlanningPaper } from "../../models/planning/planningPaper";

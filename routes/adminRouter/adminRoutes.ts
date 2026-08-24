@@ -1,12 +1,6 @@
 import { Router } from "express";
 import authenticate from "../../middlewares/authMiddleware";
 import { authorizeAnyPermission, authorizeRole } from "../../middlewares/permissionMiddleware";
-import { getOrderPending, updateStatusAdmin } from "../../controller/admin/adminOrderController";
-import {
-  deleteUser,
-  getUsersAdmin,
-  updateInfoUser,
-} from "../../controller/admin/adminUserController";
 import {
   createMachineBox,
   createMachinePaper,
@@ -28,35 +22,49 @@ import {
   updateWastePaper,
 } from "../../controller/admin/adminWasteNormController";
 import {
-  createWaveCrest,
-  deleteWaveCrest,
-  getWaveCrestCoefficient,
-  updateWaveCrest,
-} from "../../controller/admin/adminWaveCrestController";
-import {
-  createNewCriteria,
-  deleteCriteria,
-  getAllQcCriteria,
-  updateCriteria,
-} from "../../controller/admin/adminCriteriaController";
-import {
-  createFluteRatio,
-  deleteFluteRatio,
-  getAllFluteRatio,
-  updateFluteRatio,
-} from "../../controller/admin/adminFluteRatioController";
-import {
   createNewVehicle,
   deleteVehicle,
   getAllVehicle,
   updateVehicle,
-} from "../../controller/admin/adminVehicleController";
-import {
   createNewCriteriaCheck,
   deleteCriteriaCheck,
   getAllCriteriaCheck,
   updateCriteriaCheck,
-} from "../../controller/admin/adminCriteriaCheckController";
+  createFluteRatio,
+  deleteFluteRatio,
+  getAllFluteRatio,
+  updateFluteRatio,
+  createWaveCrest,
+  deleteWaveCrest,
+  getWaveCrestCoefficient,
+  updateWaveCrest,
+  createNewCriteria,
+  deleteCriteria,
+  getAllQcCriteria,
+  updateCriteria,
+  getOrderPending,
+  updateStatusAdmin,
+  deleteUser,
+  getUsersAdmin,
+  updateInfoUser,
+} from "../../controller/admin/adminController";
+import {
+  createBasisWeight,
+  createPaperClassification,
+  createPaperType,
+  createSupplier,
+  createSupplierPaperCode,
+  getAllBasisWeights,
+  getAllPaperClassifications,
+  getAllPaperTypes,
+  getAllSupplierPaperCodes,
+  getAllSuppliers,
+  updateBasisWeight,
+  updatePaperClassification,
+  updatePaperType,
+  updateSupplier,
+  updateSupplierPaperCode,
+} from "../../controller/admin/adminPaperCodeController";
 
 const router = Router();
 
@@ -123,5 +131,40 @@ router.get("/vehicles", authenticate, getAllVehicle);
 router.post("/vehicles", authenticate, authorizeRole(["admin", "manager"]), createNewVehicle);
 router.put("/vehicles", authenticate, authorizeRole(["admin", "manager"]), updateVehicle);
 router.delete("/vehicles", authenticate, authorizeRole(["admin", "manager"]), deleteVehicle);
+
+// =========================== SUPPLIERS =================================
+router.get("/suppliers", authenticate, getAllSuppliers);
+router.post("/suppliers", authenticate, authorizeRole(["admin"]), createSupplier);
+router.put("/suppliers", authenticate, authorizeRole(["admin"]), updateSupplier);
+
+// ========================== PAPER TYPES ================================
+router.get("/paper-types", authenticate, getAllPaperTypes);
+router.post("/paper-types", authenticate, authorizeRole(["admin"]), createPaperType);
+router.put("/paper-types", authenticate, authorizeRole(["admin"]), updatePaperType);
+
+// ====================== PAPER BASIS WEIGHTS ============================
+router.get("/paper-basis-weights", authenticate, getAllBasisWeights);
+router.post("/paper-basis-weights", authenticate, authorizeRole(["admin"]), createBasisWeight);
+router.put("/paper-basis-weights", authenticate, authorizeRole(["admin"]), updateBasisWeight);
+
+// ====================== SUPPLIER PAPER CODES ===========================
+router.get("/supplier-paper", authenticate, getAllSupplierPaperCodes);
+router.post("/supplier-paper", authenticate, authorizeRole(["admin"]), createSupplierPaperCode);
+router.put("/supplier-paper", authenticate, authorizeRole(["admin"]), updateSupplierPaperCode);
+
+// ====================== PAPER CLASSIFICATIONS ==========================
+router.get("/paper-classifications", authenticate, getAllPaperClassifications);
+router.post(
+  "/paper-classifications",
+  authenticate,
+  authorizeRole(["admin"]),
+  createPaperClassification,
+);
+router.put(
+  "/paper-classifications",
+  authenticate,
+  authorizeRole(["admin"]),
+  updatePaperClassification,
+);
 
 export default router;

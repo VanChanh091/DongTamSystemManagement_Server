@@ -28,10 +28,7 @@ import {
   layerRoleType,
   PaperRequirementLayers,
 } from "../../models/planning/requirement/paper_requirement_layers";
-import {
-  InventoryStatusType,
-  PaperRequirements,
-} from "../../models/planning/requirement/paperRequirements";
+import { PaperRequirements } from "../../models/planning/requirement/paperRequirements";
 import { PlanningOrderInput } from "../../interface/types";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
@@ -691,6 +688,13 @@ const handlePaperRequirements = async ({
       }
     }
 
+    //loại bỏ tiền tố của sóng
+    let paperCode = layer.rawCode;
+    if (layer.isFlute && layer.fluteLetter) {
+      const regex = new RegExp(`^${layer.fluteLetter}`, "i");
+      paperCode = paperCode.replace(regex, "");
+    }
+
     // Bóc tách định lượng GSM (VD: "TC120" => 120)
     const gsmMatch = layer.rawCode.match(/\d+$/);
     const weightGsm = gsmMatch ? parseFloat(gsmMatch[0]) : 0;
@@ -704,11 +708,10 @@ const handlePaperRequirements = async ({
     return {
       layerIndex,
       layerRole,
-      paperCode: layer.rawCode,
+      paperCode,
       weightGsm,
       fluteType,
       fluteFactor,
-      paperRollWidth: ghepKho,
       requiredQty,
 
       availableStock: 0,
@@ -722,7 +725,7 @@ const handlePaperRequirements = async ({
   // Ghi bảng Header
   const paperRequirement = await planningHelper.createData({
     model: PaperRequirements,
-    data: { planningId, totalRequiredQty, inventoryStatus: "ENOUGH" },
+    data: { planningId, paperRollWidth: ghepKho, totalRequiredQty, inventoryStatus: "SHORTAGE" },
     transaction,
   });
 

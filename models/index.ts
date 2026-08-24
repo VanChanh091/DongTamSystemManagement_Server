@@ -4,6 +4,11 @@ import { initCriteriaPaperCheckModel } from "./admin/criteriaCheck/criteriaPaper
 import { initFluteRatioCoefficientModel } from "./admin/fluteRatio";
 import { initMachineBoxModel } from "./admin/machineBox";
 import { initMachinePaperModel } from "./admin/machinePaper";
+import { initPaperBasisWeightsModel } from "./admin/paperClassifications/paperBasisWeights";
+import { initPaperClassificationsModel } from "./admin/paperClassifications/paperClassifications";
+import { initPaperTypesModel } from "./admin/paperClassifications/paperTypes";
+import { initSupplierPaperCodesModel } from "./admin/paperClassifications/supplierPaperCodes";
+import { initSuppliersModel } from "./admin/paperClassifications/suppliers";
 import { initVehicleModel } from "./admin/vehicle";
 import { initWasteNormBoxModel } from "./admin/wasteNormBox";
 import { initWasteNormPaperModel } from "./admin/wasteNormPaper";
@@ -60,6 +65,13 @@ const FluteRatio = initFluteRatioCoefficientModel(sequelize);
 //admin criteria check
 const CriteriaPaperCheck = initCriteriaPaperCheckModel(sequelize);
 const CriteriaBoxCheck = initCriteriaBoxCheckModel(sequelize);
+
+//admin paper classifications
+const Suppliers = initSuppliersModel(sequelize);
+const PaperTypes = initPaperTypesModel(sequelize);
+const PaperBasisWeights = initPaperBasisWeightsModel(sequelize);
+const SupplierPaperCodes = initSupplierPaperCodesModel(sequelize);
+const PaperClassifications = initPaperClassificationsModel(sequelize);
 
 //other
 const User = initUserModel(sequelize);
@@ -140,6 +152,13 @@ const models = {
   //admin criteria check
   CriteriaPaperCheck,
   CriteriaBoxCheck,
+
+  // admin paper classifications
+  Suppliers,
+  PaperTypes,
+  PaperBasisWeights,
+  SupplierPaperCodes,
+  PaperClassifications,
 
   User,
   Product,

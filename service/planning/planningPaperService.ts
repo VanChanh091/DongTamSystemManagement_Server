@@ -27,6 +27,7 @@ import {
 } from "../../utils/mapping/planningPaperRowAndColumn";
 import { exportExcelResponse } from "../../utils/helper/excelExporter";
 import { updateStatusPaper } from "../../utils/helper/modelHelper/manufactureHelper";
+import { PaperRequirements } from "../../models/planning/requirement/paperRequirements";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper } = CacheKey.planning;
@@ -455,19 +456,33 @@ export const planningPaperService = {
               });
             }
 
-            const planningBox = await planningHelper.getModelById({
-              model: PlanningBox,
-              where: {
-                planningId: planning.planningId,
-              },
-              options: { transaction },
-            });
+            const [planningBox, requirement] = await Promise.all([
+              planningHelper.getModelById({
+                model: PlanningBox,
+                where: { planningId: planning.planningId },
+                options: { transaction },
+              }),
+              planningHelper.getModelById({
+                model: PaperRequirements,
+                where: { planningId: planning.planningId },
+                options: { transaction },
+              }),
+            ]);
 
+            //update qty produced for planning box
             if (planningBox) {
               await planningHelper.updateDataModel({
                 model: PlanningBoxTime,
                 data: { runningPlan: planning.qtyProduced ?? 0 },
                 options: { where: { planningBoxId: planningBox.planningBoxId }, transaction },
+              });
+            }
+
+            //complete paper requirement
+            if (requirement && requirement.status !== "COMPLETED") {
+              await planningHelper.updateDataModel({
+                model: requirement,
+                data: { status: "COMPLETED" },
               });
             }
 

@@ -1,3 +1,4 @@
+import adminAssociations from "./admin.association";
 import customerOrderAssociations from "./customerOrder.association";
 import deliveryOthersAssociations from "./deliveryOthers.association";
 import notificationAssociations from "./notification.association";
@@ -12,4 +13,5 @@ export function setupAssociations(models: any) {
   customerOrderAssociations(models);
   deliveryOthersAssociations(models);
   warehouseInventoryAssociations(models);
+  adminAssociations(models);
 }
