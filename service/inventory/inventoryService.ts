@@ -25,7 +25,6 @@ import {
   mappingInventoryRow,
 } from "../../utils/mapping/warehouse/inventoryRowAndColumn";
 import { inventoryLogService } from "./inventoryLogService";
-import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inventory_gt, inventory_lt } = CacheKey.warehouse;

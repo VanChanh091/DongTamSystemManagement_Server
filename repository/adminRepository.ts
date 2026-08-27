@@ -1,60 +1,13 @@
-import { col, fn, Op, Transaction, where } from "sequelize";
-import { Customer } from "../models/customer/customer";
+import { Transaction } from "sequelize";
 import { Box } from "../models/order/box";
+import { User } from "../models/user/user";
 import { Order } from "../models/order/order";
 import { Product } from "../models/product/product";
-import { User } from "../models/user/user";
+import { Customer } from "../models/customer/customer";
 import { OrderImage } from "../models/order/orderImage";
 import { CustomerPayment } from "../models/customer/customerPayment";
 
 export const adminRepository = {
-  //===============================ADMIN CRUD=====================================
-  getAllItems: async ({ model }: { model: any }) => {
-    return await model.findAll({ attributes: { exclude: ["createdAt", "updatedAt"] } });
-  },
-
-  getItemByPk: async ({
-    model,
-    itemId,
-    transaction,
-    options,
-  }: {
-    model: any;
-    itemId: number;
-    transaction?: Transaction;
-    options?: any;
-  }) => {
-    return await model.findByPk(itemId, { transaction, ...options });
-  },
-
-  createNewItem: async ({
-    model,
-    data,
-    transaction,
-  }: {
-    model: any;
-    data: any;
-    transaction?: Transaction;
-  }) => {
-    return await model.create(data, { transaction });
-  },
-
-  updateItem: async ({
-    model,
-    dataUpdated,
-    transaction,
-  }: {
-    model: any;
-    dataUpdated: any;
-    transaction?: Transaction;
-  }) => {
-    return await model.update(dataUpdated, { transaction });
-  },
-
-  deleteItem: async ({ model }: { model: any }) => {
-    return await model.destroy();
-  },
-
   //===============================ADMIN ORDER=====================================
 
   findOrderPending: async () => {

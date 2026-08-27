@@ -6,10 +6,9 @@ import { PaperClassifications } from "./paperClassifications";
 export type LayerTypeEnum = "NONE" | "LINER" | "FLUTE";
 
 //định nghĩa trường trong bảng
-interface SupplierPaperCodesAttributes {
+export interface SupplierPaperCodesAttributes {
   supplierPaperId: number;
   layerType: LayerTypeEnum;
-  supplierCode: string;
   companyCode: string;
 
   //FK
@@ -23,7 +22,7 @@ interface SupplierPaperCodesAttributes {
 //cho phép bỏ qua id khi tạo
 export type SupplierPaperCodesCreationAttributes = Optional<
   SupplierPaperCodesAttributes,
-  "supplierPaperId" | "layerType" | "createdAt" | "updatedAt"
+  "supplierPaperId" | "companyCode" | "layerType" | "createdAt" | "updatedAt"
 >;
 
 //định nghĩa kiểu OOP
@@ -33,15 +32,14 @@ export class SupplierPaperCodes
 {
   declare supplierPaperId: number;
   declare layerType: LayerTypeEnum;
-  declare supplierCode: string;
   declare companyCode: string;
 
   //FK
   declare supplierId: number;
-  declare Suppliers: Suppliers;
+  declare Supplier: Suppliers;
 
   declare paperTypeId: number;
-  declare PaperTypes: PaperTypes;
+  declare PaperType: PaperTypes;
 
   declare classifications: PaperClassifications[];
 
@@ -58,7 +56,6 @@ export function initSupplierPaperCodesModel(sequelize: Sequelize): typeof Suppli
         allowNull: false,
         defaultValue: "NONE",
       },
-      supplierCode: { type: DataTypes.STRING, allowNull: false },
       companyCode: { type: DataTypes.STRING, allowNull: false },
 
       //FK

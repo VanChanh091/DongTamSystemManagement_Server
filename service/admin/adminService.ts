@@ -18,16 +18,17 @@ import { OrderApproved } from "../../models/order/orderApproved";
 import { NotificationModel } from "../../models/notification/notification";
 import { REQUEST_CONFIG } from "../notification/requestType";
 import { UserNotifications } from "../../models/notification/userNotifications";
+import { CrudHelper } from "../../repository/helper/crud.helper.repository";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 
 export const adminService = {
   //===============================ADMIN CRUD=====================================
 
-  getAllItems: async ({ model, message }: { model: any; message: string }) => {
+  getAllItems: async ({ model, options }: { model: any; options?: any }) => {
     try {
-      const allItems = await adminRepository.getAllItems({ model });
-      return { message, data: allItems };
+      const allItems = await CrudHelper.findAll({ model, options });
+      return { message: "get all items successfully", data: allItems };
     } catch (error) {
       console.error("get all item failed:", error);
       throw AppError.ServerError();
@@ -37,18 +38,16 @@ export const adminService = {
   getItemById: async ({
     model,
     itemId,
-    errMessage,
-    errCode,
+    options,
   }: {
     model: any;
     itemId: number;
-    errMessage: string;
-    errCode: string;
+    options?: any;
   }) => {
     try {
-      const item = await adminRepository.getItemByPk({ model, itemId });
+      const item = await CrudHelper.findByPk({ model, id: itemId, options });
       if (!item) {
-        throw AppError.NotFound(errMessage, errCode);
+        throw AppError.NotFound("item not found", "ITEM_NOT_FOUND");
       }
 
       return { message: `get item by id: ${itemId}`, data: item };
@@ -59,15 +58,11 @@ export const adminService = {
     }
   },
 
-  createNewItem: async ({ model, data, message }: { model: any; data: any; message: string }) => {
+  createNewItem: async ({ model, data }: { model: any; data: any }) => {
     try {
       return await runInTransaction(async (transaction) => {
-        const newItem = await adminRepository.createNewItem({
-          model,
-          data,
-          transaction,
-        });
-        return { message, data: newItem };
+        const newItem = await CrudHelper.create({ model, data, transaction });
+        return { message: "create item successfully", data: newItem };
       });
     } catch (error) {
       console.error("create item failed:", error);
@@ -80,35 +75,27 @@ export const adminService = {
     model,
     itemId,
     dataUpdated,
-    message,
-    errMessage,
-    errCode,
   }: {
     model: any;
     itemId: number;
     dataUpdated: any;
-    message: string;
-    errMessage: string;
-    errCode: string;
   }) => {
     try {
       return await runInTransaction(async (transaction) => {
-        const existedItem = await adminRepository.getItemByPk({
+        const primaryKey = model.primaryKeyAttributes[0]; // tự động lấy primary key của model
+
+        const [affectedCount] = await CrudHelper.updateByIds({
           model,
-          itemId,
+          whereCondition: { [primaryKey]: itemId },
+          data: dataUpdated,
           transaction,
         });
-        if (!existedItem) {
-          throw AppError.NotFound(errMessage, errCode);
+
+        if (affectedCount === 0) {
+          throw AppError.NotFound("item not found", "ITEM_NOT_FOUND");
         }
 
-        await adminRepository.updateItem({
-          model: existedItem,
-          dataUpdated,
-          transaction,
-        });
-
-        return { message };
+        return { message: "update item successfully", data: { itemId, ...dataUpdated } };
       });
     } catch (error) {
       console.error("update item failed:", error);
@@ -117,28 +104,16 @@ export const adminService = {
     }
   },
 
-  deleteItem: async ({
-    model,
-    itemId,
-    message,
-    errMessage,
-    errCode,
-  }: {
-    model: any;
-    itemId: number;
-    message: string;
-    errMessage: string;
-    errCode: string;
-  }) => {
+  deleteItem: async ({ model, itemId }: { model: any; itemId: number }) => {
     try {
-      const existedItem = await adminRepository.getItemByPk({ model, itemId });
+      const existedItem = await CrudHelper.findByPk({ model, id: itemId });
       if (!existedItem) {
-        throw AppError.NotFound(errMessage, errCode);
+        throw AppError.NotFound("item not found ", "ITEM_NOT_FOUND");
       }
 
-      await adminRepository.deleteItem({ model: existedItem });
+      await existedItem.destroy();
 
-      return { message };
+      return { message: "delete item successfully" };
     } catch (error) {
       console.error("delete item failed:", error);
       if (error instanceof AppError) throw error;

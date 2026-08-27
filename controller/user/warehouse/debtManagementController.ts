@@ -5,16 +5,16 @@ import { debtManagementService } from "../../../service/warehouse/debtManagement
 //=================================CLOSING DEBT=======================================
 export const getCustomerDebtSummary = async (req: Request, res: Response, next: NextFunction) => {
   const {
-    customerId,
     userId,
     page = 1,
     pageSize = 30,
+    targetDate,
   } = req.query as {
-    customerId?: string;
     userId?: string;
     search?: string;
     page?: string;
     pageSize?: string;
+    targetDate: Date | string;
   };
 
   try {
@@ -28,6 +28,7 @@ export const getCustomerDebtSummary = async (req: Request, res: Response, next: 
       page: Number(page),
       pageSize: Number(pageSize),
       userId: targetUserId,
+      targetDate: targetDate,
     });
     return res.status(200).json(response);
   } catch (error) {
@@ -71,8 +72,10 @@ export const handleClosingDebt = async (req: Request, res: Response, next: NextF
 
 //export excel
 export const exportDebtCustomer = async (req: Request, res: Response, next: NextFunction) => {
+  const { targetDate } = req.query as { targetDate: Date | string };
+
   try {
-    await debtManagementService.exportCustomerDebtSummaryToExcel(res);
+    await debtManagementService.exportCustomerDebtSummaryToExcel(res, targetDate);
   } catch (error) {
     next(error);
   }

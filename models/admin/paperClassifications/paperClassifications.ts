@@ -3,14 +3,14 @@ import { SupplierPaperCodes } from "./supplierPaperCodes";
 import { PaperBasisWeights } from "./paperBasisWeights";
 
 //định nghĩa trường trong bảng
-interface PaperClassificationsAttributes {
+export interface PaperClassificationsAttributes {
   classificationId: number;
   paperCode: string;
   weightCategory: string;
-  burstRatio: number;
-  burstStrength: number;
-  ringCrush: number;
-  pricePaper: number;
+  burstRatio?: number;
+  burstStrength?: number;
+  ringCrush?: number;
+  pricePaper?: number;
 
   //FK
   supplierPaperId: number;
@@ -34,10 +34,10 @@ export class PaperClassifications
   declare classificationId: number;
   declare paperCode: string;
   declare weightCategory: string;
-  declare burstRatio: number;
-  declare burstStrength: number;
-  declare ringCrush: number;
-  declare pricePaper: number;
+  declare burstRatio?: number;
+  declare burstStrength?: number;
+  declare ringCrush?: number;
+  declare pricePaper?: number;
 
   //FK
   declare supplierPaperId: number;
@@ -54,12 +54,13 @@ export function initPaperClassificationsModel(sequelize: Sequelize): typeof Pape
   PaperClassifications.init(
     {
       classificationId: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-      paperCode: { type: DataTypes.STRING, allowNull: false },
-      weightCategory: { type: DataTypes.STRING, allowNull: false },
-      burstRatio: { type: DataTypes.DOUBLE, allowNull: false },
-      burstStrength: { type: DataTypes.DOUBLE, allowNull: false },
-      ringCrush: { type: DataTypes.DOUBLE, allowNull: false },
-      pricePaper: { type: DataTypes.DOUBLE, allowNull: false },
+      paperCode: { type: DataTypes.STRING, allowNull: false, comment: "Mã giấy lưu kho" },
+      weightCategory: { type: DataTypes.STRING, allowNull: false, comment: "Phân loại định lượng" },
+
+      burstRatio: { type: DataTypes.DOUBLE, allowNull: true, comment: "Tỷ lệ độ bục" },
+      burstStrength: { type: DataTypes.DOUBLE, allowNull: true, comment: "Độ bục" },
+      ringCrush: { type: DataTypes.DOUBLE, allowNull: true, comment: "Độ bền nén vòng" },
+      pricePaper: { type: DataTypes.DOUBLE, allowNull: true },
 
       //FK
       supplierPaperId: { type: DataTypes.INTEGER, allowNull: false },

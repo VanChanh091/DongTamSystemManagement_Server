@@ -1,16 +1,34 @@
 import { NextFunction, Request, Response } from "express";
+import {
+  Suppliers,
+  SuppliersCreationAttributes,
+} from "../../models/admin/paperClassifications/suppliers";
+import {
+  PaperTypes,
+  PaperTypesCreationAttributes,
+} from "../../models/admin/paperClassifications/paperTypes";
+import {
+  PaperBasisWeights,
+  PaperBasisWeightsCreationAttributes,
+} from "../../models/admin/paperClassifications/paperBasisWeights";
+import {
+  SupplierPaperCodesAttributes,
+  SupplierPaperCodesCreationAttributes,
+} from "../../models/admin/paperClassifications/supplierPaperCodes";
+import {
+  PaperClassifications,
+  PaperClassificationsAttributes,
+  PaperClassificationsCreationAttributes,
+} from "../../models/admin/paperClassifications/paperClassifications";
+import { adminService } from "../../service/admin/adminService";
 import { adminPaperCodeService } from "../../service/admin/adminPaperCodeService";
-import { SuppliersCreationAttributes } from "../../models/admin/paperClassifications/suppliers";
-import { PaperTypesCreationAttributes } from "../../models/admin/paperClassifications/paperTypes";
-import { PaperBasisWeightsCreationAttributes } from "../../models/admin/paperClassifications/paperBasisWeights";
-import { SupplierPaperCodesCreationAttributes } from "../../models/admin/paperClassifications/supplierPaperCodes";
-import { PaperClassificationsCreationAttributes } from "../../models/admin/paperClassifications/paperClassifications";
 
 // ============================= SUPPLIERS =================================
 
 export const getAllSuppliers = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await adminPaperCodeService.getAllSuppliers();
+    const response = await adminService.getAllItems({ model: Suppliers });
+
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -19,7 +37,8 @@ export const getAllSuppliers = async (req: Request, res: Response, next: NextFun
 
 export const createSupplier = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await adminPaperCodeService.createSupplier({
+    const response = await adminService.createNewItem({
+      model: Suppliers,
       data: req.body as SuppliersCreationAttributes,
     });
 
@@ -29,14 +48,25 @@ export const createSupplier = async (req: Request, res: Response, next: NextFunc
   }
 };
 
-export const updateSupplier = async (req: Request, res: Response, next: NextFunction) => {
+export const handleUpdateSupplier = async (req: Request, res: Response, next: NextFunction) => {
   const { supplierId } = req.query as { supplierId: string };
+  const { isActive } = req.body as { isActive?: boolean };
 
   try {
-    const response = await adminPaperCodeService.updateSupplier({
-      supplierId: Number(supplierId),
-      data: req.body as SuppliersCreationAttributes,
-    });
+    let response;
+
+    if (isActive) {
+      response = await adminPaperCodeService.updateActiveSupplier({
+        supplierId: Number(supplierId),
+        isActive,
+      });
+    } else {
+      response = await adminService.updateItem({
+        model: Suppliers,
+        itemId: Number(supplierId),
+        dataUpdated: req.body as SuppliersCreationAttributes,
+      });
+    }
 
     return res.status(200).json(response);
   } catch (error) {
@@ -48,7 +78,7 @@ export const updateSupplier = async (req: Request, res: Response, next: NextFunc
 
 export const getAllPaperTypes = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await adminPaperCodeService.getAllPaperTypes();
+    const response = await adminService.getAllItems({ model: PaperTypes });
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -57,7 +87,8 @@ export const getAllPaperTypes = async (req: Request, res: Response, next: NextFu
 
 export const createPaperType = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await adminPaperCodeService.createPaperType({
+    const response = await adminService.createNewItem({
+      model: PaperTypes,
       data: req.body as PaperTypesCreationAttributes,
     });
 
@@ -71,9 +102,10 @@ export const updatePaperType = async (req: Request, res: Response, next: NextFun
   const { paperTypeId } = req.query as { paperTypeId: string };
 
   try {
-    const response = await adminPaperCodeService.updatePaperType({
-      paperTypeId: Number(paperTypeId),
-      data: req.body as PaperTypesCreationAttributes,
+    const response = await adminService.updateItem({
+      model: PaperTypes,
+      itemId: Number(paperTypeId),
+      dataUpdated: req.body as PaperTypesCreationAttributes,
     });
 
     return res.status(200).json(response);
@@ -86,7 +118,7 @@ export const updatePaperType = async (req: Request, res: Response, next: NextFun
 
 export const getAllBasisWeights = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await adminPaperCodeService.getAllBasisWeights();
+    const response = await adminService.getAllItems({ model: PaperBasisWeights });
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -95,7 +127,8 @@ export const getAllBasisWeights = async (req: Request, res: Response, next: Next
 
 export const createBasisWeight = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await adminPaperCodeService.createBasisWeight({
+    const response = await adminService.createNewItem({
+      model: PaperBasisWeights,
       data: req.body as PaperBasisWeightsCreationAttributes,
     });
 
@@ -109,9 +142,10 @@ export const updateBasisWeight = async (req: Request, res: Response, next: NextF
   const { basisWeightId } = req.query as { basisWeightId: string };
 
   try {
-    const response = await adminPaperCodeService.updateBasisWeight({
-      basisWeightId: Number(basisWeightId),
-      data: req.body as PaperBasisWeightsCreationAttributes,
+    const response = await adminService.updateItem({
+      model: PaperBasisWeights,
+      itemId: Number(basisWeightId),
+      dataUpdated: req.body as PaperBasisWeightsCreationAttributes,
     });
 
     return res.status(200).json(response);
@@ -132,9 +166,9 @@ export const getAllSupplierPaperCodes = async (req: Request, res: Response, next
 
 export const createSupplierPaperCode = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await adminPaperCodeService.createSupplierPaperCode({
-      data: req.body as SupplierPaperCodesCreationAttributes,
-    });
+    const response = await adminPaperCodeService.createSupplierPaperCode(
+      req.body as SupplierPaperCodesCreationAttributes[],
+    );
 
     return res.status(200).json(response);
   } catch (error) {
@@ -143,19 +177,10 @@ export const createSupplierPaperCode = async (req: Request, res: Response, next:
 };
 
 export const updateSupplierPaperCode = async (req: Request, res: Response, next: NextFunction) => {
-  const { supplierPaperId, supplierId, paperTypeId } = req.query as {
-    supplierPaperId: string;
-    supplierId: string;
-    paperTypeId: string;
-  };
-
   try {
-    const response = await adminPaperCodeService.updateSupplierPaperCode({
-      supplierPaperId: Number(supplierPaperId),
-      supplierId: Number(supplierId),
-      paperTypeId: Number(paperTypeId),
-      data: req.body as SupplierPaperCodesCreationAttributes,
-    });
+    const response = await adminPaperCodeService.updateSupplierPaperCode(
+      req.body as SupplierPaperCodesAttributes[],
+    );
 
     return res.status(200).json(response);
   } catch (error) {
@@ -170,8 +195,13 @@ export const getAllPaperClassifications = async (
   res: Response,
   next: NextFunction,
 ) => {
+  const { page, pageSize } = req.query as { page: string; pageSize: string };
+
   try {
-    const response = await adminPaperCodeService.getAllPaperClassifications();
+    const response = await adminPaperCodeService.getAllPaperClassifications({
+      page: Number(page),
+      pageSize: Number(pageSize),
+    });
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -184,9 +214,9 @@ export const createPaperClassification = async (
   next: NextFunction,
 ) => {
   try {
-    const response = await adminPaperCodeService.createPaperClassification({
-      data: req.body as PaperClassificationsCreationAttributes,
-    });
+    const response = await adminPaperCodeService.createPaperClassification(
+      req.body as PaperClassificationsCreationAttributes[],
+    );
 
     return res.status(200).json(response);
   } catch (error) {
@@ -199,19 +229,10 @@ export const updatePaperClassification = async (
   res: Response,
   next: NextFunction,
 ) => {
-  const { classificationId, supplierPaperId, basisWeightId } = req.query as {
-    classificationId: string;
-    supplierPaperId: string;
-    basisWeightId: string;
-  };
-
   try {
-    const response = await adminPaperCodeService.updatePaperClassification({
-      classificationId: Number(classificationId),
-      supplierPaperId: Number(supplierPaperId),
-      basisWeightId: Number(basisWeightId),
-      data: req.body as PaperClassificationsCreationAttributes,
-    });
+    const response = await adminPaperCodeService.updatePaperClassification(
+      req.body as PaperClassificationsAttributes[],
+    );
 
     return res.status(200).json(response);
   } catch (error) {

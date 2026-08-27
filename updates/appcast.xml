@@ -3,12 +3,11 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.7.5</title>
-            <sparkle:version>4.7.5</sparkle:version> 
+            <title>Version 4.7.6</title>
+            <sparkle:version>4.7.6</sparkle:version> 
             <description>
-            Thêm xuất excel cho trang công nợ khách hàng
-            Thêm ghi chú cho kiểm tiến trình sản xuất
-            
+            Cho phép xem công nợ từ bất kì ngày nào
+            Thêm các bảng mã giấy giúp đồng bộ mã giấy lại với nhau
             </description>
             <pubDate>Sar, 17 August 2026</pubDate>
             <enclosure url="dongtam.exe" 

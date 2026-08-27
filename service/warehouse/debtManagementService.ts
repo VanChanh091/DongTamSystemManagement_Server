@@ -1,10 +1,12 @@
 import * as xlsx from "xlsx";
 import ExcelJS from "exceljs";
+import { Response } from "express";
 import { Transaction } from "sequelize";
 import { AppError } from "../../utils/appError";
 import { debtRepository } from "../../repository/debtRepository";
 import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
 import { PaymentType } from "../../models/customer/customerPayment";
+import { styleHeaderStream } from "../../utils/helper/excelExporter";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { OutboundHistory } from "../../models/warehouse/outbound/outboundHistory";
 import {
@@ -12,12 +14,10 @@ import {
   PaymentMethodType,
 } from "../../models/warehouse/payment/paymentAllocation";
 import { DebtItemDTO, DeductionInput, ParsedExcelRow } from "../../interface/debt.type";
-import { Response } from "express";
 import {
   debtCustomerColumns,
   mappingDebtCustomerRow,
 } from "../../utils/mapping/warehouse/debtCustomerRowAndColumn";
-import { styleHeaderStream } from "../../utils/helper/excelExporter";
 
 export const debtManagementService = {
   //================================DEBT CLOSING=================================
@@ -25,19 +25,21 @@ export const debtManagementService = {
     page,
     pageSize,
     userId,
+    targetDate,
   }: {
     page: number;
     pageSize: number;
     userId?: number;
+    targetDate: Date | string;
   }) => {
     try {
-      // 1. Kéo toàn bộ PXK chưa thanh toán từ DB
-      const unpaidOutbounds = await debtRepository.findOutboundUnpaid({ userId });
+      //Kéo toàn bộ PXK chưa thanh toán từ DB
+      const unpaidOutbounds = await debtRepository.findOutboundUnpaid({ userId, targetDate });
 
-      // 2. Gom nhóm và tính toán Grand Total cho TOÀN BỘ hệ thống
-      const { sortedCustomers, grandTotal } = processDebtAggregation(unpaidOutbounds);
+      // Gom nhóm và tính toán Grand Total cho TOÀN BỘ hệ thống
+      const { sortedCustomers, grandTotal } = processDebtAggregation(unpaidOutbounds, targetDate);
 
-      // 3. Phân trang chỉ cho mảng dữ liệu hiển thị (data)
+      // Phân trang chỉ cho mảng dữ liệu hiển thị (data)
       const totalCustomers = sortedCustomers.length;
       const totalPages = Math.ceil(totalCustomers / pageSize) || 1;
       const startIndex = (page - 1) * pageSize;
@@ -45,6 +47,7 @@ export const debtManagementService = {
 
       return {
         message: "Lấy danh sách công nợ thành công",
+        targetDate: targetDate || new Date().toISOString(),
         data: paginatedItems.map(mapToDebtItemDTO),
         grandTotal: mapToDebtItemDTO(grandTotal),
         totalCustomers,
@@ -53,80 +56,6 @@ export const debtManagementService = {
       };
     } catch (error) {
       console.error("Error in getCustomerDebtSummary:", error);
-      if (error instanceof AppError) throw error;
-      throw AppError.ServerError();
-    }
-  },
-
-  searchCustomerDebtSummary: async ({
-    field,
-    keyword,
-    page,
-    pageSize,
-  }: {
-    field: string;
-    keyword: string;
-    page: number;
-    pageSize: number;
-  }) => {
-    try {
-      // const validFields = ["customerId", "customerName"];
-      // if (!validFields.includes(field)) {
-      //   throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
-      // }
-      // const index = meiliClient.index("debtCustomers");
-      //  const searchOptions: any = {
-      //   attributesToSearchOn: searchKeyword ? [field] : [],
-      //   attributesToRetrieve: ["outboundId"],
-      //   sort: ["outboundId:desc"],
-      //   page: Number(page) || 1,
-      //   hitsPerPage: Number(pageSize) || 25,
-      // };
-      //   const searchResult = await index.search(searchKeyword, searchOptions);
-      // const outboundIds = searchResult.hits.map((hit: any) => hit.outboundId);
-      // const matchedCustomerIds = searchResult.hits.map((hit: any) => hit.customerId);
-      // // Nếu Meilisearch không tìm thấy khách hàng nào khớp từ khóa
-      // if (matchedCustomerIds.length === 0) {
-      //   return {
-      //     message: "Không tìm thấy khách hàng phù hợp",
-      //     data: [],
-      //     grandTotal: mapToDebtItemDTO({
-      //       customerId: "",
-      //       customerName: "TỔNG CỘNG",
-      //       totalDebt: 0,
-      //       closedDebt: 0,
-      //       currentPeriodDebt: 0,
-      //       dueDebt: 0,
-      //       notDueDebt: 0,
-      //       unpaidOutboundCount: 0,
-      //       aging: {},
-      //     }),
-      //     totalCustomers: 0,
-      //     totalPages: 1,
-      //     currentPage: page,
-      //   };
-      // }
-      // // 2. Chỉ query các PXK chưa thanh toán của danh sách Customer ID đã lọc
-      // const unpaidOutbounds = await debtRepository.findOutboundUnpaid({
-      //   customerId: matchedCustomerIds,
-      // });
-      // // 3. Gom nhóm công nợ cho các khách hàng tìm được
-      // const { sortedCustomers, grandTotal } = processDebtAggregation(unpaidOutbounds);
-      // // 4. Phân trang trên kết quả tìm kiếm
-      // const totalCustomers = sortedCustomers.length;
-      // const totalPages = Math.ceil(totalCustomers / limit) || 1;
-      // const startIndex = (page - 1) * limit;
-      // const paginatedItems = sortedCustomers.slice(startIndex, startIndex + limit);
-      // return {
-      //   message: "Tìm kiếm công nợ khách hàng thành công",
-      //   data: paginatedItems.map(mapToDebtItemDTO),
-      //   grandTotal: mapToDebtItemDTO(grandTotal), // <-- Grand Total của các KH được tìm thấy
-      //   totalCustomers,
-      //   totalPages,
-      //   currentPage: page,
-      // };
-    } catch (error) {
-      console.error("Error in searchCustomerDebtSummary:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
@@ -257,13 +186,13 @@ export const debtManagementService = {
     }
   },
 
-  exportCustomerDebtSummaryToExcel: async (res: Response) => {
+  exportCustomerDebtSummaryToExcel: async (res: Response, targetDate: Date | string) => {
     try {
       // 1. Kéo toàn bộ dữ liệu & chạy logic tổng hợp như getCustomerDebtSummary
-      const unpaidOutbounds = await debtRepository.findOutboundUnpaid({});
+      const unpaidOutbounds = await debtRepository.findOutboundUnpaid({ targetDate });
       const { sortedCustomers, grandTotal } = processDebtAggregation(unpaidOutbounds);
 
-      const dateStr = dayjsUtc().format("DD-MM-YYYY");
+      const dateStr = dayjsUtc(targetDate).format("DD-MM-YYYY");
       const fileName = `debt_customer_${dateStr}`;
 
       // 2. Cấu hình Header HTTP Response
@@ -558,9 +487,9 @@ const mapToDebtItemDTO = (rawItem: any): DebtItemDTO => {
 };
 
 // Helper tính toán công nợ và gom nhóm từ danh sách PXK
-const processDebtAggregation = (unpaidOutbounds: any[]) => {
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
+const processDebtAggregation = (unpaidOutbounds: any[], targetDate?: Date | string) => {
+  const baseDate = targetDate ? new Date(targetDate) : new Date();
+  baseDate.setHours(0, 0, 0, 0);
 
   const customerMap = new Map<string, any>();
 
@@ -619,7 +548,7 @@ const processDebtAggregation = (unpaidOutbounds: any[]) => {
       const dueDate = new Date(pxk.dueDate);
       dueDate.setHours(0, 0, 0, 0);
 
-      const diffTime = dueDate.getTime() - now.getTime();
+      const diffTime = dueDate.getTime() - baseDate.getTime();
       const daysUntilDue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
       if (daysUntilDue >= 0) {

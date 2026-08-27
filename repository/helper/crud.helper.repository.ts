@@ -1,10 +1,17 @@
 import { Model, ModelStatic, Transaction, Op, WhereOptions } from "sequelize";
 
 export const CrudHelper = {
+  findAll<T extends Model>({ model, options }: { model: ModelStatic<T>; options?: any }) {
+    return model.findAll({
+      attributes: { exclude: ["createdAt", "updatedAt"] },
+      ...options,
+    });
+  },
+
   findByPk<T extends Model>({
     model,
     id,
-    options = {},
+    options,
   }: {
     model: ModelStatic<T>;
     id: number;
@@ -16,28 +23,13 @@ export const CrudHelper = {
   findOne<T extends Model>({
     model,
     whereCondition,
-    options = {},
+    options,
   }: {
     model: ModelStatic<T>;
     whereCondition: WhereOptions<any>;
     options?: any;
   }) {
     return model.findOne({
-      where: whereCondition,
-      ...options,
-    });
-  },
-
-  findAll<T extends Model>({
-    model,
-    whereCondition,
-    options = {},
-  }: {
-    model: ModelStatic<T>;
-    whereCondition: WhereOptions<any>;
-    options?: any;
-  }) {
-    return model.findAll({
       where: whereCondition,
       ...options,
     });
@@ -58,7 +50,7 @@ export const CrudHelper = {
   bulkCreate<T extends Model>({
     model,
     data,
-    options = {},
+    options,
   }: {
     model: ModelStatic<T>;
     data: any[];

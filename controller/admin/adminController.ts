@@ -159,11 +159,7 @@ export const deleteCriteria = async (req: Request, res: Response, next: NextFunc
 
 export const getAllFluteRatio = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await adminService.getAllItems({
-      model: FluteRatio,
-      message: "get all flute ratio successfully",
-    });
-
+    const response = await adminService.getAllItems({ model: FluteRatio });
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -175,7 +171,6 @@ export const createFluteRatio = async (req: Request, res: Response, next: NextFu
     const response = await adminService.createNewItem({
       model: FluteRatio,
       data: req.body as FluteRatioCreationAttributes,
-      message: "Create flute ratio successfully",
     });
 
     return res.status(200).json(response);
@@ -192,9 +187,6 @@ export const updateFluteRatio = async (req: Request, res: Response, next: NextFu
       model: FluteRatio,
       itemId: Number(fluteRatioId),
       dataUpdated: req.body as FluteRatioCreationAttributes,
-      message: "update flute ratio successfully",
-      errMessage: "flute ratio not found",
-      errCode: "FLUTE_RATIO_NOT_FOUND",
     });
 
     return res.status(200).json(response);
@@ -210,9 +202,6 @@ export const deleteFluteRatio = async (req: Request, res: Response, next: NextFu
     const response = await adminService.deleteItem({
       model: FluteRatio,
       itemId: Number(fluteRatioId),
-      message: "delete flute ratio successfully",
-      errMessage: "flute ratio not found",
-      errCode: "FLUTE_RATIO_NOT_FOUND",
     });
 
     return res.status(200).json(response);
@@ -278,10 +267,7 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
 
 export const getAllVehicle = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await adminService.getAllItems({
-      model: Vehicle,
-      message: "get all vehicle successfully",
-    });
+    const response = await adminService.getAllItems({ model: Vehicle });
 
     // Kiểm tra xem dữ liệu trả về có phải là mảng không để tránh lỗi crash
     if (response && Array.isArray(response.data)) {
@@ -317,7 +303,6 @@ export const createNewVehicle = async (req: Request, res: Response, next: NextFu
     const response = await adminService.createNewItem({
       model: Vehicle,
       data: req.body as VehicleCreationAttributes,
-      message: "Create vehicle successfully",
     });
 
     return res.status(200).json(response);
@@ -334,9 +319,6 @@ export const updateVehicle = async (req: Request, res: Response, next: NextFunct
       model: Vehicle,
       itemId: Number(vehicleId),
       dataUpdated: req.body as VehicleCreationAttributes,
-      message: "update vehicle successfully",
-      errMessage: "vehicle not found",
-      errCode: "VEHICLE_NOT_FOUND",
     });
 
     return res.status(200).json(response);
@@ -352,9 +334,6 @@ export const deleteVehicle = async (req: Request, res: Response, next: NextFunct
     const response = await adminService.deleteItem({
       model: Vehicle,
       itemId: Number(vehicleId),
-      message: "delete vehicle successfully",
-      errMessage: "vehicle not found",
-      errCode: "VEHICLE_NOT_FOUND",
     });
 
     return res.status(200).json(response);
@@ -375,13 +354,10 @@ export const getWaveCrestCoefficient = async (req: Request, res: Response, next:
       response = await adminService.getItemById({
         model: WaveCrestCoefficient,
         itemId: Number(waveCrestId),
-        errMessage: "wave crest not found",
-        errCode: "WAVE_CREST_NOT_FOUND",
       });
     } else {
       response = await adminService.getAllItems({
         model: WaveCrestCoefficient,
-        message: "get all wave crest coefficient successfully",
       });
     }
 
@@ -397,7 +373,6 @@ export const createWaveCrest = async (req: Request, res: Response, next: NextFun
     const response = await adminService.createNewItem({
       model: WaveCrestCoefficient,
       data: req.body as WaveCrestCreationAttributes,
-      message: "create wave crest coefficient successfully",
     });
 
     return res.status(200).json(response);
@@ -415,9 +390,6 @@ export const updateWaveCrest = async (req: Request, res: Response, next: NextFun
       model: WaveCrestCoefficient,
       itemId: Number(waveCrestId),
       dataUpdated: req.body as WaveCrestCreationAttributes,
-      message: "update wave crest coefficient successfully",
-      errMessage: "wave crest coefficient not found",
-      errCode: "WAVE_CREST_COEFF_NOT_FOUND",
     });
 
     return res.status(200).json(response);
@@ -434,9 +406,6 @@ export const deleteWaveCrest = async (req: Request, res: Response, next: NextFun
     const response = await adminService.deleteItem({
       model: WaveCrestCoefficient,
       itemId: Number(waveCrestId),
-      message: `delete waveCrestCoefficientId: ${waveCrestId} successfully`,
-      errMessage: "wave crest coefficient not found",
-      errCode: "WAVE_CREST_COEFF_NOT_FOUND",
     });
 
     return res.status(200).json(response);

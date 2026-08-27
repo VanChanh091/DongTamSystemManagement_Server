@@ -1,283 +1,207 @@
-import { AppError } from "../../utils/appError";
-import {
-  Suppliers,
-  SuppliersCreationAttributes,
-} from "../../models/admin/paperClassifications/suppliers";
-import {
-  PaperTypes,
-  PaperTypesCreationAttributes,
-} from "../../models/admin/paperClassifications/paperTypes";
-import {
-  PaperBasisWeights,
-  PaperBasisWeightsCreationAttributes,
-} from "../../models/admin/paperClassifications/paperBasisWeights";
+import { Op, Transaction } from "sequelize";
+import { PaperTypes } from "../../models/admin/paperClassifications/paperTypes";
 import {
   SupplierPaperCodes,
+  SupplierPaperCodesAttributes,
   SupplierPaperCodesCreationAttributes,
 } from "../../models/admin/paperClassifications/supplierPaperCodes";
+import { AppError } from "../../utils/appError";
+import { runInTransaction } from "../../utils/helper/transactionHelper";
+import { Suppliers } from "../../models/admin/paperClassifications/suppliers";
 import {
   PaperClassifications,
+  PaperClassificationsAttributes,
   PaperClassificationsCreationAttributes,
 } from "../../models/admin/paperClassifications/paperClassifications";
-import { runInTransaction } from "../../utils/helper/transactionHelper";
+import { PaperBasisWeights } from "../../models/admin/paperClassifications/paperBasisWeights";
+import {
+  getClassificationDependencyMaps,
+  getSupplierAndPaperTypeMaps,
+} from "../../utils/helper/modelHelper/paperCodeHelper";
 
 export const adminPaperCodeService = {
-  // =========================== SUPPLIERS =================================
-
-  getAllSuppliers: async () => {
-    try {
-      const allSuppliers = await Suppliers.findAll({
-        attributes: { exclude: ["createdAt", "updatedAt"] },
-      });
-      return { message: `get all Suppliers successfully`, data: allSuppliers };
-    } catch (error) {
-      console.error("get all Suppliers failed:", error);
-      throw AppError.ServerError();
-    }
-  },
-
-  createSupplier: async ({ data }: { data: SuppliersCreationAttributes }) => {
-    try {
-      return await runInTransaction(async (transaction) => {
-        const newSupplier = await Suppliers.create({ ...data }, { transaction: transaction });
-
-        return { message: "Create Supplier successfully", data: newSupplier };
-      });
-    } catch (error) {
-      console.error("create Supplier failed:", error);
-      if (error instanceof AppError) throw error;
-      throw AppError.ServerError();
-    }
-  },
-
-  updateSupplier: async ({
+  //=============================== SUPPLIERS =================================
+  updateActiveSupplier: async ({
     supplierId,
-    data,
+    isActive,
   }: {
     supplierId: number;
-    data: SuppliersCreationAttributes;
+    isActive: boolean;
   }) => {
     try {
-      return await runInTransaction(async (transaction) => {
-        const [affectedCount] = await Suppliers.update(
-          { ...data },
-          { where: { supplierId }, transaction: transaction },
-        );
-
-        if (affectedCount === 0) {
-          throw AppError.NotFound("Supplier not found", "SUPPLIER_NOT_FOUND");
+      return await runInTransaction(async (transaction: Transaction) => {
+        const supplier = await Suppliers.findByPk(supplierId, { transaction });
+        if (!supplier) {
+          throw AppError.NotFound(`Supplier ID ${supplierId} not found`, "SUPPLIER_NOT_FOUND");
         }
 
-        return { message: "Update Supplier successfully", data: { supplierId, ...data } };
+        await supplier.update({ isActive }, { transaction });
+
+        return { message: `Successfully updated active for supplier` };
       });
     } catch (error) {
-      console.error("update Supplier failed:", error);
+      console.error("update active supplier failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
   },
 
-  // ========================== PAPER TYPES ================================
-
-  getAllPaperTypes: async () => {
-    try {
-      const allPaperTypes = await PaperTypes.findAll({
-        attributes: { exclude: ["createdAt", "updatedAt"] },
-      });
-      return { message: `get all Paper Types successfully`, data: allPaperTypes };
-    } catch (error) {
-      console.error("get all Paper Types failed:", error);
-      throw AppError.ServerError();
-    }
-  },
-
-  createPaperType: async ({ data }: { data: PaperTypesCreationAttributes }) => {
-    try {
-      return await runInTransaction(async (transaction) => {
-        const newPaperType = await PaperTypes.create({ ...data }, { transaction: transaction });
-
-        return { message: "Create Paper Type successfully", data: newPaperType };
-      });
-    } catch (error) {
-      console.error("create Paper Type failed:", error);
-      if (error instanceof AppError) throw error;
-      throw AppError.ServerError();
-    }
-  },
-
-  updatePaperType: async ({
-    paperTypeId,
-    data,
-  }: {
-    paperTypeId: number;
-    data: PaperTypesCreationAttributes;
-  }) => {
-    try {
-      return await runInTransaction(async (transaction) => {
-        const [affectedCount] = await PaperTypes.update(
-          { ...data },
-          { where: { paperTypeId }, transaction: transaction },
-        );
-
-        if (affectedCount === 0) {
-          throw AppError.NotFound("Paper Type not found", "PAPER_TYPE_NOT_FOUND");
-        }
-
-        return {
-          message: "Update Paper Type successfully",
-          data: { paperTypeId, ...data },
-        };
-      });
-    } catch (error) {
-      console.error("update Paper Type failed:", error);
-      if (error instanceof AppError) throw error;
-      throw AppError.ServerError();
-    }
-  },
-
-  // ====================== PAPER BASIS WEIGHTS ============================
-
-  getAllBasisWeights: async () => {
-    try {
-      const allBasisWeights = await PaperBasisWeights.findAll({
-        attributes: { exclude: ["createdAt", "updatedAt"] },
-      });
-      return { message: `get all Paper Basis Weights successfully`, data: allBasisWeights };
-    } catch (error) {
-      console.error("get all paper basis weights failed:", error);
-      throw AppError.ServerError();
-    }
-  },
-
-  createBasisWeight: async ({ data }: { data: PaperBasisWeightsCreationAttributes }) => {
-    try {
-      return await runInTransaction(async (transaction) => {
-        const newBasisWeight = await PaperBasisWeights.create(
-          { ...data },
-          { transaction: transaction },
-        );
-
-        return { message: "Create Basis Weight successfully", data: newBasisWeight };
-      });
-    } catch (error) {
-      console.error("create Basis Weight failed:", error);
-      if (error instanceof AppError) throw error;
-      throw AppError.ServerError();
-    }
-  },
-
-  updateBasisWeight: async ({
-    basisWeightId,
-    data,
-  }: {
-    basisWeightId: number;
-    data: PaperBasisWeightsCreationAttributes;
-  }) => {
-    try {
-      return await runInTransaction(async (transaction) => {
-        const [affectedCount] = await PaperBasisWeights.update(
-          { ...data },
-          { where: { basisWeightId }, transaction: transaction },
-        );
-
-        if (affectedCount === 0) {
-          throw AppError.NotFound("Basis Weight not found", "BASIS_WEIGHT_NOT_FOUND");
-        }
-
-        return {
-          message: "Update Basis Weight successfully",
-          data: { basisWeightId, ...data },
-        };
-      });
-    } catch (error) {
-      console.error("update Basis Weight failed:", error);
-      if (error instanceof AppError) throw error;
-      throw AppError.ServerError();
-    }
-  },
-
-  // ====================== SUPPLIER PAPER CODES ===========================
-
+  //=============================== SUPPLIER PAPER CODES =================================
   getAllSupplierPaperCodes: async () => {
     try {
-      const allSupplierPaper = await SupplierPaperCodes.findAll({
+      const supplierPaperCodes = await SupplierPaperCodes.findAll({
         attributes: { exclude: ["createdAt", "updatedAt"] },
         include: [
-          { model: Suppliers, attributes: ["supplierName", "supplierCode"] },
-          { model: PaperTypes, attributes: ["paperName", "paperCode"] },
+          {
+            model: Suppliers,
+            attributes: ["supplierName", "supplierCode"],
+            where: { isActive: true },
+          },
+          { model: PaperTypes, attributes: ["paperName", "paperCode", "grade"] },
         ],
       });
-      return { message: `get all Supplier Paper Codes successfully`, data: allSupplierPaper };
+
+      return { message: "Successfully retrieved supplier paper codes", data: supplierPaperCodes };
     } catch (error) {
-      console.error("get all Supplier Paper Codes failed:", error);
+      console.error("get all supplier paper codes failed:", error);
       throw AppError.ServerError();
     }
   },
 
-  createSupplierPaperCode: async ({ data }: { data: SupplierPaperCodesCreationAttributes }) => {
+  createSupplierPaperCode: async (items: SupplierPaperCodesCreationAttributes[]) => {
     try {
       return await runInTransaction(async (transaction) => {
-        const newSupplierPaperCode = await SupplierPaperCodes.create(
-          { ...data },
-          { transaction: transaction },
-        );
+        const { supplierMap, paperTypeMap } = await getSupplierAndPaperTypeMaps({
+          supplierIds: items.map((i) => i.supplierId),
+          paperTypeIds: items.map((i) => i.paperTypeId),
+          transaction,
+        });
+
+        const payload = items.map((item) => {
+          if (!supplierMap.has(item.supplierId)) {
+            throw AppError.NotFound(
+              `Supplier ID ${item.supplierId} not found`,
+              "SUPPLIER_NOT_FOUND",
+            );
+          }
+          if (!paperTypeMap.has(item.paperTypeId)) {
+            throw AppError.NotFound(
+              `Paper Type ID ${item.paperTypeId} not found`,
+              "PAPER_TYPE_NOT_FOUND",
+            );
+          }
+
+          const paperCode = paperTypeMap.get(item.paperTypeId)!;
+          const transferCode = supplierMap.get(item.supplierId)!;
+          const generatedCompanyCode = `${paperCode}${transferCode}`.toUpperCase();
+
+          return { ...item, companyCode: generatedCompanyCode };
+        });
+
+        const newSupplierPaperCodes = await SupplierPaperCodes.bulkCreate(payload, {
+          transaction,
+        });
 
         return {
-          message: "Create Supplier Paper Code successfully",
-          data: newSupplierPaperCode,
+          message: "Supplier paper codes created successfully",
+          data: newSupplierPaperCodes,
         };
       });
     } catch (error) {
-      console.error("create Supplier Paper Code failed:", error);
+      console.error("create supplier paper codes failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
   },
 
-  updateSupplierPaperCode: async ({
-    supplierPaperId,
-    supplierId,
-    paperTypeId,
-    data,
-  }: {
-    supplierPaperId: number;
-    supplierId: number;
-    paperTypeId: number;
-    data: SupplierPaperCodesCreationAttributes;
-  }) => {
+  updateSupplierPaperCode: async (items: SupplierPaperCodesAttributes[]) => {
     try {
       return await runInTransaction(async (transaction) => {
-        const [affectedCount] = await SupplierPaperCodes.update(
-          { ...data, supplierId, paperTypeId },
-          { where: { supplierPaperId }, transaction: transaction },
-        );
-        if (affectedCount === 0) {
-          throw AppError.NotFound("Supplier Paper Code not found", "SUPPLIER_PAPER_CODE_NOT_FOUND");
+        const targetIds = items.map((i) => i.supplierPaperId);
+        const existingRecords = await SupplierPaperCodes.findAll({
+          where: { supplierPaperId: { [Op.in]: targetIds } },
+          transaction,
+        });
+
+        if (existingRecords.length !== targetIds.length) {
+          throw AppError.NotFound(
+            "One or more Supplier Paper Codes not found",
+            "SOME_RECORDS_NOT_FOUND",
+          );
         }
 
-        return {
-          message: "Update Supplier Paper Code successfully",
-          data: { ...data, supplierPaperId, supplierId, paperTypeId },
-        };
+        const existingRecordMap = new Map(existingRecords.map((r) => [r.supplierPaperId, r]));
+
+        // Gom tất cả paperTypeId và paperTypeId cần dùng để query
+        const neededSupplierIds: number[] = [];
+        const neededPaperTypeIds: number[] = [];
+
+        items.forEach((item) => {
+          const current = existingRecordMap.get(item.supplierPaperId)!;
+          neededSupplierIds.push(item.supplierId || current.supplierId);
+          neededPaperTypeIds.push(item.paperTypeId || current.paperTypeId);
+        });
+
+        const { supplierMap, paperTypeMap } = await getSupplierAndPaperTypeMaps({
+          supplierIds: neededSupplierIds,
+          paperTypeIds: neededPaperTypeIds,
+          transaction,
+        });
+
+        const updatePromises = items.map((item) => {
+          const current = existingRecordMap.get(item.supplierPaperId)!;
+          const targetSupplierId = item.supplierId || current.supplierId;
+          const targetPaperTypeId = item.paperTypeId || current.paperTypeId;
+
+          const transferCode = supplierMap.get(targetSupplierId);
+          const paperCode = paperTypeMap.get(targetPaperTypeId);
+
+          if (!transferCode) {
+            throw AppError.NotFound(
+              `Supplier ID ${targetSupplierId} not found`,
+              "SUPPLIER_NOT_FOUND",
+            );
+          } else if (!paperCode) {
+            throw AppError.NotFound(
+              `Paper Type ID ${targetPaperTypeId} not found`,
+              "PAPER_TYPE_NOT_FOUND",
+            );
+          }
+
+          const updateData: Record<string, any> = { ...item };
+
+          // Nếu có thay đổi paperTypeId hoặc companyCode -> Tạo lại companyCode
+          if (item.supplierId !== undefined || item.paperTypeId !== undefined) {
+            updateData.companyCode = `${paperCode}${transferCode}`.toUpperCase();
+          }
+
+          return SupplierPaperCodes.update(updateData, {
+            where: { supplierPaperId: item.supplierPaperId },
+            transaction,
+          });
+        });
+
+        await Promise.all(updatePromises);
+
+        return { message: `Successfully updated ${items.length} records` };
       });
     } catch (error) {
-      console.error("update Supplier Paper Code failed:", error);
+      console.error("update supplier paper codes failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
   },
 
-  // ====================== PAPER CLASSIFICATIONS ==========================
-
-  getAllPaperClassifications: async () => {
+  //=============================== PAPER CLASSIFICATIONS =================================
+  getAllPaperClassifications: async ({ page, pageSize }: { page: number; pageSize: number }) => {
     try {
-      const allClassifications = await PaperClassifications.findAll({
+      const { rows, count } = await PaperClassifications.findAndCountAll({
         attributes: { exclude: ["createdAt", "updatedAt"] },
         include: [
           { model: PaperBasisWeights, attributes: ["basisWeight"], as: "basisWeight" },
           {
             model: SupplierPaperCodes,
-            attributes: ["layerType", "supplierCode", "companyCode"],
+            attributes: ["companyCode"],
             as: "supplierPaper",
             include: [
               {
@@ -286,72 +210,165 @@ export const adminPaperCodeService = {
                 required: false,
                 where: { isActive: true },
               },
-              { model: PaperTypes, attributes: ["paperName", "paperCode"] },
+              { model: PaperTypes, attributes: ["paperName", "paperCode", "grade"] },
             ],
           },
         ],
+
+        offset: (page - 1) * pageSize,
+        limit: pageSize,
+        order: [
+          [{ model: SupplierPaperCodes, as: "supplierPaper" }, Suppliers, "supplierName", "ASC"],
+          [{ model: PaperBasisWeights, as: "basisWeight" }, "basisWeight", "ASC"],
+        ],
       });
-      return { message: `get all Paper Classifications successfully`, data: allClassifications };
+
+      const responseData = {
+        message: "Successfully retrieved paper classifications",
+        data: rows,
+        totalOrders: count,
+        totalPages: Math.ceil(count / pageSize),
+        currentPage: page,
+      };
+
+      return responseData;
     } catch (error) {
-      console.error("get all Paper Classifications failed:", error);
+      console.error("get all paper classifications failed:", error);
       throw AppError.ServerError();
     }
   },
 
-  createPaperClassification: async ({ data }: { data: PaperClassificationsCreationAttributes }) => {
+  createPaperClassification: async (items: PaperClassificationsCreationAttributes[]) => {
     try {
       return await runInTransaction(async (transaction) => {
-        const newClassification = await PaperClassifications.create(
-          { ...data },
-          { transaction: transaction },
-        );
+        const { supplierPaperMap, basisWeightMap } = await getClassificationDependencyMaps({
+          supplierPaperIds: items.map((i) => i.supplierPaperId),
+          basisWeightIds: items.map((i) => i.basisWeightId),
+          transaction,
+        });
 
-        return {
-          message: "Create Paper Classification successfully",
-          data: newClassification,
-        };
+        const payload = items.map((item) => {
+          const supplierPaper = supplierPaperMap.get(item.supplierPaperId);
+          const basisWeight = basisWeightMap.get(item.basisWeightId);
+
+          if (!supplierPaper) {
+            throw AppError.NotFound(
+              `Supplier Paper ID ${item.supplierPaperId} not found`,
+              "SUPPLIER_PAPER_NOT_FOUND",
+            );
+          } else if (!basisWeight) {
+            throw AppError.NotFound(
+              `Basis Weight ID ${item.basisWeightId} not found`,
+              "BASIS_WEIGHT_NOT_FOUND",
+            );
+          }
+
+          const generatedPaperCode = `${supplierPaper.companyCode}${basisWeight}`.toUpperCase();
+          const generatedWeightCategory =
+            `${supplierPaper.paperTypeCode}${basisWeight}`.toUpperCase();
+
+          return {
+            ...item,
+            paperCode: generatedPaperCode,
+            weightCategory: generatedWeightCategory,
+          };
+        });
+
+        const newClassifications = await PaperClassifications.bulkCreate(payload, {
+          transaction,
+        });
+
+        return { message: "Successfully created paper classifications", data: newClassifications };
       });
     } catch (error) {
-      console.error("create Paper Classification failed:", error);
+      console.error("create paper classification failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
   },
 
-  updatePaperClassification: async ({
-    classificationId,
-    supplierPaperId,
-    basisWeightId,
-    data,
-  }: {
-    classificationId: number;
-    supplierPaperId: number;
-    basisWeightId: number;
-    data: PaperClassificationsCreationAttributes;
-  }) => {
+  updatePaperClassification: async (items: PaperClassificationsAttributes[]) => {
     try {
       return await runInTransaction(async (transaction) => {
-        const [affectedCount] = await PaperClassifications.update(
-          { ...data, supplierPaperId, basisWeightId },
-          { where: { classificationId }, transaction: transaction },
-        );
+        const targetIds = items.map((i) => i.classificationId);
+        const existingRecords = await PaperClassifications.findAll({
+          where: { classificationId: { [Op.in]: targetIds } },
+          transaction,
+        });
 
-        if (affectedCount === 0) {
+        if (existingRecords.length !== targetIds.length) {
           throw AppError.NotFound(
-            "Paper Classification not found",
-            "PAPER_CLASSIFICATION_NOT_FOUND",
+            "One or more Paper Classifications not found",
+            "SOME_RECORDS_NOT_FOUND",
           );
         }
 
-        return {
-          message: "Update Paper Classification successfully",
-          data: { ...data, classificationId, supplierPaperId, basisWeightId },
-        };
+        const existingRecordMap = new Map(existingRecords.map((r) => [r.classificationId, r]));
+
+        // Gom tất cả supplierPaperId và basisWeightId cần dùng để query
+        const neededSupplierPaperIds: number[] = [];
+        const neededBasisWeightIds: number[] = [];
+
+        items.forEach((item) => {
+          const existingRecord = existingRecordMap.get(item.classificationId);
+          if (existingRecord) {
+            neededSupplierPaperIds.push(item.supplierPaperId);
+            neededBasisWeightIds.push(item.basisWeightId);
+          }
+        });
+
+        const { supplierPaperMap, basisWeightMap } = await getClassificationDependencyMaps({
+          supplierPaperIds: neededSupplierPaperIds,
+          basisWeightIds: neededBasisWeightIds,
+          transaction,
+        });
+
+        const updatePromises = items.map((item) => {
+          const current = existingRecordMap.get(item.classificationId)!;
+          const targetSupplierPaperId = item.supplierPaperId || current.supplierPaperId;
+          const targetBasisWeightId = item.basisWeightId || current.basisWeightId;
+
+          const supplierPaper = supplierPaperMap.get(targetSupplierPaperId);
+          const basisWeight = basisWeightMap.get(targetBasisWeightId);
+
+          if (!supplierPaper) {
+            throw AppError.NotFound(
+              `Supplier Paper ID ${targetSupplierPaperId} not found`,
+              "SUPPLIER_PAPER_NOT_FOUND",
+            );
+          } else if (!basisWeight) {
+            throw AppError.NotFound(
+              `Basis Weight ID ${targetBasisWeightId} not found`,
+              "BASIS_WEIGHT_NOT_FOUND",
+            );
+          }
+
+          const updateData: Record<string, any> = { ...item };
+
+          // Nếu có thay đổi supplierPaperId hoặc basisWeightId
+          // Tạo lại paperCode và weightCategory
+          if (item.supplierPaperId !== undefined || item.basisWeightId !== undefined) {
+            updateData.paperCode = `${supplierPaper.companyCode}${basisWeight}`.toUpperCase();
+            updateData.weightCategory =
+              `${supplierPaper.paperTypeCode}${basisWeight}`.toUpperCase();
+          }
+
+          return PaperClassifications.update(updateData, {
+            where: { classificationId: item.classificationId },
+            transaction,
+          });
+        });
+
+        await Promise.all(updatePromises);
+
+        return { message: `Successfully updated ${items.length} records` };
       });
     } catch (error) {
-      console.error("update Paper Classification failed:", error);
+      console.error("update paper classification failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
   },
+
+  //using for auto complete and dropdown
 };

@@ -5,7 +5,7 @@ import { PaperClassifications } from "./paperClassifications";
 interface PaperBasisWeightsAttributes {
   basisWeightId: number;
   basisWeight: number;
-  weightCode: string;
+  weightCode?: string;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -24,7 +24,7 @@ export class PaperBasisWeights
 {
   declare basisWeightId: number;
   declare basisWeight: number;
-  declare weightCode: string;
+  declare weightCode?: string;
 
   //Association
   declare classifications: PaperClassifications[];
@@ -38,7 +38,7 @@ export function initPaperBasisWeightsModel(sequelize: Sequelize): typeof PaperBa
     {
       basisWeightId: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
       basisWeight: { type: DataTypes.INTEGER, allowNull: false },
-      weightCode: { type: DataTypes.STRING, allowNull: false },
+      weightCode: { type: DataTypes.STRING, allowNull: true },
     },
     {
       sequelize,

@@ -115,7 +115,7 @@ export const inventoryLogService = {
           inventoryLogId: {
             [Op.in]: literal(`(
             SELECT MAX(sub_logs.inventoryLogId)
-            FROM inventorylogs AS sub_logs
+            FROM inventory_logs AS sub_logs
             WHERE sub_logs.createdAt <= :targetDate
             GROUP BY sub_logs.inventoryId
           )`),

@@ -15,14 +15,9 @@ export const getMachinePapers = async (req: Request, res: Response, next: NextFu
       response = await adminService.getItemById({
         model: MachinePaper,
         itemId: Number(machineId),
-        errMessage: "machine not found",
-        errCode: "MACHINE_NOT_FOUND",
       });
     } else {
-      response = await adminService.getAllItems({
-        model: MachinePaper,
-        message: "get all machine paper successfully",
-      });
+      response = await adminService.getAllItems({ model: MachinePaper });
     }
 
     return res.status(200).json(response);
@@ -37,7 +32,6 @@ export const createMachinePaper = async (req: Request, res: Response, next: Next
     const response = await adminService.createNewItem({
       model: MachinePaper,
       data: req.body as MachinePaperCreationAttributes,
-      message: "Create machine successfully",
     });
 
     return res.status(200).json(response);
@@ -55,9 +49,6 @@ export const updateMachinePaper = async (req: Request, res: Response, next: Next
       model: MachinePaper,
       itemId: Number(machineId),
       dataUpdated: req.body,
-      message: "update machine successfully",
-      errMessage: "machine not found",
-      errCode: "MACHINE_NOT_FOUND",
     });
 
     return res.status(200).json(response);
@@ -74,9 +65,6 @@ export const deleteMachinePaper = async (req: Request, res: Response, next: Next
     const response = await adminService.deleteItem({
       model: MachinePaper,
       itemId: Number(machineId),
-      message: `delete machineId: ${machineId} successfully`,
-      errMessage: "machine not found",
-      errCode: "MACHINE_NOT_FOUND",
     });
 
     return res.status(200).json(response);
@@ -94,17 +82,9 @@ export const getMachineBoxes = async (req: Request, res: Response, next: NextFun
     let response;
 
     if (machineId) {
-      response = await adminService.getItemById({
-        model: MachineBox,
-        itemId: Number(machineId),
-        errMessage: "machine not found",
-        errCode: "MACHINE_NOT_FOUND",
-      });
+      response = await adminService.getItemById({ model: MachineBox, itemId: Number(machineId) });
     } else {
-      response = await adminService.getAllItems({
-        model: MachineBox,
-        message: "get all machine box successfully",
-      });
+      response = await adminService.getAllItems({ model: MachineBox });
     }
 
     return res.status(200).json(response);
@@ -119,7 +99,6 @@ export const createMachineBox = async (req: Request, res: Response, next: NextFu
     const response = await adminService.createNewItem({
       model: MachineBox,
       data: req.body as MachineBoxCreationAttributes,
-      message: "Create machine box successfully",
     });
 
     return res.status(200).json(response);
@@ -138,9 +117,6 @@ export const updateMachineBox = async (req: Request, res: Response, next: NextFu
       model: MachineBox,
       itemId: Number(machineId),
       dataUpdated: machineUpdated,
-      message: "update machine box successfully",
-      errMessage: "machine box not found",
-      errCode: "MACHINE_BOX_NOT_FOUND",
     });
 
     return res.status(200).json(response);
@@ -157,9 +133,6 @@ export const deleteMachineBox = async (req: Request, res: Response, next: NextFu
     const response = await adminService.deleteItem({
       model: MachineBox,
       itemId: Number(machineId),
-      message: `delete machineId: ${machineId} successfully`,
-      errMessage: "machine box not found",
-      errCode: "MACHINE_BOX_NOT_FOUND",
     });
 
     return res.status(200).json(response);

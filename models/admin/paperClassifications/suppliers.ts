@@ -6,6 +6,7 @@ interface SuppliersAttributes {
   supplierId: number;
   supplierName: string;
   supplierCode: string;
+  transferCode: string;
   isActive: boolean;
 
   createdAt?: Date;
@@ -26,6 +27,7 @@ export class Suppliers
   declare supplierId: number;
   declare supplierName: string;
   declare supplierCode: string;
+  declare transferCode: string;
   declare isActive: boolean;
 
   //Association
@@ -41,6 +43,11 @@ export function initSuppliersModel(sequelize: Sequelize): typeof Suppliers {
       supplierId: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
       supplierName: { type: DataTypes.STRING, allowNull: false },
       supplierCode: { type: DataTypes.STRING, allowNull: false },
+      transferCode: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        comment: "Mã chuyển đổi của công ty",
+      },
       isActive: {
         type: DataTypes.BOOLEAN,
         allowNull: false,

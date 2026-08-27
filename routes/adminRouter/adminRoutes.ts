@@ -59,10 +59,10 @@ import {
   getAllPaperTypes,
   getAllSupplierPaperCodes,
   getAllSuppliers,
+  handleUpdateSupplier,
   updateBasisWeight,
   updatePaperClassification,
   updatePaperType,
-  updateSupplier,
   updateSupplierPaperCode,
 } from "../../controller/admin/adminPaperCodeController";
 
@@ -135,7 +135,7 @@ router.delete("/vehicles", authenticate, authorizeRole(["admin", "manager"]), de
 // =========================== SUPPLIERS =================================
 router.get("/suppliers", authenticate, getAllSuppliers);
 router.post("/suppliers", authenticate, authorizeRole(["admin"]), createSupplier);
-router.put("/suppliers", authenticate, authorizeRole(["admin"]), updateSupplier);
+router.put("/suppliers", authenticate, authorizeRole(["admin"]), handleUpdateSupplier);
 
 // ========================== PAPER TYPES ================================
 router.get("/paper-types", authenticate, getAllPaperTypes);
@@ -148,9 +148,19 @@ router.post("/paper-basis-weights", authenticate, authorizeRole(["admin"]), crea
 router.put("/paper-basis-weights", authenticate, authorizeRole(["admin"]), updateBasisWeight);
 
 // ====================== SUPPLIER PAPER CODES ===========================
-router.get("/supplier-paper", authenticate, getAllSupplierPaperCodes);
-router.post("/supplier-paper", authenticate, authorizeRole(["admin"]), createSupplierPaperCode);
-router.put("/supplier-paper", authenticate, authorizeRole(["admin"]), updateSupplierPaperCode);
+router.get("/supplier-paper-codes", authenticate, getAllSupplierPaperCodes);
+router.post(
+  "/supplier-paper-codes",
+  authenticate,
+  authorizeRole(["admin"]),
+  createSupplierPaperCode,
+);
+router.put(
+  "/supplier-paper-codes",
+  authenticate,
+  authorizeRole(["admin"]),
+  updateSupplierPaperCode,
+);
 
 // ====================== PAPER CLASSIFICATIONS ==========================
 router.get("/paper-classifications", authenticate, getAllPaperClassifications);
