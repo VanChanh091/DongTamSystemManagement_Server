@@ -321,7 +321,11 @@ export const customerService = {
         await customer.destroy({ transaction });
 
         //--------------------MEILISEARCH-----------------------
-        await meiliService.deleteMeiliData(MEILI_INDEX.CUSTOMERS, customerId, transaction);
+        await meiliService.deleteMeiliData({
+          indexKey: MEILI_INDEX.CUSTOMERS,
+          idOrIds: customerId,
+          transaction,
+        });
 
         return { message: "Customer deleted successfully" };
       });

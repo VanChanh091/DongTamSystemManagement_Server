@@ -25,7 +25,13 @@ import {
 } from "../../utils/helper/modelHelper/manufactureHelper";
 
 export const manuPaperService = {
-  getPlanningPaper: async (machine: string, filterType: string = "all") => {
+  getPlanningPaper: async ({
+    machine,
+    filterType = "all",
+  }: {
+    machine: string;
+    filterType: string;
+  }) => {
     try {
       const planning = await manufactureRepo.getManufacturePaper(machine, filterType);
 
@@ -105,7 +111,15 @@ export const manuPaperService = {
     }
   },
 
-  addReportPaper: async (planningId: number, data: any, user: any) => {
+  addReportPaper: async ({
+    planningId,
+    data,
+    user,
+  }: {
+    planningId: number;
+    data: any;
+    user: any;
+  }) => {
     const { role, permissions: userPermissions } = user;
     const { qtyProduced, dayCompleted, reportedBy, ...otherData } = data;
 
@@ -240,7 +254,7 @@ export const manuPaperService = {
 
         //--------------------MEILISEARCH-----------------------
         const reportId = reportCreated.report.reportPaperId;
-        await manuPaperService.syncPaperForMeili(reportId, planning, transaction);
+        await manuPaperService.syncPaperForMeili({ reportId, planningData: planning, transaction });
 
         return {
           message: "Add Report Production successfully",
@@ -259,7 +273,15 @@ export const manuPaperService = {
     }
   },
 
-  updateReportPaper: async (planningId: number, updateData: any, user: any) => {
+  updateReportPaper: async ({
+    planningId,
+    updateData,
+    user,
+  }: {
+    planningId: number;
+    updateData: any;
+    user: any;
+  }) => {
     const { role, permissions: userPermissions } = user;
     const { qtyProduced: newQty, reportedBy, ...otherData } = updateData;
 
@@ -386,7 +408,11 @@ export const manuPaperService = {
 
         //--------------------MEILISEARCH-----------------------
         const reportId = reportUpdated.reportPaperId;
-        await manuPaperService.syncPaperForMeili(reportId, planningUpdated, transaction);
+        await manuPaperService.syncPaperForMeili({
+          reportId,
+          planningData: planningUpdated,
+          transaction,
+        });
 
         return { message: "Update Report successfully", data: oldReport };
       });
@@ -397,7 +423,15 @@ export const manuPaperService = {
     }
   },
 
-  syncPaperForMeili: async (reportId: number, planningData: any, transaction: Transaction) => {
+  syncPaperForMeili: async ({
+    reportId,
+    planningData,
+    transaction,
+  }: {
+    reportId: number;
+    planningData: any;
+    transaction: Transaction;
+  }) => {
     try {
       await meiliService.syncOrUpdateMeiliData({
         indexKey: MEILI_INDEX.PLANNING_PAPERS,
@@ -426,7 +460,15 @@ export const manuPaperService = {
     }
   },
 
-  confirmProducingPaper: async (req: Request, planningId: number, user: any) => {
+  confirmProducingPaper: async ({
+    req,
+    planningId,
+    user,
+  }: {
+    req: Request;
+    planningId: number;
+    user: any;
+  }) => {
     const { role, permissions: userPermissions } = user;
 
     try {
@@ -513,24 +555,28 @@ export const manuPaperService = {
     }
   },
 
-  requestCompletePlanningPaper: async (planningId: number | number[]) => {
+  requestCompletePlanningPaper: async ({ planningId }: { planningId: number | number[] }) => {
     try {
-      return await updateStatusPaper(planningId, "requested", (papers) => {
-        for (const p of papers) {
-          if (p.status === "requested") {
-            throw AppError.BadRequest(
-              `Đơn hàng ${p.orderId} đã được yêu cầu hoàn thành rồi`,
-              "PLANNING_ALREADY_REQUESTED",
-            );
-          }
+      return await updateStatusPaper({
+        planningId,
+        targetStatus: "requested",
+        extraValidator: (papers) => {
+          for (const p of papers) {
+            if (p.status === "requested") {
+              throw AppError.BadRequest(
+                `Đơn hàng ${p.orderId} đã được yêu cầu hoàn thành rồi`,
+                "PLANNING_ALREADY_REQUESTED",
+              );
+            }
 
-          if ((p.qtyProduced ?? 0) === 0) {
-            throw AppError.BadRequest(
-              `Đơn hàng ${p.orderId} chưa có số lượng sản xuất`,
-              "PLANNING_NO_PRODUCED_QUANTITY",
-            );
+            if ((p.qtyProduced ?? 0) === 0) {
+              throw AppError.BadRequest(
+                `Đơn hàng ${p.orderId} chưa có số lượng sản xuất`,
+                "PLANNING_NO_PRODUCED_QUANTITY",
+              );
+            }
           }
-        }
+        },
       });
     } catch (error) {
       console.log(`error request complete planning paper`, error);
@@ -540,7 +586,7 @@ export const manuPaperService = {
   },
 
   //confirm fixed err from qc check
-  confirmFixedErr: async (planningId: number) => {
+  confirmFixedErr: async ({ planningId }: { planningId: number }) => {
     try {
       return await runInTransaction(async (transaction) => {
         const planning = await PlanningPaper.findOne({

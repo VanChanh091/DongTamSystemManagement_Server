@@ -42,7 +42,7 @@ export const createNewInventory = async (req: Request, res: Response, next: Next
     sourceOrderId?: string;
     targetOrderId?: string;
     qtyTransfer?: number;
-    inventoryId?: number;
+    inventoryId?: number | number[];
     reason?: string;
   };
 
@@ -69,11 +69,21 @@ export const createNewInventory = async (req: Request, res: Response, next: Next
         if (!inventoryId || !qtyTransfer || !reason) {
           throw AppError.BadRequest("Thiếu thông tin để thực hiện chuyển giao đến kho thanh lý");
         }
+
         response = await inventoryService.transferQtyToLiquidationInv({
-          inventoryId,
+          inventoryId: Array.isArray(inventoryId) ? inventoryId[0] : inventoryId,
           qtyTransfer,
           reason,
         });
+        break;
+      case "TRANSFER_TO_VARIANCE":
+        if (!inventoryId) {
+          throw AppError.BadRequest("Thiếu thông tin để thực hiện chuyển giao đến kho thanh lý");
+        }
+
+        const inventoryIds = Array.isArray(inventoryId) ? inventoryId : [inventoryId];
+        response = await inventoryService.transferToQtyVariance({ inventoryIds: inventoryIds });
+        break;
     }
 
     return res.status(200).json(response);

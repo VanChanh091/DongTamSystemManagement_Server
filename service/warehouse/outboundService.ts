@@ -812,11 +812,11 @@ export const outboundService = {
 
       // Delete khỏi Meilisearch các đơn đã hết tồn kho
       if (deleteInventoryIds.length > 0) {
-        await meiliService.deleteMeiliData(
-          MEILI_INDEX.INVENTORIES,
-          deleteInventoryIds,
+        await meiliService.deleteMeiliData({
+          indexKey: MEILI_INDEX.INVENTORIES,
+          idOrIds: deleteInventoryIds,
           transaction,
-        );
+        });
       }
     } catch (error) {
       console.log("err to sync data outbound: ", error);
@@ -905,7 +905,11 @@ export const outboundService = {
         }
 
         //--------------------MEILISEARCH-----------------------
-        await meiliService.deleteMeiliData(MEILI_INDEX.OUTBOUNDS, outboundId, transaction);
+        await meiliService.deleteMeiliData({
+          indexKey: MEILI_INDEX.OUTBOUNDS,
+          idOrIds: outboundId,
+          transaction,
+        });
 
         //update inventory in meilisearch
         const orderIds = details.map((d) => d.orderId);
@@ -937,11 +941,11 @@ export const outboundService = {
           }
 
           if (deleteInventoryIds.length > 0) {
-            await meiliService.deleteMeiliData(
-              MEILI_INDEX.INVENTORIES,
-              deleteInventoryIds,
+            await meiliService.deleteMeiliData({
+              indexKey: MEILI_INDEX.INVENTORIES,
+              idOrIds: deleteInventoryIds,
               transaction,
-            );
+            });
           }
         }
 

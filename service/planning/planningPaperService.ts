@@ -145,7 +145,15 @@ export const planningPaperService = {
     return allPlannings;
   },
 
-  getPlanningByField: async (machine: string, field: string, keyword: string) => {
+  getPlanningByField: async ({
+    machine,
+    field,
+    keyword,
+  }: {
+    machine: string;
+    field: string;
+    keyword: string;
+  }) => {
     try {
       const validFields = ["orderId", "customerName", "ghepKho"];
       if (!validFields.includes(field)) {
@@ -226,29 +234,36 @@ export const planningPaperService = {
   },
 
   completePlanningPaper: async (planningId: number | number[], forceComplete: boolean = false) => {
-    return await updateStatusPaper(planningId, "complete", (papers) => {
-      for (const p of papers) {
-        if (forceComplete) {
-          const qtyManufacture = p.Order.quantityManufacture ?? 0;
-          if (qtyManufacture !== 0) {
-            throw AppError.BadRequest(
-              `Đơn ${p.orderId} còn số lượng chưa sản xuất`,
-              "PLANNING_NOT_PRODUCED",
-            );
-          }
-        } else {
-          if (p.status !== "requested") {
-            throw AppError.BadRequest(
-              `Đơn ${p.orderId} chưa được yêu cầu hoàn thành`,
-              "PLANNING_NOT_REQUESTED",
-            );
-          }
+    return await updateStatusPaper({
+      planningId,
+      targetStatus: "complete",
+      extraValidator: (papers) => {
+        for (const p of papers) {
+          if (forceComplete) {
+            const qtyManufacture = p.Order.quantityManufacture ?? 0;
+            if (qtyManufacture !== 0) {
+              throw AppError.BadRequest(
+                `Đơn ${p.orderId} còn số lượng chưa sản xuất`,
+                "PLANNING_NOT_PRODUCED",
+              );
+            }
+          } else {
+            if (p.status !== "requested") {
+              throw AppError.BadRequest(
+                `Đơn ${p.orderId} chưa được yêu cầu hoàn thành`,
+                "PLANNING_NOT_REQUESTED",
+              );
+            }
 
-          if ((p.qtyProduced ?? 0) < p.runningPlan) {
-            throw AppError.BadRequest(`Đơn ${p.orderId} sản xuất thiếu số lượng`, "LACK_QUANTITY");
+            if ((p.qtyProduced ?? 0) < p.runningPlan) {
+              throw AppError.BadRequest(
+                `Đơn ${p.orderId} sản xuất thiếu số lượng`,
+                "LACK_QUANTITY",
+              );
+            }
           }
         }
-      }
+      },
     });
   },
 
@@ -323,11 +338,11 @@ export const planningPaperService = {
                   await planning.destroy({ transaction });
 
                   //--------------------MEILISEARCH-----------------------
-                  await meiliService.deleteMeiliData(
-                    MEILI_INDEX.PLANNING_PAPERS,
-                    deletedId,
+                  await meiliService.deleteMeiliData({
+                    indexKey: MEILI_INDEX.PLANNING_PAPERS,
+                    idOrIds: deletedId,
                     transaction,
-                  );
+                  });
                   await meiliService.syncOrUpdateMeiliData({
                     indexKey: MEILI_INDEX.ORDERS,
                     data: { orderSortValue: order.orderSortValue, status: newStatus },
@@ -412,11 +427,11 @@ export const planningPaperService = {
                     await CacheManager.clear("orderAccept");
 
                     //--------------------MEILISEARCH-----------------------
-                    await meiliService.deleteMeiliData(
-                      MEILI_INDEX.PLANNING_PAPERS,
-                      deletedId,
+                    await meiliService.deleteMeiliData({
+                      indexKey: MEILI_INDEX.PLANNING_PAPERS,
+                      idOrIds: deletedId,
                       transaction,
-                    );
+                    });
                     await meiliService.syncOrUpdateMeiliData({
                       indexKey: MEILI_INDEX.ORDERS,
                       data: { orderSortValue: order.orderSortValue, status: "accept" },

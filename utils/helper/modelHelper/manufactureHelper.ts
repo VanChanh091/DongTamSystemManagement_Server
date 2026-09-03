@@ -7,6 +7,8 @@ import { planningPaperRepository } from "../../../repository/planning/planningPa
 import { meiliService } from "../../../service/system/meiliService";
 import { runInTransaction } from "../transactionHelper";
 import { Order } from "../../../models/order/order";
+import { PaperRequirements } from "../../../models/planning/requirement/paperRequirements";
+import { Op } from "sequelize";
 
 export const aggregateReportFields = (reports: any[]) => {
   const shiftProductions = new Set<string>();
@@ -24,11 +26,15 @@ export const aggregateReportFields = (reports: any[]) => {
   };
 };
 
-export const updateStatusPaper = async (
-  planningId: number | number[],
-  targetStatus: "requested" | "complete",
-  extraValidator: (papers: PlanningPaper[]) => void,
-) => {
+export const updateStatusPaper = async ({
+  planningId,
+  targetStatus,
+  extraValidator,
+}: {
+  planningId: number | number[];
+  targetStatus: "requested" | "complete";
+  extraValidator: (papers: PlanningPaper[]) => void;
+}) => {
   return await runInTransaction(async (transaction) => {
     const ids = Array.isArray(planningId) ? planningId : [planningId];
 
@@ -72,6 +78,15 @@ export const updateStatusPaper = async (
         model: timeOverflowPlanning,
         data: { status: targetStatus },
         options: { where: { planningId: ids }, transaction },
+      });
+    }
+
+    if (targetStatus === "complete") {
+      //cập nhật status cho paperRequiments
+      await planningHelper.updateDataModel({
+        model: PaperRequirements,
+        data: { status: "COMPLETED" },
+        options: { where: { planningId: { [Op.in]: ids } }, transaction },
       });
     }
 

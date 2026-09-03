@@ -31,7 +31,7 @@ export const getPlanningPaper = async (req: Request, res: Response, next: NextFu
         dayCompleted: new Date(dayCompleted),
       });
     } else {
-      response = await manuPaperService.getPlanningPaper(machine, filterType);
+      response = await manuPaperService.getPlanningPaper({ machine, filterType });
     }
     return res.status(201).json(response);
   } catch (error) {
@@ -44,7 +44,11 @@ export const addReportPaper = async (req: Request, res: Response, next: NextFunc
   const { planningId } = req.query as { planningId: string };
 
   try {
-    const response = await manuPaperService.addReportPaper(Number(planningId), req.body, req.user);
+    const response = await manuPaperService.addReportPaper({
+      planningId: Number(planningId),
+      data: req.body,
+      user: req.user,
+    });
     return res.status(201).json(response);
   } catch (error) {
     next(error);
@@ -71,16 +75,24 @@ export const updateReportPaper = async (req: Request, res: Response, next: NextF
 
     switch (action) {
       case "EDIT_REPORT":
-        response = await manuPaperService.updateReportPaper(idArray[0], req.body, req.user);
+        response = await manuPaperService.updateReportPaper({
+          planningId: idArray[0],
+          updateData: req.body,
+          user: req.user,
+        });
         break;
       case "REQUEST_COMPLETE":
-        response = await manuPaperService.requestCompletePlanningPaper(idArray);
+        response = await manuPaperService.requestCompletePlanningPaper({ planningId: idArray });
         break;
       case "CONFIRM_PRODUCING":
-        response = await manuPaperService.confirmProducingPaper(req, idArray[0], req.user);
+        response = await manuPaperService.confirmProducingPaper({
+          req,
+          planningId: idArray[0],
+          user: req.user,
+        });
         break;
       case "CONFIRM_FIX_ERROR":
-        response = await manuPaperService.confirmFixedErr(idArray[0]);
+        response = await manuPaperService.confirmFixedErr({ planningId: idArray[0] });
         break;
 
       default:

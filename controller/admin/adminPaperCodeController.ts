@@ -27,7 +27,10 @@ import { adminPaperCodeService } from "../../service/admin/adminPaperCodeService
 
 export const getAllSuppliers = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await adminService.getAllItems({ model: Suppliers });
+    const response = await adminService.getAllItems({
+      model: Suppliers,
+      options: { order: [["supplierName", "ASC"]] },
+    });
 
     return res.status(200).json(response);
   } catch (error) {
@@ -49,23 +52,26 @@ export const createSupplier = async (req: Request, res: Response, next: NextFunc
 };
 
 export const handleUpdateSupplier = async (req: Request, res: Response, next: NextFunction) => {
-  const { supplierId } = req.query as { supplierId: string };
-  const { isActive } = req.body as { isActive?: boolean };
+  const { supplierId, action } = req.query as { supplierId: string; action: string };
 
   try {
     let response;
 
-    if (isActive) {
-      response = await adminPaperCodeService.updateActiveSupplier({
-        supplierId: Number(supplierId),
-        isActive,
-      });
-    } else {
-      response = await adminService.updateItem({
-        model: Suppliers,
-        itemId: Number(supplierId),
-        dataUpdated: req.body as SuppliersCreationAttributes,
-      });
+    switch (action) {
+      case "TOGGLE_ACTIVE":
+        response = await adminPaperCodeService.toggleActiveSupplier({
+          supplierId: Number(supplierId),
+        });
+        break;
+      case "UPDATE_SUPPLIER":
+        response = await adminService.updateItem({
+          model: Suppliers,
+          itemId: Number(supplierId),
+          dataUpdated: req.body as SuppliersCreationAttributes,
+        });
+        break;
+      default:
+        throw new Error(`Invalid action: ${action}`);
     }
 
     return res.status(200).json(response);
@@ -118,7 +124,10 @@ export const updatePaperType = async (req: Request, res: Response, next: NextFun
 
 export const getAllBasisWeights = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const response = await adminService.getAllItems({ model: PaperBasisWeights });
+    const response = await adminService.getAllItems({
+      model: PaperBasisWeights,
+      options: { order: [["basisWeight", "ASC"]] },
+    });
     return res.status(200).json(response);
   } catch (error) {
     next(error);

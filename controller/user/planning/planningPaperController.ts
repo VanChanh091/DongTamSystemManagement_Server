@@ -19,7 +19,7 @@ export const getPlanningPapers = async (req: Request, res: Response, next: NextF
     let response;
     // 1. Nhánh tìm kiếm theo field
     if (field && keyword) {
-      response = await planningPaperService.getPlanningByField(machine, field, keyword);
+      response = await planningPaperService.getPlanningByField({ machine, field, keyword });
     }
     // 2. Nhánh lấy tất cả
     else {

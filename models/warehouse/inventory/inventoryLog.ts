@@ -7,6 +7,7 @@ export type actionInvType =
   | "INBOUND"
   | "OUTBOUND"
   | "ADJUSTMENT_OUTBOUND"
+  | "ADJUSTMENT"
   | "CANCEL_OUTBOUND"
   | "LIQUIDATION"
   | "TRANSFER";
@@ -68,6 +69,7 @@ export function initInventoryLogModel(sequelize: Sequelize): typeof InventoryLog
           "INBOUND",
           "OUTBOUND",
           "ADJUSTMENT_OUTBOUND",
+          "ADJUSTMENT",
           "CANCEL_OUTBOUND",
           "LIQUIDATION",
           "TRANSFER",

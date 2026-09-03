@@ -4,15 +4,13 @@ import { Customer } from "../../models/customer/customer";
 import { PlanningPaper } from "../../models/planning/planningPaper";
 import { PaperRequirementLayers } from "../../models/planning/requirement/paper_requirement_layers";
 
+const statusList = ["planning", "lackQty", "producing", "requested"];
+
 export const paperRequirementRepo = {
   buildPaperRequirementsOptions: ({
-    page,
-    pageSize,
     machine,
     whereCondition,
   }: {
-    page: number;
-    pageSize: number;
     machine: string;
     whereCondition?: any;
   }): FindOptions => {
@@ -24,7 +22,7 @@ export const paperRequirementRepo = {
           model: PlanningPaper,
           where: {
             chooseMachine: machine,
-            status: { [Op.in]: ["planning", "lackQty", "producing", "requested"] },
+            status: { [Op.in]: statusList },
           },
           attributes: [
             "orderId",
@@ -43,6 +41,7 @@ export const paperRequirementRepo = {
             "chooseMachine",
             "lengthPaperPlanning",
             "sizePaperPLaning",
+            "sortPlanning",
           ],
           include: [
             {
@@ -54,12 +53,6 @@ export const paperRequirementRepo = {
         },
       ],
     };
-
-    if (page && pageSize) {
-      queryOptions.offset = (page - 1) * pageSize;
-      queryOptions.limit = pageSize;
-      queryOptions.order = [["requirementId", "ASC"]];
-    }
 
     return queryOptions;
   },

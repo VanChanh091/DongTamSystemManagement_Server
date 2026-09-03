@@ -298,7 +298,11 @@ export const deliveryRequestService = {
         }
 
         //--------------------MEILISEARCH-----------------------
-        await meiliService.deleteMeiliData(MEILI_INDEX.DELIVERY_REQUEST, idArray, transaction);
+        await meiliService.deleteMeiliData({
+          indexKey: MEILI_INDEX.DELIVERY_REQUEST,
+          idOrIds: idArray,
+          transaction,
+        });
 
         return { message: "Trả yêu cầu giao hàng thành công" };
       });

@@ -265,7 +265,11 @@ export const employeeService = {
         await employee.destroy({ transaction });
 
         //--------------------MEILISEARCH-----------------------
-        await meiliService.deleteMeiliData(MEILI_INDEX.EMPLOYEES, employeeId, transaction);
+        await meiliService.deleteMeiliData({
+          indexKey: MEILI_INDEX.EMPLOYEES,
+          idOrIds: employeeId,
+          transaction,
+        });
 
         return { message: "delete employee successfully" };
       });

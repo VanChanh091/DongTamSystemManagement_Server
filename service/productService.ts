@@ -255,7 +255,11 @@ export const productService = {
         await product.destroy({ transaction });
 
         //--------------------MEILISEARCH-----------------------
-        await meiliService.deleteMeiliData(MEILI_INDEX.PRODUCTS, productId, transaction);
+        await meiliService.deleteMeiliData({
+          indexKey: MEILI_INDEX.PRODUCTS,
+          idOrIds: productId,
+          transaction,
+        });
 
         return { message: "Product deleted successfully" };
       });

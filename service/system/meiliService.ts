@@ -41,11 +41,15 @@ export const meiliService = {
     return await performSyncOrUpdate();
   },
 
-  deleteMeiliData: async (
-    indexKey: string,
-    idOrIds: number | string | (number | string)[],
-    transaction?: Transaction,
-  ) => {
+  deleteMeiliData: async ({
+    indexKey,
+    idOrIds,
+    transaction,
+  }: {
+    indexKey: string;
+    idOrIds: number | string | (number | string)[];
+    transaction?: Transaction;
+  }) => {
     const performDelete = async () => {
       try {
         const index = meiliClient.index(indexKey);

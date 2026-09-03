@@ -402,7 +402,11 @@ export const orderService = {
         await order.destroy({ transaction });
 
         //--------------------MEILISEARCH-----------------------
-        await meiliService.deleteMeiliData(MEILI_INDEX.ORDERS, orderValue, transaction);
+        await meiliService.deleteMeiliData({
+          indexKey: MEILI_INDEX.ORDERS,
+          idOrIds: orderValue,
+          transaction,
+        });
 
         return { message: "Order deleted successfully" };
       });

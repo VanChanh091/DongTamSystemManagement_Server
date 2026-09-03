@@ -18,29 +18,32 @@ import {
   getClassificationDependencyMaps,
   getSupplierAndPaperTypeMaps,
 } from "../../utils/helper/modelHelper/paperCodeHelper";
+import { CrudHelper } from "../../repository/helper/crud.helper.repository";
 
 export const adminPaperCodeService = {
   //=============================== SUPPLIERS =================================
-  updateActiveSupplier: async ({
-    supplierId,
-    isActive,
-  }: {
-    supplierId: number;
-    isActive: boolean;
-  }) => {
+  toggleActiveSupplier: async ({ supplierId }: { supplierId: number }) => {
     try {
       return await runInTransaction(async (transaction: Transaction) => {
         const supplier = await Suppliers.findByPk(supplierId, { transaction });
+
         if (!supplier) {
-          throw AppError.NotFound(`Supplier ID ${supplierId} not found`, "SUPPLIER_NOT_FOUND");
+          throw AppError.NotFound("Supplier not found", "ITEM_NOT_FOUND");
         }
 
-        await supplier.update({ isActive }, { transaction });
+        const nextActiveState = !supplier.isActive;
 
-        return { message: `Successfully updated active for supplier` };
+        await CrudHelper.updateByIds({
+          model: Suppliers,
+          whereCondition: { supplierId },
+          data: { isActive: nextActiveState },
+          transaction,
+        });
+
+        return { message: `Successfully toggled supplier status ` };
       });
     } catch (error) {
-      console.error("update active supplier failed:", error);
+      console.error("Toggle active supplier failed:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
@@ -59,6 +62,7 @@ export const adminPaperCodeService = {
           },
           { model: PaperTypes, attributes: ["paperName", "paperCode", "grade"] },
         ],
+        order: [[Suppliers, "supplierName", "ASC"]],
       });
 
       return { message: "Successfully retrieved supplier paper codes", data: supplierPaperCodes };
@@ -263,9 +267,12 @@ export const adminPaperCodeService = {
             );
           }
 
-          const generatedPaperCode = `${supplierPaper.companyCode}${basisWeight}`.toUpperCase();
+          const formattedBasisWeight = String(basisWeight).padStart(3, "0");
+
+          const generatedPaperCode =
+            `${supplierPaper.companyCode}${formattedBasisWeight}`.toUpperCase();
           const generatedWeightCategory =
-            `${supplierPaper.paperTypeCode}${basisWeight}`.toUpperCase();
+            `${supplierPaper.paperTypeCode}${formattedBasisWeight}`.toUpperCase();
 
           return {
             ...item,
@@ -348,9 +355,11 @@ export const adminPaperCodeService = {
           // Nếu có thay đổi supplierPaperId hoặc basisWeightId
           // Tạo lại paperCode và weightCategory
           if (item.supplierPaperId !== undefined || item.basisWeightId !== undefined) {
-            updateData.paperCode = `${supplierPaper.companyCode}${basisWeight}`.toUpperCase();
+            const formattedBasisWeight = String(basisWeight).padStart(3, "0");
+            updateData.paperCode =
+              `${supplierPaper.companyCode}${formattedBasisWeight}`.toUpperCase();
             updateData.weightCategory =
-              `${supplierPaper.paperTypeCode}${basisWeight}`.toUpperCase();
+              `${supplierPaper.paperTypeCode}${formattedBasisWeight}`.toUpperCase();
           }
 
           return PaperClassifications.update(updateData, {
@@ -369,6 +378,4 @@ export const adminPaperCodeService = {
       throw AppError.ServerError();
     }
   },
-
-  //using for auto complete and dropdown
 };

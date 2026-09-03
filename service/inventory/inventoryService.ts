@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 import { Request, Response } from "express";
 import { User } from "../../models/user/user";
 import { meiliService } from "../system/meiliService";
@@ -291,11 +291,11 @@ export const inventoryService = {
         //  Xử lý Source Inventory
         if (remainingQty === 0) {
           // bằng 0 -> Xóa khỏi Meilisearch
-          await meiliService.deleteMeiliData(
-            MEILI_INDEX.INVENTORIES,
-            sourceInv.inventoryId,
+          await meiliService.deleteMeiliData({
+            indexKey: MEILI_INDEX.INVENTORIES,
+            idOrIds: sourceInv.inventoryId,
             transaction,
-          );
+          });
         } else {
           // Vẫn khác 0 -> Cập nhật lại số lượng
           await meiliService.syncOrUpdateMeiliData({
@@ -325,11 +325,11 @@ export const inventoryService = {
           }
         } else {
           // Nếu sau khi cộng mà bù vừa khớp về đúng 0 -> Xóa khỏi Meilisearch
-          await meiliService.deleteMeiliData(
-            MEILI_INDEX.INVENTORIES,
-            targetInv.inventoryId,
+          await meiliService.deleteMeiliData({
+            indexKey: MEILI_INDEX.INVENTORIES,
+            idOrIds: targetInv.inventoryId,
             transaction,
-          );
+          });
         }
 
         return {
@@ -426,11 +426,11 @@ export const inventoryService = {
         //--------------------MEILISEARCH-----------------------
         if (remainingQty === 0) {
           // Hết tồn kho do thanh lý toàn bộ
-          await meiliService.deleteMeiliData(
-            MEILI_INDEX.INVENTORIES,
-            inventory.inventoryId,
+          await meiliService.deleteMeiliData({
+            indexKey: MEILI_INDEX.INVENTORIES,
+            idOrIds: inventory.inventoryId,
             transaction,
-          );
+          });
         } else {
           // Vẫn còn tồn kho một phầ
           await meiliService.syncOrUpdateMeiliData({
@@ -442,6 +442,54 @@ export const inventoryService = {
         }
 
         return { message: "Transfer quantity to liquidation inventory successfully" };
+      });
+    } catch (error) {
+      console.log("err to transfer qty to liquidation inventory: ", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  transferToQtyVariance: async ({ inventoryIds }: { inventoryIds: number[] }) => {
+    try {
+      return await runInTransaction(async (transaction) => {
+        const inventories = await Inventory.findAll({
+          where: { inventoryId: { [Op.in]: inventoryIds } },
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+
+        if (inventories.length === 0) {
+          throw AppError.NotFound("Inventory not found", "INVENTORY_NOT_FOUND");
+        }
+
+        const uniqueInventoryIds = [...new Set(inventories.map((inv) => inv.inventoryId))];
+        const qtyVariance = inventories.reduce((total, inv) => total + inv.qtyInventory, 0);
+
+        await Inventory.update(
+          {
+            qtyVariance: qtyVariance,
+            qtyInventory: 0,
+            valueInventory: 0,
+          },
+          { where: { inventoryId: { [Op.in]: uniqueInventoryIds } }, transaction },
+        );
+
+        //inventory logs
+        await inventoryLogService.followInventoryChange({
+          items: uniqueInventoryIds.map((id) => ({ inventoryId: id, changeQty: qtyVariance })),
+          type: "ADJUSTMENT",
+          transaction,
+        });
+
+        //--------------------MEILISEARCH-----------------------
+        await meiliService.deleteMeiliData({
+          indexKey: MEILI_INDEX.INVENTORIES,
+          idOrIds: uniqueInventoryIds,
+          transaction,
+        });
+
+        return { message: "Transfer quantity to variance successfully" };
       });
     } catch (error) {
       console.log("err to transfer qty to liquidation inventory: ", error);
