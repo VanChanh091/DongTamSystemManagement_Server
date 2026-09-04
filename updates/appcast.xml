@@ -3,11 +3,12 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.7.6</title>
-            <sparkle:version>4.7.6</sparkle:version> 
+            <title>Version 4.7.7</title>
+            <sparkle:version>4.7.7</sparkle:version> 
             <description>
-            Cho phép xem công nợ từ bất kì ngày nào
-            Thêm các bảng mã giấy giúp đồng bộ mã giấy lại với nhau
+            Thêm nút xử lý đơn hàng có tồn âm
+            Xây dựng bảng mã giấy cho phần quản trị
+            Thay đổi cách nhập kết cấu để đồng bộ với mã giấy
             </description>
             <pubDate>Sar, 17 August 2026</pubDate>
             <enclosure url="dongtam.exe" 

@@ -1,5 +1,4 @@
 import { Op, Transaction } from "sequelize";
-import { PaperTypes } from "../../models/admin/paperClassifications/paperTypes";
 import {
   SupplierPaperCodes,
   SupplierPaperCodesAttributes,
@@ -13,12 +12,12 @@ import {
   PaperClassificationsAttributes,
   PaperClassificationsCreationAttributes,
 } from "../../models/admin/paperClassifications/paperClassifications";
-import { PaperBasisWeights } from "../../models/admin/paperClassifications/paperBasisWeights";
 import {
   getClassificationDependencyMaps,
   getSupplierAndPaperTypeMaps,
 } from "../../utils/helper/modelHelper/paperCodeHelper";
 import { CrudHelper } from "../../repository/helper/crud.helper.repository";
+import { adminRepository } from "../../repository/adminRepository";
 
 export const adminPaperCodeService = {
   //=============================== SUPPLIERS =================================
@@ -52,19 +51,7 @@ export const adminPaperCodeService = {
   //=============================== SUPPLIER PAPER CODES =================================
   getAllSupplierPaperCodes: async () => {
     try {
-      const supplierPaperCodes = await SupplierPaperCodes.findAll({
-        attributes: { exclude: ["createdAt", "updatedAt"] },
-        include: [
-          {
-            model: Suppliers,
-            attributes: ["supplierName", "supplierCode"],
-            where: { isActive: true },
-          },
-          { model: PaperTypes, attributes: ["paperName", "paperCode", "grade"] },
-        ],
-        order: [[Suppliers, "supplierName", "ASC"]],
-      });
-
+      const supplierPaperCodes = await adminRepository.getAllSupplierPaperCode();
       return { message: "Successfully retrieved supplier paper codes", data: supplierPaperCodes };
     } catch (error) {
       console.error("get all supplier paper codes failed:", error);
@@ -102,9 +89,7 @@ export const adminPaperCodeService = {
           return { ...item, companyCode: generatedCompanyCode };
         });
 
-        const newSupplierPaperCodes = await SupplierPaperCodes.bulkCreate(payload, {
-          transaction,
-        });
+        const newSupplierPaperCodes = await SupplierPaperCodes.bulkCreate(payload, { transaction });
 
         return {
           message: "Supplier paper codes created successfully",
@@ -199,33 +184,7 @@ export const adminPaperCodeService = {
   //=============================== PAPER CLASSIFICATIONS =================================
   getAllPaperClassifications: async ({ page, pageSize }: { page: number; pageSize: number }) => {
     try {
-      const { rows, count } = await PaperClassifications.findAndCountAll({
-        attributes: { exclude: ["createdAt", "updatedAt"] },
-        include: [
-          { model: PaperBasisWeights, attributes: ["basisWeight"], as: "basisWeight" },
-          {
-            model: SupplierPaperCodes,
-            attributes: ["companyCode"],
-            as: "supplierPaper",
-            include: [
-              {
-                model: Suppliers,
-                attributes: ["supplierName", "supplierCode"],
-                required: false,
-                where: { isActive: true },
-              },
-              { model: PaperTypes, attributes: ["paperName", "paperCode", "grade"] },
-            ],
-          },
-        ],
-
-        offset: (page - 1) * pageSize,
-        limit: pageSize,
-        order: [
-          [{ model: SupplierPaperCodes, as: "supplierPaper" }, Suppliers, "supplierName", "ASC"],
-          [{ model: PaperBasisWeights, as: "basisWeight" }, "basisWeight", "ASC"],
-        ],
-      });
+      const { rows, count } = await adminRepository.getPaperClassification({ page, pageSize });
 
       const responseData = {
         message: "Successfully retrieved paper classifications",
@@ -281,9 +240,7 @@ export const adminPaperCodeService = {
           };
         });
 
-        const newClassifications = await PaperClassifications.bulkCreate(payload, {
-          transaction,
-        });
+        const newClassifications = await PaperClassifications.bulkCreate(payload, { transaction });
 
         return { message: "Successfully created paper classifications", data: newClassifications };
       });

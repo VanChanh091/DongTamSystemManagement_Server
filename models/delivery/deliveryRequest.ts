@@ -10,8 +10,6 @@ interface DeliveryRequestAttributes {
   requestId: number;
   qtyRegistered: number;
   volume: number;
-  qtyAllocated?: number;
-  volumeAllocated?: number;
   note?: string;
   status: statusDelivery;
 
@@ -30,8 +28,6 @@ export type DeliveryRequestCreationAttributes = Optional<
   | "requestId"
   | "status"
   | "volume"
-  | "qtyAllocated"
-  | "volumeAllocated"
   | "note"
   | "userId"
   | "orderId"
@@ -47,9 +43,7 @@ export class DeliveryRequest
 {
   declare requestId: number;
   declare qtyRegistered: number;
-  declare qtyAllocated?: number;
   declare volume: number;
-  declare volumeAllocated?: number;
   declare note?: string;
   declare status: statusDelivery;
 
@@ -73,8 +67,6 @@ export function initDeliveryRequestModel(sequelize: Sequelize): typeof DeliveryR
       requestId: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
       qtyRegistered: { type: DataTypes.INTEGER, allowNull: false },
       volume: { type: DataTypes.DOUBLE, allowNull: false },
-      qtyAllocated: { type: DataTypes.INTEGER, defaultValue: 0 },
-      volumeAllocated: { type: DataTypes.DOUBLE, defaultValue: 0 },
       note: { type: DataTypes.STRING },
       status: {
         type: DataTypes.ENUM("requested", "partial", "scheduled", "cancelled"),

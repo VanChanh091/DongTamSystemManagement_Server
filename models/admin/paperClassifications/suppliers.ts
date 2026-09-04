@@ -7,6 +7,7 @@ interface SuppliersAttributes {
   supplierName: string;
   supplierCode: string;
   transferCode: string;
+  grade: number;
   isActive: boolean;
 
   createdAt?: Date;
@@ -16,7 +17,7 @@ interface SuppliersAttributes {
 //cho phép bỏ qua id khi tạo
 export type SuppliersCreationAttributes = Optional<
   SuppliersAttributes,
-  "supplierId" | "createdAt" | "updatedAt"
+  "supplierId" | "grade" | "createdAt" | "updatedAt"
 >;
 
 //định nghĩa kiểu OOP
@@ -28,6 +29,7 @@ export class Suppliers
   declare supplierName: string;
   declare supplierCode: string;
   declare transferCode: string;
+  declare grade: number;
   declare isActive: boolean;
 
   //Association
@@ -47,6 +49,13 @@ export function initSuppliersModel(sequelize: Sequelize): typeof Suppliers {
         type: DataTypes.STRING,
         allowNull: false,
         comment: "Mã chuyển đổi của công ty",
+      },
+      grade: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 1,
+        validate: { isIn: [[1, 2, 3, 4]] },
+        comment: "1: Tốt, 2: Khá, 3: Trung bình, 4: Kém",
       },
       isActive: {
         type: DataTypes.BOOLEAN,

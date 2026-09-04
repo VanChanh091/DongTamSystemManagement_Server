@@ -27,6 +27,9 @@ import {
 import { meiliTransformer } from "../assets/configs/meilisearch/meiliTransformer";
 import { searchFieldAtribute } from "../interface/types";
 import { MEILI_INDEX } from "../assets/labelFields";
+import { PaperClassifications } from "../models/admin/paperClassifications/paperClassifications";
+import { SupplierPaperCodes } from "../models/admin/paperClassifications/supplierPaperCodes";
+import { Suppliers } from "../models/admin/paperClassifications/suppliers";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { order } = CacheKey;
@@ -413,6 +416,26 @@ export const orderService = {
     } catch (error) {
       console.error("Error in getOrderPendingAndReject:", error);
       if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  //-------------------- PAPER CODE -----------------------
+  //using for structure order
+  getMasterDataForStructure: async () => {
+    try {
+      const records = await orderRepository.getAllPaperClassifications();
+
+      const papers = records.map((item: any) => ({
+        classificationId: item.classificationId,
+        paperCode: item.paperCode,
+        layerType: item.supplierPaper?.layerType,
+        supplierName: item.supplierPaper?.Supplier?.supplierName,
+      }));
+
+      return { message: "Successfully retrieved master data for structure", data: papers };
+    } catch (error) {
+      console.error("get master data for structure failed:", error);
       throw AppError.ServerError();
     }
   },

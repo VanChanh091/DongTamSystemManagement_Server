@@ -60,7 +60,7 @@ export function initPaperClassificationsModel(sequelize: Sequelize): typeof Pape
       burstRatio: { type: DataTypes.DOUBLE, allowNull: true, comment: "Tỷ lệ độ bục" },
       burstStrength: { type: DataTypes.DOUBLE, allowNull: true, comment: "Độ bục" },
       ringCrush: { type: DataTypes.DOUBLE, allowNull: true, comment: "Độ bền nén vòng" },
-      pricePaper: { type: DataTypes.DOUBLE, allowNull: true },
+      pricePaper: { type: DataTypes.DOUBLE, allowNull: true, defaultValue: 0 },
 
       //FK
       supplierPaperId: { type: DataTypes.INTEGER, allowNull: false },

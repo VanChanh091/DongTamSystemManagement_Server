@@ -6,7 +6,6 @@ import { orderService } from "../../../service/orderService";
 import cloudinary from "../../../assets/configs/connect/cloudinary.connect";
 
 //===============================ORDER AUTOCOMPLETE=====================================
-
 export const getOrderIdRaw = async (req: Request, res: Response, next: NextFunction) => {
   const { orderId } = req.query as { orderId: string };
 
@@ -30,7 +29,6 @@ export const getOrderDetail = async (req: Request, res: Response, next: NextFunc
 };
 
 //===============================CLOUDINARY IMAGE=====================================
-
 export const getCloudinarySignature = async (req: Request, res: Response) => {
   const { CLOUDINARY_API_SECRET, CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY } = process.env;
 
@@ -57,8 +55,6 @@ export const getCloudinarySignature = async (req: Request, res: Response) => {
 };
 
 //===============================ORDERS=====================================
-
-//get orders accept
 export const getOrderAcceptted = async (req: Request, res: Response, next: NextFunction) => {
   const {
     field,
@@ -81,7 +77,6 @@ export const getOrderAcceptted = async (req: Request, res: Response, next: NextF
   }
 };
 
-//get order pending and reject
 export const getOrderPendingAndReject = async (req: Request, res: Response, next: NextFunction) => {
   const { ownOnly = "false" } = req.query as { ownOnly?: string };
 
@@ -93,7 +88,6 @@ export const getOrderPendingAndReject = async (req: Request, res: Response, next
   }
 };
 
-//add order
 export const addOrder = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const response = await orderService.createOrder(req);
@@ -103,7 +97,6 @@ export const addOrder = async (req: Request, res: Response, next: NextFunction) 
   }
 };
 
-// update order
 export const updateOrder = async (req: Request, res: Response, next: NextFunction) => {
   const { orderId } = req.query as { orderId: string };
 
@@ -115,12 +108,21 @@ export const updateOrder = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
-// delete order
 export const deleteOrder = async (req: Request, res: Response, next: NextFunction) => {
   const { orderId } = req.query as { orderId: string };
 
   try {
     const response = await orderService.deleteOrder(orderId);
+    return res.status(201).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+//=========================PAPER CODE FOR STRUCTURE==============================
+export const getPaperCodeForStructure = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const response = await orderService.getMasterDataForStructure();
     return res.status(201).json(response);
   } catch (error) {
     next(error);

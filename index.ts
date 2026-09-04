@@ -109,7 +109,7 @@ app.use("/api/meilisearch", meilisearchRoutes);
 app.use("/api/badge", badgeRoutes);
 
 //xóa index cho các bảng sau nếu dùng alter: true quá nhiều
-//user, deliveryPlan, outboundHistory
+//users, delivery_plans, outbound_histories
 sequelize
   // .sync({ alter: true })
   .sync()

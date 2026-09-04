@@ -7,6 +7,9 @@ import { Order } from "../models/order/order";
 import { FluteRatio } from "../models/admin/fluteRatio";
 import { OrderImage } from "../models/order/orderImage";
 import { PlanningPaper } from "../models/planning/planningPaper";
+import { PaperClassifications } from "../models/admin/paperClassifications/paperClassifications";
+import { SupplierPaperCodes } from "../models/admin/paperClassifications/supplierPaperCodes";
+import { Suppliers } from "../models/admin/paperClassifications/suppliers";
 
 export const orderRepository = {
   buildOrdersOptions: ({
@@ -171,5 +174,37 @@ export const orderRepository = {
 
   syncAllOrdersForMeili: async () => {
     return await Order.findAll(orderRepository.buildMeiliOrderOptions({}));
+  },
+
+  getAllPaperClassifications: async () => {
+    return await PaperClassifications.findAll({
+      attributes: ["classificationId", "paperCode"],
+      where: { pricePaper: { [Op.gt]: 0 } },
+      include: [
+        {
+          model: SupplierPaperCodes,
+          as: "supplierPaper",
+          attributes: ["layerType"],
+          required: true,
+          include: [
+            {
+              model: Suppliers,
+              as: "Supplier",
+              where: { isActive: true },
+              attributes: ["supplierName"],
+              required: true,
+            },
+          ],
+        },
+      ],
+      order: [
+        [
+          { model: SupplierPaperCodes, as: "supplierPaper" },
+          { model: Suppliers, as: "Supplier" },
+          "supplierName",
+          "ASC",
+        ],
+      ],
+    });
   },
 };

@@ -133,22 +133,27 @@ router.put("/vehicles", authenticate, authorizeRole(["admin", "manager"]), updat
 router.delete("/vehicles", authenticate, authorizeRole(["admin", "manager"]), deleteVehicle);
 
 // =========================== SUPPLIERS =================================
-router.get("/suppliers", authenticate, getAllSuppliers);
+router.get("/suppliers", authenticate, authorizeRole(["admin"]), getAllSuppliers);
 router.post("/suppliers", authenticate, authorizeRole(["admin"]), createSupplier);
 router.put("/suppliers", authenticate, authorizeRole(["admin"]), handleUpdateSupplier);
 
 // ========================== PAPER TYPES ================================
-router.get("/paper-types", authenticate, getAllPaperTypes);
+router.get("/paper-types", authenticate, authorizeRole(["admin"]), getAllPaperTypes);
 router.post("/paper-types", authenticate, authorizeRole(["admin"]), createPaperType);
 router.put("/paper-types", authenticate, authorizeRole(["admin"]), updatePaperType);
 
 // ====================== PAPER BASIS WEIGHTS ============================
-router.get("/paper-basis-weights", authenticate, getAllBasisWeights);
+router.get("/paper-basis-weights", authenticate, authorizeRole(["admin"]), getAllBasisWeights);
 router.post("/paper-basis-weights", authenticate, authorizeRole(["admin"]), createBasisWeight);
 router.put("/paper-basis-weights", authenticate, authorizeRole(["admin"]), updateBasisWeight);
 
 // ====================== SUPPLIER PAPER CODES ===========================
-router.get("/supplier-paper-codes", authenticate, getAllSupplierPaperCodes);
+router.get(
+  "/supplier-paper-codes",
+  authorizeRole(["admin"]),
+  authenticate,
+  getAllSupplierPaperCodes,
+);
 router.post(
   "/supplier-paper-codes",
   authenticate,
@@ -163,7 +168,12 @@ router.put(
 );
 
 // ====================== PAPER CLASSIFICATIONS ==========================
-router.get("/paper-classifications", authenticate, getAllPaperClassifications);
+router.get(
+  "/paper-classifications",
+  authenticate,
+  authorizeRole(["admin"]),
+  getAllPaperClassifications,
+);
 router.post(
   "/paper-classifications",
   authenticate,

@@ -6,6 +6,11 @@ import { Product } from "../models/product/product";
 import { Customer } from "../models/customer/customer";
 import { OrderImage } from "../models/order/orderImage";
 import { CustomerPayment } from "../models/customer/customerPayment";
+import { SupplierPaperCodes } from "../models/admin/paperClassifications/supplierPaperCodes";
+import { Suppliers } from "../models/admin/paperClassifications/suppliers";
+import { PaperTypes } from "../models/admin/paperClassifications/paperTypes";
+import { PaperClassifications } from "../models/admin/paperClassifications/paperClassifications";
+import { PaperBasisWeights } from "../models/admin/paperClassifications/paperBasisWeights";
 
 export const adminRepository = {
   //===============================ADMIN ORDER=====================================
@@ -75,6 +80,52 @@ export const adminRepository = {
     return await User.findByPk(userId, {
       attributes: { exclude: ["password", "createdAt", "updatedAt"] },
       transaction,
+    });
+  },
+
+  //===============================PAPER CODE=====================================
+  getAllSupplierPaperCode: async () => {
+    return await SupplierPaperCodes.findAll({
+      attributes: { exclude: ["createdAt", "updatedAt"] },
+      include: [
+        {
+          model: Suppliers,
+          attributes: ["supplierName", "supplierCode", "grade"],
+          where: { isActive: true },
+        },
+        { model: PaperTypes, attributes: ["paperName", "paperCode"] },
+      ],
+      order: [[Suppliers, "supplierName", "ASC"]],
+    });
+  },
+
+  getPaperClassification: async ({ page, pageSize }: { page: number; pageSize: number }) => {
+    return await PaperClassifications.findAndCountAll({
+      attributes: { exclude: ["createdAt", "updatedAt"] },
+      include: [
+        { model: PaperBasisWeights, attributes: ["basisWeight"], as: "basisWeight" },
+        {
+          model: SupplierPaperCodes,
+          attributes: ["companyCode"],
+          as: "supplierPaper",
+          include: [
+            {
+              model: Suppliers,
+              attributes: ["supplierName", "supplierCode", "grade"],
+              required: false,
+              where: { isActive: true },
+            },
+            { model: PaperTypes, attributes: ["paperName", "paperCode"] },
+          ],
+        },
+      ],
+
+      offset: (page - 1) * pageSize,
+      limit: pageSize,
+      order: [
+        [{ model: SupplierPaperCodes, as: "supplierPaper" }, Suppliers, "supplierName", "ASC"],
+        [{ model: PaperBasisWeights, as: "basisWeight" }, "basisWeight", "ASC"],
+      ],
     });
   },
 };
