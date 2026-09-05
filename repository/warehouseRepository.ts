@@ -48,6 +48,7 @@ export const warehouseRepository = {
             "instructSpecial",
             "dvt",
             "isBox",
+            "isFSC",
             "customerId",
             "productId",
           ],
@@ -98,6 +99,7 @@ export const warehouseRepository = {
             "orderId",
             "dayReceiveOrder",
             "flute",
+            "isFSC",
             "QC_box",
             "numberChild",
             "dateRequestShipping",
@@ -200,6 +202,7 @@ export const warehouseRepository = {
             "lengthPaperManufacture",
             "paperSizeManufacture",
             "quantityManufacture",
+            "isFSC",
           ],
           include: [
             { model: Customer, attributes: ["customerName", "companyName"] },
@@ -319,6 +322,7 @@ export const warehouseRepository = {
             "quantityCustomer",
             "dvt",
             "discount",
+            "isFSC",
           ],
           include: [
             { model: Customer, attributes: ["customerName", "companyName"] },

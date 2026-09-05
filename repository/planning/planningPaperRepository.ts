@@ -47,6 +47,7 @@ export const planningPaperRepository = {
             "instructSpecial",
             "dvt",
             "isBox",
+            "isFSC",
             "chongTham",
             "orderIdCustomer",
             "orderSortValue",

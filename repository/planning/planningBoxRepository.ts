@@ -74,6 +74,7 @@ export const planningBoxRepository = {
             "orderId",
             "dayReceiveOrder",
             "flute",
+            "isFSC",
             "QC_box",
             "totalPrice",
             "numberChild",

@@ -63,6 +63,7 @@ export const reportRepository = {
                 "daoXa",
                 "dvt",
                 "instructSpecial",
+                "isFSC",
               ],
               include: [{ model: Customer, attributes: ["customerName"] }],
             },
@@ -177,6 +178,7 @@ export const reportRepository = {
                 "volume",
                 "instructSpecial",
                 "isBox",
+                "isFSC",
                 "chongTham",
               ],
               include: [

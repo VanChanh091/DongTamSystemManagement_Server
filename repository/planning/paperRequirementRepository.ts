@@ -46,7 +46,7 @@ export const paperRequirementRepo = {
           include: [
             {
               model: Order,
-              attributes: ["flute", "dateRequestShipping"],
+              attributes: ["flute", "dateRequestShipping", "isFSC"],
               include: [{ model: Customer, attributes: ["customerName"] }],
             },
           ],

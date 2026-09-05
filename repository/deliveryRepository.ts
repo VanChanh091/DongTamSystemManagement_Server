@@ -495,6 +495,7 @@ export const deliveryRepository = {
                         "paperSizeManufacture",
                         "dvt",
                         "orderIdCustomer",
+                        "isFSC",
                       ],
                       include: [
                         { model: Customer, attributes: ["customerName"] },

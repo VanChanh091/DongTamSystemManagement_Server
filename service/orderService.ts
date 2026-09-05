@@ -244,8 +244,6 @@ export const orderService = {
             productId: productId,
             userId: userId,
             dayReceiveOrder: new Date(),
-            createdAt: new Date(),
-            updatedAt: new Date(),
             ...restOrderData,
             ...metrics,
           },

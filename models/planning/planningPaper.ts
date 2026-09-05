@@ -121,8 +121,7 @@ export type PlanningPaperCreationAttributes = Optional<
 //định nghĩa kiểu OOP
 export class PlanningPaper
   extends Model<PlanningPaperAttributes, PlanningPaperCreationAttributes>
-  implements PlanningPaperAttributes
-{
+  implements PlanningPaperAttributes {
   declare planningId: number;
 
   declare dayStart?: Date | null;

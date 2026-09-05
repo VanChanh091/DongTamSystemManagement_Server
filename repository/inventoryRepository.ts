@@ -61,6 +61,7 @@ export const inventoryRepository = {
             "totalPrice",
             "vat",
             "totalPriceVAT",
+            "isFSC",
           ],
           include: [
             { model: Customer, attributes: ["customerName"] },
@@ -276,7 +277,7 @@ export const inventoryRepository = {
     if (page !== undefined && pageSize !== undefined) {
       options.offset = (page - 1) * pageSize;
       options.limit = pageSize;
-      options.order = [['createdAt', 'DESC']];
+      options.order = [["createdAt", "DESC"]];
     }
 
     return await LiquidationInventory.findAndCountAll(options);

@@ -38,6 +38,7 @@ interface OrderAttributes {
 
   isBox: boolean;
   chongTham: boolean;
+  isFSC: boolean;
 
   flute?: string | null;
   QC_box?: string | null;
@@ -113,6 +114,7 @@ export type OrderCreationAttributes = Optional<
   | "volume"
   | "isBox"
   | "chongTham"
+  | "isFSC"
   | "status"
   | "statusPriority"
   | "orderIdCustomer"
@@ -156,8 +158,9 @@ export class Order
   declare volume: number;
   declare status: OrderStatus;
 
-  declare isBox: boolean;
   declare chongTham: boolean;
+  declare isBox: boolean;
+  declare isFSC: boolean;
 
   declare statusPriority: number;
   declare orderSortValue: number;
@@ -254,8 +257,6 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
       totalPriceVAT: { type: DataTypes.DOUBLE, allowNull: false },
       volume: { type: DataTypes.DOUBLE, allowNull: false },
       instructSpecial: { type: DataTypes.STRING },
-      isBox: { type: DataTypes.BOOLEAN, defaultValue: false, allowNull: false },
-      chongTham: { type: DataTypes.BOOLEAN, defaultValue: false, allowNull: false },
       status: {
         type: DataTypes.ENUM("pending", "accept", "reject", "planning", "stop", "completed"), //1-2-3-4-5-6
         allowNull: false,
@@ -264,6 +265,10 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
       rejectReason: { type: DataTypes.STRING },
       orderIdCustomer: { type: DataTypes.STRING }, //PO khach hang cung cap
       note: { type: DataTypes.STRING },
+
+      chongTham: { type: DataTypes.BOOLEAN, defaultValue: false, allowNull: false },
+      isBox: { type: DataTypes.BOOLEAN, defaultValue: false, allowNull: false },
+      isFSC: { type: DataTypes.BOOLEAN, defaultValue: false, allowNull: false },
 
       //sort
       orderSortValue: { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 },
