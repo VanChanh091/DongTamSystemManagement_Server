@@ -61,7 +61,7 @@ export const debtRepository = {
             {
               model: Customer,
               where: userId ? { userId } : {},
-              attributes: ["customerId", "customerName"],
+              attributes: ["customerId", "customerName", "companyName"],
             },
           ]
         : [],

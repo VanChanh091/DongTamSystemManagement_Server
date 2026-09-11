@@ -28,14 +28,6 @@ export interface ExportExcelOptions<T> {
   rows: (item: T, index: number) => Record<string, any>;
 }
 
-export interface RepoPayload {
-  model: any;
-  where?: WhereOptions<any>;
-  data?: any;
-  options?: any;
-  transaction?: Transaction;
-}
-
 export interface RedisUserData {
   email: string;
   otp: number;

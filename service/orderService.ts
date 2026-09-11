@@ -309,7 +309,7 @@ export const orderService = {
       return await runInTransaction(async (transaction) => {
         const order = await CrudHelper.findOne({
           model: Order,
-          whereCondition: { orderId },
+          where: { orderId },
           options: { transaction },
         });
         if (!order) {

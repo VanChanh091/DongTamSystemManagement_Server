@@ -5,6 +5,7 @@ import { Customer } from "../customer/customer.js";
 import { Inventory } from "../warehouse/inventory/inventory.js";
 import { OutboundHistory } from "../warehouse/outbound/outboundHistory.js";
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
+import { OrderApproved } from "./orderApproved.js";
 
 export type OrderStatus = "pending" | "accept" | "reject" | "planning" | "stop" | "completed";
 
@@ -201,8 +202,9 @@ export class Order
   declare Product: Product;
   declare box: Box;
   declare User: User;
-  declare OutboundHistory: OutboundHistory[];
   declare Inventories: Inventory;
+  declare OutboundHistory: OutboundHistory[];
+  declare OrderApproved: OrderApproved[];
 }
 
 export function initOrderModel(sequelize: Sequelize): typeof Order {

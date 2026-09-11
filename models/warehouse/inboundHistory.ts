@@ -1,8 +1,8 @@
-import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { Order } from "../order/order";
+import { PlanningBox } from "../planning/planningBox";
 import { QcSession } from "../qualityControl/qcSession";
 import { PlanningPaper } from "../planning/planningPaper";
-import { PlanningBox } from "../planning/planningBox";
+import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 
 //định nghĩa trường trong bảng
 interface InboundHistoryAttributes {
@@ -10,6 +10,7 @@ interface InboundHistoryAttributes {
   dateInbound: Date;
   qtyPaper: number;
   qtyInbound: number;
+  totalPrice: number;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -24,7 +25,7 @@ interface InboundHistoryAttributes {
 //cho phép bỏ qua id khi tạo
 export type InboundHistoryCreationAttributes = Optional<
   InboundHistoryAttributes,
-  "inboundId" | "createdAt" | "updatedAt"
+  "inboundId" | "totalPrice" | "createdAt" | "updatedAt"
 >;
 
 //định nghĩa kiểu OOP
@@ -36,9 +37,7 @@ export class InboundHistory
   declare dateInbound: Date;
   declare qtyPaper: number;
   declare qtyInbound: number;
-
-  declare readonly createdAt?: Date;
-  declare readonly updatedAt?: Date;
+  declare totalPrice: number;
 
   //FK
   declare orderId: string;
@@ -51,6 +50,9 @@ export class InboundHistory
 
   declare qcSessionId: number;
   declare QcSession: QcSession;
+
+  declare readonly createdAt?: Date;
+  declare readonly updatedAt?: Date;
 }
 
 export function initInboundHistoryModel(sequelize: Sequelize): typeof InboundHistory {
@@ -60,6 +62,7 @@ export function initInboundHistoryModel(sequelize: Sequelize): typeof InboundHis
       dateInbound: { type: DataTypes.DATE, allowNull: false },
       qtyPaper: { type: DataTypes.INTEGER, allowNull: false },
       qtyInbound: { type: DataTypes.INTEGER, allowNull: false },
+      totalPrice: { type: DataTypes.DOUBLE, allowNull: false, defaultValue: 0 },
 
       //FK
       orderId: { type: DataTypes.STRING, allowNull: false },

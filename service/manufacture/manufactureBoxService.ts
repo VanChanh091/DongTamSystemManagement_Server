@@ -12,7 +12,6 @@ import { reportRepository } from "../../repository/reportRepository";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { planningPaperService } from "../planning/planningPaperService";
 import { manufactureRepo } from "../../repository/manufactureRepository";
-import { planningHelper } from "../../repository/planning/planningHelper";
 import { ReportPlanningBox } from "../../models/report/reportPlanningBox";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
 import { mergeShiftField } from "../../utils/helper/modelHelper/planning.timeRunning.helper";
@@ -21,6 +20,7 @@ import { createReportPlanning } from "../../utils/helper/modelHelper/reportHelpe
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
 import { planningBoxRepository } from "../../repository/planning/planningBoxRepository";
 import { aggregateReportFields } from "../../utils/helper/modelHelper/manufactureHelper";
+import { CrudHelper } from "../../repository/helper/crud.helper.repository";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { box } = CacheKey.manufacture;
@@ -125,7 +125,7 @@ export const manuBoxService = {
         const mergedShift = mergeShiftField(planning.shiftManagement ?? "", shiftManagement);
         const isCompletedOrder = newQtyProduced >= (planning.runningPlan || 0);
 
-        const overflow = await planningHelper.getModelById({
+        const overflow = await CrudHelper.findOne({
           model: timeOverflowPlanning,
           where: { planningBoxId, machine },
           options: { transaction, lock: transaction?.LOCK.UPDATE },
@@ -142,7 +142,7 @@ export const manuBoxService = {
         if (isOverflowReport) {
           await overflow?.update({ overflowDayCompleted: new Date(dayCompleted) }, { transaction });
 
-          await planningHelper.updateDataModel({
+          await CrudHelper.updateData({
             model: planning,
             data: {
               qtyProduced: newQtyProduced,
@@ -155,7 +155,7 @@ export const manuBoxService = {
           dayReportValue = overflow?.getDataValue("overflowDayCompleted");
         } else {
           //Cập nhật kế hoạch với số liệu mới
-          await planningHelper.updateDataModel({
+          await CrudHelper.updateData({
             model: planning,
             data: {
               dayCompleted: new Date(dayCompleted),
@@ -170,7 +170,7 @@ export const manuBoxService = {
         }
 
         if (!isCompletedOrder) {
-          await planningHelper.updateDataModel({
+          await CrudHelper.updateData({
             model: planning,
             data: { status: "lackOfQty" },
             options: { transaction },
@@ -379,7 +379,7 @@ export const manuBoxService = {
     try {
       const result = await runInTransaction(async (transaction) => {
         // Lấy planning cần update
-        const planning = await planningHelper.getModelById({
+        const planning = await CrudHelper.findOne({
           model: PlanningBoxTime,
           where: { planningBoxId, machine },
           options: { transaction, lock: transaction?.LOCK.UPDATE, skipLocked: true },
@@ -413,7 +413,7 @@ export const manuBoxService = {
         await manufactureRepo.updatePlanningBoxTime(planningBoxId, machine, transaction);
 
         // Update sang producing
-        await planningHelper.updateDataModel({
+        await CrudHelper.updateData({
           model: planning,
           data: { status: "producing" },
           options: { transaction },

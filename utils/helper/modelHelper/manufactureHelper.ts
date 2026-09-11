@@ -2,13 +2,13 @@ import { AppError } from "../../appError";
 import { MEILI_INDEX } from "../../../assets/labelFields";
 import { PlanningPaper } from "../../../models/planning/planningPaper";
 import { timeOverflowPlanning } from "../../../models/planning/timeOverflowPlanning";
-import { planningHelper } from "../../../repository/planning/planningHelper";
 import { planningPaperRepository } from "../../../repository/planning/planningPaperRepository";
 import { meiliService } from "../../../service/system/meiliService";
 import { runInTransaction } from "../transactionHelper";
 import { Order } from "../../../models/order/order";
 import { PaperRequirements } from "../../../models/planning/requirement/paperRequirements";
 import { Op } from "sequelize";
+import { CrudHelper } from "../../../repository/helper/crud.helper.repository";
 
 export const aggregateReportFields = (reports: any[]) => {
   const shiftProductions = new Set<string>();
@@ -62,7 +62,7 @@ export const updateStatusPaper = async ({
     // Thực thi validator riêng
     extraValidator(planningPapers);
 
-    await planningHelper.updateDataModel({
+    await CrudHelper.updateData({
       model: PlanningPaper,
       data: { status: targetStatus },
       options: { where: { planningId: ids }, transaction },
@@ -74,7 +74,7 @@ export const updateStatusPaper = async ({
     });
 
     if (overflowRows.length > 0) {
-      await planningHelper.updateDataModel({
+      await CrudHelper.updateData({
         model: timeOverflowPlanning,
         data: { status: targetStatus },
         options: { where: { planningId: ids }, transaction },
@@ -83,7 +83,7 @@ export const updateStatusPaper = async ({
 
     if (targetStatus === "complete") {
       //cập nhật status cho paperRequiments
-      await planningHelper.updateDataModel({
+      await CrudHelper.updateData({
         model: PaperRequirements,
         data: { status: "COMPLETED" },
         options: { where: { planningId: { [Op.in]: ids } }, transaction },

@@ -15,7 +15,7 @@ import { PlanningPaper } from "../../models/planning/planningPaper";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { exportExcelDbPlanning } from "../../utils/helper/excelExporter";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
-import { syntheticRepository } from "../../repository/syntheticRepository";
+import { syntheticRepository } from "../../repository/synthetic/syntheticRepository";
 import { buildStagesDetails } from "../../utils/helper/modelHelper/planning.timeRunning.helper";
 
 const devEnvironment = process.env.NODE_ENV !== "production";

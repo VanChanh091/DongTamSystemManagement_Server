@@ -14,7 +14,6 @@ import { PlanningBox } from "../../models/planning/planningBox";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
-import { planningHelper } from "../../repository/planning/planningHelper";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
@@ -28,6 +27,8 @@ import {
 import { exportExcelResponse } from "../../utils/helper/excelExporter";
 import { updateStatusPaper } from "../../utils/helper/modelHelper/manufactureHelper";
 import { PaperRequirements } from "../../models/planning/requirement/paperRequirements";
+import { CrudHelper } from "../../repository/helper/crud.helper.repository";
+import { OrderApproved } from "../../models/order/orderApproved";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper } = CacheKey.planning;
@@ -267,7 +268,15 @@ export const planningPaperService = {
     });
   },
 
-  pauseOrAcceptLackQtyPLanning: async (planningIds: number[], newStatus: string) => {
+  pauseOrAcceptLackQtyPLanning: async ({
+    planningIds,
+    newStatus,
+    username,
+  }: {
+    planningIds: number[];
+    newStatus: string;
+    username: string;
+  }) => {
     try {
       return await runInTransaction(async (transaction) => {
         const plannings = await planningPaperRepository.getPapersById({ planningIds, transaction });
@@ -278,7 +287,7 @@ export const planningPaperService = {
         if (newStatus !== "complete") {
           for (const planning of plannings) {
             if (planning.orderId) {
-              const order = await planningHelper.getModelById({
+              const order = await CrudHelper.findOne({
                 model: Order,
                 where: { orderId: planning.orderId },
                 options: { transaction },
@@ -296,14 +305,25 @@ export const planningPaperService = {
                   }
 
                   // Trả order về reject
-                  await planningHelper.updateDataModel({
-                    model: order,
-                    data: { status: newStatus },
-                    options: { transaction },
-                  });
+                  await Promise.all([
+                    CrudHelper.updateData({
+                      model: order,
+                      data: { status: newStatus },
+                      options: { transaction },
+                    }),
+                    CrudHelper.createData({
+                      model: OrderApproved,
+                      data: {
+                        approvedBy: username,
+                        action: "RETURNED",
+                        orderId: order.orderId,
+                      },
+                      transaction,
+                    }),
+                  ]);
 
                   // Trừ công nợ khách hàng
-                  // const customer = await planningRepository.getModelById(
+                  // const customer = await planningRepository.findOne(
                   //   Customer,
                   //   { customerId: order.customerId },
                   //   { attributes: ["customerId", "debtCurrent"] }
@@ -313,18 +333,17 @@ export const planningPaperService = {
                   //   let debtAfter = (customer.debtCurrent || 0) - order.totalPrice;
                   //   if (debtAfter < 0) debtAfter = 0; //tránh âm tiền
 
-                  //   await planningRepository.updateDataModel(customer, { debtCurrent: debtAfter });
+                  //   await planningRepository.updateData(customer, { debtCurrent: debtAfter });
                   // }
 
                   // Xoá dữ liệu phụ thuộc
-
                   const dependents = await planningPaperRepository.getBoxByPlanningId(
                     planning.planningId,
                     transaction,
                   );
 
                   for (const box of dependents) {
-                    await planningHelper.deleteModelData({
+                    await CrudHelper.deleteData({
                       model: PlanningBoxTime,
                       where: { planningBoxId: box.planningBoxId },
                       transaction,
@@ -372,20 +391,20 @@ export const planningPaperService = {
                   );
 
                   if ((planning.qtyProduced ?? 0) > 0) {
-                    await planningHelper.updateDataModel({
+                    await CrudHelper.updateData({
                       model: order,
                       data: { status: newStatus },
                       options: { transaction },
                     });
 
-                    await planningHelper.updateDataModel({
+                    await CrudHelper.updateData({
                       model: planning,
                       data: { status: newStatus },
                       options: { transaction },
                     });
 
                     for (const box of dependents) {
-                      await planningHelper.updateDataModel({
+                      await CrudHelper.updateData({
                         model: PlanningBoxTime,
                         data: { status: newStatus },
                         options: { where: { planningBoxId: box.planningBoxId }, transaction },
@@ -406,14 +425,14 @@ export const planningPaperService = {
                       isUpdate: true,
                     });
                   } else {
-                    await planningHelper.updateDataModel({
+                    await CrudHelper.updateData({
                       model: order,
                       data: { status: "accept" },
                       options: { transaction },
                     });
 
                     for (const box of dependents) {
-                      await planningHelper.deleteModelData({
+                      await CrudHelper.deleteData({
                         model: PlanningBoxTime,
                         where: { planningBoxId: box.planningBoxId },
                         transaction,
@@ -464,7 +483,7 @@ export const planningPaperService = {
             await planning.save({ transaction });
 
             if (planning.hasOverFlow) {
-              await planningHelper.updateDataModel({
+              await CrudHelper.updateData({
                 model: timeOverflowPlanning,
                 data: { status: newStatus },
                 options: { where: { planningId: planning.planningId }, transaction },
@@ -472,12 +491,12 @@ export const planningPaperService = {
             }
 
             const [planningBox, requirement] = await Promise.all([
-              planningHelper.getModelById({
+              CrudHelper.findOne({
                 model: PlanningBox,
                 where: { planningId: planning.planningId },
                 options: { transaction },
               }),
-              planningHelper.getModelById({
+              CrudHelper.findOne({
                 model: PaperRequirements,
                 where: { planningId: planning.planningId },
                 options: { transaction },
@@ -486,7 +505,7 @@ export const planningPaperService = {
 
             //update qty produced for planning box
             if (planningBox) {
-              await planningHelper.updateDataModel({
+              await CrudHelper.updateData({
                 model: PlanningBoxTime,
                 data: { runningPlan: planning.qtyProduced ?? 0 },
                 options: { where: { planningBoxId: planningBox.planningBoxId }, transaction },
@@ -495,9 +514,10 @@ export const planningPaperService = {
 
             //complete paper requirement
             if (requirement && requirement.status !== "COMPLETED") {
-              await planningHelper.updateDataModel({
+              await CrudHelper.updateData({
                 model: requirement,
                 data: { status: "COMPLETED" },
+                options: { transaction },
               });
             }
 

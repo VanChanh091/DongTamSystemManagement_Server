@@ -1,14 +1,13 @@
 import { Op } from "sequelize";
-import { User } from "../models/user/user";
-import { Order } from "../models/order/order";
-import { Product } from "../models/product/product";
-import { Customer } from "../models/customer/customer";
-import { PlanningBox } from "../models/planning/planningBox";
-import { PlanningPaper } from "../models/planning/planningPaper";
-import { Inventory } from "../models/warehouse/inventory/inventory";
-import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
-import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
-import { InventoryTransfers } from "../models/warehouse/inventory/inventoryTransfers";
+import { User } from "../../models/user/user";
+import { Order } from "../../models/order/order";
+import { Product } from "../../models/product/product";
+import { Customer } from "../../models/customer/customer";
+import { PlanningBox } from "../../models/planning/planningBox";
+import { PlanningPaper } from "../../models/planning/planningPaper";
+import { Inventory } from "../../models/warehouse/inventory/inventory";
+import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
+import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
 
 export const syntheticRepository = {
   //====================================ORDERS========================================

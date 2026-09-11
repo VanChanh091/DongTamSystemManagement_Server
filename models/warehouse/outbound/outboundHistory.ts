@@ -142,6 +142,12 @@ export function initOutboundHistoryModel(sequelize: Sequelize): typeof OutboundH
           name: "idx_outbound_debt_by_customer",
           fields: ["status", "customerId", "remainingAmount"],
         },
+
+        //index phục vụ cho việc gom nhóm báo cáo doanh thu theo năm
+        {
+          name: "idx_outbound_summary_by_year",
+          fields: ["dateOutbound", "customerId", "totalPricePayment"],
+        },
       ],
     },
   );

@@ -2,8 +2,8 @@ import { WasteNormBox } from "../../../models/admin/wasteNormBox";
 import { PlanningBox } from "../../../models/planning/planningBox";
 import { PlanningBoxTime } from "../../../models/planning/planningBoxMachineTime";
 import { timeOverflowPlanning } from "../../../models/planning/timeOverflowPlanning";
+import { CrudHelper } from "../../../repository/helper/crud.helper.repository";
 import { planningBoxRepository } from "../../../repository/planning/planningBoxRepository";
-import { planningHelper } from "../../../repository/planning/planningHelper";
 import {
   addDays,
   addMinutes,
@@ -73,7 +73,7 @@ export const calTimeRunningPlanningBox = async ({
 
       if (feComplete.hasOverFlow) {
         // Lấy overflow mới nhất cho planning này & machine
-        const overflowRecord = await planningHelper.getModelById({
+        const overflowRecord = await CrudHelper.findOne({
           model: timeOverflowPlanning,
           where: { planningBoxId: feComplete.planningBoxId, machine },
           options: { transaction },
@@ -256,7 +256,7 @@ const calculateTimeForOnePlanning = async ({
     result.timeRunning = formatTimeToHHMMSS(predictedEndTime);
     currentTime = predictedEndTime;
 
-    await planningHelper.deleteModelData({
+    await CrudHelper.deleteData({
       model: timeOverflowPlanning,
       where: { planningBoxId, machine },
       transaction,
@@ -266,7 +266,7 @@ const calculateTimeForOnePlanning = async ({
   // console.log(`hasOverFlow: ${hasOverFlow}`);
   // console.log(`hasOverFlow && runningPlan > 0: ${hasOverFlow && runningPlan > 0}`);
 
-  await planningHelper.updateDataModel({
+  await CrudHelper.updateData({
     model: PlanningBox,
     data: { hasOverFlow: hasOverFlow && runningPlan > 0 },
     options: { where: { planningBoxId }, transaction },
@@ -284,7 +284,7 @@ const calculateTimeForOnePlanning = async ({
     result.wasteBox = Math.round(wasteBoxValue);
   }
 
-  await planningHelper.updateDataModel({
+  await CrudHelper.updateData({
     model: PlanningBoxTime,
     data: { ...result, sortPlanning },
     options: { where: { planningBoxId, machine }, transaction },
@@ -365,13 +365,13 @@ const handleOverflow = async ({
     addMinutes(parseTimeOnly(timeStart), overflowMinutes),
   );
 
-  await planningHelper.deleteModelData({
+  await CrudHelper.deleteData({
     model: timeOverflowPlanning,
     where: { planningBoxId, machine },
     transaction,
   });
 
-  await planningHelper.createData({
+  await CrudHelper.createData({
     model: timeOverflowPlanning,
     data: {
       planningBoxId,
@@ -405,7 +405,7 @@ const calculateWasteBoxValue = async ({
 }) => {
   if (runningPlan <= 0) return null;
 
-  const wasteNorm = await planningHelper.getModelById({
+  const wasteNorm = await CrudHelper.findOne({
     model: WasteNormBox,
     where: { machineName: machine },
     options: { transaction },
@@ -460,7 +460,7 @@ const getInitialCursor = async ({
   let currentDay = new Date(day);
 
   // A) Lấy đơn complete trong cùng ngày
-  const lastComplete = await planningHelper.getModelById({
+  const lastComplete = await CrudHelper.findOne({
     model: PlanningBoxTime,
     where: { machine: machine, status: "complete", dayStart: dayStr },
     options: { order: [["timeRunning", "DESC"]], attributes: ["timeRunning"], transaction },

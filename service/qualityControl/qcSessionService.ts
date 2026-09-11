@@ -3,8 +3,8 @@ import { AppError } from "../../utils/appError";
 import { qcRepository } from "../../repository/qcRepository";
 import { processTypeQC } from "../../models/qualityControl/qcCriteria";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
-import { planningHelper } from "../../repository/planning/planningHelper";
 import { QcSession, statusQcSession } from "../../models/qualityControl/qcSession";
+import { CrudHelper } from "../../repository/helper/crud.helper.repository";
 
 export const qcSessionService = {
   getAllQcSession: async () => {
@@ -85,7 +85,7 @@ export const qcSessionService = {
         );
       }
 
-      const existedUser = await planningHelper.getModelById({ model: User, where: { userId } });
+      const existedUser = await CrudHelper.findOne({ model: User, where: { userId } });
       if (!existedUser) {
         throw AppError.BadRequest("user not found", "USER_NOT_FOUND");
       }

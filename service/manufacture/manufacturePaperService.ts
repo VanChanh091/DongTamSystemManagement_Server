@@ -13,7 +13,6 @@ import { machineLabels, MEILI_INDEX } from "../../assets/labelFields";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { planningPaperService } from "../planning/planningPaperService";
 import { manufactureRepo } from "../../repository/manufactureRepository";
-import { planningHelper } from "../../repository/planning/planningHelper";
 import { ReportPlanningPaper } from "../../models/report/reportPlanningPaper";
 import { mergeShiftField } from "../../utils/helper/modelHelper/planning.timeRunning.helper";
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
@@ -23,6 +22,7 @@ import {
   aggregateReportFields,
   updateStatusPaper,
 } from "../../utils/helper/modelHelper/manufactureHelper";
+import { CrudHelper } from "../../repository/helper/crud.helper.repository";
 
 export const manuPaperService = {
   getPlanningPaper: async ({
@@ -169,7 +169,7 @@ export const manuPaperService = {
         let overflow, dayReportValue;
 
         if (planning.hasOverFlow) {
-          overflow = await planningHelper.getModelById({
+          overflow = await CrudHelper.findOne({
             model: timeOverflowPlanning,
             where: { planningId },
             options: { transaction, lock: transaction?.LOCK.UPDATE },
@@ -196,7 +196,7 @@ export const manuPaperService = {
           otherData.shiftManagement,
         );
 
-        await planningHelper.updateDataModel({
+        await CrudHelper.updateData({
           model: planning,
           data: {
             qtyProduced: newQtyProduced,
@@ -210,7 +210,7 @@ export const manuPaperService = {
 
         //update qty for planning box
         if (planning.hasBox) {
-          const planningBox = await planningHelper.getModelById({
+          const planningBox = await CrudHelper.findOne({
             model: PlanningBox,
             where: { orderId: planning.orderId, planningId: planning.planningId },
             options: { transaction, lock: transaction?.LOCK.UPDATE },
@@ -230,7 +230,7 @@ export const manuPaperService = {
 
         //update status if enough qty
         if (totalQtyProduced >= quantityManufacture) {
-          await planningHelper.updateDataModel({
+          await CrudHelper.updateData({
             model: Order,
             data: { status: "planning" },
             options: { where: { orderId: planning.orderId }, transaction },
@@ -399,7 +399,7 @@ export const manuPaperService = {
         const quantityManufacture = planning.Order?.quantityManufacture || 0;
 
         if (totalOrderQty >= quantityManufacture) {
-          await planningHelper.updateDataModel({
+          await CrudHelper.updateData({
             model: Order,
             data: { status: "planning" },
             options: { where: { orderId: planning.orderId }, transaction },
@@ -505,21 +505,21 @@ export const manuPaperService = {
         }
 
         // Check if there's another planning in 'producing' status for the same machine
-        const existingProducing = await planningHelper.getModelById({
+        const existingProducing = await CrudHelper.findOne({
           model: PlanningPaper,
           where: { chooseMachine: machine, status: "producing" },
           options: { transaction, lock: transaction?.LOCK.UPDATE },
         });
 
         if (existingProducing && existingProducing.planningId !== planningId) {
-          await planningHelper.updateDataModel({
+          await CrudHelper.updateData({
             model: existingProducing,
             data: { status: "planning" },
             options: { transaction },
           });
         }
 
-        await planningHelper.updateDataModel({
+        await CrudHelper.updateData({
           model: planning,
           data: { status: "producing" },
           options: { transaction },

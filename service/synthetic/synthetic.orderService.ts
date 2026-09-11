@@ -14,7 +14,7 @@ import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { Inventory } from "../../models/warehouse/inventory/inventory";
 import { inventoryLogService } from "../inventory/inventoryLogService";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
-import { syntheticRepository } from "../../repository/syntheticRepository";
+import { syntheticRepository } from "../../repository/synthetic/syntheticRepository";
 import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { mappingOrderRow, orderColumns } from "../../utils/mapping/orderRowAndColumn";

@@ -2,8 +2,8 @@ import { AppError } from "../../utils/appError";
 import { qcRepository } from "../../repository/qcRepository";
 import { QcSession } from "../../models/qualityControl/qcSession";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
-import { planningHelper } from "../../repository/planning/planningHelper";
 import { qcChecklistData, QcSampleResult } from "../../models/qualityControl/qcSampleResult";
+import { CrudHelper } from "../../repository/helper/crud.helper.repository";
 
 export const qcSampleService = {
   getAllQcResult: async (qcSessionId: number) => {
@@ -160,7 +160,7 @@ export const qcSampleService = {
             );
           }
 
-          const sampleResult = await planningHelper.getModelById({
+          const sampleResult = await CrudHelper.findOne({
             model: QcSampleResult,
             where: { qcSessionId, sampleIndex },
             options: { transaction },

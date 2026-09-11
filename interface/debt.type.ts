@@ -13,6 +13,7 @@ interface AgingBucket {
 export interface DebtItemDTO {
   customerId: string;
   customerName: string;
+  companyName: string;
   totalDebt: number;
   closedDebt: number;
   currentPeriodDebt: number;

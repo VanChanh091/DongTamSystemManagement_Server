@@ -16,10 +16,9 @@ import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { InboundHistory } from "../../models/warehouse/inboundHistory";
 import { Inventory } from "../../models/warehouse/inventory/inventory";
 import { manufactureRepo } from "../../repository/manufactureRepository";
-import { planningHelper } from "../../repository/planning/planningHelper";
 import { warehouseRepository } from "../../repository/warehouseRepository";
 import { inventoryRepository } from "../../repository/inventoryRepository";
-import { syntheticRepository } from "../../repository/syntheticRepository";
+import { syntheticRepository } from "../../repository/synthetic/syntheticRepository";
 import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
@@ -31,6 +30,7 @@ import {
 } from "../../utils/mapping/warehouse/inboundRowAndColumn";
 import { inventoryService } from "../inventory/inventoryService";
 import { inventoryLogService } from "../inventory/inventoryLogService";
+import { CrudHelper } from "../../repository/helper/crud.helper.repository";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inbound } = CacheKey.warehouse;
@@ -196,16 +196,19 @@ export const inboundService = {
 
       const isFirstInbound = totalInboundQty === 0;
 
-      //create inventory
+      //createData inventory
       const inventory = await inventoryService.createNewInventory(planning.orderId, transaction);
 
-      //create inbound record
-      const inboundRecord = await planningHelper.createData({
+      //createData inbound record
+      const pricePaper = planning.Order.pricePaper ?? 0;
+
+      const inboundRecord = await CrudHelper.createData({
         model: InboundHistory,
         data: {
           dateInbound: new Date(),
           qtyPaper: qtyProduced,
           qtyInbound: inboundQty,
+          totalPrice: inboundQty * pricePaper,
 
           orderId: planning.orderId,
           planningId,
@@ -216,7 +219,7 @@ export const inboundService = {
 
       //update inventory
       const finalQty = inventory.qtyInventory + inboundQty;
-      const finalValue = finalQty < 0 ? 0 : finalQty * planning.Order.pricePaper;
+      const finalValue = finalQty < 0 ? 0 : finalQty * pricePaper;
 
       await Inventory.update(
         {
@@ -280,7 +283,7 @@ export const inboundService = {
     transaction?: any;
   }) => {
     try {
-      const planning = await planningHelper.getModelById({
+      const planning = await CrudHelper.findOne({
         model: PlanningBox,
         where: { planningBoxId },
         options: {
@@ -311,16 +314,19 @@ export const inboundService = {
 
       const isFirstInbound = totalInboundQty === 0;
 
-      //create inventory
+      //createData inventory
       const inventory = await inventoryService.createNewInventory(planning.orderId, transaction);
 
-      //create inbound record
-      const inboundRecord = await planningHelper.createData({
+      //createData inbound record
+      const pricePaper = planning.Order.pricePaper ?? 0;
+
+      const inboundRecord = await CrudHelper.createData({
         model: InboundHistory,
         data: {
           dateInbound: new Date(),
           qtyPaper: planning.qtyPaper,
           qtyInbound: inboundQty,
+          totalPrice: inboundQty * pricePaper,
 
           orderId: planning.orderId,
           planningBoxId,
@@ -331,7 +337,7 @@ export const inboundService = {
 
       //update inventory
       const finalQty = inventory.qtyInventory + inboundQty;
-      const finalValue = finalQty < 0 ? 0 : finalQty * planning.Order.pricePaper;
+      const finalValue = finalQty < 0 ? 0 : finalQty * pricePaper;
 
       await Inventory.update(
         {

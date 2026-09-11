@@ -13,12 +13,12 @@ import redisCache from "../../assets/configs/connect/redis.connect";
 import { calTimeRunningPlanningBox } from "./helper/timeRunningBox";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
-import { planningHelper } from "../../repository/planning/planningHelper";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
 import { planningBoxRepository } from "../../repository/planning/planningBoxRepository";
 import { PlanningBoxTime, statusBoxType } from "../../models/planning/planningBoxMachineTime";
+import { CrudHelper } from "../../repository/helper/crud.helper.repository";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { box } = CacheKey.planning;
@@ -243,7 +243,7 @@ export const planningBoxService = {
       extraValidator(boxTimes);
 
       //cập nhật status planning
-      await planningHelper.updateDataModel({
+      await CrudHelper.updateData({
         model: PlanningBoxTime,
         data: { status: targetStatus },
         options: { where: { planningBoxId: ids, machine }, transaction },
@@ -255,7 +255,7 @@ export const planningBoxService = {
       });
 
       if (overflowRows.length > 0) {
-        await planningHelper.updateDataModel({
+        await CrudHelper.updateData({
           model: timeOverflowPlanning,
           data: { status: targetStatus },
           options: { where: { planningBoxId: ids, machine }, transaction },
@@ -311,7 +311,7 @@ export const planningBoxService = {
 
           await planning.save({ transaction });
 
-          await planningHelper.updateDataModel({
+          await CrudHelper.updateData({
             model: timeOverflowPlanning,
             data: { status: newStatus },
             options: { where: { planningBoxId: planning.planningBoxId, machine }, transaction },
@@ -364,7 +364,7 @@ export const planningBoxService = {
         for (const item of updateIndex) {
           if (!item.sortPlanning) continue;
 
-          const boxTime = await planningHelper.getModelById({
+          const boxTime = await CrudHelper.findOne({
             model: PlanningBoxTime,
             where: {
               planningBoxId: item.planningBoxId,
@@ -375,7 +375,7 @@ export const planningBoxService = {
           });
 
           if (boxTime) {
-            await planningHelper.updateDataModel({
+            await CrudHelper.updateData({
               model: boxTime,
               data: { sortPlanning: item.sortPlanning },
               options: { transaction },
@@ -395,7 +395,7 @@ export const planningBoxService = {
         // );
 
         // 3. Tính toán thời gian chạy cho từng planning
-        const machineInfo = await planningHelper.getModelById({
+        const machineInfo = await CrudHelper.findOne({
           model: MachineBox,
           where: { machineName: machine },
           options: { transaction },

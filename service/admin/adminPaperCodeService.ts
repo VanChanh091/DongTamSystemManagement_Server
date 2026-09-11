@@ -32,11 +32,10 @@ export const adminPaperCodeService = {
 
         const nextActiveState = !supplier.isActive;
 
-        await CrudHelper.updateByIds({
+        await CrudHelper.updateData({
           model: Suppliers,
-          whereCondition: { supplierId },
           data: { isActive: nextActiveState },
-          transaction,
+          options: { where: { supplierId }, transaction },
         });
 
         return { message: `Successfully toggled supplier status ` };

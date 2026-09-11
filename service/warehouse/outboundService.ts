@@ -17,7 +17,6 @@ import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { Inventory } from "../../models/warehouse/inventory/inventory";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
-import { planningHelper } from "../../repository/planning/planningHelper";
 import { warehouseRepository } from "../../repository/warehouseRepository";
 import { inventoryRepository } from "../../repository/inventoryRepository";
 import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
@@ -35,6 +34,7 @@ import {
   calculateGrandTotal,
   calculateTotalPriceByDate,
 } from "../../utils/helper/modelHelper/warehouseHelper";
+import { CrudHelper } from "../../repository/helper/crud.helper.repository";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { outbound } = CacheKey.warehouse;
@@ -430,7 +430,7 @@ export const outboundService = {
         const roundedTotalPrice = Math.round(totalPricePayment * 100) / 100;
 
         // Tạo outbound
-        const outbound = await planningHelper.createData({
+        const outbound = await CrudHelper.createData({
           model: OutboundHistory,
           data: {
             customerId,
@@ -459,7 +459,7 @@ export const outboundService = {
             }
           }
 
-          await planningHelper.createData({
+          await CrudHelper.createData({
             model: OutboundDetail,
             data: {
               outboundId: outbound.outboundId,

@@ -1,4 +1,4 @@
-import { Model, ModelStatic, Transaction, Op, WhereOptions } from "sequelize";
+import { Model, ModelStatic, Transaction, WhereOptions } from "sequelize";
 
 export const CrudHelper = {
   findAll<T extends Model>({ model, options }: { model: ModelStatic<T>; options?: any }) {
@@ -22,27 +22,24 @@ export const CrudHelper = {
 
   findOne<T extends Model>({
     model,
-    whereCondition,
+    where,
     options,
   }: {
     model: ModelStatic<T>;
-    whereCondition: WhereOptions<any>;
+    where: WhereOptions<any>;
     options?: any;
   }) {
-    return model.findOne({
-      where: whereCondition,
-      ...options,
-    });
+    return model.findOne({ where, ...options });
   },
 
-  create<T extends Model>({
+  createData<T extends Model>({
     model,
     data,
     transaction,
   }: {
     model: ModelStatic<T>;
     data: any;
-    transaction?: Transaction;
+    transaction: Transaction;
   }) {
     return model.create(data, { transaction });
   },
@@ -54,43 +51,32 @@ export const CrudHelper = {
   }: {
     model: ModelStatic<T>;
     data: any[];
-    options: {
-      updateOnDuplicate?: string[];
-      transaction?: Transaction;
-    };
+    options: { updateOnDuplicate?: string[]; transaction: Transaction };
   }) {
     return model.bulkCreate(data, options);
   },
 
-  updateByIds<T extends Model>({
+  updateData({
     model,
-    whereCondition,
     data,
-    transaction,
+    options,
   }: {
-    model: ModelStatic<T>;
-    whereCondition: WhereOptions<any>;
+    model: any;
     data: any;
-    transaction?: Transaction;
+    options: { where?: WhereOptions<any>; transaction: Transaction };
   }) {
-    return model.update(data, {
-      where: whereCondition,
-      transaction,
-    });
+    return model.update(data, options);
   },
 
-  deleteByIds<T extends Model>({
+  deleteData<T extends Model>({
     model,
-    whereCondition,
+    where,
     transaction,
   }: {
     model: ModelStatic<T>;
-    whereCondition: WhereOptions<any>;
-    transaction?: Transaction;
+    where: WhereOptions<any>;
+    transaction: Transaction;
   }) {
-    return model.destroy({
-      where: whereCondition,
-      transaction,
-    });
+    return model.destroy({ where, transaction });
   },
 };

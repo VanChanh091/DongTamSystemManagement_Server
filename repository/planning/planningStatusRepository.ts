@@ -1,11 +1,11 @@
 import { Op, Sequelize, Transaction } from "sequelize";
 import { Box } from "../../models/order/box";
 import { Order } from "../../models/order/order";
-import { planningHelper } from "./planningHelper";
 import { Product } from "../../models/product/product";
 import { Customer } from "../../models/customer/customer";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
 import { PlanningPaper, planningPaperStatus } from "../../models/planning/planningPaper";
+import { CrudHelper } from "../helper/crud.helper.repository";
 
 export const planningStatusRepository = {
   //====================================PLANNING ORDER========================================
@@ -144,7 +144,7 @@ export const planningStatusRepository = {
           }
         : { status: action };
 
-    return planningHelper.updateDataModel({
+    return CrudHelper.updateData({
       model: PlanningPaper,
       data,
       options: { where: { planningId: { [Op.in]: planningIds } }, transaction },

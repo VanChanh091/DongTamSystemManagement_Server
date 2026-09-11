@@ -61,7 +61,7 @@ export const adminService = {
   createNewItem: async ({ model, data }: { model: any; data: any }) => {
     try {
       return await runInTransaction(async (transaction) => {
-        const newItem = await CrudHelper.create({ model, data, transaction });
+        const newItem = await CrudHelper.createData({ model, data, transaction });
         return { message: "create item successfully", data: newItem };
       });
     } catch (error) {
@@ -84,11 +84,10 @@ export const adminService = {
       return await runInTransaction(async (transaction) => {
         const primaryKey = model.primaryKeyAttributes[0]; // tự động lấy primary key của model
 
-        const [affectedCount] = await CrudHelper.updateByIds({
+        const [affectedCount] = await CrudHelper.updateData({
           model,
-          whereCondition: { [primaryKey]: itemId },
           data: dataUpdated,
-          transaction,
+          options: { where: { [primaryKey]: itemId }, transaction },
         });
 
         if (affectedCount === 0) {

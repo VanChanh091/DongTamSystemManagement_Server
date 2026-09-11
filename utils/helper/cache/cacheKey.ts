@@ -119,6 +119,14 @@ export const CacheKey = {
       all: (status: string, page: number) => `syntheticOrder:${status}:${page}`,
       lastUpdated: "synthetic:order:lastUpdated",
     },
+    reports: {
+      revenue_daily: (year: number, month: number, key: number | string | null) =>
+        `report:revenue_daily:${year}-${month}:${key}`,
+      revenue_monthly: (year: number, month: number, key: number | string | null) =>
+        `report:revenue_monthly:${year}-${month}:${key}`,
+      revenue_yearly: (fromYear: number, toYear: number, key: number | string | null) =>
+        `report:revenue_yearly:${fromYear}-${toYear}:${key}`,
+    },
   },
 
   qcInspection: {

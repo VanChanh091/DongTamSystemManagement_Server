@@ -3,12 +3,11 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.7.7</title>
-            <sparkle:version>4.7.7</sparkle:version> 
+            <title>Version 4.7.8</title>
+            <sparkle:version>4.7.8</sparkle:version> 
             <description>
-            Thêm nút xử lý đơn hàng có tồn âm
-            Xây dựng bảng mã giấy cho phần quản trị
-            Thay đổi cách nhập kết cấu để đồng bộ với mã giấy
+            Sửa lỗi các lớp chẵn vẫn hiển thị đáy
+            Thêm tick FSC vào đơn hàng
             </description>
             <pubDate>Sar, 17 August 2026</pubDate>
             <enclosure url="dongtam.exe" 

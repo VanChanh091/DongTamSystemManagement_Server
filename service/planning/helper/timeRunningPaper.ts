@@ -1,9 +1,9 @@
 import { Op } from "sequelize";
 import { BreakTime } from "../../../interface/types";
 import { PlanningPaper } from "../../../models/planning/planningPaper";
-import { planningHelper } from "../../../repository/planning/planningHelper";
 import { timeOverflowPlanning } from "../../../models/planning/timeOverflowPlanning";
 import { AppError } from "../../../utils/appError";
+import { CrudHelper } from "../../../repository/helper/crud.helper.repository";
 
 //Công thức tính thời gian: time = (Thời gian A/B + (tổng dài / tốc độ)) / (hiệu suất / 100)
 // Trong đó:
@@ -30,7 +30,7 @@ export const updateSortPlanning = async (
   const updates = updateIndex
     .filter((item) => item.sortPlanning)
     .map((item) =>
-      planningHelper.updateDataModel({
+      CrudHelper.updateData({
         model: PlanningPaper,
         data: { sortPlanning: item.sortPlanning },
         options: {
@@ -269,7 +269,7 @@ const calculateTimeForOnePlanning = async ({
       transaction,
     });
 
-    await planningHelper.updateDataModel({
+    await CrudHelper.updateData({
       model: PlanningPaper,
       data: {
         dayStart: new Date(result.dayStart), // result.dayStart đã an toàn khỏi lỗi Timezone
@@ -313,7 +313,7 @@ const handleOverflow = async ({
   transaction: any;
 }) => {
   if (!hasOverFlow) {
-    await planningHelper.deleteModelData({
+    await CrudHelper.deleteData({
       model: timeOverflowPlanning,
       where: { planningId },
       transaction,
@@ -341,13 +341,13 @@ const handleOverflow = async ({
   const overflowEnd = new Date(startOverflow);
   overflowEnd.setMinutes(overflowEnd.getMinutes() + overflowMin);
 
-  await planningHelper.deleteModelData({
+  await CrudHelper.deleteData({
     model: timeOverflowPlanning,
     where: { planningId },
     transaction,
   });
 
-  await planningHelper.createData({
+  await CrudHelper.createData({
     model: timeOverflowPlanning,
     data: {
       planningId,

@@ -4,6 +4,7 @@ export const debtCustomerColumns: Partial<ExcelJS.Column>[] = [
   { header: "STT", key: "index" },
   { header: "Mã Khách Hàng", key: "customerId" },
   { header: "Tên Khách Hàng", key: "customerName" },
+  { header: "Tên Công Ty", key: "companyName" },
   { header: "Số Đơn Chưa TT", key: "unpaidOutboundCount" },
   { header: "Tổng Nợ", key: "totalDebt", style: { numFmt: "#,##0" } },
 
@@ -27,6 +28,7 @@ export const mappingDebtCustomerRow = (item: any, index: number) => {
     index: index + 1,
     customerId: item.customerId,
     customerName: item.customerName,
+    companyName: item.companyName,
     totalDebt: item.totalDebt,
 
     // Nợ trong hạn

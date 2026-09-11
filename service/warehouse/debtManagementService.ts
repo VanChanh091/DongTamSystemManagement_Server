@@ -466,9 +466,13 @@ const roundInt = (val: number | undefined | null): number => Math.round(Number(v
 const mapToDebtItemDTO = (rawItem: any): DebtItemDTO => {
   const aging = rawItem.aging;
 
+  // phân loại theo chốt kỳ hạn: closedDebt + closedDebt
+  // phân loại theo hạn thanh toán: overdueDebt + notDueDebt
+
   return {
     customerId: rawItem.customerId || "",
     customerName: rawItem.customerName || "",
+    companyName: rawItem.companyName || "",
     totalDebt: roundInt(rawItem.totalDebt),
     closedDebt: roundInt(rawItem.closedDebt),
     currentPeriodDebt: roundInt(rawItem.currentPeriodDebt),
@@ -520,6 +524,7 @@ const processDebtAggregation = (unpaidOutbounds: any[], targetDate?: Date | stri
       customerMap.set(custId, {
         customerId: custId,
         customerName: pxk.Customer?.customerName || "",
+        companyName: pxk.Customer?.companyName || "",
         totalDebt: 0,
         closedDebt: 0,
         currentPeriodDebt: 0,

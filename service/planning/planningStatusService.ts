@@ -15,7 +15,6 @@ import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { Inventory } from "../../models/warehouse/inventory/inventory";
-import { planningHelper } from "../../repository/planning/planningHelper";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { WaveCrestCoefficient } from "../../models/admin/waveCrestCoefficient";
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
@@ -30,6 +29,8 @@ import {
 } from "../../models/planning/requirement/paper_requirement_layers";
 import { PaperRequirements } from "../../models/planning/requirement/paperRequirements";
 import { PlanningOrderInput } from "../../interface/types";
+import { CrudHelper } from "../../repository/helper/crud.helper.repository";
+import { OrderApproved } from "../../models/order/orderApproved";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { stop, order } = CacheKey.planning;
@@ -124,15 +125,15 @@ export const planningStatusService = {
 
         // Lấy thông số định mức và hệ số sóng cho máy đã chọn
         const [wasteNorm, waveCoeff] = await Promise.all([
-          planningHelper.getModelById({
+          CrudHelper.findOne({
             model: WasteNormPaper,
             where: { machineName: chooseMachine },
-            transaction,
+            options: { transaction },
           }),
-          planningHelper.getModelById({
+          CrudHelper.findOne({
             model: WaveCrestCoefficient,
             where: { machineName: chooseMachine },
-            transaction,
+            options: { transaction },
           }),
         ]);
 
@@ -158,7 +159,7 @@ export const planningStatusService = {
         });
 
         // Tạo kế hoạch làm giấy tấm
-        const paperPlan = await planningHelper.createData({
+        const paperPlan = await CrudHelper.createData({
           model: PlanningPaper,
           data: {
             orderId,
@@ -248,7 +249,19 @@ export const planningStatusService = {
           await inventory.destroy({ transaction });
         }
 
-        await order.update({ status: "reject" }, { transaction });
+        await Promise.all([
+          order.update({ status: "reject" }, { transaction }),
+
+          CrudHelper.createData({
+            model: OrderApproved,
+            data: {
+              approvedBy: req.user.fullName,
+              action: "RETURNED",
+              orderId: order.orderId,
+            },
+            transaction,
+          }),
+        ]);
 
         //socket
         const ownerId = order.userId;
@@ -532,7 +545,7 @@ const handleCreateBoxPlanning = async ({
   if (!order.isBox) return null;
 
   const box = order.box;
-  const boxPlan = await planningHelper.createData({
+  const boxPlan = await CrudHelper.createData({
     model: PlanningBox,
     data: {
       planningId: paperPlan.planningId,
@@ -723,7 +736,7 @@ const handlePaperRequirements = async ({
   totalRequiredQty = roundSmart(totalRequiredQty);
 
   // Ghi bảng Header
-  const paperRequirement = await planningHelper.createData({
+  const paperRequirement = await CrudHelper.createData({
     model: PaperRequirements,
     data: { planningId, paperRollWidth: ghepKho, totalRequiredQty, inventoryStatus: "SHORTAGE" },
     transaction,
@@ -735,7 +748,7 @@ const handlePaperRequirements = async ({
     requirementId: paperRequirement.requirementId,
   }));
 
-  await planningHelper.bulkCreateData({
+  await CrudHelper.bulkCreate({
     model: PaperRequirementLayers,
     data: layersData,
     options: { transaction },

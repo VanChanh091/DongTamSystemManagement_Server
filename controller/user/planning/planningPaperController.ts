@@ -66,10 +66,11 @@ export const handleUpdatePlanningPapers = async (
         break;
       case "PAUSE_OR_ACCEPT_LACK":
         if (newStatus) {
-          response = await planningPaperService.pauseOrAcceptLackQtyPLanning(
-            planningIdsArrs,
+          response = await planningPaperService.pauseOrAcceptLackQtyPLanning({
+            planningIds: planningIdsArrs,
             newStatus,
-          );
+            username: req.user.fullName,
+          });
         }
         break;
       case "NOTE":
