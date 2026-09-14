@@ -14,6 +14,7 @@ import {
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { debtRepository } from "../../repository/debtRepository";
+import { normalizeVN } from "../../utils/helper/normalizeVN";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { reports } = CacheKey.synthetic;
@@ -25,7 +26,7 @@ const CACHETTL = 300; // 5 phút
 export const syntheticReportsService = {
   //revenue daily
   getDailyRevenueReport: async (
-    dto: RevenueReportFilterInput & { page: number; pageSize: number },
+    dto: RevenueReportFilterInput & { page: number; pageSize: number; keyword?: string },
   ): Promise<DailyRevenueReportResponse> => {
     const now = new Date();
     const currentYear = now.getFullYear();
@@ -36,6 +37,7 @@ export const syntheticReportsService = {
 
     const page = Math.max(1, Number(dto.page) || 1);
     const pageSize = Math.max(1, Number(dto.pageSize) || 30);
+    const keyword = dto.keyword ? normalizeVN(dto.keyword) : "";
 
     try {
       // Phân quyền
@@ -168,21 +170,45 @@ export const syntheticReportsService = {
         }
       }
 
+      // Lọc theo tên khách hàng & Tính lại Summary tương ứng
+      let filteredDetails = fullReportData.allDetails;
+      let responseSummary = fullReportData.summary;
+
+      if (keyword) {
+        filteredDetails = fullReportData.allDetails.filter((item) =>
+          normalizeVN(item.customerName).includes(keyword),
+        );
+
+        // Tính lại dòng footer cho danh sách đã lọc
+        const filteredDailyTotals: Record<number, number> = {};
+        for (let d = 1; d <= fullReportData.daysInMonth; d++) {
+          filteredDailyTotals[d] = filteredDetails.reduce(
+            (sum, item) => sum + (item.dailyAmounts[d] || 0),
+            0,
+          );
+        }
+
+        responseSummary = {
+          totalMonthSales: filteredDetails.reduce((sum, item) => sum + item.totalCustomerSales, 0),
+          totalMonthDebt: filteredDetails.reduce((sum, item) => sum + item.totalCustomerDebt, 0),
+          dailyTotals: filteredDailyTotals,
+        };
+      }
+
       // pagination
-      const totalCustomers = fullReportData.allDetails.length;
+      const totalCustomers = filteredDetails.length;
       const totalPages = Math.ceil(totalCustomers / pageSize) || 1;
       const startIndex = (page - 1) * pageSize;
-      const paginatedDetails = fullReportData.allDetails.slice(startIndex, startIndex + pageSize);
+      const paginatedDetails = filteredDetails.slice(startIndex, startIndex + pageSize);
 
       return {
         message: isFromCache
           ? "Data revenue daily from Redis"
           : "Data revenue daily generated successfully",
         filter: { month, year, userId: effectiveUserId },
-        summary: fullReportData.summary,
+        summary: responseSummary,
         data: paginatedDetails,
         daysInMonth: fullReportData.daysInMonth,
-
         totalCustomers,
         totalPages,
         currentPage: page,
@@ -332,13 +358,16 @@ export const syntheticReportsService = {
   },
 
   //revenue year
-  getMultiYearRevenueReport: async (dto: YearlyReportFilterInput): Promise<YearlyRevenueReportResponse> => {
+  getMultiYearRevenueReport: async (
+    dto: YearlyReportFilterInput & { keyword?: string },
+  ): Promise<YearlyRevenueReportResponse> => {
     const currentYear = new Date().getFullYear();
     const fromYear = Number(dto.fromYear) || currentYear;
     const toYear = Number(dto.toYear) || currentYear;
 
     const page = Math.max(1, Number(dto.page) || 1);
     const pageSize = Math.max(1, Number(dto.pageSize) || 35);
+    const keyword = dto.keyword ? normalizeVN(dto.keyword) : "";
 
     try {
       if (fromYear > toYear) {
@@ -494,11 +523,51 @@ export const syntheticReportsService = {
         await redisCache.set(cacheKey, JSON.stringify(fullReportData), "EX", CACHETTL);
       }
 
+      // Lọc theo tên khách hàng & Tính lại Summary tương ứng
+      let filteredDetails = fullReportData.allDetails;
+      let responseSummary = fullReportData.summary;
+
+      if (keyword) {
+        filteredDetails = fullReportData.allDetails.filter((item) =>
+          normalizeVN(item.customerName).includes(keyword),
+        );
+
+        // Tính lại footer của ma trận nhiều năm theo tập khách đã lọc
+        const filteredSummaryYears: Record<number, YearSalesData> = {};
+        for (const y of fullReportData.yearsList) {
+          filteredSummaryYears[y] = createEmptyYear();
+        }
+
+        let filteredGrandTotal = 0;
+
+        for (const y of fullReportData.yearsList) {
+          let yearSum = 0;
+          for (let m = 1; m <= 12; m++) {
+            const monthSum = filteredDetails.reduce(
+              (sum, c) => sum + (c.years[y]?.months[m] || 0),
+              0,
+            );
+            filteredSummaryYears[y].months[m] = monthSum;
+            yearSum += monthSum;
+          }
+          filteredSummaryYears[y].yearTotal = yearSum;
+          filteredGrandTotal += yearSum;
+        }
+
+        const filteredTotalDebt = filteredDetails.reduce((sum, c) => sum + c.currentDebt, 0);
+
+        responseSummary = {
+          years: filteredSummaryYears,
+          grandTotal: filteredGrandTotal,
+          totalCurrentDebt: filteredTotalDebt,
+        };
+      }
+
       // pagination
-      const totalCustomers = fullReportData.allDetails.length;
+      const totalCustomers = filteredDetails.length;
       const totalPages = Math.ceil(totalCustomers / pageSize) || 1;
       const startIndex = (page - 1) * pageSize;
-      const paginatedDetails = fullReportData.allDetails.slice(startIndex, startIndex + pageSize);
+      const paginatedDetails = filteredDetails.slice(startIndex, startIndex + pageSize);
 
       return {
         message: isFromCache
@@ -506,7 +575,7 @@ export const syntheticReportsService = {
           : "Data multi-year revenue generated successfully",
         filter: { fromYear, toYear, userId: effectiveUserId },
         years: fullReportData.yearsList,
-        summary: fullReportData.summary,
+        summary: responseSummary,
         data: paginatedDetails,
         totalCustomers,
         totalPages,

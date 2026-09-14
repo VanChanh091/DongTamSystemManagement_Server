@@ -2,16 +2,18 @@ import { NextFunction, Request, Response } from "express";
 import { syntheticReportsService } from "../../../service/synthetic/synthetic.reportService";
 
 export const getRevenueReport = async (req: Request, res: Response, next: NextFunction) => {
-  const { month, year, fromYear, toYear, targetUserId, type, page, pageSize } = req.query as {
-    month?: string;
-    year?: string;
-    fromYear?: string;
-    toYear?: string;
-    targetUserId?: string;
-    type: string;
-    page?: string;
-    pageSize?: string;
-  };
+  const { month, year, fromYear, toYear, targetUserId, type, page, pageSize, keyword } =
+    req.query as {
+      month?: string;
+      year?: string;
+      fromYear?: string;
+      toYear?: string;
+      targetUserId?: string;
+      type: string;
+      page?: string;
+      pageSize?: string;
+      keyword?: string;
+    };
 
   try {
     let response;
@@ -25,6 +27,7 @@ export const getRevenueReport = async (req: Request, res: Response, next: NextFu
           currentUser: req.user,
           page: Number(page),
           pageSize: Number(pageSize),
+          keyword: keyword ? String(keyword).trim() : undefined,
         });
         break;
       case "monthly":
@@ -47,6 +50,7 @@ export const getRevenueReport = async (req: Request, res: Response, next: NextFu
           currentUser: req.user,
           page: Number(page),
           pageSize: Number(pageSize),
+          keyword: keyword ? String(keyword).trim() : undefined,
         });
         break;
     }

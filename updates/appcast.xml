@@ -3,12 +3,9 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.7.8</title>
-            <sparkle:version>4.7.8</sparkle:version> 
-            <description>
-            Sửa lỗi các lớp chẵn vẫn hiển thị đáy
-            Thêm tick FSC vào đơn hàng
-            </description>
+            <title>Version 4.7.9</title>
+            <sparkle:version>4.7.9</sparkle:version> 
+            <description></description>
             <pubDate>Sar, 17 August 2026</pubDate>
             <enclosure url="dongtam.exe" 
                     sparkle:os="windows" 
