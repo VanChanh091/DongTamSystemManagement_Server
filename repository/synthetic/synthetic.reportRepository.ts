@@ -5,6 +5,13 @@ import { OrderApproved } from "../../models/order/orderApproved";
 import { InboundHistory } from "../../models/warehouse/inboundHistory";
 import { OutboundDetail } from "../../models/warehouse/outbound/outboundDetail";
 import { OutboundHistory } from "../../models/warehouse/outbound/outboundHistory";
+import { EmployeeBasicInfo } from "../../models/employee/employeeBasicInfo";
+import { QcInspectionPaper } from "../../models/qualityControl/qcInspection/qcInspectionPaper";
+import { PlanningPaper } from "../../models/planning/planningPaper";
+import { ReportPlanningPaper } from "../../models/report/reportPlanningPaper";
+import { QcInspectionBox } from "../../models/qualityControl/qcInspection/qcInspectionBox";
+import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
+import { ReportPlanningBox } from "../../models/report/reportPlanningBox";
 
 export const syntheticReportRepository = {
   //====================================REVENUE DAY========================================
@@ -150,6 +157,94 @@ export const syntheticReportRepository = {
       ],
       raw: true,
       nest: true,
+    });
+  },
+
+  //====================================ERROR PRODUCTION=======================================
+  getEmployeeErrorProduction: async (employeeId: number) => {
+    return await EmployeeBasicInfo.findByPk(Number(employeeId), {
+      attributes: ["fullName"],
+      raw: true,
+    });
+  },
+
+  getQcInspectionPaper: async ({
+    paperWhere,
+    startDate,
+    endDate,
+  }: {
+    paperWhere: any;
+    startDate: string | Date;
+    endDate: string | Date;
+  }) => {
+    return await QcInspectionPaper.findAll({
+      attributes: ["timeInspection", "checkList", "planningId"],
+      where: { timeInspection: { [Op.between]: [startDate, endDate] } },
+      include: [
+        {
+          model: PlanningPaper,
+          as: "PlanningPaper",
+          attributes: ["chooseMachine", "shiftManagement"],
+          where: paperWhere,
+          required: true,
+        },
+      ],
+      raw: true,
+      nest: true,
+    });
+  },
+
+  getQcInspectionBox: async ({
+    boxWhere,
+    startDate,
+    endDate,
+  }: {
+    boxWhere: any;
+    startDate: string | Date;
+    endDate: string | Date;
+  }) => {
+    return await QcInspectionBox.findAll({
+      attributes: ["timeInspection", "checkList"],
+      where: { timeInspection: { [Op.between]: [startDate, endDate] } },
+      include: [
+        {
+          model: PlanningBoxTime,
+          as: "PlanningBoxTime",
+          attributes: ["machine", "shiftManagement", "planningBoxId"],
+          where: boxWhere,
+          required: true,
+        },
+      ],
+      raw: true,
+      nest: true,
+    });
+  },
+
+  getPlanningPaper: async ({
+    reportStartDate,
+    reportEndDate,
+  }: {
+    reportStartDate: string | Date;
+    reportEndDate: string | Date;
+  }) => {
+    return await ReportPlanningPaper.findAll({
+      attributes: ["planningId", "shiftProduction", "shiftManagement"],
+      where: { dayReport: { [Op.between]: [reportStartDate, reportEndDate] } },
+      raw: true,
+    });
+  },
+
+  getPlanningBoxTime: async ({
+    reportStartDate,
+    reportEndDate,
+  }: {
+    reportStartDate: string | Date;
+    reportEndDate: string | Date;
+  }) => {
+    return await ReportPlanningBox.findAll({
+      attributes: ["planningBoxId", "dayReport", "machine", "shiftManagement"],
+      where: { dayReport: { [Op.between]: [reportStartDate, reportEndDate] } },
+      raw: true,
     });
   },
 };

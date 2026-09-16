@@ -10,7 +10,10 @@ import {
   getAllSyntheticOrders,
 } from "../../controller/user/synthetic/synthetic.orderController";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
-import { getRevenueReport } from "../../controller/user/synthetic/synthetic.reportController";
+import {
+  getErrorProductionReport,
+  getRevenueReport,
+} from "../../controller/user/synthetic/synthetic.statisticController";
 
 const router = Router();
 
@@ -28,7 +31,8 @@ router.put("/orders", authenticate, completeOrder);
 router.get("/planning", authenticate, getSyntheticPlanning);
 router.post("/planning/export", authenticate, exportExcelSyntheticPlanning);
 
-//=========================REPORT REVENUE=========================
+//=========================STATISTIC REPORT=========================
 router.get("/report-revenue", authenticate, getRevenueReport);
+router.get("/report-err-production", authenticate, getErrorProductionReport);
 
 export default router;

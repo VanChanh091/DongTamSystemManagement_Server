@@ -6,12 +6,17 @@ import {
 } from "../../models/admin/paperClassifications/supplierPaperCodes";
 import { AppError } from "../../utils/appError";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
-import { Suppliers } from "../../models/admin/paperClassifications/suppliers";
+import {
+  Suppliers,
+  SuppliersCreationAttributes,
+} from "../../models/admin/paperClassifications/suppliers";
 import {
   PaperClassifications,
   PaperClassificationsAttributes,
   PaperClassificationsCreationAttributes,
 } from "../../models/admin/paperClassifications/paperClassifications";
+import { PaperTypes } from "../../models/admin/paperClassifications/paperTypes";
+import { PaperBasisWeights } from "../../models/admin/paperClassifications/paperBasisWeights";
 import {
   getClassificationDependencyMaps,
   getSupplierAndPaperTypeMaps,
@@ -21,6 +26,92 @@ import { adminRepository } from "../../repository/adminRepository";
 
 export const adminPaperCodeService = {
   //=============================== SUPPLIERS =================================
+  updateSupplier: async ({
+    supplierId,
+    data,
+  }: {
+    supplierId: number;
+    data: Partial<SuppliersCreationAttributes>;
+  }) => {
+    try {
+      return await runInTransaction(async (transaction: Transaction) => {
+        const existingSupplier = await Suppliers.findByPk(supplierId, { transaction });
+
+        if (!existingSupplier) {
+          throw AppError.NotFound("Supplier not found", "ITEM_NOT_FOUND");
+        }
+
+        const isTransferCodeChanged =
+          data.transferCode !== undefined &&
+          data.transferCode.trim().toUpperCase() !==
+            existingSupplier.transferCode.trim().toUpperCase();
+
+        // Cập nhật bảng Suppliers
+        await existingSupplier.update(data, { transaction });
+
+        // Nếu transferCode thay đổi
+        if (isTransferCodeChanged) {
+          const newTransferCode = data.transferCode!.trim().toUpperCase();
+
+          const supplierPapers = await SupplierPaperCodes.findAll({
+            where: { supplierId },
+            include: [{ model: PaperTypes, attributes: ["paperCode"] }],
+            transaction,
+          });
+
+          if (supplierPapers.length > 0) {
+            const supplierPaperMap = new Map<number, string>(); // supplierPaperId -> newCompanyCode
+
+            // Cập nhật companyCode trong SupplierPaperCodes
+            const spcUpdatePromises = supplierPapers.map((spc) => {
+              const paperCode = spc.PaperType?.paperCode || "";
+              const newCompanyCode = `${paperCode}${newTransferCode}`.toUpperCase();
+              supplierPaperMap.set(spc.supplierPaperId, newCompanyCode);
+
+              return spc.update({ companyCode: newCompanyCode }, { transaction });
+            });
+
+            await Promise.all(spcUpdatePromises);
+
+            const supplierPaperIds = supplierPapers.map((spc) => spc.supplierPaperId);
+
+            // Lấy tất cả PaperClassifications liên kết với các supplierPaperIds kèm PaperBasisWeights
+            const classifications = await PaperClassifications.findAll({
+              where: { supplierPaperId: { [Op.in]: supplierPaperIds } },
+              include: [
+                { model: PaperBasisWeights, as: "basisWeight", attributes: ["basisWeight"] },
+              ],
+              transaction,
+            });
+
+            if (classifications.length > 0) {
+              // Cập nhật paperCode trong PaperClassifications
+              const classUpdatePromises = classifications.map((classification) => {
+                const companyCode = supplierPaperMap.get(classification.supplierPaperId) || "";
+                const basisWeight = classification.basisWeight?.basisWeight ?? 0;
+                const formattedBasisWeight = String(basisWeight).padStart(3, "0");
+                const newPaperCode = `${companyCode}${formattedBasisWeight}`.toUpperCase();
+
+                return classification.update({ paperCode: newPaperCode }, { transaction });
+              });
+
+              await Promise.all(classUpdatePromises);
+            }
+          }
+        }
+
+        return {
+          message: "Update supplier successfully",
+          data: { supplierId, ...data },
+        };
+      });
+    } catch (error) {
+      console.error("Update supplier failed:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
   toggleActiveSupplier: async ({ supplierId }: { supplierId: number }) => {
     try {
       return await runInTransaction(async (transaction: Transaction) => {

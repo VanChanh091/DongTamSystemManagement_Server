@@ -63,15 +63,15 @@ export class QcInspectionPaper
 
   declare note?: string;
 
-  declare readonly createdAt?: Date;
-  declare readonly updatedAt?: Date;
-
   //FK
   declare planningId: number;
   declare PlanningPaper: PlanningPaper;
 
   declare userId: number;
   declare User: User;
+
+  declare readonly createdAt?: Date;
+  declare readonly updatedAt?: Date;
 }
 
 export function initQcInspectionPaperModel(sequelize: Sequelize): typeof QcInspectionPaper {

@@ -52,11 +52,12 @@ export class EmployeeBasicInfo
   declare permanentAddress: string;
   declare temporaryAddress: string;
   declare ethnicity: string;
-  declare readonly createdAt?: Date;
-  declare readonly updatedAt?: Date;
 
   //FK
   declare companyInfo: EmployeeCompanyInfo;
+
+  declare readonly createdAt?: Date;
+  declare readonly updatedAt?: Date;
 }
 
 export function initEmployeeBasicInfoModel(sequelize: Sequelize): typeof EmployeeBasicInfo {

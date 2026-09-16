@@ -1,5 +1,5 @@
-import { AppError } from "../../utils/appError";
-import { syntheticReportRepository } from "../../repository/synthetic/synthetic.reportRepository";
+import { AppError } from "../../../utils/appError";
+import { syntheticReportRepository } from "../../../repository/synthetic/synthetic.reportRepository";
 import {
   CustomerDailySalesRow,
   CustomerMultiYearSales,
@@ -10,20 +10,20 @@ import {
   YearlyReportFilterInput,
   YearlyRevenueReportResponse,
   YearSalesData,
-} from "../../interface/synthetic.type";
-import { CacheKey } from "../../utils/helper/cache/cacheKey";
-import redisCache from "../../assets/configs/connect/redis.connect";
-import { debtRepository } from "../../repository/debtRepository";
-import { normalizeVN } from "../../utils/helper/normalizeVN";
+} from "../../../interface/synthetic/revenue.type";
+import { CacheKey } from "../../../utils/helper/cache/cacheKey";
+import redisCache from "../../../assets/configs/connect/redis.connect";
+import { debtRepository } from "../../../repository/debtRepository";
+import { normalizeVN } from "../../../utils/helper/normalizeVN";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { reports } = CacheKey.synthetic;
 
-const VN_TIMEZONE_OFFSET_MS = 25_200_000;
+const VN_TIMEZONE_OFFSET_MS = 25_200_000; // 7 tiếng
 const TIMETTL = 7 * 24 * 60 * 60; // 7 ngày
 const CACHETTL = 300; // 5 phút
 
-export const syntheticReportsService = {
+export const statisticRevenueService = {
   //revenue daily
   getDailyRevenueReport: async (
     dto: RevenueReportFilterInput & { page: number; pageSize: number; keyword?: string },
@@ -347,7 +347,7 @@ export const syntheticReportsService = {
       };
 
       if (isPastMonth) {
-        await redisCache.set(cacheKey, JSON.stringify(reportData), "EX", CACHETTL); //cache 7 ngày
+        await redisCache.set(cacheKey, JSON.stringify(reportData), "EX", TIMETTL); //cache 7 ngày
       }
 
       return reportData;

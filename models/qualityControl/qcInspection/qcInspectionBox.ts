@@ -46,15 +46,15 @@ export class QcInspectionBox
 
   declare note?: string;
 
-  declare readonly createdAt?: Date;
-  declare readonly updatedAt?: Date;
-
   //FK
   declare boxTimeId: number;
   declare PlanningBoxTime: PlanningBoxTime;
 
   declare userId: number;
   declare User: User;
+
+  declare readonly createdAt?: Date;
+  declare readonly updatedAt?: Date;
 }
 
 export function initQcInspectionBoxModel(sequelize: Sequelize): typeof QcInspectionBox {

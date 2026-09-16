@@ -26,15 +26,21 @@ export const debtManagementService = {
     pageSize,
     userId,
     targetDate,
+    search,
   }: {
     page: number;
     pageSize: number;
     userId?: number;
     targetDate: Date | string;
+    search?: string;
   }) => {
     try {
       //Kéo toàn bộ PXK chưa thanh toán từ DB
-      const unpaidOutbounds = await debtRepository.findOutboundUnpaid({ userId, targetDate });
+      const unpaidOutbounds = await debtRepository.findOutboundUnpaid({
+        userId,
+        targetDate,
+        search,
+      });
 
       // Gom nhóm và tính toán Grand Total cho TOÀN BỘ hệ thống
       const { sortedCustomers, grandTotal } = processDebtAggregation(unpaidOutbounds, targetDate);
@@ -536,7 +542,8 @@ const processDebtAggregation = (unpaidOutbounds: any[], targetDate?: Date | stri
           overdue1_30: 0,
           overdue31_60: 0,
           overdue61_90: 0,
-          overdueOver90: 0,
+          overdue91_120: 0,
+          overdueOver120: 0,
         },
       });
     }

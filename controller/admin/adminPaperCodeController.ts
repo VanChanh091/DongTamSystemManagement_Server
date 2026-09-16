@@ -64,10 +64,9 @@ export const handleUpdateSupplier = async (req: Request, res: Response, next: Ne
         });
         break;
       case "UPDATE_SUPPLIER":
-        response = await adminService.updateItem({
-          model: Suppliers,
-          itemId: Number(supplierId),
-          dataUpdated: req.body as SuppliersCreationAttributes,
+        response = await adminPaperCodeService.updateSupplier({
+          supplierId: Number(supplierId),
+          data: req.body as SuppliersCreationAttributes,
         });
         break;
       default:

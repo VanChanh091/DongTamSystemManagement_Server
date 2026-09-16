@@ -120,12 +120,17 @@ export const CacheKey = {
       lastUpdated: "synthetic:order:lastUpdated",
     },
     reports: {
+      //revenue
       revenue_daily: (year: number, month: number, key: number | string | null) =>
         `report:revenue_daily:${year}-${month}:${key}`,
       revenue_monthly: (year: number, month: number, key: number | string | null) =>
         `report:revenue_monthly:${year}-${month}:${key}`,
       revenue_yearly: (fromYear: number, toYear: number, key: number | string | null) =>
         `report:revenue_yearly:${fromYear}-${toYear}:${key}`,
+
+      //error production
+      error_monthly: (year: number, month: number, type: string) =>
+        `report:error_monthly:${year}-${month}_type:${type}`,
     },
   },
 

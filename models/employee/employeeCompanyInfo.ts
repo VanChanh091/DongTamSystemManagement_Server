@@ -42,12 +42,13 @@ export class EmployeeCompanyInfo
   declare emergencyPhone?: string | null;
   declare emergencyContact?: string | null;
   declare status: string;
-  declare readonly createdAt?: Date;
-  declare readonly updatedAt?: Date;
 
   //FK
   declare employeeId: number;
   declare basicInfo: EmployeeBasicInfo;
+
+  declare readonly createdAt?: Date;
+  declare readonly updatedAt?: Date;
 }
 
 export function initEmployeeCompanyInfoModel(sequelize: Sequelize): typeof EmployeeCompanyInfo {

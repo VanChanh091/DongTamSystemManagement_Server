@@ -52,6 +52,7 @@ export function initPaperRequirementsModel(sequelize: Sequelize): typeof PaperRe
     {
       requirementId: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
       paperRollWidth: { type: DataTypes.INTEGER, allowNull: false, comment: "Khổ giấy được cấp" },
+      // weightPerRoll: { type: DataTypes.DOUBLE, allowNull: false, comment: "Trọng lượng 1 tấm/" },
       totalRequiredQty: { type: DataTypes.DOUBLE, allowNull: false },
       inventoryStatus: {
         type: DataTypes.ENUM("ENOUGH", "SHORTAGE", "WARNING"),

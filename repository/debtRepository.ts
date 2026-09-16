@@ -26,6 +26,7 @@ export const debtRepository = {
     customerId,
     userId,
     targetDate,
+    search,
     lock,
     transaction,
     includeCustomer = true,
@@ -33,6 +34,7 @@ export const debtRepository = {
     customerId?: string | string[];
     userId?: number;
     targetDate?: Date | string;
+    search?: string;
     lock?: FindOptions["lock"]; // lấy kiểu lock của Sequelize
     transaction?: Transaction;
     includeCustomer?: boolean;
@@ -53,6 +55,17 @@ export const debtRepository = {
       whereCondition.customerId = Array.isArray(customerId) ? { [Op.in]: customerId } : customerId;
     }
 
+    // Điều kiện lọc cho bảng Customer
+    const customerWhere: WhereOptions = {};
+    if (userId) {
+      customerWhere.userId = userId;
+    }
+
+    if (search && search.trim()) {
+      const keyword = `%${search.trim()}%`;
+      customerWhere.customerName = { [Op.like]: keyword };
+    }
+
     return await OutboundHistory.findAll({
       attributes: { exclude: ["createdAt", "updatedAt"] },
       where: whereCondition,
@@ -60,7 +73,8 @@ export const debtRepository = {
         ? [
             {
               model: Customer,
-              where: userId ? { userId } : {},
+              required: true,
+              where: customerWhere,
               attributes: ["customerId", "customerName", "companyName"],
             },
           ]

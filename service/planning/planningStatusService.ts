@@ -172,12 +172,15 @@ export const planningStatusService = {
         });
 
         //tính toán định mức giấy sản xuất
+        const lengthPaper =
+          paperPlan.chooseMachine === "Máy Quấn Cuồn" ? 1 : paperPlan.lengthPaperPlanning;
+
         const paperRequirement = await handlePaperRequirements({
           planningId: paperPlan.planningId,
           planningData,
           waveCoeff,
           runningPlan: paperPlan.runningPlan,
-          length: paperPlan.lengthPaperPlanning,
+          length: lengthPaper,
           size: paperPlan.sizePaperPLaning,
           ghepKho: ghepKho,
           transaction,
@@ -716,6 +719,15 @@ const handlePaperRequirements = async ({
     const requiredQty = roundSmart(
       (length * size * runningPlan * weightGsm * fluteFactor) / 10_000_000,
     );
+
+    console.log(`===========================`);
+    console.log(`length: ${length}`);
+    console.log(`size: ${size}`);
+    console.log(`runningPlan: ${runningPlan}`);
+    console.log(`weightGsm: ${weightGsm}`);
+    console.log(`fluteFactor: ${fluteFactor}`);
+    console.log(`requiredQty: ${requiredQty}`);
+
     totalRequiredQty += requiredQty;
 
     return {

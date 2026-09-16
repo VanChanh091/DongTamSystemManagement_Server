@@ -9,12 +9,13 @@ export const getCustomerDebtSummary = async (req: Request, res: Response, next: 
     page = 1,
     pageSize = 30,
     targetDate,
+    search,
   } = req.query as {
     userId?: string;
-    search?: string;
     page?: string;
     pageSize?: string;
     targetDate: Date | string;
+    search?: string;
   };
 
   try {
@@ -29,6 +30,7 @@ export const getCustomerDebtSummary = async (req: Request, res: Response, next: 
       pageSize: Number(pageSize),
       userId: targetUserId,
       targetDate: targetDate,
+      search,
     });
     return res.status(200).json(response);
   } catch (error) {

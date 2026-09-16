@@ -1,15 +1,17 @@
 import { NextFunction, Request, Response } from "express";
-import { syntheticReportsService } from "../../../service/synthetic/synthetic.reportService";
+import { statisticRevenueService } from "../../../service/synthetic/statistic/revenueService";
+import { statisticErrProductionService } from "../../../service/synthetic/statistic/errProductionService";
 
+//===========================REVENUE REPORT================================
 export const getRevenueReport = async (req: Request, res: Response, next: NextFunction) => {
-  const { month, year, fromYear, toYear, targetUserId, type, page, pageSize, keyword } =
+  const { type, month, year, fromYear, toYear, targetUserId, page, pageSize, keyword } =
     req.query as {
+      type: string;
       month?: string;
       year?: string;
       fromYear?: string;
       toYear?: string;
       targetUserId?: string;
-      type: string;
       page?: string;
       pageSize?: string;
       keyword?: string;
@@ -20,7 +22,7 @@ export const getRevenueReport = async (req: Request, res: Response, next: NextFu
 
     switch (type) {
       case "daily":
-        response = await syntheticReportsService.getDailyRevenueReport({
+        response = await statisticRevenueService.getDailyRevenueReport({
           month: Number(month),
           year: year ? Number(year) : undefined,
           targetUserId: targetUserId ? Number(targetUserId) : null,
@@ -31,7 +33,7 @@ export const getRevenueReport = async (req: Request, res: Response, next: NextFu
         });
         break;
       case "monthly":
-        response = await syntheticReportsService.getMonthlyRevenueReport({
+        response = await statisticRevenueService.getMonthlyRevenueReport({
           month: Number(month),
           year: year ? Number(year) : undefined,
           targetUserId: targetUserId ? Number(targetUserId) : null,
@@ -43,7 +45,7 @@ export const getRevenueReport = async (req: Request, res: Response, next: NextFu
           throw new Error("Both fromYear and toYear are required for yearly report");
         }
 
-        response = await syntheticReportsService.getMultiYearRevenueReport({
+        response = await statisticRevenueService.getMultiYearRevenueReport({
           fromYear: Number(fromYear),
           toYear: Number(toYear),
           targetUserId: targetUserId ? Number(targetUserId) : null,
@@ -52,6 +54,40 @@ export const getRevenueReport = async (req: Request, res: Response, next: NextFu
           pageSize: Number(pageSize),
           keyword: keyword ? String(keyword).trim() : undefined,
         });
+        break;
+    }
+
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+//===========================ERROR PRODUCTION REPORT================================
+export const getErrorProductionReport = async (req: Request, res: Response, next: NextFunction) => {
+  const { action, month, year, machine, employeeId, type } = req.query as {
+    action: string;
+    month: string;
+    year: string;
+    machine?: string;
+    employeeId?: string;
+    type: "paper" | "box";
+  };
+
+  try {
+    let response;
+
+    switch (action) {
+      case "monthly":
+        response = await statisticErrProductionService.getMonthlyErrorReport({
+          month: Number(month),
+          year: Number(year),
+          machine: machine ? String(machine).trim() : undefined,
+          employeeId: employeeId ? Number(employeeId) : undefined,
+          type: type,
+        });
+        break;
+      case "yearly":
         break;
     }
 
