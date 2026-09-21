@@ -114,6 +114,9 @@ export function initQcInspectionPaperModel(sequelize: Sequelize): typeof QcInspe
         //FK
         { fields: ["planningId"] },
         { fields: ["userId"] },
+
+        //composite index
+        { fields: ["timeInspection", "planningId"] },
       ],
     },
   );

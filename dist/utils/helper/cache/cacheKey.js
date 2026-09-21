@@ -3,10 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CacheKey = void 0;
 exports.CacheKey = {
     order: {
-        pendingReject: (role) => `orders:${role}:pending_reject`,
-        acceptPlanning: (role, page) => `orders:${role}:accept_planning:page:${page}`,
+        pendingReject: (role, ownOnly) => `orders:${role}:ownOnly:${ownOnly}:pending_reject`,
+        accept: (role, ownOnly) => `orders:${role}:ownOnly:${ownOnly}:accept`,
         lastUpdatedPending: "order:pending_reject:lastUpdated",
-        lastUpdatedAccept: "order:accept_planning:lastUpdated",
+        lastUpdatedAccept: "order:accept:lastUpdated",
     },
     customer: {
         all: "customers:all",
@@ -32,13 +32,17 @@ exports.CacheKey = {
             machine: (machine) => `planningPaper:machine:${machine}`,
             lastUpdated: "planningPaper:lastUpdated",
         },
+        box: {
+            machine: (machine) => `planningBox:machine:${machine}`,
+            lastUpdated: "planningBox:lastUpdated",
+        },
         stop: {
             page: (page) => `planningPaper:stop:page:${page}`,
             lastUpdated: "planningStop:lastUpdated",
         },
-        box: {
-            machine: (machine) => `planningBox:machine:${machine}`,
-            lastUpdated: "planningBox:lastUpdated",
+        paperRequirement: {
+            machine: (machine) => `paperRequirement:machine:${machine}`,
+            lastUpdated: "paperRequirement:lastUpdated",
         },
     },
     manufacture: {
@@ -64,9 +68,13 @@ exports.CacheKey = {
             page: (page) => `outboundHistory:page:${page}`,
             lastUpdated: "outbound:lastUpdated",
         },
-        inventory: {
-            page: (page) => `inventory:page:${page}`,
-            lastUpdated: "inventories:lastUpdated",
+        inventory_gt: {
+            page: (page) => `inventory:gt:page:${page}`,
+            lastUpdated: "inventories:gt:lastUpdated",
+        },
+        inventory_lt: {
+            page: (page) => `inventory:lt:page:${page}`,
+            lastUpdated: "inventories:lt:lastUpdated",
         },
     },
     delivery: {
@@ -88,15 +96,33 @@ exports.CacheKey = {
             all: (machine, page) => `reportBox:planning:${machine}:${page}`,
             lastUpdated: "report:box:lastUpdated",
         },
-    },
-    dashboard: {
-        planning: {
-            all: (status, page) => `dashboard:planning:${status}:${page}`,
-            lastUpdated: "db:planning:lastUpdated", //planning paper
+        scrap: {
+            all: (machine, status, page) => `reportScrap:${machine}:${status}:${page}`,
+            lastUpdated: "scrap:report:lastUpdated",
         },
-        details: {
-            all: (planningId) => `dashboard:detail:${planningId}`,
-            lastUpdated: "db:detail:lastUpdated", //box time machine
+    },
+    synthetic: {
+        planning: {
+            all: (status, page) => `syntheticPlanning:${status}:${page}`,
+            lastUpdated: "synthetic:planning:lastUpdated", //planning paper
+        },
+        order: {
+            all: (status, page) => `syntheticOrder:${status}:${page}`,
+            lastUpdated: "synthetic:order:lastUpdated",
+        },
+        reports: {
+            //revenue
+            revenue_daily: (year, month, key) => `report:revenue_daily:${year}-${month}:${key}`,
+            revenue_monthly: (year, month, key) => `report:revenue_monthly:${year}-${month}:${key}`,
+            revenue_yearly: (fromYear, toYear, key) => `report:revenue_yearly:${fromYear}-${toYear}:${key}`,
+            //error production
+            error_monthly: (year, month, type) => `report:error_monthly:${year}-${month}_type:${type}`,
+        },
+    },
+    qcInspection: {
+        paper: {
+            page: (machine, page) => `inspection:paper:${machine}:${page}`,
+            lastUpdated: "qcInspectionPaper:lastUpdated",
         },
     },
 };

@@ -27,7 +27,7 @@ function initTimeOverflowPlanningModel(sequelize) {
         overflowTimeRunning: { type: sequelize_1.DataTypes.TIME },
         machine: { type: sequelize_1.DataTypes.STRING },
         status: {
-            type: sequelize_1.DataTypes.ENUM("planning", "lackOfQty", "complete"),
+            type: sequelize_1.DataTypes.ENUM("planning", "lackOfQty", "requested", "complete"),
             allowNull: false,
             defaultValue: "planning",
         },
@@ -36,7 +36,7 @@ function initTimeOverflowPlanningModel(sequelize) {
         planningBoxId: { type: sequelize_1.DataTypes.INTEGER },
     }, {
         sequelize,
-        tableName: "timeOverflowPlannings",
+        tableName: "time_overflow_plannings",
         timestamps: true,
         indexes: [
             //FK

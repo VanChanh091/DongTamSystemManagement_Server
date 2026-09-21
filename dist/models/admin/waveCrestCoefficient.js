@@ -18,7 +18,7 @@ function initWaveCrestCoefficientModel(sequelize) {
         fluteB: { type: sequelize_1.DataTypes.DOUBLE },
         fluteC: { type: sequelize_1.DataTypes.DOUBLE },
         machineName: { type: sequelize_1.DataTypes.STRING },
-    }, { sequelize, tableName: "WaveCrestCoefficients", timestamps: true });
+    }, { sequelize, tableName: "wave_crest_coefficients", timestamps: true });
     return WaveCrestCoefficient;
 }
 //# sourceMappingURL=waveCrestCoefficient.js.map

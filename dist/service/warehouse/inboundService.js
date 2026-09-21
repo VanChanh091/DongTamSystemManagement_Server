@@ -6,28 +6,32 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.inboundService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const redis_connect_1 = __importDefault(require("../../assets/configs/connect/redis.connect"));
-const appError_1 = require("../../utils/appError");
-const inboundHistory_1 = require("../../models/warehouse/inboundHistory");
-const warehouseRepository_1 = require("../../repository/warehouseRepository");
-const manufactureRepository_1 = require("../../repository/manufactureRepository");
-const planningHelper_1 = require("../../repository/planning/planningHelper");
-const planningBox_1 = require("../../models/planning/planningBox");
-const planningBoxMachineTime_1 = require("../../models/planning/planningBoxMachineTime");
-const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
-const dashboardRepository_1 = require("../../repository/dashboardRepository");
-const planningHelper_2 = require("../../utils/helper/modelHelper/planningHelper");
-const planningPaper_1 = require("../../models/planning/planningPaper");
-const inventoryService_1 = require("./inventoryService");
-const inventory_1 = require("../../models/warehouse/inventory/inventory");
-const order_1 = require("../../models/order/order");
-const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
-const meiliService_1 = require("../meiliService");
-const meilisearch_connect_1 = require("../../assets/configs/connect/meilisearch.connect");
 const sequelize_1 = require("sequelize");
-const meiliTransformer_1 = require("../../assets/configs/meilisearch/meiliTransformer");
+const meiliService_1 = require("../system/meiliService");
+const appError_1 = require("../../utils/appError");
+const order_1 = require("../../models/order/order");
 const labelFields_1 = require("../../assets/labelFields");
+const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
+const planningBox_1 = require("../../models/planning/planningBox");
+const dayjs_config_1 = require("../../assets/configs/dayjs/dayjs.config");
+const planningPaper_1 = require("../../models/planning/planningPaper");
+const redis_connect_1 = __importDefault(require("../../assets/configs/connect/redis.connect"));
+const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
+const inboundHistory_1 = require("../../models/warehouse/inboundHistory");
+const inventory_1 = require("../../models/warehouse/inventory/inventory");
+const manufactureRepository_1 = require("../../repository/manufactureRepository");
+const warehouseRepository_1 = require("../../repository/warehouseRepository");
 const inventoryRepository_1 = require("../../repository/inventoryRepository");
+const syntheticRepository_1 = require("../../repository/synthetic/syntheticRepository");
+const excelExporter_1 = require("../../utils/helper/excelExporter");
+const planningBoxMachineTime_1 = require("../../models/planning/planningBoxMachineTime");
+const meilisearch_connect_1 = require("../../assets/configs/connect/meilisearch.connect");
+const planning_timeRunning_helper_1 = require("../../utils/helper/modelHelper/planning.timeRunning.helper");
+const meiliTransformer_1 = require("../../assets/configs/meilisearch/meiliTransformer");
+const inboundRowAndColumn_1 = require("../../utils/mapping/warehouse/inboundRowAndColumn");
+const inventoryService_1 = require("../inventory/inventoryService");
+const inventoryLogService_1 = require("../inventory/inventoryLogService");
+const crud_helper_repository_1 = require("../../repository/helper/crud.helper.repository");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { inbound } = cacheKey_1.CacheKey.warehouse;
 const { paper, box } = cacheKey_1.CacheKey.waitingCheck;
@@ -36,7 +40,7 @@ exports.inboundService = {
     getPaperWaitingChecked: async () => {
         const cacheKey = paper.all;
         try {
-            const { isChanged } = await cacheManager_1.CacheManager.check(planningPaper_1.PlanningPaper, "checkPaper");
+            const { isChanged } = await cacheManager_1.CacheManager.check([{ model: planningPaper_1.PlanningPaper }, { model: inboundHistory_1.InboundHistory }], "checkPaper");
             if (isChanged) {
                 await cacheManager_1.CacheManager.clear("checkPaper");
             }
@@ -123,11 +127,11 @@ exports.inboundService = {
             if (!detail) {
                 throw appError_1.AppError.NotFound("detail not found", "DETAIL_NOT_FOUND");
             }
-            const stages = await (0, planningHelper_2.buildStagesDetails)({
+            const stages = await (0, planning_timeRunning_helper_1.buildStagesDetails)({
                 detail,
                 getBoxTimes: (d) => d.boxTimes,
                 getPlanningBoxId: (d) => d.planningBoxId,
-                getAllOverflow: (id) => dashboardRepository_1.dashboardRepository.getAllTimeOverflow(id),
+                getAllOverflow: (id) => syntheticRepository_1.syntheticRepository.getAllTimeOverflow(id),
             });
             return { message: "get db planning detail succesfully", data: stages };
         }
@@ -154,14 +158,17 @@ exports.inboundService = {
                 throw appError_1.AppError.BadRequest("Số lượng nhập kho vượt quá số lượng sản xuất", "INBOUND_EXCEED_PRODUCED");
             }
             const isFirstInbound = totalInboundQty === 0;
-            //create inventory
-            await inventoryService_1.inventoryService.createNewInventory(planning.orderId, transaction);
-            const inboundRecord = await planningHelper_1.planningHelper.createData({
+            //createData inventory
+            const inventory = await inventoryService_1.inventoryService.createNewInventory(planning.orderId, transaction);
+            //createData inbound record
+            const pricePaper = planning.Order.pricePaper ?? 0;
+            const inboundRecord = await crud_helper_repository_1.CrudHelper.createData({
                 model: inboundHistory_1.InboundHistory,
                 data: {
                     dateInbound: new Date(),
                     qtyPaper: qtyProduced,
                     qtyInbound: inboundQty,
+                    totalPrice: inboundQty * pricePaper,
                     orderId: planning.orderId,
                     planningId,
                     qcSessionId,
@@ -169,17 +176,28 @@ exports.inboundService = {
                 transaction,
             });
             //update inventory
-            await inventory_1.Inventory.increment({
-                totalQtyInbound: inboundQty,
-                qtyInventory: inboundQty,
-                valueInventory: inboundQty * planning.Order.pricePaper,
+            const finalQty = inventory.qtyInventory + inboundQty;
+            const finalValue = finalQty < 0 ? 0 : finalQty * pricePaper;
+            await inventory_1.Inventory.update({
+                totalQtyInbound: inventory.totalQtyInbound + inboundQty,
+                qtyInventory: finalQty,
+                valueInventory: finalValue,
             }, {
                 where: { orderId: planning.orderId },
                 transaction,
             });
             if (isFirstInbound) {
                 await planning.update({ statusRequest: "inbounded" }, { transaction });
+                await inventory_1.Inventory.update({ dateInbound: new Date() }, { where: { orderId: planning.orderId }, transaction });
             }
+            //inventory log
+            await inventoryLogService_1.inventoryLogService.followInventoryChange({
+                items: [{ inventoryId: inventory.inventoryId, changeQty: inboundQty }],
+                type: "INBOUND",
+                transaction,
+            });
+            //xóa cache
+            await cacheManager_1.CacheManager.clear("checkPaper");
             //--------------------MEILISEARCH-----------------------
             await exports.inboundService.syncInboundAndInventoryToMeili({
                 inboundId: inboundRecord.inboundId,
@@ -201,7 +219,7 @@ exports.inboundService = {
     //inbound box
     inboundQtyBox: async ({ planningBoxId, inboundQty, qcSessionId, transaction, }) => {
         try {
-            const planning = await planningHelper_1.planningHelper.getModelById({
+            const planning = await crud_helper_repository_1.CrudHelper.findOne({
                 model: planningBox_1.PlanningBox,
                 where: { planningBoxId },
                 options: {
@@ -224,14 +242,17 @@ exports.inboundService = {
                 throw appError_1.AppError.BadRequest("Số lượng nhập kho vượt quá số lượng sản xuất", "INBOUND_EXCEED_PRODUCED");
             }
             const isFirstInbound = totalInboundQty === 0;
-            //create inventory
-            await inventoryService_1.inventoryService.createNewInventory(planning.orderId, transaction);
-            const inboundRecord = await planningHelper_1.planningHelper.createData({
+            //createData inventory
+            const inventory = await inventoryService_1.inventoryService.createNewInventory(planning.orderId, transaction);
+            //createData inbound record
+            const pricePaper = planning.Order.pricePaper ?? 0;
+            const inboundRecord = await crud_helper_repository_1.CrudHelper.createData({
                 model: inboundHistory_1.InboundHistory,
                 data: {
                     dateInbound: new Date(),
                     qtyPaper: planning.qtyPaper,
                     qtyInbound: inboundQty,
+                    totalPrice: inboundQty * pricePaper,
                     orderId: planning.orderId,
                     planningBoxId,
                     qcSessionId,
@@ -239,25 +260,27 @@ exports.inboundService = {
                 transaction,
             });
             //update inventory
-            await inventory_1.Inventory.increment({
-                totalQtyInbound: inboundQty,
-                qtyInventory: inboundQty,
-                valueInventory: inboundQty * planning.Order.pricePaper,
+            const finalQty = inventory.qtyInventory + inboundQty;
+            const finalValue = finalQty < 0 ? 0 : finalQty * pricePaper;
+            await inventory_1.Inventory.update({
+                totalQtyInbound: inventory.totalQtyInbound + inboundQty,
+                qtyInventory: finalQty,
+                valueInventory: finalValue,
             }, {
                 where: { orderId: planning.orderId },
                 transaction,
             });
             if (isFirstInbound) {
                 await planning.update({ statusRequest: "inbounded" }, { transaction });
-                const paper = await planningPaper_1.PlanningPaper.findOne({
-                    where: { planningId: planning.planningId },
-                    attributes: ["planningId", "statusRequest"],
-                });
-                if (!paper) {
-                    throw appError_1.AppError.BadRequest("planning paper not found", "PLANNING_PAPER_NOT_FOUND");
-                }
-                await paper.update({ statusRequest: "inbounded" }, { transaction });
+                await inventory_1.Inventory.update({ dateInbound: new Date() }, { where: { orderId: planning.orderId }, transaction });
             }
+            await inventoryLogService_1.inventoryLogService.followInventoryChange({
+                items: [{ inventoryId: inventory.inventoryId, changeQty: inboundQty }],
+                type: "INBOUND",
+                transaction,
+            });
+            //xóa cache
+            await cacheManager_1.CacheManager.clear("checkBox");
             //--------------------MEILISEARCH-----------------------
             await exports.inboundService.syncInboundAndInventoryToMeili({
                 inboundId: inboundRecord.inboundId,
@@ -279,8 +302,8 @@ exports.inboundService = {
     syncInboundAndInventoryToMeili: async ({ inboundId, orderId, transaction, }) => {
         try {
             const [inbound, inventory] = await Promise.all([
-                warehouseRepository_1.warehouseRepository.syncInbound(inboundId, transaction),
-                inventoryRepository_1.inventoryRepository.syncInventory(orderId, transaction),
+                warehouseRepository_1.warehouseRepository.syncInboundForMeili(inboundId, transaction),
+                inventoryRepository_1.inventoryRepository.syncInventoryForMeili(orderId, transaction),
             ]);
             const flattenInbound = meiliTransformer_1.meiliTransformer.inbound(inbound);
             const flattenInventory = meiliTransformer_1.meiliTransformer.inventory(inventory);
@@ -317,7 +340,8 @@ exports.inboundService = {
                     return { ...parsed, message: `Get all inbound from cache` };
                 }
             }
-            const { rows, count } = await warehouseRepository_1.warehouseRepository.findInboundByPage({ page, pageSize });
+            const options = warehouseRepository_1.warehouseRepository.buildInboundOptions({ page, pageSize });
+            const { rows, count } = await inboundHistory_1.InboundHistory.findAndCountAll(options);
             const totalPages = Math.ceil(count / pageSize);
             const responseData = {
                 message: "Get all inbound history successfully",
@@ -336,19 +360,35 @@ exports.inboundService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    getInboundByField: async ({ field, keyword, page, pageSize }) => {
+    getInboundByField: async ({ field, keyword, page, pageSize, startDate, endDate, }) => {
         try {
             const validFields = ["orderId", "customerName", "dateInbound", "checkedBy"];
             if (!validFields.includes(field)) {
                 throw appError_1.AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
             }
             const index = meilisearch_connect_1.meiliClient.index("inboundHistories");
-            const searchResult = await index.search(keyword, {
-                attributesToSearchOn: [field],
+            let searchKeyword = keyword;
+            let filter = [];
+            if (field === "dateInbound") {
+                searchKeyword = "";
+                if (startDate && endDate) {
+                    const startTimestamp = dayjs_config_1.dayjsUtc.utc(startDate).startOf("day").unix();
+                    filter.push(`dateInbound >= ${startTimestamp}`);
+                    const endTimestamp = dayjs_config_1.dayjsUtc.utc(endDate).endOf("day").unix();
+                    filter.push(`dateInbound <= ${endTimestamp}`);
+                }
+                // console.log(`start: ${startDate} - end: ${endDate}`);
+                // console.log(`filter: ${filter.join(" AND ")}`);
+            }
+            const searchOptions = {
+                filter: filter.join(" AND "),
+                attributesToSearchOn: searchKeyword ? [field] : [],
                 attributesToRetrieve: ["inboundId"],
+                sort: ["dateInbound:desc"],
                 page: Number(page) || 1,
                 hitsPerPage: Number(pageSize) || 25, //pageSize
-            });
+            };
+            const searchResult = await index.search(searchKeyword, searchOptions);
             const inboundIds = searchResult.hits.map((hit) => hit.inboundId);
             if (inboundIds.length === 0) {
                 return {
@@ -360,9 +400,10 @@ exports.inboundService = {
                 };
             }
             //query db
-            const { rows } = await warehouseRepository_1.warehouseRepository.findInboundByPage({
+            const options = warehouseRepository_1.warehouseRepository.buildInboundOptions({
                 whereCondition: { inboundId: { [sequelize_1.Op.in]: inboundIds } },
             });
+            const { rows } = await inboundHistory_1.InboundHistory.findAndCountAll(options);
             // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
             const finalData = inboundIds
                 .map((id) => rows.find((inbound) => inbound.inboundId === id))
@@ -379,6 +420,35 @@ exports.inboundService = {
             console.error(`get inbound history by ${field} failed:`, error);
             if (error instanceof appError_1.AppError)
                 throw error;
+            throw appError_1.AppError.ServerError();
+        }
+    },
+    exportExcelInboundHistory: async (res, { fromDate, toDate }, userName) => {
+        try {
+            let whereCondition = {};
+            if (fromDate && toDate) {
+                const startTimestamp = (0, dayjs_config_1.dayjsUtc)(fromDate).startOf("day").toDate();
+                const endTimestamp = (0, dayjs_config_1.dayjsUtc)(toDate).endOf("day").toDate();
+                // console.log(`start: ${fromDate} - end: ${toDate}`);
+                // console.log(`startTimestamp: ${startTimestamp} - endTimestamp: ${endTimestamp}`);
+                whereCondition.dateInbound = { [sequelize_1.Op.between]: [startTimestamp, endTimestamp] };
+            }
+            const baseQuery = warehouseRepository_1.warehouseRepository.buildInboundOptions({
+                whereCondition,
+                isExport: true,
+            });
+            await (0, excelExporter_1.exportExcelStreamResponse)(res, {
+                baseQuery: baseQuery,
+                model: inboundHistory_1.InboundHistory,
+                sheetName: "Lịch sử nhập kho",
+                fileName: "inbound_history",
+                columns: inboundRowAndColumn_1.inboundColumns,
+                rows: inboundRowAndColumn_1.mappingInboundRow,
+                userName: userName,
+            });
+        }
+        catch (error) {
+            console.error("❌ Export Excel error:", error);
             throw appError_1.AppError.ServerError();
         }
     },

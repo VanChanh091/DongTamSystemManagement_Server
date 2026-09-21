@@ -7,23 +7,24 @@ const customer_1 = require("../../../models/customer/customer");
 const product_1 = require("../../../models/product/product");
 const order_1 = require("../../../models/order/order");
 const orderRepository_1 = require("../../../repository/orderRepository");
-const validateCustomerAndProduct = async (customerId, productId) => {
-    const customer = await customer_1.Customer.findOne({ where: { customerId } });
+const validateCustomerAndProduct = async (customerId, productId, transaction) => {
+    const customer = await customer_1.Customer.findOne({ where: { customerId }, transaction });
     if (!customer) {
         return { success: false, message: "Customer not found" };
     }
-    const product = await product_1.Product.findOne({ where: { productId } });
+    const product = await product_1.Product.findOne({ where: { productId }, transaction });
     if (!product) {
         return { success: false, message: "Product not found" };
     }
     return { success: true };
 };
 exports.validateCustomerAndProduct = validateCustomerAndProduct;
-const generateOrderId = async (prefix) => {
+const generateOrderId = async (prefix, transaction) => {
     const sanitizedPrefix = prefix.trim().replace(/\s+/g, "");
     const lastOrder = await order_1.Order.findOne({
         where: { orderId: { [sequelize_1.Op.like]: `${sanitizedPrefix}%` } },
         order: [["orderId", "DESC"]],
+        transaction,
     });
     let number = 1;
     let existingCustomerId = null;
@@ -68,7 +69,7 @@ const calculateFlutePaper = (fields) => {
     // Kết quả dạng: "5EB" hoặc "3E"
     return `${layersCount}${sortedFlutes.join("")}`;
 };
-const calculateOrderMetrics = async (data) => {
+const calculateOrderMetrics = async (data, transaction) => {
     const qty = parseInt(data.quantityCustomer) || 0;
     const length = parseFloat(data.lengthPaperCustomer) || 0;
     const size = parseFloat(data.paperSizeCustomer) || 0;
@@ -81,7 +82,7 @@ const calculateOrderMetrics = async (data) => {
     const acreage = Math.round((length * size * qty) / 10000);
     // price paper
     let totalPricePaper = 0;
-    if (data.dvt === "M2" || data.dvt === "Tấm") {
+    if (data.dvt === "M2") {
         totalPricePaper = Math.round((length * size * price) / 10000);
     }
     else if (data.dvt === "Tấm Bao Khổ") {
@@ -98,6 +99,7 @@ const calculateOrderMetrics = async (data) => {
         lengthCustomer: length,
         sizeCustomer: size,
         quantity: qty,
+        transaction,
     });
     const responseData = {
         flute,
@@ -110,11 +112,11 @@ const calculateOrderMetrics = async (data) => {
     return responseData;
 };
 exports.calculateOrderMetrics = calculateOrderMetrics;
-const calculateVolume = async ({ flute, lengthCustomer, sizeCustomer, quantity, }) => {
-    const ratioData = await orderRepository_1.orderRepository.findOneFluteRatio(flute);
+const calculateVolume = async ({ flute, lengthCustomer, sizeCustomer, quantity, transaction, }) => {
+    const ratioData = await orderRepository_1.orderRepository.findOneFluteRatio(flute, transaction);
     const ratio = ratioData?.ratio ?? 1;
     const baseVolume = (lengthCustomer * sizeCustomer) / 10000;
-    const totalVolume = baseVolume * quantity * ratio * 1.3;
+    const totalVolume = baseVolume * quantity * ratio * 1.3; // công thức
     const volumeRaw = Number(Math.round(totalVolume * 100) / 100); //làm tròn, lấy 2 số sau dấu phẩy
     return volumeRaw;
 };
@@ -184,23 +186,13 @@ function formatterStructureOrder(cell) {
     }
     return formattedParts.join("/");
 }
-const getOrderByStatus = async ({ statusList, userId, role, page = 1, pageSize = 30, ownOnly, isPaging = true, }) => {
+const getOrderByStatus = async ({ statusList, userId, role, ownOnly, }) => {
     let whereCondition = { status: { [sequelize_1.Op.in]: statusList } };
+    // whereCondition["$PlanningPapers.planningId$"] = { [Op.is]: null };
     if ((role !== "admin" && role !== "manager") || ownOnly === "true") {
         whereCondition.userId = userId;
     }
-    const queryOptions = orderRepository_1.orderRepository.buildQueryOptions(whereCondition);
-    if (isPaging) {
-        queryOptions.offset = (page - 1) * pageSize;
-        queryOptions.limit = pageSize;
-        const { count, rows } = await order_1.Order.findAndCountAll(queryOptions);
-        return {
-            data: rows,
-            totalOrders: count,
-            totalPages: Math.ceil(count / pageSize),
-            currentPage: page,
-        };
-    }
+    const queryOptions = orderRepository_1.orderRepository.buildOrdersOptions({ whereCondition });
     const rows = await order_1.Order.findAll(queryOptions);
     return { data: rows };
 };

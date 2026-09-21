@@ -13,15 +13,10 @@ const getMachinePapers = async (req, res, next) => {
             response = await adminService_1.adminService.getItemById({
                 model: machinePaper_1.MachinePaper,
                 itemId: Number(machineId),
-                errMessage: "machine not found",
-                errCode: "MACHINE_NOT_FOUND",
             });
         }
         else {
-            response = await adminService_1.adminService.getAllItems({
-                model: machinePaper_1.MachinePaper,
-                message: "get all machine paper successfully",
-            });
+            response = await adminService_1.adminService.getAllItems({ model: machinePaper_1.MachinePaper });
         }
         return res.status(200).json(response);
     }
@@ -36,7 +31,6 @@ const createMachinePaper = async (req, res, next) => {
         const response = await adminService_1.adminService.createNewItem({
             model: machinePaper_1.MachinePaper,
             data: req.body,
-            message: "Create machine successfully",
         });
         return res.status(200).json(response);
     }
@@ -48,15 +42,11 @@ exports.createMachinePaper = createMachinePaper;
 //update machine
 const updateMachinePaper = async (req, res, next) => {
     const { machineId } = req.query;
-    const { ...machineUpdated } = req.body;
     try {
         const response = await adminService_1.adminService.updateItem({
             model: machinePaper_1.MachinePaper,
             itemId: Number(machineId),
-            dataUpdated: machineUpdated,
-            message: "update machine successfully",
-            errMessage: "machine not found",
-            errCode: "MACHINE_NOT_FOUND",
+            dataUpdated: req.body,
         });
         return res.status(200).json(response);
     }
@@ -72,9 +62,6 @@ const deleteMachinePaper = async (req, res, next) => {
         const response = await adminService_1.adminService.deleteItem({
             model: machinePaper_1.MachinePaper,
             itemId: Number(machineId),
-            message: `delete machineId: ${machineId} successfully`,
-            errMessage: "machine not found",
-            errCode: "MACHINE_NOT_FOUND",
         });
         return res.status(200).json(response);
     }
@@ -89,18 +76,10 @@ const getMachineBoxes = async (req, res, next) => {
     try {
         let response;
         if (machineId) {
-            response = await adminService_1.adminService.getItemById({
-                model: machineBox_1.MachineBox,
-                itemId: Number(machineId),
-                errMessage: "machine not found",
-                errCode: "MACHINE_NOT_FOUND",
-            });
+            response = await adminService_1.adminService.getItemById({ model: machineBox_1.MachineBox, itemId: Number(machineId) });
         }
         else {
-            response = await adminService_1.adminService.getAllItems({
-                model: machineBox_1.MachineBox,
-                message: "get all machine box successfully",
-            });
+            response = await adminService_1.adminService.getAllItems({ model: machineBox_1.MachineBox });
         }
         return res.status(200).json(response);
     }
@@ -115,7 +94,6 @@ const createMachineBox = async (req, res, next) => {
         const response = await adminService_1.adminService.createNewItem({
             model: machineBox_1.MachineBox,
             data: req.body,
-            message: "Create machine box successfully",
         });
         return res.status(200).json(response);
     }
@@ -133,9 +111,6 @@ const updateMachineBox = async (req, res, next) => {
             model: machineBox_1.MachineBox,
             itemId: Number(machineId),
             dataUpdated: machineUpdated,
-            message: "update machine box successfully",
-            errMessage: "machine box not found",
-            errCode: "MACHINE_BOX_NOT_FOUND",
         });
         return res.status(200).json(response);
     }
@@ -151,9 +126,6 @@ const deleteMachineBox = async (req, res, next) => {
         const response = await adminService_1.adminService.deleteItem({
             model: machineBox_1.MachineBox,
             itemId: Number(machineId),
-            message: `delete machineId: ${machineId} successfully`,
-            errMessage: "machine box not found",
-            errCode: "MACHINE_BOX_NOT_FOUND",
         });
         return res.status(200).json(response);
     }

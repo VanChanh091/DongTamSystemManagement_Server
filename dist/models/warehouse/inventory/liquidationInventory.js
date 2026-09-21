@@ -13,7 +13,7 @@ function initLiquidationInventoryModel(sequelize) {
         qtyTransferred: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
         qtySold: { type: sequelize_1.DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
         qtyRemaining: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
-        liquidationValue: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
+        liquidationValue: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false },
         reason: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         status: {
             type: sequelize_1.DataTypes.ENUM("pending", "selling", "completed", "cancelled"),
@@ -25,7 +25,7 @@ function initLiquidationInventoryModel(sequelize) {
         inventoryId: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
     }, {
         sequelize,
-        tableName: "LiquidationInventory",
+        tableName: "liquidation_inventories",
         timestamps: true,
         indexes: [
             //FK

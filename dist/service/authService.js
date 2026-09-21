@@ -91,6 +91,7 @@ exports.authService = {
                     userId: existUser.userId,
                     email: existUser.email,
                     role: existUser.role,
+                    department: existUser.department,
                     permissions: existUser.permissions,
                 },
                 token: (0, jwtHelper_1.default)(existUser),

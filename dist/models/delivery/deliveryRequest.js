@@ -12,22 +12,25 @@ function initDeliveryRequestModel(sequelize) {
         requestId: { type: sequelize_1.DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
         qtyRegistered: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
         volume: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false },
+        note: { type: sequelize_1.DataTypes.STRING },
         status: {
-            type: sequelize_1.DataTypes.ENUM("requested", "scheduled", "cancelled"),
+            type: sequelize_1.DataTypes.ENUM("requested", "partial", "scheduled", "cancelled"),
             allowNull: false,
             defaultValue: "requested",
         },
         //FK
         userId: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
-        planningId: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
+        planningId: { type: sequelize_1.DataTypes.INTEGER },
+        orderId: { type: sequelize_1.DataTypes.STRING },
     }, {
         sequelize,
-        tableName: "DeliveryRequest",
+        tableName: "delivery_requests",
         timestamps: true,
         indexes: [
             //FK
-            { fields: ["planningId"] },
             { fields: ["userId"] },
+            { fields: ["planningId"] },
+            { fields: ["orderId"] },
             //indexes
             { fields: ["status"] },
         ],

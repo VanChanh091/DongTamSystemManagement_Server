@@ -1,12 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.qcSessionService = void 0;
-const qcSession_1 = require("../../models/qualityControl/qcSession");
 const user_1 = require("../../models/user/user");
-const planningHelper_1 = require("../../repository/planning/planningHelper");
-const qcRepository_1 = require("../../repository/qcRepository");
 const appError_1 = require("../../utils/appError");
+const qcRepository_1 = require("../../repository/qcRepository");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
+const qcSession_1 = require("../../models/qualityControl/qcSession");
+const crud_helper_repository_1 = require("../../repository/helper/crud.helper.repository");
 exports.qcSessionService = {
     getAllQcSession: async () => {
         try {
@@ -35,14 +35,6 @@ exports.qcSessionService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    getSessionByField: async (field) => {
-        try {
-        }
-        catch (error) {
-            console.error(`get all QC session by ${field} failed:`, error);
-            throw appError_1.AppError.ServerError();
-        }
-    },
     createNewSession: async ({ processType, planningId, planningBoxId, totalSample = 3, transaction, user, }) => {
         const { userId } = user;
         try {
@@ -56,7 +48,7 @@ exports.qcSessionService = {
             if (totalSample !== undefined && totalSample < 1) {
                 throw appError_1.AppError.BadRequest("totalSample must be greater than 0", "TOTAL_SAMPLE_MUST_BE_GREATER_THAN_0");
             }
-            const existedUser = await planningHelper_1.planningHelper.getModelById({ model: user_1.User, where: { userId } });
+            const existedUser = await crud_helper_repository_1.CrudHelper.findOne({ model: user_1.User, where: { userId } });
             if (!existedUser) {
                 throw appError_1.AppError.BadRequest("user not found", "USER_NOT_FOUND");
             }

@@ -14,7 +14,7 @@ function initQcCriteriaModel(sequelize) {
         criteriaCode: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         criteriaName: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         isRequired: { type: sequelize_1.DataTypes.BOOLEAN, allowNull: false },
-    }, { sequelize, tableName: "QcCriteria", timestamps: true });
+    }, { sequelize, tableName: "qc_criteria", timestamps: true });
     return QcCriteria;
 }
 //# sourceMappingURL=qcCriteria.js.map

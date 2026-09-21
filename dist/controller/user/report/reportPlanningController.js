@@ -3,18 +3,27 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.exportExcelReportBox = exports.exportExcelReportPaper = exports.getReportBoxes = exports.getReportPapers = void 0;
+exports.exportExcelReportBox = exports.exportExcelReportPaper = exports.getReportQcInspectionSummary = exports.getReportBoxes = exports.getReportPapers = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const reportService_1 = require("../../../service/reportService");
-//===============================REPORT PAPER=====================================
+const qcInspectionCheckService_1 = require("../../../service/qualityControl/qcInspectionCheckService");
+//===============================REPORT PAPER & PAPER=====================================
 const getReportPapers = async (req, res, next) => {
-    const { field, keyword, machine, page = 1, pageSize = 20, } = req.query;
+    const { field, keyword, machine, page = 1, pageSize = 20, startDate, endDate, } = req.query;
     try {
         let response;
         // 1. Nhánh tìm kiếm theo field
         if (field && keyword && machine) {
-            response = await reportService_1.reportService.getReportPaperByField(field, keyword, machine, Number(page), Number(pageSize));
+            response = await reportService_1.reportService.getReportPaperByField({
+                field,
+                keyword,
+                machine,
+                page: Number(page),
+                pageSize: Number(pageSize),
+                startDate,
+                endDate,
+            });
         }
         // 2. Nhánh lấy tất cả
         else {
@@ -27,14 +36,21 @@ const getReportPapers = async (req, res, next) => {
     }
 };
 exports.getReportPapers = getReportPapers;
-//===============================REPORT BOX=====================================
 const getReportBoxes = async (req, res, next) => {
-    const { field, keyword, machine, page = 1, pageSize = 20, } = req.query;
+    const { field, keyword, machine, page = 1, pageSize = 20, startDate, endDate, } = req.query;
     try {
         let response;
         // 1. Nhánh tìm kiếm theo field
         if (field && keyword && machine) {
-            response = await reportService_1.reportService.getReportBoxByField(field, keyword, machine, Number(page), Number(pageSize));
+            response = await reportService_1.reportService.getReportBoxByField({
+                field,
+                keyword,
+                machine,
+                page: Number(page),
+                pageSize: Number(pageSize),
+                startDate,
+                endDate,
+            });
         }
         // 2. Nhánh lấy tất cả
         else {
@@ -47,12 +63,36 @@ const getReportBoxes = async (req, res, next) => {
     }
 };
 exports.getReportBoxes = getReportBoxes;
-//===============================EXPORT EXCEL=====================================
-//export excel paper
-const exportExcelReportPaper = async (req, res, next) => {
-    const { fromDate, toDate, reportPaperId, machine } = req.body;
+//===============================REPORT INSPECTION=====================================
+const getReportQcInspectionSummary = async (req, res, next) => {
+    const { machine, startDate, endDate, isPaper } = req.query;
     try {
-        const response = await reportService_1.reportService.exportReportPaper(res, fromDate, toDate, reportPaperId, machine);
+        let response;
+        response = await qcInspectionCheckService_1.qcInspectionService.getReportQcInspectionSummary({
+            machine,
+            startDate,
+            endDate,
+            isPaper,
+            user: req.user,
+        });
+        return res.status(200).json(response);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.getReportQcInspectionSummary = getReportQcInspectionSummary;
+//===============================EXPORT EXCEL=====================================
+const exportExcelReportPaper = async (req, res, next) => {
+    const { fromDate, toDate, machine } = req.body;
+    try {
+        const response = await reportService_1.reportService.exportReportPaper({
+            res,
+            fromDate,
+            toDate,
+            userName: req.user.email,
+            machine,
+        });
         return res.status(200).json(response);
     }
     catch (error) {
@@ -60,11 +100,10 @@ const exportExcelReportPaper = async (req, res, next) => {
     }
 };
 exports.exportExcelReportPaper = exportExcelReportPaper;
-//export excel box
 const exportExcelReportBox = async (req, res, next) => {
-    const { fromDate, toDate, reportBoxId, machine } = req.body;
+    const { fromDate, toDate, machine } = req.body;
     try {
-        const response = await reportService_1.reportService.exportReportBox(res, fromDate, toDate, reportBoxId, machine);
+        const response = await reportService_1.reportService.exportReportBox(res, fromDate, toDate, req.user.email, machine);
         return res.status(200).json(response);
     }
     catch (error) {

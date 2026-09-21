@@ -41,9 +41,11 @@ export const statisticRevenueService = {
 
     try {
       // Phân quyền
-      let effectiveUserId: number | null = dto.targetUserId || null;
+      let effectiveUserId: number | null = dto.targetUserId ? Number(dto.targetUserId) : null;
       const isManager = ["manager", "admin"].includes(dto.currentUser.role.toLowerCase());
-      if (!isManager) {
+      if (dto.all) {
+        effectiveUserId = isManager && dto.targetUserId ? Number(dto.targetUserId) : null;
+      } else if (!isManager) {
         effectiveUserId = dto.currentUser.userId;
       }
 
@@ -233,9 +235,11 @@ export const statisticRevenueService = {
 
     try {
       // Phân quyền
-      let effectiveUserId: number | null = dto.targetUserId || null;
+      let effectiveUserId: number | null = dto.targetUserId ? Number(dto.targetUserId) : null;
       const isManager = ["manager", "admin"].includes(dto.currentUser.role.toLowerCase());
-      if (!isManager) {
+      if (dto.all) {
+        effectiveUserId = isManager && dto.targetUserId ? Number(dto.targetUserId) : null;
+      } else if (!isManager) {
         effectiveUserId = dto.currentUser.userId;
       }
 
@@ -378,9 +382,11 @@ export const statisticRevenueService = {
       }
 
       // Phân quyền
-      let effectiveUserId: number | null = dto.targetUserId || null;
+      let effectiveUserId: number | null = dto.targetUserId ? Number(dto.targetUserId) : null;
       const isManager = ["manager", "admin"].includes(dto.currentUser.role.toLowerCase());
-      if (!isManager) {
+      if (dto.all) {
+        effectiveUserId = isManager && dto.targetUserId ? Number(dto.targetUserId) : null;
+      } else if (!isManager) {
         effectiveUserId = dto.currentUser.userId;
       }
 

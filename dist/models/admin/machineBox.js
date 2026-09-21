@@ -16,7 +16,7 @@ function initMachineBoxModel(sequelize) {
         timeToProduct: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
         speedOfMachine: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
         machineName: { type: sequelize_1.DataTypes.STRING, allowNull: false },
-    }, { sequelize, tableName: "MachineBoxes", timestamps: true });
+    }, { sequelize, tableName: "machine_boxes", timestamps: true });
     return MachineBox;
 }
 //# sourceMappingURL=machineBox.js.map

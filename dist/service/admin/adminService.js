@@ -7,35 +7,39 @@ exports.adminService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const bcrypt_1 = __importDefault(require("bcrypt"));
-const meiliService_1 = require("../meiliService");
+const meiliService_1 = require("../system/meiliService");
 const appError_1 = require("../../utils/appError");
-const labelFields_1 = require("../../assets/labelFields");
-const order_1 = require("../../models/order/order");
+const user_1 = require("../../models/user/user");
 const adminRepository_1 = require("../../repository/adminRepository");
-const converToWebp_1 = require("../../utils/image/converToWebp");
-const transactionHelper_1 = require("../../utils/helper/transactionHelper");
-const cloudinary_connect_1 = __importDefault(require("../../assets/configs/connect/cloudinary.connect"));
 const inventory_1 = require("../../models/warehouse/inventory/inventory");
-const meiliTransformer_1 = require("../../assets/configs/meilisearch/meiliTransformer");
+const transactionHelper_1 = require("../../utils/helper/transactionHelper");
+const labelFields_1 = require("../../assets/labelFields");
 const inventoryRepository_1 = require("../../repository/inventoryRepository");
+const meiliTransformer_1 = require("../../assets/configs/meilisearch/meiliTransformer");
+const inventoryService_1 = require("../inventory/inventoryService");
+const orderApproved_1 = require("../../models/order/orderApproved");
+const notification_1 = require("../../models/notification/notification");
+const requestType_1 = require("../notification/requestType");
+const userNotifications_1 = require("../../models/notification/userNotifications");
+const crud_helper_repository_1 = require("../../repository/helper/crud.helper.repository");
 const devEnvironment = process.env.NODE_ENV !== "production";
 exports.adminService = {
     //===============================ADMIN CRUD=====================================
-    getAllItems: async ({ model, message }) => {
+    getAllItems: async ({ model, options }) => {
         try {
-            const allItems = await adminRepository_1.adminRepository.getAllItems({ model });
-            return { message, data: allItems };
+            const allItems = await crud_helper_repository_1.CrudHelper.findAll({ model, options });
+            return { message: "get all items successfully", data: allItems };
         }
         catch (error) {
             console.error("get all item failed:", error);
             throw appError_1.AppError.ServerError();
         }
     },
-    getItemById: async ({ model, itemId, errMessage, errCode, }) => {
+    getItemById: async ({ model, itemId, options, }) => {
         try {
-            const item = await adminRepository_1.adminRepository.getItemByPk({ model, itemId });
+            const item = await crud_helper_repository_1.CrudHelper.findByPk({ model, id: itemId, options });
             if (!item) {
-                throw appError_1.AppError.NotFound(errMessage, errCode);
+                throw appError_1.AppError.NotFound("item not found", "ITEM_NOT_FOUND");
             }
             return { message: `get item by id: ${itemId}`, data: item };
         }
@@ -46,15 +50,11 @@ exports.adminService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    createNewItem: async ({ model, data, message }) => {
+    createNewItem: async ({ model, data }) => {
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
-                const newItem = await adminRepository_1.adminRepository.createNewItem({
-                    model,
-                    data,
-                    transaction,
-                });
-                return { message, data: newItem };
+                const newItem = await crud_helper_repository_1.CrudHelper.createData({ model, data, transaction });
+                return { message: "create item successfully", data: newItem };
             });
         }
         catch (error) {
@@ -64,19 +64,19 @@ exports.adminService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    updateItem: async ({ model, itemId, dataUpdated, message, errMessage, errCode, }) => {
+    updateItem: async ({ model, itemId, dataUpdated, }) => {
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
-                const existedItem = await adminRepository_1.adminRepository.getItemByPk({ model, itemId });
-                if (!existedItem) {
-                    throw appError_1.AppError.NotFound(errMessage, errCode);
-                }
-                await adminRepository_1.adminRepository.updateItem({
-                    model: existedItem,
-                    dataUpdated,
-                    transaction,
+                const primaryKey = model.primaryKeyAttributes[0]; // tự động lấy primary key của model
+                const [affectedCount] = await crud_helper_repository_1.CrudHelper.updateData({
+                    model,
+                    data: dataUpdated,
+                    options: { where: { [primaryKey]: itemId }, transaction },
                 });
-                return { message };
+                if (affectedCount === 0) {
+                    throw appError_1.AppError.NotFound("item not found", "ITEM_NOT_FOUND");
+                }
+                return { message: "update item successfully", data: { itemId, ...dataUpdated } };
             });
         }
         catch (error) {
@@ -86,14 +86,14 @@ exports.adminService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    deleteItem: async ({ model, itemId, message, errMessage, errCode, }) => {
+    deleteItem: async ({ model, itemId }) => {
         try {
-            const existedItem = await adminRepository_1.adminRepository.getItemByPk({ model, itemId });
+            const existedItem = await crud_helper_repository_1.CrudHelper.findByPk({ model, id: itemId });
             if (!existedItem) {
-                throw appError_1.AppError.NotFound(errMessage, errCode);
+                throw appError_1.AppError.NotFound("item not found ", "ITEM_NOT_FOUND");
             }
-            await adminRepository_1.adminRepository.deleteItem({ model: existedItem });
-            return { message };
+            await existedItem.destroy();
+            return { message: "delete item successfully" };
         }
         catch (error) {
             console.error("delete item failed:", error);
@@ -113,7 +113,7 @@ exports.adminService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    updateStatusOrder: async (req, orderId, newStatus, rejectReason) => {
+    updateStatusOrder: async ({ req, orderId, newStatus, rejectReason, senderId, }) => {
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
                 if (!["accept", "reject"].includes(newStatus)) {
@@ -125,8 +125,39 @@ exports.adminService = {
                 }
                 // const customer = order.Customer;
                 // const newDebt = Number(customer.debtCurrent || 0) + Number(order.totalPrice || 0);
+                const ownerId = order.userId;
                 if (newStatus === "reject") {
                     order.set({ status: newStatus, rejectReason: rejectReason || "" });
+                    const config = requestType_1.REQUEST_CONFIG["ORDER_REJECT"];
+                    if (!config) {
+                        throw appError_1.AppError.BadRequest("Invalid request type", "INVALID_REQUEST_TYPE");
+                    }
+                    const user = await user_1.User.findOne({ where: { userId: senderId }, transaction });
+                    if (!user) {
+                        throw appError_1.AppError.NotFound("User not found", "USER_NOT_FOUND");
+                    }
+                    const newNotif = await notification_1.NotificationModel.create({
+                        title: config.titleCreate(),
+                        type: "ORDER_REJECT",
+                        targetType: "user",
+                        senderId,
+                        senderName: user.fullName,
+                        senderDept: user.department,
+                        payload: {
+                            orderId,
+                            reason: rejectReason,
+                            action: "RESPONSE",
+                            status: "pending",
+                        },
+                    });
+                    await userNotifications_1.UserNotifications.create({
+                        notificationId: newNotif.notificationId,
+                        receiverId: ownerId,
+                        receiverDept: order.User.department || null,
+                        isRead: false,
+                    });
+                    //socket
+                    req.io?.to(`user-${ownerId}`).emit("new-notification", newNotif);
                 }
                 else {
                     //calculate debt limit of customer
@@ -141,15 +172,24 @@ exports.adminService = {
                     order.set({
                         status: phiKhac ? "planning" : newStatus,
                         rejectReason: null,
+                        dayApproved: new Date(),
                     });
+                    let success;
+                    await orderApproved_1.OrderApproved.create({ orderId, approvedBy: req.user.fullName }, { transaction });
                     if (phiKhac) {
-                        await inventory_1.Inventory.create({
+                        success = await inventory_1.Inventory.create({
                             totalQtyInbound: order.quantityCustomer,
                             qtyInventory: order.quantityCustomer,
                             valueInventory: order.totalPrice,
                             orderId,
                         }, { transaction });
-                        const inventory = await inventoryRepository_1.inventoryRepository.syncInventory(orderId, transaction);
+                    }
+                    else {
+                        success = await inventoryService_1.inventoryService.createNewInventory(orderId, transaction);
+                    }
+                    //--------------------MEILISEARCH-----------------------
+                    if (success) {
+                        const inventory = await inventoryRepository_1.inventoryRepository.syncInventoryForMeili(orderId, transaction);
                         if (inventory) {
                             const flattenData = meiliTransformer_1.meiliTransformer.inventory(inventory);
                             await meiliService_1.meiliService.syncOrUpdateMeiliData({
@@ -168,34 +208,7 @@ exports.adminService = {
                     transaction,
                     isUpdate: true,
                 });
-                //-------------------- SOCKET -----------------------
-                const ownerId = order.userId;
-                const badgeCount = await order_1.Order.count({ where: { status: "reject", userId: ownerId } });
-                const roomName = `reject-order-${ownerId}`;
-                const sockets = await req.io?.in(roomName).fetchSockets();
-                // console.log(`-----------------------------------`);
-                // console.log(`📡 Event: updateBadgeCount`);
-                // console.log(`🏠 Room Target: ${roomName}`);
-                // console.log(`👥 Active sockets: ${sockets?.length ?? 0}`);
-                // console.log(`-----------------------------------`);
-                const hasSocket = sockets && sockets.length > 0;
-                if (!hasSocket) {
-                    if (devEnvironment) {
-                        console.log(`⚠️ No one is in room ${roomName}, skip emitting.`);
-                    }
-                    return { message: "Order status updated successfully, no active socket to notify" };
-                }
-                req.io?.to(roomName).emit("updateBadgeCount", {
-                    type: "REJECTED_ORDER",
-                    count: badgeCount,
-                });
-                return {
-                    message: "Order status updated successfully",
-                    notification: {
-                        recipientId: ownerId,
-                        badgeCount,
-                    },
-                };
+                return { message: "Order status updated successfully" };
             });
         }
         catch (error) {
@@ -206,52 +219,6 @@ exports.adminService = {
         }
     },
     //===============================ADMIN USER======================================
-    getUsersAdmin: async (field, keyword) => {
-        try {
-            let users = [];
-            let message = "Get all users successfully (excluding admin)";
-            if (!field || !keyword) {
-                // Nếu không có field/keyword -> Lấy tất cả
-                users = await adminRepository_1.adminRepository.getAllUser();
-            }
-            else {
-                switch (field) {
-                    case "name":
-                        users = await adminRepository_1.adminRepository.getUserByName(keyword);
-                        message = "Get all users by name from DB";
-                        break;
-                    case "phone":
-                        users = await adminRepository_1.adminRepository.getUserByPhone(keyword);
-                        message = "Get user by phone from DB";
-                        break;
-                    case "permission":
-                        const permsArray = Array.isArray(keyword) ? keyword : [keyword];
-                        const lowerPermissions = permsArray.map((p) => p.toLowerCase()).filter(Boolean);
-                        // Lấy tất cả user và lọc theo logic permission của bạn
-                        const allUsers = await adminRepository_1.adminRepository.getAllUser();
-                        users = allUsers.filter((user) => {
-                            const userPerms = Array.isArray(user.permissions)
-                                ? user.permissions
-                                : JSON.parse(user.permissions || "[]");
-                            return userPerms.some((p) => lowerPermissions.includes(p.toLowerCase()));
-                        });
-                        message = "Get users by permission from DB";
-                        break;
-                }
-            }
-            const sanitizedUsers = users
-                .map((user) => (typeof user.get === "function" ? user.get({ plain: true }) : user))
-                .filter((user) => user.role?.toLowerCase() !== "admin");
-            return { message, data: sanitizedUsers };
-        }
-        catch (error) {
-            console.error(`Failed to get users by ${field}`, error);
-            if (error instanceof appError_1.AppError)
-                throw error;
-            throw appError_1.AppError.ServerError();
-        }
-    },
-    //delete
     getAllUsers: async () => {
         try {
             const data = await adminRepository_1.adminRepository.getAllUser();
@@ -265,103 +232,32 @@ exports.adminService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    //delete
-    getUserByName: async (name) => {
-        try {
-            if (!name) {
-                throw appError_1.AppError.BadRequest("Name is required", "NAME_REQUIRED");
-            }
-            const users = await adminRepository_1.adminRepository.getUserByName(name);
-            if (users.length === 0) {
-                throw appError_1.AppError.NotFound("User not found", "USER_NOT_FOUND");
-            }
-            const sanitizedUsers = users
-                .map((user) => user.get({ plain: true }))
-                .filter((user) => user.role?.toLowerCase() !== "admin");
-            return { message: "Get all users by name from DB", data: sanitizedUsers };
-        }
-        catch (error) {
-            console.error("Error fetching user by name:", error);
-            if (error instanceof appError_1.AppError)
-                throw error;
-            throw appError_1.AppError.ServerError();
-        }
-    },
-    //delete
-    getUserByPhone: async (phone) => {
-        try {
-            if (!phone) {
-                throw appError_1.AppError.BadRequest("Phone number is required", "PHONE_REQUIRED");
-            }
-            const users = await adminRepository_1.adminRepository.getUserByPhone(phone);
-            if (users.length === 0) {
-                throw appError_1.AppError.NotFound("User not found", "USER_NOT_FOUND");
-            }
-            const sanitizedUsers = users
-                .map((user) => user.get({ plain: true }))
-                .filter((user) => user.role?.toLowerCase() !== "admin");
-            return { message: "Get user by phone from DB", data: sanitizedUsers };
-        }
-        catch (error) {
-            console.error("Error fetching user by phone:", error);
-            if (error instanceof appError_1.AppError)
-                throw error;
-            throw appError_1.AppError.ServerError();
-        }
-    },
-    //delete
-    getUserByPermission: async (permission) => {
-        try {
-            if (!permission) {
-                throw appError_1.AppError.BadRequest("Permission is required", "PERMISSION_REQUIRED");
-            }
-            if (!Array.isArray(permission)) {
-                permission = [permission]; // chuyển về dạng mảng nếu chỉ có 1 item
-            }
-            const lowerPermissions = permission.map((p) => p.toLowerCase()).filter(Boolean);
-            const users = await adminRepository_1.adminRepository.getAllUser();
-            const matchedUsers = users.filter((user) => {
-                const perms = Array.isArray(user.permissions)
-                    ? user.permissions
-                    : JSON.parse(user.permissions || "[]");
-                return perms.some((perm) => lowerPermissions.includes(perm.toLowerCase()));
-            });
-            const sanitizedUsers = matchedUsers
-                .map((user) => user.get({ plain: true }))
-                .filter((user) => user.role?.toLowerCase() !== "admin");
-            return { message: "Get users by permission from DB", data: sanitizedUsers };
-        }
-        catch (error) {
-            console.error("Error fetching users by permission:", error);
-            if (error instanceof appError_1.AppError)
-                throw error;
-            throw appError_1.AppError.ServerError();
-        }
-    },
     updateUserRole: async (userId, newRole) => {
         try {
-            const validRoles = ["admin", "manager", "user"];
-            if (!validRoles.includes(newRole)) {
-                throw appError_1.AppError.BadRequest("Invalid role provided", "INVALID_ROLE");
-            }
-            const user = await adminRepository_1.adminRepository.getUserByPk(userId);
-            if (!user) {
-                throw appError_1.AppError.NotFound("User not found", "USER_NOT_FOUND");
-            }
-            user.role = newRole;
-            if (newRole === "admin") {
-                user.permissions = ["all"];
-            }
-            else if (newRole === "manager") {
-                user.permissions = ["manager"];
-            }
-            else {
-                user.permissions = ["read"];
-            }
-            await user.save();
-            const sanitizedData = user.toJSON();
-            delete sanitizedData.password;
-            return { message: "User role updated successfully", data: sanitizedData };
+            return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
+                const validRoles = ["admin", "manager", "user"];
+                if (!validRoles.includes(newRole)) {
+                    throw appError_1.AppError.BadRequest("Invalid role provided", "INVALID_ROLE");
+                }
+                const user = await adminRepository_1.adminRepository.getUserByPk(userId, transaction);
+                if (!user) {
+                    throw appError_1.AppError.NotFound("User not found", "USER_NOT_FOUND");
+                }
+                user.role = newRole;
+                if (newRole === "admin") {
+                    user.permissions = ["all"];
+                }
+                else if (newRole === "manager") {
+                    user.permissions = ["manager"];
+                }
+                else {
+                    user.permissions = ["read"];
+                }
+                await user.save({ transaction });
+                const sanitizedData = user.toJSON();
+                delete sanitizedData.password;
+                return { message: "User role updated successfully", data: sanitizedData };
+            });
         }
         catch (error) {
             console.error("Error updating user role:", error);
@@ -372,27 +268,25 @@ exports.adminService = {
     },
     updatePermissions: async (userId, permissions) => {
         try {
-            // Validate permissions input
-            if (!Array.isArray(permissions) || permissions.length === 0) {
-                throw appError_1.AppError.BadRequest("Invalid permissions format", "INVALID_PERMISSIONS_FORMAT");
-            }
-            // check valid permissions
-            const invalid = permissions.filter((p) => !labelFields_1.validPermissions.includes(p));
-            if (invalid.length > 0) {
-                throw appError_1.AppError.BadRequest(`Invalid permissions: ${invalid.join(", ")}`, "INVALID_PERMISSIONS");
-            }
-            const user = await adminRepository_1.adminRepository.getUserByPk(userId);
-            if (!user) {
-                throw appError_1.AppError.NotFound("User not found", "USER_NOT_FOUND");
-            }
-            // Update user's permissions
-            user.permissions = permissions;
-            await user.save();
-            return {
-                message: "Permissions updated successfully",
-                userId: user.userId,
-                permissions: user.permissions,
-            };
+            return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
+                // Validate permissions input
+                if (!Array.isArray(permissions) || permissions.length === 0) {
+                    throw appError_1.AppError.BadRequest("Invalid permissions format", "INVALID_PERMISSIONS_FORMAT");
+                }
+                // check valid permissions
+                const invalid = permissions.filter((p) => !labelFields_1.validPermissions.includes(p));
+                if (invalid.length > 0) {
+                    throw appError_1.AppError.BadRequest(`Invalid permissions: ${invalid.join(", ")}`, "INVALID_PERMISSIONS");
+                }
+                const user = await adminRepository_1.adminRepository.getUserByPk(userId, transaction);
+                if (!user) {
+                    throw appError_1.AppError.NotFound("User not found", "USER_NOT_FOUND");
+                }
+                // Update user's permissions
+                user.permissions = permissions;
+                await user.save({ transaction });
+                return { message: "Permissions updated successfully", data: user };
+            });
         }
         catch (error) {
             console.error("Error updating permissions:", error);
@@ -401,27 +295,48 @@ exports.adminService = {
             throw appError_1.AppError.ServerError();
         }
     },
+    updateUserDepartment: async (userId, newDepartment) => {
+        try {
+            return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
+                const user = await adminRepository_1.adminRepository.getUserByPk(userId, transaction);
+                if (!user) {
+                    throw appError_1.AppError.NotFound("User not found", "USER_NOT_FOUND");
+                }
+                user.department = newDepartment;
+                await user.save({ transaction });
+                return { message: "User department updated successfully", data: user };
+            });
+        }
+        catch (error) {
+            console.error("Error updating user department:", error);
+            if (error instanceof appError_1.AppError)
+                throw error;
+            throw appError_1.AppError.ServerError();
+        }
+    },
     resetPassword: async (userIds, newPassword) => {
         try {
-            if (!Array.isArray(userIds) || userIds.length === 0 || !newPassword) {
-                throw appError_1.AppError.BadRequest("userIds must be a non-empty array and newPassword is required", "INVALID_INPUT");
-            }
-            const saltPassword = 10;
-            const hashedPassword = await bcrypt_1.default.hash(newPassword, saltPassword);
-            // Tìm và cập nhật tất cả user
-            const updatedUserIds = [];
-            for (const id of userIds) {
-                const user = await adminRepository_1.adminRepository.getUserByPk(id);
-                if (user) {
-                    user.password = hashedPassword;
-                    await user.save();
-                    updatedUserIds.push(user.userId);
+            return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
+                if (!Array.isArray(userIds) || userIds.length === 0 || !newPassword) {
+                    throw appError_1.AppError.BadRequest("userIds must be a non-empty array and newPassword is required", "INVALID_INPUT");
                 }
-            }
-            if (updatedUserIds.length === 0) {
-                throw appError_1.AppError.NotFound("users not found to update", "USER_NOT_FOUND");
-            }
-            return { message: "Passwords reset successfully" };
+                const saltPassword = 10;
+                const hashedPassword = await bcrypt_1.default.hash(newPassword, saltPassword);
+                // Tìm và cập nhật tất cả user
+                const updatedUserIds = [];
+                for (const id of userIds) {
+                    const user = await adminRepository_1.adminRepository.getUserByPk(id, transaction);
+                    if (user) {
+                        user.password = hashedPassword;
+                        await user.save({ transaction });
+                        updatedUserIds.push(user.userId);
+                    }
+                }
+                if (updatedUserIds.length === 0) {
+                    throw appError_1.AppError.NotFound("users not found to update", "USER_NOT_FOUND");
+                }
+                return { message: "Passwords reset successfully" };
+            });
         }
         catch (error) {
             console.error("Error resetting passwords:", error);
@@ -432,19 +347,21 @@ exports.adminService = {
     },
     deleteUserById: async (userId) => {
         try {
-            const user = await adminRepository_1.adminRepository.getUserByPk(userId);
-            if (!user) {
-                throw appError_1.AppError.NotFound("User not found", "USER_NOT_FOUND");
-            }
-            const imageName = user.avatar;
-            await user.destroy();
-            if (imageName && imageName.includes("cloudinary.com")) {
-                const publicId = (0, converToWebp_1.getCloudinaryPublicId)(imageName);
-                if (publicId) {
-                    await cloudinary_connect_1.default.uploader.destroy(publicId);
+            return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
+                const user = await adminRepository_1.adminRepository.getUserByPk(userId, transaction);
+                if (!user) {
+                    throw appError_1.AppError.NotFound("User not found", "USER_NOT_FOUND");
                 }
-            }
-            return { message: "User deleted successfully" };
+                // const imageName = user.avatar;
+                // await user.destroy({ transaction });
+                // if (imageName && imageName.includes("cloudinary.com")) {
+                //   const publicId = getCloudinaryPublicId(imageName);
+                //   if (publicId) {
+                //     await cloudinary.uploader.destroy(publicId);
+                //   }
+                // }
+                return { message: "User deleted successfully" };
+            });
         }
         catch (error) {
             console.error("Error deleting user:", error);

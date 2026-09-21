@@ -18,10 +18,10 @@ require("./models/index");
 const socket_1 = require("./utils/socket/socket");
 const appError_1 = require("./utils/appError");
 const telegramSending_1 = require("./utils/telegram/telegramSending");
-//cron job auto delete image on Cloudinary
+//cron job
 require("./utils/cronJob/autoDeleteImage");
+require("./utils/cronJob/autoClosingDate");
 const meilisearch_connect_1 = require("./assets/configs/connect/meilisearch.connect");
-const configs_1 = require("./assets/configs/meilisearch/configs");
 const app = (0, express_1.default)();
 const server = http_1.default.createServer(app);
 const io = (0, socket_1.initSocket)(server);
@@ -51,7 +51,7 @@ app.use("/auth", index_1.authRoutes);
 //sau khi đi qua authenticate thì mới vào được các route dưới đây
 app.use(authMiddleware_1.default);
 app.use("/api/admin", index_1.adminRoutes);
-app.use("/api/dashboard", index_1.dashboardRoutes);
+app.use("/api/synthetic", index_1.syntheticRoutes);
 app.use("/api/customer", index_1.customerRoutes);
 app.use("/api/order", index_1.orderRoutes);
 app.use("/api/product", index_1.productRoutes);
@@ -63,11 +63,16 @@ app.use("/api/employee", index_1.employeeRoutes);
 app.use("/api/warehouse", index_1.warehouseRoutes);
 app.use("/api/qc", index_1.qcRoutes);
 app.use("/api/delivery", index_1.deliveryRoutes);
-app.use("/api/process", index_1.processingRoutes);
+app.use("/api/scrapReports", index_1.scrapRoutes);
+app.use("/api/debts", index_1.debtManagementRoutes);
+app.use("/api/system", index_1.systemRoutes);
+app.use("/api/notification", index_1.notificationRoutes);
 //sync meilisearch
 app.use("/api/meilisearch", index_1.meilisearchRoutes);
 //BADGE
 app.use("/api/badge", index_1.badgeRoutes);
+//xóa index cho các bảng sau nếu dùng alter: true quá nhiều
+//users, delivery_plans, outbound_histories
 database_connect_1.sequelize
     // .sync({ alter: true })
     .sync()
@@ -106,13 +111,11 @@ app.use((err, req, res, next) => {
     });
 });
 server.listen({ port: Number(process.env.PORT) || 5000, host: "0.0.0.0" }, async (err) => {
-    if (err) {
+    if (err)
         console.log(err);
-    }
     await (0, database_connect_1.connectDB)();
     //setup meilisearch
     await (0, meilisearch_connect_1.connectMeilisearch)();
-    await (0, configs_1.setupMeilisearch)();
-    console.log("✅ Cron Job đã được kích hoạt!");
+    // await setupMeilisearch();
 });
 //# sourceMappingURL=index.js.map

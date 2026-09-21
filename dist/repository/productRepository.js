@@ -15,17 +15,21 @@ exports.productRepository = {
             transaction,
         });
     },
-    findProductByPage: async ({ page, pageSize, whereCondition = {}, }) => {
-        const query = {
+    buildProductOptions: ({ page, pageSize, whereCondition = {}, isExport = false, }) => {
+        const queryOptions = {
             where: whereCondition,
             attributes: { exclude: ["createdAt", "updatedAt"] },
-            order: [["productSeq", "ASC"]],
         };
         if (page && pageSize) {
-            query.offset = (page - 1) * pageSize;
-            query.limit = pageSize;
+            queryOptions.offset = (page - 1) * pageSize;
+            queryOptions.limit = pageSize;
+            queryOptions.order = [["productSeq", "ASC"]];
         }
-        return await product_1.Product.findAndCountAll(query);
+        if (isExport) {
+            queryOptions.raw = true;
+            queryOptions.nest = true;
+        }
+        return queryOptions;
     },
     //create
     createProduct: async (data, transaction) => {

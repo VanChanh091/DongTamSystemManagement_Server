@@ -27,7 +27,7 @@ function initEmployeeBasicInfoModel(sequelize) {
         ethnicity: { type: sequelize_1.DataTypes.STRING, allowNull: false }, //dân tộc
     }, {
         sequelize,
-        tableName: "EmployeeBasicInfos",
+        tableName: "employee_basic_infos",
         timestamps: true,
     });
     return EmployeeBasicInfo;

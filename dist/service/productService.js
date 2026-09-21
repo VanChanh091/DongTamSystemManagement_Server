@@ -20,7 +20,7 @@ const excelExporter_1 = require("../utils/helper/excelExporter");
 const productRowAndColumn_1 = require("../utils/mapping/productRowAndColumn");
 const transactionHelper_1 = require("../utils/helper/transactionHelper");
 const meilisearch_connect_1 = require("../assets/configs/connect/meilisearch.connect");
-const meiliService_1 = require("./meiliService");
+const meiliService_1 = require("./system/meiliService");
 const labelFields_1 = require("../assets/labelFields");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { product } = cacheKey_1.CacheKey;
@@ -49,7 +49,8 @@ exports.productService = {
                 totalPages = 1;
             }
             else {
-                const { rows, count } = await productRepository_1.productRepository.findProductByPage({ page, pageSize });
+                const options = productRepository_1.productRepository.buildProductOptions({ page, pageSize });
+                const { rows, count } = await product_1.Product.findAndCountAll(options);
                 data = rows;
                 totalProducts = count;
                 totalPages = Math.ceil(totalProducts / pageSize);
@@ -78,7 +79,6 @@ exports.productService = {
             const index = meilisearch_connect_1.meiliClient.index("products");
             const searchResult = await index.search(keyword, {
                 attributesToSearchOn: [field],
-                // Phân trang
                 page: Number(page) || 1,
                 hitsPerPage: Number(pageSize) || 25,
             });
@@ -106,6 +106,7 @@ exports.productService = {
                 // Check prefix đã tồn tại chưa
                 const existedPrefix = await product_1.Product.count({
                     where: { productId: { [sequelize_1.Op.like]: `${sanitizedPrefix}%` } },
+                    transaction,
                 });
                 if (existedPrefix > 0) {
                     throw appError_1.AppError.Conflict(`Prefix '${sanitizedPrefix}' đã tồn tại, vui lòng chọn prefix khác`, "PREFIX_ALREADY_EXISTS");
@@ -157,7 +158,7 @@ exports.productService = {
                 }
                 const result = await productRepository_1.productRepository.updateProduct(existingProduct, productData, transaction);
                 //--------------------MEILISEARCH-----------------------
-                const productUpdated = await exports.productService.syncProductForMeili(producId, transaction);
+                await exports.productService.syncProductForMeili(producId, transaction);
                 return { message: "Product updated successfully", data: result };
             });
         }
@@ -196,7 +197,7 @@ exports.productService = {
                 const orderCount = await order_1.Order.count({ where: { productId }, transaction });
                 if (orderCount > 0) {
                     if (role != "admin") {
-                        throw appError_1.AppError.Conflict(`Product with ID '${productId}' has associated orders and cannot be deleted.`, "PRODUCT_HAS_ORDERS");
+                        throw appError_1.AppError.Conflict(`Sản phẩm: '${product.productName}' có ${orderCount} đơn hàng, không thể xóa`, "PRODUCT_HAS_ORDERS");
                     }
                 }
                 const imageName = product.productImage;
@@ -206,9 +207,13 @@ exports.productService = {
                         await cloudinary_connect_1.default.uploader.destroy(publicId);
                     }
                 }
-                await product.destroy();
+                await product.destroy({ transaction });
                 //--------------------MEILISEARCH-----------------------
-                await meiliService_1.meiliService.deleteMeiliData(labelFields_1.MEILI_INDEX.PRODUCTS, productId, transaction);
+                await meiliService_1.meiliService.deleteMeiliData({
+                    indexKey: labelFields_1.MEILI_INDEX.PRODUCTS,
+                    idOrIds: productId,
+                    transaction,
+                });
                 return { message: "Product deleted successfully" };
             });
         }
@@ -228,9 +233,13 @@ exports.productService = {
             else if (typeProduct) {
                 whereCondition.typeProduct = typeProduct;
             }
-            const { rows } = await productRepository_1.productRepository.findProductByPage({ whereCondition });
-            await (0, excelExporter_1.exportExcelResponse)(res, {
-                data: rows,
+            const baseQuery = productRepository_1.productRepository.buildProductOptions({
+                whereCondition,
+                isExport: true,
+            });
+            await (0, excelExporter_1.exportExcelStreamResponse)(res, {
+                baseQuery: baseQuery,
+                model: product_1.Product,
                 sheetName: "Danh sách sản phẩm",
                 fileName: "product",
                 columns: productRowAndColumn_1.productColumns,

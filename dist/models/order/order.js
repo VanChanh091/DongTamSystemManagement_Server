@@ -14,11 +14,13 @@ function initOrderModel(sequelize) {
         reject: 3,
         planning: 4,
         stop: 5,
+        completed: 6,
     };
     Order.init({
         orderId: { type: sequelize_1.DataTypes.STRING(15), allowNull: false, primaryKey: true },
         dayReceiveOrder: { type: sequelize_1.DataTypes.DATE, allowNull: false },
         dateRequestShipping: { type: sequelize_1.DataTypes.DATE, allowNull: false },
+        dayApproved: { type: sequelize_1.DataTypes.DATE },
         flute: { type: sequelize_1.DataTypes.STRING },
         QC_box: { type: sequelize_1.DataTypes.STRING },
         canLan: { type: sequelize_1.DataTypes.STRING },
@@ -50,14 +52,17 @@ function initOrderModel(sequelize) {
         totalPriceVAT: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false },
         volume: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false },
         instructSpecial: { type: sequelize_1.DataTypes.STRING },
-        isBox: { type: sequelize_1.DataTypes.BOOLEAN, defaultValue: false, allowNull: false },
         status: {
-            type: sequelize_1.DataTypes.ENUM("pending", "accept", "reject", "planning", "stop"), //1-2-3-4-5
+            type: sequelize_1.DataTypes.ENUM("pending", "accept", "reject", "planning", "stop", "completed"), //1-2-3-4-5-6
             allowNull: false,
             defaultValue: "pending",
         },
         rejectReason: { type: sequelize_1.DataTypes.STRING },
         orderIdCustomer: { type: sequelize_1.DataTypes.STRING }, //PO khach hang cung cap
+        note: { type: sequelize_1.DataTypes.STRING },
+        chongTham: { type: sequelize_1.DataTypes.BOOLEAN, defaultValue: false, allowNull: false },
+        isBox: { type: sequelize_1.DataTypes.BOOLEAN, defaultValue: false, allowNull: false },
+        isFSC: { type: sequelize_1.DataTypes.BOOLEAN, defaultValue: false, allowNull: false },
         //sort
         orderSortValue: { type: sequelize_1.DataTypes.BIGINT, allowNull: false, defaultValue: 0 },
         statusPriority: { type: sequelize_1.DataTypes.INTEGER, allowNull: false, defaultValue: 1 },

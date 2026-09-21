@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.exportFileOutbound = exports.outboundAutoComplete = exports.deleteOutbound = exports.updateOutbound = exports.createOutbound = exports.getOutboundDetail = exports.getOutboundHistory = void 0;
+exports.exportOutboundDetail = exports.exportFilePDFOutbound = exports.outboundAutoComplete = exports.deleteOutbound = exports.handleAddOrUpdateOutbound = exports.getOutboundDetail = exports.getOutboundHistory = void 0;
 const outboundService_1 = require("../../../service/warehouse/outboundService");
 const appError_1 = require("../../../utils/appError");
 //===============================OUTBOUND HISTORY=====================================
 const getOutboundHistory = async (req, res, next) => {
-    const { field, keyword, page, pageSize } = req.query;
+    const { field, keyword, page, pageSize, startDate, endDate } = req.query;
     try {
         let response;
         if (field && keyword) {
@@ -14,6 +14,8 @@ const getOutboundHistory = async (req, res, next) => {
                 keyword,
                 page: Number(page),
                 pageSize: Number(pageSize),
+                startDate,
+                endDate,
             });
         }
         else {
@@ -37,24 +39,7 @@ const getOutboundDetail = async (req, res, next) => {
     }
 };
 exports.getOutboundDetail = getOutboundDetail;
-const createOutbound = async (req, res, next) => {
-    let { outboundDetails } = req.body;
-    try {
-        if (!Array.isArray(outboundDetails)) {
-            if (!outboundDetails) {
-                throw appError_1.AppError.BadRequest("outboundDetails phải là mảng hoặc giá trị hợp lệ", "INVALID_ORDER_IDS");
-            }
-            outboundDetails = [outboundDetails];
-        }
-        const response = await outboundService_1.outboundService.createOutbound({ outboundDetails });
-        return res.status(200).json(response);
-    }
-    catch (error) {
-        next(error);
-    }
-};
-exports.createOutbound = createOutbound;
-const updateOutbound = async (req, res, next) => {
+const handleAddOrUpdateOutbound = async (req, res, next) => {
     let { outboundId, outboundDetails } = req.body;
     try {
         if (!Array.isArray(outboundDetails)) {
@@ -63,14 +48,27 @@ const updateOutbound = async (req, res, next) => {
             }
             outboundDetails = [outboundDetails];
         }
-        const response = await outboundService_1.outboundService.updateOutbound({ outboundId, outboundDetails });
+        let response;
+        if (outboundId) {
+            response = await outboundService_1.outboundService.updateOutbound({
+                outboundId,
+                outboundDetails,
+                updatedBy: req.user.fullName,
+            });
+        }
+        else {
+            response = await outboundService_1.outboundService.createOutbound({
+                outboundBy: req.user.fullName,
+                outboundDetails,
+            });
+        }
         return res.status(200).json(response);
     }
     catch (error) {
         next(error);
     }
 };
-exports.updateOutbound = updateOutbound;
+exports.handleAddOrUpdateOutbound = handleAddOrUpdateOutbound;
 const deleteOutbound = async (req, res, next) => {
     let { outboundId } = req.query;
     try {
@@ -100,14 +98,25 @@ const outboundAutoComplete = async (req, res, next) => {
     }
 };
 exports.outboundAutoComplete = outboundAutoComplete;
-const exportFileOutbound = async (req, res, next) => {
-    const { outboundId } = req.query;
+const exportFilePDFOutbound = async (req, res, next) => {
+    const { outboundId, hasMoney } = req.body;
     try {
-        await outboundService_1.outboundService.exportFileOutbound(res, Number(outboundId));
+        await outboundService_1.outboundService.exportFilePDFOutbound(res, Number(outboundId), hasMoney);
     }
     catch (error) {
         next(error);
     }
 };
-exports.exportFileOutbound = exportFileOutbound;
+exports.exportFilePDFOutbound = exportFilePDFOutbound;
+//export excel
+const exportOutboundDetail = async (req, res, next) => {
+    const { fromDate, toDate } = req.body;
+    try {
+        await outboundService_1.outboundService.exportExcelOutboundDetail(res, fromDate, toDate, req.user.email);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.exportOutboundDetail = exportOutboundDetail;
 //# sourceMappingURL=outboundHistoryController.js.map

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.submitQC = exports.confirmFinalizeSession = exports.updateResult = exports.createNewResult = exports.getAllQcResult = exports.updateSession = exports.createNewSession = exports.getQcSession = void 0;
+exports.submitQC = exports.updateResult = exports.createNewResult = exports.getAllQcResult = exports.updateSession = exports.createNewSession = exports.getQcSession = void 0;
 const qcSessionService_1 = require("../../../service/qualityControl/qcSessionService");
 const qcSampleService_1 = require("../../../service/qualityControl/qcSampleService");
 const orchestratorService_1 = require("../../../service/qualityControl/orchestratorService");
@@ -97,22 +97,6 @@ const updateResult = async (req, res, next) => {
     }
 };
 exports.updateResult = updateResult;
-// confirm Finalize Session
-const confirmFinalizeSession = async (req, res, next) => {
-    const { planningId, planningBoxId, isPaper = true, } = req.body;
-    try {
-        const response = await qcSampleService_1.qcSampleService.confirmFinalizeSession({
-            planningId,
-            planningBoxId,
-            isPaper,
-        });
-        return res.status(200).json(response);
-    }
-    catch (error) {
-        next(error);
-    }
-};
-exports.confirmFinalizeSession = confirmFinalizeSession;
 //===============================QC RESULT=================================
 const submitQC = async (req, res, next) => {
     try {

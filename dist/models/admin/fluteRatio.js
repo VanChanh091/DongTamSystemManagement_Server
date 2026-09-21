@@ -15,7 +15,7 @@ function initFluteRatioCoefficientModel(sequelize) {
         },
         fluteName: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         ratio: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false },
-    }, { sequelize, tableName: "fluteRatio", timestamps: true });
+    }, { sequelize, tableName: "flute_ratio", timestamps: true });
     return FluteRatio;
 }
 //# sourceMappingURL=fluteRatio.js.map

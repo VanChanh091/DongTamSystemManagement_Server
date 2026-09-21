@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.countRequestPrepareGoods = exports.countDeliveryRequest = exports.countWaitingCheck = exports.countPlanningStop = exports.countOrderPendingPlanning = exports.countOrderRejected = exports.countOrderPending = void 0;
-const badgeService_1 = require("../../service/badge/badgeService");
+exports.countRequestPrepareGoods = exports.countDeliveryRequest = exports.countWaitingCheck = exports.countPlanningStop = exports.countOrderPendingPlanning = exports.countOrderPending = void 0;
+const badgeService_1 = require("../../service/system/badgeService");
 const appError_1 = require("../../utils/appError");
 //pending order
 const countOrderPending = async (req, res, next) => {
@@ -14,17 +14,6 @@ const countOrderPending = async (req, res, next) => {
     }
 };
 exports.countOrderPending = countOrderPending;
-//order reject
-const countOrderRejected = async (req, res, next) => {
-    try {
-        const response = await badgeService_1.badgeService.countOrderRejected(req.user.userId);
-        return res.status(201).json(response);
-    }
-    catch (error) {
-        next(error);
-    }
-};
-exports.countOrderRejected = countOrderRejected;
 //order pending planning
 const countOrderPendingPlanning = async (req, res, next) => {
     try {
@@ -58,8 +47,11 @@ const countWaitingCheck = async (req, res, next) => {
         else if (type === "box") {
             response = await badgeService_1.badgeService.countWaitingCheckBox();
         }
+        else if (type === "scrap") {
+            response = await badgeService_1.badgeService.countWaitingCheckScrapReport();
+        }
         else {
-            throw appError_1.AppError.BadRequest("Invalid type query parameter. Must be 'paper' or 'box'.");
+            throw appError_1.AppError.BadRequest("Invalid type query parameter. Must be 'paper', 'box', or 'scrap'.");
         }
         return res.status(201).json(response);
     }

@@ -6,46 +6,51 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CacheManager = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const redis_connect_1 = __importDefault(require("../../../assets/configs/connect/redis.connect"));
 const cacheKey_1 = require("./cacheKey");
 const checkLastChangeHelper_1 = require("./checkLastChangeHelper");
+const redis_connect_1 = __importDefault(require("../../../assets/configs/connect/redis.connect"));
 const devEnvironment = process.env.NODE_ENV !== "production";
+//map cache để xóa cache theo module
 const CACHE_CONFIG = {
     customer: ["customers:"],
     product: ["products:"],
     employee: ["employees:"],
     //order
     orderPendingReject: (role) => [`orders:${role}:pending_reject`],
-    orderAcceptPlanning: (role) => ({
-        prefixes: [`orders:${role}:accept_planning:`],
-    }),
+    orderAcceptted: (role) => ({ prefixes: [`orders:${role}:accept:`] }),
     //planning
     orderAccept: ["orders:status:accept"],
     planningPaper: ["planningPaper:machine:", "planningPaper:search:"],
-    planningStop: ["planningPaper:stop:"],
     planningBox: ["planningBox:machine:", "planningBox:search:"],
+    planningStop: ["planningPaper:stop:"],
+    paperRequirement: ["paperRequirement:machine:"],
     //manufacture
     manufacturePaper: ["manufacturePaper:machine:"],
     manufactureBox: ["manufactureBox:machine:"],
     // report
     reportPaper: ["reportPaper:"],
     reportBox: ["reportBox:"],
-    //dashboard
-    dbPlanning: ["dashboard:planning:", "dashboard:search:all"],
-    dbPlanningDetail: ["dashboard:detail:"],
+    reportScrap: ["reportScrap:"],
+    //synthetic
+    syntheticPlanning: ["syntheticPlanning:"],
+    syntheticOrder: ["syntheticOrder:"],
     //waiting check
     checkPaper: ["waitingCheck:Paper:all"],
     checkBox: ["waitingCheck:Box:all"],
     //warehouse
     inbound: ["inboundHistory:"],
     outbound: ["outboundHistory:"],
-    inventory: ["inventory:"],
+    //inventory
+    inventory_gt: ["inventory:gt:"],
+    inventory_lt: ["inventory:lt:"],
     //delivery
     estimate: ["estimate:"],
     schedule: ["schedule:"],
+    //qcInspection
+    inspectionPaper: ["inspection:paper:"],
 };
 exports.CacheManager = {
-    //Xóa toàn bộ cache theo prefix
+    //Xóa cache theo prefix
     async clearByPrefix(prefix) {
         const keys = await redis_connect_1.default.keys(`${prefix}*`);
         //console.log(keys);
@@ -56,7 +61,6 @@ exports.CacheManager = {
         }
     },
     /**
-     * Hàm clear tổng quát thay thế cho tất cả các hàm clear đơn lẻ
      * @param module Tên module cần xóa (key trong CACHE_CONFIG)
      * @param args Tham số phụ (ví dụ: role)
      */
@@ -98,25 +102,31 @@ exports.CacheManager = {
             planningOrderPaper: cacheKey_1.CacheKey.planning.paper.lastUpdated, //using for cache planning order
             planningStop: cacheKey_1.CacheKey.planning.stop.lastUpdated,
             planningBox: cacheKey_1.CacheKey.planning.box.lastUpdated,
+            paperRequirement: cacheKey_1.CacheKey.planning.paperRequirement.lastUpdated,
             //manufacture
             manufacturePaper: cacheKey_1.CacheKey.manufacture.paper.lastUpdated,
             manufactureBox: cacheKey_1.CacheKey.manufacture.box.lastUpdated,
             //report
             reportPaper: cacheKey_1.CacheKey.report.paper.lastUpdated,
             reportBox: cacheKey_1.CacheKey.report.box.lastUpdated,
-            //dashboard
-            dbPlanning: cacheKey_1.CacheKey.dashboard.planning.lastUpdated,
-            dbDetail: cacheKey_1.CacheKey.dashboard.details.lastUpdated,
+            reportScrap: cacheKey_1.CacheKey.report.scrap.lastUpdated,
+            //synthetic
+            syntheticPlanning: cacheKey_1.CacheKey.synthetic.planning.lastUpdated,
+            syntheticOrder: cacheKey_1.CacheKey.synthetic.order.lastUpdated,
             //waiting check
             checkPaper: cacheKey_1.CacheKey.waitingCheck.paper.lastUpdated,
             checkBox: cacheKey_1.CacheKey.waitingCheck.box.lastUpdated,
             //warehouse
             inbound: cacheKey_1.CacheKey.warehouse.inbound.lastUpdated,
             outbound: cacheKey_1.CacheKey.warehouse.outbound.lastUpdated,
-            inventory: cacheKey_1.CacheKey.warehouse.inventory.lastUpdated,
+            //inventory
+            inventory_gt: cacheKey_1.CacheKey.warehouse.inventory_gt.lastUpdated,
+            inventory_lt: cacheKey_1.CacheKey.warehouse.inventory_lt.lastUpdated,
             //delivery
             estimate: cacheKey_1.CacheKey.delivery.estimate.lastUpdated,
             schedule: cacheKey_1.CacheKey.delivery.schedule.lastUpdated,
+            //qcInspection
+            inspectionPaper: cacheKey_1.CacheKey.qcInspection.paper.lastUpdated,
         };
         const key = map[module];
         if (!key)

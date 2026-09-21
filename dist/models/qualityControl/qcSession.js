@@ -19,7 +19,7 @@ function initQcSessionModel(sequelize) {
         planningBoxId: { type: sequelize_1.DataTypes.INTEGER },
     }, {
         sequelize,
-        tableName: "QcSession",
+        tableName: "qc_sessions",
         timestamps: true,
         indexes: [
             //FK

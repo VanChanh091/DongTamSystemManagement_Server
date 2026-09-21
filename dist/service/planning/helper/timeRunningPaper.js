@@ -3,14 +3,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.calculateTimeRunning = exports.updateSortPlanning = void 0;
 const sequelize_1 = require("sequelize");
 const planningPaper_1 = require("../../../models/planning/planningPaper");
-const planningHelper_1 = require("../../../repository/planning/planningHelper");
 const timeOverflowPlanning_1 = require("../../../models/planning/timeOverflowPlanning");
-const planningPaperRepository_1 = require("../../../repository/planning/planningPaperRepository");
+const appError_1 = require("../../../utils/appError");
+const crud_helper_repository_1 = require("../../../repository/helper/crud.helper.repository");
 //Công thức tính thời gian: time = (Thời gian A/B + (tổng dài / tốc độ)) / (hiệu suất / 100)
 // Trong đó:
 // A: Thời gian thay đổi kích thước (phút) (nếu đơn đầu tiên trong ngày thì luôn tính thời gian thay đổi kích thước (30p))
 // B: Thời gian thay đổi cùng kích thước (phút) (nếu đơn cùng khổ ghép với đơn trước đó thì tính thời gian này (5p), ngược lại tính thời gian thay đổi kích thước)
-// Tổng dài: tổng dài cần chạy (mét) = tổng sl khách đặt / số con
+// Tổng dài: tổng dài cần chạy (mét) = (số lượng chạy * dài khổ) / số con
 // Tốc độ: tốc độ máy theo lớp giấy (mét/phút) -> lấy từ thông số máy
 // Hiệu suất: hiệu suất máy (%)
 //công thức phế liệu: totalLoss = flute.E + flute.B + flute.C + flute.E2 + haoPhi + knife + bottom;
@@ -25,7 +25,7 @@ const planningPaperRepository_1 = require("../../../repository/planning/planning
 const updateSortPlanning = async (updateIndex, transaction) => {
     const updates = updateIndex
         .filter((item) => item.sortPlanning)
-        .map((item) => planningHelper_1.planningHelper.updateDataModel({
+        .map((item) => crud_helper_repository_1.CrudHelper.updateData({
         model: planningPaper_1.PlanningPaper,
         data: { sortPlanning: item.sortPlanning },
         options: {
@@ -36,148 +36,175 @@ const updateSortPlanning = async (updateIndex, transaction) => {
     await Promise.all(updates);
 };
 exports.updateSortPlanning = updateSortPlanning;
-const calculateTimeRunning = async ({ plannings, machineInfo, machine, dayStart, timeStart, totalTimeWorking, isNewDay, transaction, }) => {
-    const updated = [];
-    let currentTime, currentDay, lastGhepKho;
-    if (isNewDay) {
-        currentDay = new Date(dayStart);
+const calculateTimeRunning = async ({ plannings, machineMap, machine, dayStart, timeStart, totalTimeWorking, transaction, }) => {
+    try {
+        const updated = [];
+        const currentDay = new Date(dayStart);
         const [hh, mm] = timeStart.split(":").map(Number);
-        currentTime = new Date(currentDay);
+        const currentTime = new Date(currentDay);
         currentTime.setHours(hh, mm, 0, 0);
-        lastGhepKho = null;
-    }
-    else {
-        // ✅ Xác định con trỏ bắt đầu
-        const feComplete = plannings
-            .filter((p) => p.status === "complete")
-            .sort((a, b) => new Date(b.dayStart).getTime() - new Date(a.dayStart).getTime())[0];
-        if (feComplete) {
-            const overflowRecord = feComplete.hasOverFlow
-                ? await planningHelper_1.planningHelper.getModelById({
-                    model: timeOverflowPlanning_1.timeOverflowPlanning,
-                    where: { planningId: feComplete.planningId },
-                    options: { transaction },
-                })
-                : null;
-            if (overflowRecord?.overflowTimeRunning && overflowRecord?.overflowDayStart) {
-                // Sử dụng overflow day + time làm con trỏ
-                currentDay = new Date(overflowRecord.overflowDayStart);
-                currentTime = combineDateAndHHMMSS(currentDay, overflowRecord.overflowTimeRunning);
-                lastGhepKho = feComplete.ghepKho ?? null;
-            }
-            else if (feComplete.dayStart && feComplete.timeRunning) {
-                // fallback: nếu không tìm thấy record overflow trong DB, dùng dayStart/timeRunning từ FE
-                currentDay = new Date(feComplete.dayStart);
-                currentTime = combineDateAndHHMMSS(currentDay, feComplete.timeRunning);
-                lastGhepKho = feComplete.ghepKho ?? null;
-            }
-            else {
-                // fallback cuối cùng: dùng logic cũ lấy cursor từ DB
-                const initCursor = await getInitialCursor({ machine, dayStart, timeStart, transaction });
-                ({ currentTime, currentDay, lastGhepKho } = initCursor);
-            }
+        let lastGhepKho = null;
+        let loopTime = currentTime;
+        let loopDay = currentDay;
+        // Tính từng đơn
+        for (let i = 0; i < plannings.length; i++) {
+            const planning = plannings[i];
+            if (planning.status === "complete")
+                continue;
+            const data = await calculateTimeForOnePlanning({
+                planning,
+                machine,
+                machineMap,
+                currentTime: loopTime,
+                currentDay: loopDay,
+                timeStart,
+                totalTimeWorking,
+                lastGhepKho,
+                transaction,
+                isFirst: i === 0,
+            });
+            loopTime = data.nextTime;
+            loopDay = data.nextDay;
+            lastGhepKho = data.ghepKho ?? null;
+            updated.push(data.result);
         }
-        else {
-            const initCursor = await getInitialCursor({ machine, dayStart, timeStart, transaction });
-            ({ currentTime, currentDay, lastGhepKho } = initCursor);
-        }
+        return updated;
     }
-    // ✅ Tính từng đơn
-    for (let i = 0; i < plannings.length; i++) {
-        const planning = plannings[i];
-        if (planning.status === "complete")
-            continue;
-        const data = await calculateTimeForOnePlanning({
-            planning,
-            machine,
-            machineInfo,
-            currentTime,
-            currentDay,
-            timeStart,
-            totalTimeWorking,
-            lastGhepKho,
-            transaction,
-            isFirst: i === 0,
-        });
-        currentTime = data.nextTime;
-        currentDay = data.nextDay;
-        lastGhepKho = data.ghepKho;
-        updated.push(data.result);
+    catch (error) {
+        if (error instanceof appError_1.AppError)
+            throw error;
     }
-    return updated;
 };
 exports.calculateTimeRunning = calculateTimeRunning;
 // HÀM CHÍNH: Tính toán thời gian
-const calculateTimeForOnePlanning = async ({ planning, machine, machineInfo, currentTime, currentDay, timeStart, totalTimeWorking, lastGhepKho, transaction, isFirst, }) => {
-    const { planningId, runningPlan, ghepKho, Order } = planning;
-    const numberChild = Order?.numberChild || 1;
-    const flute = Order?.flute || "3B";
-    const speed = getSpeed(flute, machine, machineInfo);
-    const performance = machineInfo.machinePerformance;
-    const totalLength = runningPlan / numberChild;
-    const isSameSize = lastGhepKho && ghepKho === lastGhepKho;
-    const changeTime = machine === "Máy Quấn Cuồn"
-        ? machineInfo.timeChangeSize
-        : isFirst
-            ? machineInfo.timeChangeSize
-            : isSameSize
-                ? machineInfo.timeChangeSameSize
-                : machineInfo.timeChangeSize;
-    const productionMinutes = Math.ceil((changeTime + totalLength / speed) / (performance / 100));
-    // --- BƯỚC 1: Tính thời gian kết thúc (Tạm thời) ---
-    let tempEnd = new Date(currentTime);
-    tempEnd.setMinutes(tempEnd.getMinutes() + productionMinutes);
-    let extraBreak = isDuringBreak(currentTime, tempEnd);
-    let predictedEnd = new Date(currentTime);
-    predictedEnd.setMinutes(predictedEnd.getMinutes() + productionMinutes + extraBreak);
-    // --- BƯỚC 2: Kiểm tra nhảy ca & Tràn giờ ---
-    const [h, m] = timeStart.split(":").map(Number);
-    let startOfWork = new Date(currentTime);
-    startOfWork.setHours(h, m, 0, 0);
-    // Đảm bảo startOfWork bám đúng ca
-    if (currentTime < startOfWork) {
-        startOfWork.setDate(startOfWork.getDate() - 1);
-    }
-    let endOfWork = new Date(startOfWork);
-    endOfWork.setHours(startOfWork.getHours() + totalTimeWorking);
-    let hasOverFlow = false;
-    if (totalTimeWorking < 24) {
-        // Nếu qua mốc kết thúc ca -> Bắt đầu ngày mới
-        if (currentTime >= endOfWork) {
-            startOfWork.setDate(startOfWork.getDate() + 1);
-            endOfWork.setDate(endOfWork.getDate() + 1);
-            currentTime = new Date(startOfWork);
-            // Tính lại breakTime cho mốc giờ bắt đầu ca mới
-            let newTempEnd = new Date(currentTime);
-            newTempEnd.setMinutes(newTempEnd.getMinutes() + productionMinutes);
-            extraBreak = isDuringBreak(currentTime, newTempEnd);
-            predictedEnd = new Date(currentTime);
-            predictedEnd.setMinutes(predictedEnd.getMinutes() + productionMinutes + extraBreak);
+const calculateTimeForOnePlanning = async ({ planning, machine, machineMap, currentTime, currentDay, timeStart, totalTimeWorking, lastGhepKho, transaction, isFirst, }) => {
+    try {
+        const { planningId, runningPlan, ghepKho, Order } = planning;
+        const dvt = planning.Order?.dvt;
+        const isKgOrCuon = dvt === "Kg" || dvt === "Cuộn";
+        const isCuon = dvt === "Cuộn";
+        // Nếu là đơn vị "Cuộn", ép hệ thống mượn cấu hình máy của hệ "Kg"
+        const activeMachine = isKgOrCuon ? machineMap.kg : machineMap.m2;
+        // console.log(`dvt: ${planning.Order?.dvt}`);
+        // console.log(`active machine: ${JSON.stringify(activeMachine)}`);
+        // console.log(`==========================================`);
+        if (!activeMachine) {
+            throw appError_1.AppError.BadRequest(`Thiếu cấu hình đơn vị tính cho máy ${machine}`);
         }
-        hasOverFlow = predictedEnd > endOfWork;
-    }
-    // --- BƯỚC 3: Chốt "Ngày sản xuất" (Dựa theo ngày kết thúc thực tế) ---
-    currentDay = new Date(predictedEnd);
-    currentDay.setHours(0, 0, 0, 0);
-    const result = await handleOverflow({
-        hasOverFlow,
-        predictedEnd,
-        endOfWork,
-        planningId,
-        currentDay,
-        timeStart,
-        transaction,
-    });
-    await planningHelper_1.planningHelper.updateDataModel({
-        model: planningPaper_1.PlanningPaper,
-        data: {
-            dayStart: new Date(result.dayStart), // result.dayStart đã an toàn khỏi lỗi Timezone
-            timeRunning: result.timeRunning,
+        //total length
+        const lengthPaper = planning.lengthPaperPlanning / 100;
+        const numberChild = Order?.numberChild || 1;
+        let totalLength = 0;
+        if (isKgOrCuon) {
+            if (isCuon) {
+                // Nếu là đơn vị Cuộn, quy đổi số lượng chạy (runningPlan) của lượt này ra Kg
+                // Lưu ý: Ở đây dùng runningPlan vì nó là sản lượng thực tế đang tính toán cho block này.
+                // Nếu bác muốn lấy hẳn gốc từ Order thì đổi thành: (Order?.quantityManufacture || 0) * 12
+                totalLength = runningPlan * 12;
+            }
+            else {
+                totalLength = runningPlan;
+            }
+        }
+        else {
+            totalLength = (runningPlan * lengthPaper) / numberChild;
+        }
+        //get speed
+        const flute = Order?.flute || "3B";
+        const speed = getSpeed(flute, machine, activeMachine);
+        const performance = activeMachine.machinePerformance;
+        //check same size
+        const isSameSize = lastGhepKho && ghepKho === lastGhepKho;
+        let changeTime = 0;
+        if (machine === "Máy Quấn Cuồn") {
+            changeTime = activeMachine.timeChangeSize;
+        }
+        else if (isFirst) {
+            changeTime = activeMachine.timeChangeSize;
+        }
+        else {
+            // Áp dụng logic cùng khổ/khác khổ cho cả đơn mét và đơn kg
+            changeTime = isSameSize ? activeMachine.timeChangeSameSize : activeMachine.timeChangeSize;
+        }
+        const productionMinutes = Math.ceil((changeTime + totalLength / speed) / (performance / 100));
+        // --- Tính thời gian kết thúc ---
+        let tempEnd = new Date(currentTime);
+        tempEnd.setMinutes(tempEnd.getMinutes() + productionMinutes);
+        let extraBreak = isDuringBreak(currentTime, tempEnd);
+        let predictedEnd = new Date(currentTime);
+        predictedEnd.setMinutes(predictedEnd.getMinutes() + productionMinutes + extraBreak);
+        // --- Kiểm tra nhảy ca & Tràn giờ ---
+        const [h, m] = timeStart.split(":").map(Number);
+        // Tìm mốc bắt đầu của "Ngày sản xuất" chứa currentTime
+        let startOfWork = new Date(currentTime);
+        startOfWork.setHours(h, m, 0, 0);
+        if (currentTime < startOfWork) {
+            startOfWork.setDate(startOfWork.getDate() - 1);
+        }
+        // Mốc kết thúc của "Ngày sản xuất" đó
+        let endOfWork = new Date(startOfWork);
+        endOfWork.setHours(startOfWork.getHours() + totalTimeWorking);
+        let hasOverFlow = false;
+        if (totalTimeWorking >= 24) {
+            hasOverFlow = false;
+            /**
+             * Nếu giờ kết thúc (predictedEnd) là 05:00 sáng (hôm sau) mà timeStart là 06:00
+             * thì cái 05:00 đó vẫn thuộc về "Ngày sản xuất" của hôm trước.
+             */
+            let productionDate = new Date(predictedEnd);
+            let pivotPoint = new Date(predictedEnd);
+            pivotPoint.setHours(h, m, 0, 0);
+            // Nếu chưa chạm đến mốc timeStart => vẫn thuộc về chu kỳ sản xuất của ngày trước.
+            if (predictedEnd < pivotPoint) {
+                productionDate.setDate(productionDate.getDate() - 1);
+            }
+            currentDay = productionDate;
+            currentDay.setHours(0, 0, 0, 0);
+        }
+        else {
+            // Nếu qua mốc kết thúc ca -> Bắt đầu ngày mới
+            if (currentTime >= endOfWork) {
+                startOfWork.setDate(startOfWork.getDate() + 1);
+                endOfWork.setDate(endOfWork.getDate() + 1);
+                currentTime = new Date(startOfWork);
+                // Tính lại breakTime cho mốc giờ bắt đầu ca mới
+                let newTempEnd = new Date(currentTime);
+                newTempEnd.setMinutes(newTempEnd.getMinutes() + productionMinutes);
+                extraBreak = isDuringBreak(currentTime, newTempEnd);
+                predictedEnd = new Date(currentTime);
+                predictedEnd.setMinutes(predictedEnd.getMinutes() + productionMinutes + extraBreak);
+            }
+            hasOverFlow = predictedEnd > endOfWork;
+            currentDay = new Date(predictedEnd);
+            currentDay.setHours(0, 0, 0, 0);
+        }
+        //xử lý tràn giờ
+        const result = await handleOverflow({
             hasOverFlow,
-        },
-        options: { where: { planningId }, transaction },
-    });
-    return { result, nextTime: result.nextTime, nextDay: result.nextDay, ghepKho };
+            predictedEnd,
+            endOfWork,
+            planningId,
+            currentDay,
+            timeStart,
+            transaction,
+        });
+        await crud_helper_repository_1.CrudHelper.updateData({
+            model: planningPaper_1.PlanningPaper,
+            data: {
+                dayStart: new Date(result.dayStart), // result.dayStart đã an toàn khỏi lỗi Timezone
+                timeRunning: result.timeRunning,
+                timeStart: timeStart,
+                hasOverFlow,
+            },
+            options: { where: { planningId }, transaction },
+        });
+        return { result, nextTime: result.nextTime, nextDay: result.nextDay, ghepKho };
+    }
+    catch (error) {
+        if (error instanceof appError_1.AppError)
+            throw error;
+        throw appError_1.AppError.ServerError();
+    }
 };
 //==================== HỖ TRỢ ====================//
 // Lấy ngày YYYY-MM-DD theo giờ Local (Việt Nam) để tránh lỗi UTC
@@ -187,7 +214,7 @@ const getLocalYYYYMMDD = (d) => {
 };
 const handleOverflow = async ({ hasOverFlow, predictedEnd, endOfWork, planningId, currentDay, timeStart, transaction, }) => {
     if (!hasOverFlow) {
-        await planningHelper_1.planningHelper.deleteModelData({
+        await crud_helper_repository_1.CrudHelper.deleteData({
             model: timeOverflowPlanning_1.timeOverflowPlanning,
             where: { planningId },
             transaction,
@@ -209,12 +236,12 @@ const handleOverflow = async ({ hasOverFlow, predictedEnd, endOfWork, planningId
     startOverflow.setHours(h, m, 0, 0);
     const overflowEnd = new Date(startOverflow);
     overflowEnd.setMinutes(overflowEnd.getMinutes() + overflowMin);
-    await planningHelper_1.planningHelper.deleteModelData({
+    await crud_helper_repository_1.CrudHelper.deleteData({
         model: timeOverflowPlanning_1.timeOverflowPlanning,
         where: { planningId },
         transaction,
     });
-    await planningHelper_1.planningHelper.createData({
+    await crud_helper_repository_1.CrudHelper.createData({
         model: timeOverflowPlanning_1.timeOverflowPlanning,
         data: {
             planningId,
@@ -261,61 +288,8 @@ const isDuringBreak = (start, end) => {
         return end > s && start < e ? total + b.duration : total;
     }, 0);
 };
-const parseTime = (t) => {
-    const [h, m] = t.split(":").map(Number);
-    const d = new Date();
-    d.setHours(h, m, 0, 0);
-    return d;
-};
 const formatTime = (d) => {
     const pad = (n) => n.toString().padStart(2, "0");
     return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-};
-const combineDateAndHHMMSS = (dateObj, hhmmss) => {
-    const [h, m, s = 0] = hhmmss.split(":").map(Number);
-    const d = new Date(dateObj);
-    d.setHours(h, m, s, 0);
-    return d;
-};
-const getInitialCursor = async ({ machine, dayStart, timeStart, transaction, }) => {
-    const day = new Date(dayStart);
-    const dayStr = day.toISOString().split("T")[0];
-    // Bắt đầu với base = dayStart + timeStart
-    const baseTime = parseTime(timeStart);
-    baseTime.setFullYear(day.getFullYear(), day.getMonth(), day.getDate());
-    let currentTime = baseTime;
-    let currentDay = new Date(day);
-    let lastGhepKho = null;
-    // A) Kiểm tra đơn complete trong cùng ngày
-    const lastComplete = await planningHelper_1.planningHelper.getModelById({
-        model: planningPaper_1.PlanningPaper,
-        where: { chooseMachine: machine, status: "complete", dayStart: dayStr },
-        options: {
-            order: [["timeRunning", "DESC"]],
-            attributes: ["timeRunning", "ghepKho"],
-            transaction,
-        },
-    });
-    if (lastComplete?.timeRunning) {
-        const completeTime = combineDateAndHHMMSS(currentDay, lastComplete.timeRunning);
-        if (completeTime > currentTime) {
-            currentTime = completeTime;
-            lastGhepKho = lastComplete.ghepKho ?? lastGhepKho;
-        }
-    }
-    // B) Kiểm tra overflow mới nhất (ưu tiên cao hơn)
-    const lastOverflow = await planningPaperRepository_1.planningPaperRepository.getTimeOverflowPaper(machine, transaction);
-    if (lastOverflow?.overflowTimeRunning) {
-        const overflowDay = new Date(lastOverflow.overflowDayStart ?? "");
-        const overflowTime = combineDateAndHHMMSS(overflowDay, lastOverflow.overflowTimeRunning);
-        // Nếu overflow mới hơn currentTime → cập nhật cursor
-        if (overflowTime > currentTime) {
-            currentTime = overflowTime;
-            currentDay = overflowDay;
-            lastGhepKho = lastOverflow.PlanningPaper?.ghepKho ?? lastGhepKho;
-        }
-    }
-    // C) Trả về con trỏ cuối cùng
-    return { currentTime, currentDay, lastGhepKho };
 };
 //# sourceMappingURL=timeRunningPaper.js.map

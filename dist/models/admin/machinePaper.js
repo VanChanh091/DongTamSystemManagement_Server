@@ -24,7 +24,8 @@ function initMachinePaperModel(sequelize) {
         speed7Layer: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
         paperRollSpeed: { type: sequelize_1.DataTypes.INTEGER, allowNull: false }, //tốc độ quấn cuồn
         machinePerformance: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false }, //hiệu suất hoạt động
-    }, { sequelize, tableName: "MachinePapers", timestamps: true });
+        type: { type: sequelize_1.DataTypes.ENUM("M2", "Kg"), allowNull: false, defaultValue: "M2" }, //loại dvt
+    }, { sequelize, tableName: "machine_papers", timestamps: true });
     return MachinePaper;
 }
 //# sourceMappingURL=machinePaper.js.map

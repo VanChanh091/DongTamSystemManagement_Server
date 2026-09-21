@@ -18,8 +18,8 @@ exports.adminCriteriaService = {
     },
     createNewCriteria: async (data) => {
         try {
-            return await (0, transactionHelper_1.runInTransaction)(async (transcation) => {
-                const newCriteria = await qcCriteria_1.QcCriteria.create({ ...data }, { transaction: transcation });
+            return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
+                const newCriteria = await qcCriteria_1.QcCriteria.create({ ...data }, { transaction: transaction });
                 return { message: "Create Qc Criteria successfully", data: newCriteria };
             });
         }
@@ -37,7 +37,7 @@ exports.adminCriteriaService = {
                 if (!existingCriteria) {
                     throw appError_1.AppError.NotFound("QcCriteria not found", "CRITERIA_NOT_FOUND");
                 }
-                await existingCriteria.update({ ...data });
+                await existingCriteria.update({ ...data }, { transaction });
                 return { message: "update Qc Criteria successfully" };
             });
         }

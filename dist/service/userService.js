@@ -4,11 +4,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.userService = void 0;
-const redis_connect_1 = __importDefault(require("../assets/configs/connect/redis.connect"));
-const appError_1 = require("../utils/appError");
 const bcrypt_1 = __importDefault(require("bcrypt"));
-const converToWebp_1 = require("../utils/image/converToWebp");
+const appError_1 = require("../utils/appError");
 const userRepository_1 = require("../repository/userRepository");
+const redis_connect_1 = __importDefault(require("../assets/configs/connect/redis.connect"));
+const converToWebp_1 = require("../utils/image/converToWebp");
 exports.userService = {
     updateProfile: async ({ req, userId, newPassword, userUpdated, }) => {
         try {

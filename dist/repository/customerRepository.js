@@ -8,12 +8,12 @@ exports.customerRepository = {
     //get all
     findAllCustomer: async () => {
         return await customer_1.Customer.findAll({
-            attributes: ["customerId", "customerName", "companyName"],
+            attributes: ["customerName", "phone"],
         });
     },
     //get by field
-    findCustomerByPage: async ({ page, pageSize, whereCondition, }) => {
-        const query = {
+    buildCustomersOptions: ({ page, pageSize, whereCondition, isExport = false, }) => {
+        const queryOptions = {
             where: whereCondition,
             attributes: { exclude: ["updatedAt"] },
             include: [
@@ -23,13 +23,17 @@ exports.customerRepository = {
                     attributes: { exclude: ["createdAt", "updatedAt"] },
                 },
             ],
-            order: [["customerSeq", "ASC"]],
         };
         if (page && pageSize) {
-            query.offset = (page - 1) * pageSize;
-            query.limit = pageSize;
+            queryOptions.offset = (page - 1) * pageSize;
+            queryOptions.limit = pageSize;
+            queryOptions.order = [["customerSeq", "DESC"]];
         }
-        return await customer_1.Customer.findAndCountAll(query);
+        if (isExport) {
+            queryOptions.raw = true;
+            queryOptions.nest = true;
+        }
+        return queryOptions;
     },
     findByIdOrMst: async (sanitizedPrefix, mst, transaction) => {
         return await customer_1.Customer.findAll({
@@ -40,11 +44,6 @@ exports.customerRepository = {
             transaction,
         });
     },
-    //create
-    createCustomer: async (data, transaction) => {
-        return await customer_1.Customer.create(data, { transaction });
-    },
-    //update
     findCustomerByPk: async ({ customerId, options = {}, }) => {
         const includePayment = options.includePayment
             ? [
@@ -61,28 +60,29 @@ exports.customerRepository = {
             transaction: options.transaction,
         });
     },
-    updateCustomer: async (customer, customerData, transaction) => {
-        return await customer.update(customerData, { transaction });
-    },
-    //find customer for meilisearch
-    findCustomerForMeili: async (customerId, transaction) => {
-        return await customer_1.Customer.findByPk(customerId, {
-            attributes: ["customerId", "customerName", "companyName", "cskh", "phone", "customerSeq"],
-            transaction,
-        });
-    },
-    findCusPaymentByPk: async (customerId, transaction) => {
-        return await customer_1.Customer.findByPk(customerId, {
-            attributes: ["customerId"],
-            include: [
-                {
-                    model: customerPayment_1.CustomerPayment,
-                    as: "payment",
-                    attributes: ["cusPaymentId", "timePayment"],
-                },
+    //------------------------MEILISEARCH-----------------------------
+    buildMeiliCustomerOptions: ({ whereCondition, transaction, }) => {
+        const queryOptions = {
+            where: whereCondition,
+            attributes: [
+                "customerId",
+                "customerName",
+                "companyName",
+                "cskh",
+                "phone",
+                "createdAt",
+                "customerSeq",
             ],
+            order: [["customerSeq", "ASC"]],
             transaction,
-        });
+        };
+        return queryOptions;
+    },
+    syncCustomerForMeili: async (customerId, transaction) => {
+        return await customer_1.Customer.findOne(exports.customerRepository.buildMeiliCustomerOptions({ whereCondition: { customerId }, transaction }));
+    },
+    syncAllCustomersForMeili: async () => {
+        return await customer_1.Customer.findAll(exports.customerRepository.buildMeiliCustomerOptions({}));
     },
 };
 //# sourceMappingURL=customerRepository.js.map

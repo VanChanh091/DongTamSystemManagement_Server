@@ -1,4 +1,4 @@
-import { Op } from "sequelize";
+import { col, fn, Op } from "sequelize";
 import { Order } from "../../models/order/order";
 import { Customer } from "../../models/customer/customer";
 import { OrderApproved } from "../../models/order/orderApproved";
@@ -12,6 +12,7 @@ import { ReportPlanningPaper } from "../../models/report/reportPlanningPaper";
 import { QcInspectionBox } from "../../models/qualityControl/qcInspection/qcInspectionBox";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
 import { ReportPlanningBox } from "../../models/report/reportPlanningBox";
+import { PaperRequirements } from "../../models/planning/requirement/paperRequirements";
 
 export const syntheticReportRepository = {
   //====================================REVENUE DAY========================================
@@ -172,20 +173,23 @@ export const syntheticReportRepository = {
     paperWhere,
     startDate,
     endDate,
+    hasErrorOnly = false,
   }: {
     paperWhere: any;
     startDate: string | Date;
     endDate: string | Date;
+    hasErrorOnly?: boolean;
   }) => {
     return await QcInspectionPaper.findAll({
       attributes: ["timeInspection", "checkList", "planningId"],
-      where: { timeInspection: { [Op.between]: [startDate, endDate] } },
+      where: {
+        timeInspection: { [Op.between]: [startDate, endDate] },
+      },
       include: [
         {
           model: PlanningPaper,
-          as: "PlanningPaper",
           attributes: ["chooseMachine", "shiftManagement"],
-          where: paperWhere,
+          where: paperWhere ?? {},
           required: true,
         },
       ],
@@ -220,30 +224,72 @@ export const syntheticReportRepository = {
     });
   },
 
-  getPlanningPaper: async ({
-    reportStartDate,
-    reportEndDate,
+  getReportPlanningPaper: async ({
+    startDate,
+    endDate,
+    paperWhere,
+    attributes,
   }: {
-    reportStartDate: string | Date;
-    reportEndDate: string | Date;
+    startDate: string | Date;
+    endDate: string | Date;
+    paperWhere?: any;
+    attributes?: string[];
   }) => {
-    return await ReportPlanningPaper.findAll({
-      attributes: ["planningId", "shiftProduction", "shiftManagement"],
-      where: { dayReport: { [Op.between]: [reportStartDate, reportEndDate] } },
+    const defaultAttributes = [
+      "planningId",
+      "shiftProduction",
+      "shiftManagement",
+      "dayReport",
+      "qtyProduced",
+    ];
+
+    const options: any = {
+      attributes: attributes ?? defaultAttributes,
+      where: {
+        dayReport: { [Op.between]: [startDate, endDate] },
+      },
+      raw: true,
+    };
+
+    if (paperWhere) {
+      options.include = [
+        {
+          model: PlanningPaper,
+          attributes: ["chooseMachine"],
+          where: paperWhere,
+          required: true,
+        },
+      ];
+      options.nest = true;
+    }
+
+    return await ReportPlanningPaper.findAll(options);
+  },
+
+  getReportPlanningBox: async ({
+    startDate,
+    endDate,
+  }: {
+    startDate: string | Date;
+    endDate: string | Date;
+  }) => {
+    return await ReportPlanningBox.findAll({
+      attributes: ["planningBoxId", "dayReport", "machine", "shiftManagement", "qtyProduced"],
+      where: { dayReport: { [Op.between]: [startDate, endDate] } },
       raw: true,
     });
   },
 
-  getPlanningBoxTime: async ({
-    reportStartDate,
-    reportEndDate,
-  }: {
-    reportStartDate: string | Date;
-    reportEndDate: string | Date;
-  }) => {
-    return await ReportPlanningBox.findAll({
-      attributes: ["planningBoxId", "dayReport", "machine", "shiftManagement"],
-      where: { dayReport: { [Op.between]: [reportStartDate, reportEndDate] } },
+  getPaperRequirement: async (planningIds?: number[]) => {
+    const whereCondition: any = {};
+    if (planningIds && planningIds.length > 0) {
+      whereCondition.planningId = { [Op.in]: planningIds };
+    }
+
+    return await PaperRequirements.findAll({
+      attributes: ["planningId", [fn("SUM", col("totalRequiredQty")), "totalRequiredQty"]],
+      where: whereCondition,
+      group: ["planningId"],
       raw: true,
     });
   },

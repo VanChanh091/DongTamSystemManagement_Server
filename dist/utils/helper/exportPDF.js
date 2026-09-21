@@ -4,77 +4,126 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.exportWarehouse = exportWarehouse;
+exports.formatDimension = formatDimension;
+const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const pdfkit_1 = __importDefault(require("pdfkit"));
 const appError_1 = require("../appError");
 const warehouseRepository_1 = require("../../repository/warehouseRepository");
-const FONT_REGULAR = path_1.default.join(process.cwd(), "assest/fonts/NotoSerif-Regular.ttf");
-const FONT_BOLD = path_1.default.join(process.cwd(), "assest/fonts/NotoSerif-Bold.ttf");
-const FONT_ITALIC = path_1.default.join(process.cwd(), "assest/fonts/NotoSerif-Italic.ttf");
-const FONT_BOLD_ITALIC = path_1.default.join(process.cwd(), "assest/fonts/NotoSerif-BoldItalic.ttf");
-async function exportWarehouse(res, outboundId) {
+const dayjs_config_1 = require("../../assets/configs/dayjs/dayjs.config");
+let LOGO_BUFFER;
+let FONT_REGULAR_BUFFER;
+let FONT_BOLD_BUFFER;
+let FONT_ITALIC_BUFFER;
+let FONT_BOLD_ITALIC_BUFFER;
+const header_1 = 13;
+const header_2 = 10;
+const normal = 9;
+const page = { size: "A4", layout: "portrait", margin: 20 };
+try {
+    // 1. Load Logo
+    LOGO_BUFFER = fs_1.default.readFileSync(path_1.default.join(process.cwd(), "assets/images/logoDT.jpg"));
+    // 2. Load toàn bộ Fonts vào RAM
+    FONT_REGULAR_BUFFER = fs_1.default.readFileSync(path_1.default.join(process.cwd(), "assets/fonts/NotoSerif-Regular.ttf"));
+    FONT_BOLD_BUFFER = fs_1.default.readFileSync(path_1.default.join(process.cwd(), "assets/fonts/NotoSerif-Bold.ttf"));
+    FONT_ITALIC_BUFFER = fs_1.default.readFileSync(path_1.default.join(process.cwd(), "assets/fonts/NotoSerif-Italic.ttf"));
+    FONT_BOLD_ITALIC_BUFFER = fs_1.default.readFileSync(path_1.default.join(process.cwd(), "assets/fonts/NotoSerif-BoldItalic.ttf"));
+    // console.log("✅ Tất cả Assets (Logo & Fonts) đã được nạp vào RAM.");
+}
+catch (error) {
+    console.error("❌ Không tìm thấy file logo tại đường dẫn:", error);
+}
+async function exportWarehouse(res, outboundId, hasMoney) {
     const outbound = await warehouseRepository_1.warehouseRepository.findOneForExportPDF(outboundId);
     if (!outbound)
         throw appError_1.AppError.NotFound("Outbound not found", "OUTBOUND_NOT_FOUND");
+    // console.log(`dateOutbound: ${outbound.dateOutbound}`);
     return buildWarehouseSalePDF({
         res,
         outbound,
+        hasMoney,
     });
 }
-function buildWarehouseSalePDF({ res, outbound }) {
+function buildWarehouseSalePDF({ res, outbound, hasMoney, }) {
     const now = new Date();
     const dateStr = now.toISOString().split("T")[0];
     const fileName = `phieu_xuat_kho_${dateStr}_${outbound.outboundId}.pdf`;
-    // ✅ HEADER GIỐNG EXCEL
+    // HEADER
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
-    const doc = new pdfkit_1.default({ size: "A4", margin: 40, font: FONT_REGULAR });
+    const doc = new pdfkit_1.default(page);
+    // Đăng ký các font từ Buffer với tên định danh
+    doc.registerFont("MainRegular", FONT_REGULAR_BUFFER);
+    doc.registerFont("MainBold", FONT_BOLD_BUFFER);
+    doc.registerFont("MainItalic", FONT_ITALIC_BUFFER);
+    doc.registerFont("MainBoldItalic", FONT_BOLD_ITALIC_BUFFER);
+    //thiết lập font mặc định
+    doc.font("MainRegular");
     doc.pipe(res);
     /* ===== HEADER ===== */
+    const marginX = 20;
+    const currentY = doc.y;
+    const pageWidth = doc.page.width;
+    const availableWidth = pageWidth - marginX * 2;
+    const logoY = currentY - 10; // Điều chỉnh để căn giữa logo với dòng text bên cạnh
+    doc.image(LOGO_BUFFER, marginX, logoY, { width: 60 });
     doc
-        .font(FONT_REGULAR)
-        .fontSize(12)
+        .font("MainRegular")
+        .fontSize(normal)
         .text("CHI NHÁNH CÔNG TY CỔ PHẦN BAO BÌ GIẤY ĐỒNG TÂM\n" +
         "Ấp Rừng Sến, Xã Đức Lập, Tỉnh Tây Ninh, Việt Nam", {
-        align: "left",
+        width: availableWidth,
+        align: "right",
         lineGap: 4,
     });
-    doc.moveDown(1);
-    doc.font(FONT_BOLD).fontSize(16).text("PHIẾU XUẤT KHO BÁN HÀNG", { align: "center" });
+    doc.moveDown(0.6);
+    // console.log(`dateFormat: ${formatDate(outbound.dateOutbound)}`);
+    doc.font("MainBold").fontSize(header_1).text("PHIẾU XUẤT KHO BÁN HÀNG", { align: "center" });
     doc
-        .font(FONT_BOLD_ITALIC)
-        .fontSize(11)
+        .font("MainBoldItalic")
+        .fontSize(normal)
         .text(`Ngày ${formatDate(outbound.dateOutbound)}`, { align: "center" });
-    doc.font(FONT_BOLD).fontSize(11).text(`Số: ${outbound.outboundSlipCode}`, { align: "center" });
+    doc
+        .font("MainBold")
+        .fontSize(normal)
+        .text(`Số: ${outbound.outboundSlipCode}`, { align: "center" });
+    doc.moveDown(0.6);
     /* ===== CUSTOMER INFO ===== */
     const firstDetail = outbound.detail?.[0];
     if (!firstDetail) {
-        throw new Error("Outbound has no detail");
+        throw appError_1.AppError.BadRequest("Outbound has no detail", "OUTBOUND_NO_DETAIL");
     }
     const order = firstDetail.Order;
     const customer = order.Customer;
-    const saleUser = order.User;
-    doc.moveDown(1);
-    doc.font(FONT_REGULAR).fontSize(11).lineGap(6);
-    doc.text(`Người mua: ${customer.customerName}`);
+    const infoY = doc.y + 10;
+    doc.font("MainRegular").fontSize(normal).lineGap(5);
+    doc.text(`Người mua: ${customer.customerName}`, marginX, infoY, { width: 250 });
+    doc.text(`Điện thoại: ${customer.phone} - MST: ${customer.mst || ".............."}`, marginX, infoY, {
+        width: availableWidth,
+        align: "right",
+    });
+    doc.x = marginX;
+    doc.y = infoY + 18;
     doc.text(`Tên khách hàng: ${customer.companyName}`);
     doc.text(`Địa chỉ: ${customer.companyAddress}`);
-    doc.text(`Điện thoại: ${customer.phone}`);
-    doc.text(`Mã số thuế: ${customer.mst}`);
     doc.text(`Diễn giải: Bán hàng ${customer.companyName}`);
-    doc.text(`Nhân viên bán hàng: ${saleUser.fullName}`);
+    doc.moveDown(0.5);
     /* ===== TABLE ===== */
-    doc.moveDown(1);
-    drawItemTable(doc, outbound);
+    drawItemTable(doc, outbound, hasMoney);
     // ===== SỐ TIỀN BẰNG CHỮ =====
-    const amountInWords = numberToVietnamese(outbound.totalPricePayment ?? 0);
+    const amountInWords = hasMoney ? numberToVietnamese(outbound.totalPricePayment ?? 0) : "";
     const leftX = 40;
-    const rightX = doc.page.width - 40;
-    doc.font(FONT_REGULAR).fontSize(11);
-    doc.text("Số tiền viết bằng chữ:", leftX, doc.y).fontSize(11);
+    const rightX = doc.page.width - 45;
+    doc.font("MainRegular").fontSize(normal);
+    if (hasMoney) {
+        doc.text("Số tiền viết bằng chữ:", leftX, doc.y).fontSize(normal);
+    }
+    else {
+        doc.moveDown(0.5);
+    }
     doc
-        .font(FONT_BOLD_ITALIC)
-        .fontSize(11)
+        .font("MainBoldItalic")
+        .fontSize(normal)
         .text(amountInWords, leftX + 120, doc.y - 21, {
         width: rightX - leftX - 140,
     });
@@ -82,9 +131,9 @@ function buildWarehouseSalePDF({ res, outbound }) {
     drawSignArea(doc);
     doc.end();
 }
-function drawTableRow({ doc, y, row, colX, colW, tableLeft, tableRight, isHeader = false, bold = false, }) {
-    doc.font(bold ? FONT_BOLD : FONT_REGULAR).fontSize(10);
-    const CELL_PADDING_X = 5;
+function drawTableRow({ doc, y, row, colX, colW, tableLeft, tableRight, isHeader = false, bold = false, colIds, }) {
+    doc.font(bold ? "MainBold" : "MainRegular").fontSize(bold ? header_2 : normal);
+    const CELL_PADDING_X = 4; // Khoảng cách đệm trái phải
     const CELL_PADDING_Y = 10; // Khoảng cách đệm trên dưới
     let maxHeight = 0;
     const heights = [];
@@ -107,13 +156,21 @@ function drawTableRow({ doc, y, row, colX, colW, tableLeft, tableRight, isHeader
             align = "center";
         }
         else {
-            // Cột 0(STT), 3(ĐVT) căn giữa. Cột 4,5,6 (Số lượng, giá, tiền) căn phải. Còn lại căn trái.
-            if (i === 0 || i === 3)
-                align = "center";
-            else if (i >= 4)
-                align = "right";
-            else
-                align = "left";
+            const colId = colIds?.[i];
+            if (colId === "stt") {
+                align = "center"; // Cột STT luôn căn giữa
+            }
+            else {
+                const isNumeric = (val) => {
+                    if (typeof val === "number")
+                        return true;
+                    if (typeof val !== "string")
+                        return false;
+                    const cleanStr = val.replace(/[.,\s]/g, "");
+                    return cleanStr !== "" && !isNaN(Number(cleanStr));
+                };
+                align = isNumeric(text) ? "right" : "left";
+            }
         }
         // TẤT CẢ CÁC CỘT ĐỀU CĂN GIỮA THEO CHIỀU DỌC (Vertical Center)
         const textHeight = heights[i];
@@ -137,7 +194,7 @@ function drawTableRow({ doc, y, row, colX, colW, tableLeft, tableRight, isHeader
 function drawSummaryRow({ doc, y, label, value, tableLeft, amountColX, tableRight, alignLeft = false, }) {
     const rowH = 24;
     const paddingX = 6;
-    doc.font(FONT_REGULAR).fontSize(10);
+    doc.font("MainRegular").fontSize(normal);
     // label
     doc.text(label, tableLeft + paddingX, y + 6, {
         width: amountColX - tableLeft - paddingX * 2,
@@ -155,134 +212,219 @@ function drawSummaryRow({ doc, y, label, value, tableLeft, amountColX, tableRigh
         .stroke();
     return rowH;
 }
-function drawItemTable(doc, outbound) {
+function drawItemTable(doc, outbound, hasMoney) {
     const items = Array.isArray(outbound.detail)
         ? outbound.detail
         : outbound.detail
             ? [outbound.detail]
             : [];
-    const startY = doc.y;
-    const startX = 40;
-    const colW = [30, 85, 180, 40, 60, 55, 85];
-    const tableName = ["STT", "Mã Đơn hàng", "Tên Hàng", "ĐVT", "Số Lượng", "Đơn Giá", "Thành Tiền"];
+    const hasPoData = items.some((item) => item.Order?.orderIdCustomer && item.Order.orderIdCustomer.trim() !== "");
+    // --- GIỮ NGUYÊN LOGIC COLUMN CONFIG CỦA ÔNG ---
+    let columnConfigs = [
+        { id: "stt", label: "STT", ratio: 6 },
+        { id: "po", label: "Số PO", ratio: 13 },
+        { id: "name", label: "Tên Sản Phẩm", ratio: 24 },
+        { id: "qc", label: "Quy Cách TT", ratio: 13 },
+        { id: "dvt", label: "ĐVT", ratio: 10 },
+        { id: "qty", label: "Số Lượng", ratio: 9 },
+        { id: "price", label: "Đơn Giá", ratio: 9 },
+        { id: "total", label: "Thành Tiền", ratio: 16 },
+    ];
+    if (!hasPoData) {
+        const poRatio = columnConfigs.find((c) => c.id === "po")?.ratio || 0;
+        columnConfigs = columnConfigs.filter((col) => col.id !== "po");
+        const fluidCols = columnConfigs.filter((col) => col.id !== "stt");
+        const totalFluidRatio = fluidCols.reduce((sum, col) => sum + col.ratio, 0);
+        columnConfigs = columnConfigs.map((col) => {
+            if (col.id === "stt")
+                return col;
+            return { ...col, ratio: col.ratio + (col.ratio / totalFluidRatio) * poRatio };
+        });
+    }
+    const marginX = 20;
+    const startX = marginX;
+    const availableWidth = doc.page.width - marginX * 2;
+    const tableName = columnConfigs.map((c) => c.label);
+    const colW = columnConfigs.map((c) => (c.ratio * availableWidth) / 100);
     const colX = colW.reduce((acc, w, i) => {
         acc.push(i === 0 ? startX : acc[i - 1] + colW[i - 1]);
         return acc;
     }, []);
     const tableLeft = startX;
     const tableRight = colX[colX.length - 1] + colW[colW.length - 1];
-    doc.lineWidth(0.8);
     const fmt = (v) => Number(v || 0).toLocaleString("vi-VN");
-    let currentY = startY;
-    // ===== HEADER =====
-    currentY += drawTableRow({
-        doc,
-        y: currentY,
-        row: tableName,
-        colX,
-        colW,
-        tableLeft,
-        tableRight,
-        isHeader: true,
-        bold: true,
-    });
-    // ===== BODY =====
-    items.forEach((item, index) => {
-        const order = item.Order;
-        const lengthCode = formatDimension(order.lengthPaperCustomer ?? 0);
-        const sizeCode = formatDimension(order.paperSizeCustomer ?? 0);
-        const qcBox = order.QC_box != "" && order.QC_box != null ? `(${order.QC_box})` : "";
-        const rowH = drawTableRow({
+    const pageBottom = doc.page.height - 40; // Ngưỡng để ngắt trang
+    let currentY = doc.y;
+    // --- HÀM VẼ HEADER (ĐỂ GỌI LẠI KHI QUA TRANG) ---
+    const drawHeader = (y) => {
+        // Kẻ đường ngang trên cùng của header
+        doc.moveTo(tableLeft, y).lineTo(tableRight, y).lineWidth(0.8).stroke();
+        const h = drawTableRow({
             doc,
-            y: currentY,
-            row: [
-                String(index + 1),
-                order.orderId,
-                `${order.Product.productName ?? ""}:${lengthCode}x${sizeCode} ${qcBox}`,
-                order.dvt,
-                fmt(item.outboundQty),
-                fmt(order.pricePaper),
-                fmt(item.totalPriceOutbound),
-            ],
+            y,
+            row: tableName,
             colX,
             colW,
             tableLeft,
             tableRight,
+            isHeader: true,
+            bold: true,
+            colIds: columnConfigs.map((c) => c.id),
+        });
+        // Kẻ các đường dọc cho header
+        [tableLeft, ...colX.slice(1), tableRight].forEach((x) => {
+            doc
+                .moveTo(x, y)
+                .lineTo(x, y + h)
+                .lineWidth(0.5)
+                .stroke();
+        });
+        return h;
+    };
+    // Vẽ Header lần đầu
+    currentY += drawHeader(currentY);
+    // --- VẼ BODY ---
+    doc.font("MainRegular").fontSize(normal);
+    items.forEach((item, index) => {
+        const order = item.Order;
+        const lengthCustomer = formatDimension(order.lengthPaperCustomer ?? 0);
+        const sizeCustomer = formatDimension(order.paperSizeCustomer ?? 0);
+        const lengthManufacture = formatDimension(order.lengthPaperManufacture ?? 0);
+        const sizeManufacture = formatDimension(order.paperSizeManufacture ?? 0);
+        const qcBox = order.QC_box ? `(${order.QC_box})` : "";
+        const fullRowData = {
+            stt: String(index + 1),
+            po: order.orderIdCustomer || "",
+            name: `${order.Product?.productName ?? ""}:${lengthManufacture}x${sizeManufacture} ${qcBox} ${item.isPromotion ? "(KM)" : ""}`,
+            qc: `${lengthCustomer}x${sizeCustomer}`,
+            dvt: order.dvt === "M2" || order.dvt === "Tấm Bao Khổ" ? "Tấm" : order.dvt,
+            qty: fmt(item.outboundQty),
+            price: hasMoney ? fmt(item.price) : "",
+            total: hasMoney ? fmt(item.totalPriceOutbound) : "",
+        };
+        const activeRow = columnConfigs.map((col) => fullRowData[col.id]);
+        // Tính toán chiều cao dòng trước khi vẽ để xem có tràn trang không
+        let maxHeight = 0;
+        activeRow.forEach((text, i) => {
+            const h = doc.heightOfString(String(text ?? ""), { width: colW[i] - 8, lineGap: 2 });
+            maxHeight = Math.max(maxHeight, h);
+        });
+        const rowH = Math.max(26, maxHeight + 10);
+        // NẾU TRÀN TRANG: Thêm trang mới, reset Y, vẽ lại Header
+        if (currentY + rowH > pageBottom) {
+            doc.addPage(page);
+            currentY = 20;
+            doc.font("MainRegular").fontSize(normal);
+            doc.moveTo(tableLeft, currentY).lineTo(tableRight, currentY).lineWidth(0.5).stroke();
+        }
+        // Vẽ nội dung dòng
+        drawTableRow({
+            doc,
+            y: currentY,
+            row: activeRow,
+            colX,
+            colW,
+            tableLeft,
+            tableRight,
+            colIds: columnConfigs.map((c) => c.id),
+        });
+        // Vẽ các đường kẻ dọc cho dòng này
+        [tableLeft, ...colX.slice(1), tableRight].forEach((x) => {
+            doc
+                .moveTo(x, currentY)
+                .lineTo(x, currentY + rowH)
+                .lineWidth(0.5)
+                .stroke();
         });
         currentY += rowH;
     });
-    //sumary
-    const summaryStartY = currentY;
+    // --- VẼ SUMMARY (CỘT TỔNG TIỀN) ---
+    const summaryHeight = 72; // Khoảng 3 dòng summary x 24
+    if (currentY + summaryHeight > pageBottom) {
+        doc.addPage(page);
+        currentY = 20;
+        doc.font("MainRegular").fontSize(normal);
+        doc.moveTo(tableLeft, currentY).lineTo(tableRight, currentY).lineWidth(0.5).stroke();
+    }
     const amountColX = colX[colW.length - 1];
+    // Cộng tiền hàng
     currentY += drawSummaryRow({
         doc,
         y: currentY,
         label: "Cộng tiền hàng:",
-        value: fmt(outbound.totalPriceOrder ?? 0),
+        value: hasMoney ? fmt(outbound.totalPriceOrder ?? 0) : "",
         tableLeft,
         amountColX,
         tableRight,
         alignLeft: true,
     });
-    const rowH = 24;
+    // Thuế suất & Tiền thuế
+    const rowH_VAT = 24;
     const paddingX = 6;
     const leftBlockWidth = amountColX - tableLeft;
     const col1 = leftBlockWidth * 0.4;
     const col2 = leftBlockWidth * 0.1;
     const col3 = leftBlockWidth * 0.3;
-    // Label Thuế suất
+    doc.font("MainRegular").fontSize(9);
     doc.text("Thuế suất GTGT:", tableLeft + paddingX, currentY + 6, {
         width: col1 - paddingX,
         align: "left",
     });
-    // Giá trị %
     doc.text(`${outbound.detail?.[0]?.Order?.vat ?? 0}%`, tableLeft + col1, currentY + 6, {
         width: col2 - paddingX,
         align: "right",
     });
-    // Label Tiền thuế
     doc.text("Tiền thuế GTGT:", tableLeft + col1 + col2 + paddingX, currentY + 6, {
         width: col3 - paddingX * 2,
         align: "left",
     });
-    // Giá trị tiền thuế (cột Thành tiền)
-    doc.text(fmt(outbound.totalPriceVAT ?? 0), amountColX + paddingX, currentY + 6, {
+    doc.text(hasMoney ? fmt(outbound.totalPriceVAT ?? 0) : "", amountColX + paddingX, currentY + 6, {
         width: tableRight - amountColX - paddingX * 2,
         align: "right",
     });
-    // Line ngang
     doc
-        .moveTo(tableLeft, currentY + rowH)
-        .lineTo(tableRight, currentY + rowH)
+        .moveTo(tableLeft, currentY + rowH_VAT)
+        .lineTo(tableRight, currentY + rowH_VAT)
         .stroke();
-    currentY += rowH;
+    // Kẻ dọc cho hàng VAT
+    doc
+        .moveTo(tableLeft, currentY)
+        .lineTo(tableLeft, currentY + rowH_VAT)
+        .stroke();
+    doc
+        .moveTo(amountColX, currentY)
+        .lineTo(amountColX, currentY + rowH_VAT)
+        .stroke();
+    doc
+        .moveTo(tableRight, currentY)
+        .lineTo(tableRight, currentY + rowH_VAT)
+        .stroke();
+    currentY += rowH_VAT;
+    // Tổng tiền thanh toán
     currentY += drawSummaryRow({
         doc,
         y: currentY,
         label: "Tổng tiền thanh toán:",
-        value: fmt(outbound.totalPricePayment ?? 0),
+        value: hasMoney ? fmt(outbound.totalPricePayment ?? 0) : "",
         tableLeft,
         amountColX,
         tableRight,
         alignLeft: true,
     });
-    const tableBottom = currentY;
-    // ===== BORDER DỌC CHO BODY TABLE =====
-    colX.forEach((x, i) => {
-        if (i === 0)
-            return;
-        // Vẽ từ đỉnh Header (startY) xuống tận đáy của danh sách hàng hóa (summaryStartY)
-        doc.moveTo(x, startY).lineTo(x, summaryStartY).lineWidth(0.5).stroke();
-    });
-    // Vẽ thêm đường kẻ dọc ngăn cách cột "Thành tiền" cho phần Summary
-    // Điều này giúp phần "Cộng tiền", "Thuế", "Tổng thanh toán" có khung rõ ràng
-    doc.moveTo(amountColX, summaryStartY).lineTo(amountColX, tableBottom).lineWidth(0.5).stroke();
-    // ===== BORDER NGOÀI (Hình chữ nhật bao quanh toàn bộ bảng) =====
+    // Kẻ đường dọc cuối cùng cho phần Summary
     doc
-        .rect(tableLeft, startY, tableRight - tableLeft, tableBottom - startY)
-        .lineWidth(0.8)
+        .moveTo(tableLeft, currentY - 72)
+        .lineTo(tableLeft, currentY)
         .stroke();
-    doc.y = tableBottom + 10;
+    doc
+        .moveTo(tableRight, currentY - 72)
+        .lineTo(tableRight, currentY)
+        .stroke();
+    doc
+        .moveTo(amountColX, currentY - 72)
+        .lineTo(amountColX, currentY)
+        .stroke();
+    doc.y = currentY + 10;
 }
 function numberToVietnamese(num) {
     if (num === 0)
@@ -344,70 +486,53 @@ function numberToVietnamese(num) {
     return finalStr.charAt(0).toUpperCase() + finalStr.slice(1) + " đồng chẵn";
 }
 function drawSignArea(doc) {
-    const startY = doc.y + 20;
+    const SIGN_BLOCK_HEIGHT = 100; // Ước tính tổng chiều cao của cả cụm chữ ký
+    const bottomMargin = 20;
+    const pageHeight = doc.page.height;
+    if (doc.y + SIGN_BLOCK_HEIGHT > pageHeight - bottomMargin) {
+        doc.addPage(page);
+    }
+    const startY = doc.y + 10;
     const pageWidth = doc.page.width;
-    const margin = 40;
+    const margin = 20;
     const usableWidth = pageWidth - margin * 2;
-    const colWidth = usableWidth / 3;
-    const colX = [margin, margin + colWidth, margin + colWidth * 2];
-    doc.fontSize(10);
-    // ===== NGÀY THÁNG (CỘT GIÁM ĐỐC) =====
-    doc
-        .font(FONT_ITALIC)
-        .text("Ngày ..... tháng ..... năm ......", colX[2], startY, {
+    const colWidth = usableWidth / 5; //chia 5 cot
+    const colX = [
+        margin,
+        margin + colWidth,
+        margin + colWidth * 2,
+        margin + colWidth * 3,
+        margin + colWidth * 4,
+    ];
+    // ===== NGÀY THÁNG =====
+    doc.font("MainItalic").fontSize(normal).text("Ngày .... tháng .... năm ......", colX[4], startY, {
         width: colWidth,
         align: "center",
-    })
-        .fontSize(11);
-    const titleY = startY + 24;
+    });
+    const titleY = startY + 25;
     const signNoteY = titleY + 18;
+    const format = {
+        width: colWidth,
+        align: "center",
+    };
     // ===== TIÊU ĐỀ =====
-    doc.font(FONT_BOLD);
-    doc
-        .text("Người mua hàng", colX[0], titleY, {
-        width: colWidth,
-        align: "center",
-    })
-        .fontSize(11);
-    doc
-        .text("Kế toán trưởng", colX[1], titleY, {
-        width: colWidth,
-        align: "center",
-    })
-        .fontSize(11);
-    doc
-        .text("Giám đốc", colX[2], titleY, {
-        width: colWidth,
-        align: "center",
-    })
-        .fontSize(11);
+    doc.font("MainBold").fontSize(header_2);
+    doc.text("Người lập phiếu", colX[0], titleY, format);
+    doc.text("Người nhận hàng", colX[1], titleY, format);
+    doc.text("Thủ kho", colX[2], titleY, format);
+    doc.text("Kế toán trưởng", colX[3], titleY, format);
+    doc.text("Tài xế", colX[4], titleY, format);
     // ===== GHI CHÚ KÝ =====
-    doc.font(FONT_ITALIC);
-    doc
-        .text("(Ký, họ tên)", colX[0], signNoteY, {
-        width: colWidth,
-        align: "center",
-    })
-        .fontSize(10);
-    doc
-        .text("(Ký, họ tên)", colX[1], signNoteY, {
-        width: colWidth,
-        align: "center",
-    })
-        .fontSize(10);
-    doc
-        .text("(Ký, họ tên, đóng dấu)", colX[2], signNoteY, {
-        width: colWidth,
-        align: "center",
-    })
-        .fontSize(10);
-    // đẩy con trỏ xuống để tránh đè nếu còn nội dung
-    doc.y = signNoteY + 80;
+    doc.font("MainItalic").fontSize(normal);
+    doc.text("(Ký, họ tên)", colX[0], signNoteY, format);
+    doc.text("(Ký, họ tên)", colX[1], signNoteY, format);
+    doc.text("(Ký, họ tên)", colX[2], signNoteY, format);
+    doc.text("(Ký, họ tên)", colX[3], signNoteY, format);
+    doc.text("(Ký, họ tên, biển số)", colX[4], signNoteY, format);
 }
 //======================HELPER===========================
 function formatDate(date) {
-    const d = new Date(date);
-    return `${d.getDate()} tháng ${d.getMonth() + 1} năm ${d.getFullYear()}`;
+    return dayjs_config_1.dayjsUtc.utc(date).format("D [tháng] M [năm] YYYY");
 }
 function formatDimension(value) {
     if (value == null)

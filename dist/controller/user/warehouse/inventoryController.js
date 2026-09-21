@@ -1,12 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAllLiquidationInventory = exports.exportInventory = exports.createNewInventory = exports.getAllInventory = void 0;
-const inventoryService_1 = require("../../../service/warehouse/inventoryService");
+exports.getAllLiquidationInventory = exports.exportInventoryByDate = exports.migrateInitialInventoryLogs = exports.createNewInventory = exports.getAllInventory = void 0;
+const inventoryService_1 = require("../../../service/inventory/inventoryService");
 const appError_1 = require("../../../utils/appError");
-const liquidationInvService_1 = require("../../../service/warehouse/liquidationInvService");
+const liquidationInvService_1 = require("../../../service/inventory/liquidationInvService");
+const inventoryLogService_1 = require("../../../service/inventory/inventoryLogService");
 //====================================INVENTORY========================================
 const getAllInventory = async (req, res, next) => {
-    const { field, keyword, page, pageSize } = req.query;
+    const { field, keyword, page, pageSize, filter } = req.query;
     try {
         let response;
         if (field && keyword) {
@@ -15,10 +16,11 @@ const getAllInventory = async (req, res, next) => {
                 keyword,
                 page: Number(page),
                 pageSize: Number(pageSize),
+                filter,
             });
         }
         else {
-            response = await inventoryService_1.inventoryService.getAllInventory(Number(page), Number(pageSize));
+            response = await inventoryService_1.inventoryService.getAllInventory(Number(page), Number(pageSize), filter);
         }
         return res.status(200).json(response);
     }
@@ -42,10 +44,11 @@ const createNewInventory = async (req, res, next) => {
                 if (!sourceOrderId || !targetOrderId || !qtyTransfer) {
                     throw appError_1.AppError.BadRequest("Thiếu thông tin để thực hiện chuyển giao");
                 }
-                response = await inventoryService_1.inventoryService.transferOrderQty({
+                response = await inventoryService_1.inventoryService.transferOrderQty(req, {
                     sourceOrderId,
                     targetOrderId,
                     qtyTransfer,
+                    reason,
                 });
                 break;
             case "TRANSFER_TO_LIQUIDATION":
@@ -53,10 +56,18 @@ const createNewInventory = async (req, res, next) => {
                     throw appError_1.AppError.BadRequest("Thiếu thông tin để thực hiện chuyển giao đến kho thanh lý");
                 }
                 response = await inventoryService_1.inventoryService.transferQtyToLiquidationInv({
-                    inventoryId,
+                    inventoryId: Array.isArray(inventoryId) ? inventoryId[0] : inventoryId,
                     qtyTransfer,
                     reason,
                 });
+                break;
+            case "TRANSFER_TO_VARIANCE":
+                if (!inventoryId) {
+                    throw appError_1.AppError.BadRequest("Thiếu thông tin để thực hiện chuyển giao đến kho thanh lý");
+                }
+                const inventoryIds = Array.isArray(inventoryId) ? inventoryId : [inventoryId];
+                response = await inventoryService_1.inventoryService.transferToQtyVariance({ inventoryIds: inventoryIds });
+                break;
         }
         return res.status(200).json(response);
     }
@@ -65,17 +76,30 @@ const createNewInventory = async (req, res, next) => {
     }
 };
 exports.createNewInventory = createNewInventory;
-//export excel
-const exportInventory = async (req, res, next) => {
+//================================INVENTORY LOGS=======================================
+//migrate inventory log
+const migrateInitialInventoryLogs = async (req, res, next) => {
     try {
-        await inventoryService_1.inventoryService.exportExcelInventory(res);
+        const response = await inventoryLogService_1.inventoryLogService.migrateInitialInventoryLogs();
+        return res.status(200).json(response);
     }
     catch (error) {
         next(error);
     }
 };
-exports.exportInventory = exportInventory;
-//====================================LIQUIDATION INVENTORY========================================
+exports.migrateInitialInventoryLogs = migrateInitialInventoryLogs;
+//export excel
+const exportInventoryByDate = async (req, res, next) => {
+    const { targetDate } = req.body;
+    try {
+        await inventoryLogService_1.inventoryLogService.exportInventoryByDate(res, req.user.email, targetDate);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.exportInventoryByDate = exportInventoryByDate;
+//=============================LIQUIDATION INVENTORY===================================
 const getAllLiquidationInventory = async (req, res, next) => {
     const { field, keyword, page, pageSize } = req.query;
     try {

@@ -25,7 +25,7 @@ function initOrderImageModel(sequelize) {
         orderId: { type: sequelize_1.DataTypes.STRING, allowNull: false },
     }, {
         sequelize,
-        tableName: "OrderImages",
+        tableName: "order_images",
         timestamps: true,
         indexes: [{ fields: ["orderId"] }],
     });

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getInboundHistory = exports.getPlanningWaitingCheck = void 0;
+exports.exportExcelInbounds = exports.getInboundHistory = exports.getPlanningWaitingCheck = void 0;
 const inboundService_1 = require("../../../service/warehouse/inboundService");
 //====================================CHECK AND INBOUND QTY========================================
 const getPlanningWaitingCheck = async (req, res, next) => {
@@ -27,7 +27,7 @@ const getPlanningWaitingCheck = async (req, res, next) => {
 exports.getPlanningWaitingCheck = getPlanningWaitingCheck;
 //===============================INBOUND HISTORY=====================================
 const getInboundHistory = async (req, res, next) => {
-    const { field, keyword, page, pageSize } = req.query;
+    const { page, pageSize, field, keyword, startDate, endDate } = req.query;
     try {
         let response;
         if (field && keyword) {
@@ -36,6 +36,8 @@ const getInboundHistory = async (req, res, next) => {
                 keyword,
                 page: Number(page),
                 pageSize: Number(pageSize),
+                startDate,
+                endDate,
             });
         }
         else {
@@ -48,4 +50,15 @@ const getInboundHistory = async (req, res, next) => {
     }
 };
 exports.getInboundHistory = getInboundHistory;
+//export excel
+const exportExcelInbounds = async (req, res, next) => {
+    const { fromDate, toDate } = req.body;
+    try {
+        await inboundService_1.inboundService.exportExcelInboundHistory(res, { fromDate, toDate }, req.user.email);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.exportExcelInbounds = exportExcelInbounds;
 //# sourceMappingURL=inboundHistoryController.js.map

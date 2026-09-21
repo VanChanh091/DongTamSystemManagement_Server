@@ -7,20 +7,21 @@ exports.employeeService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const sequelize_1 = require("sequelize");
-const cacheManager_1 = require("../utils/helper/cache/cacheManager");
 const appError_1 = require("../utils/appError");
-const employeeBasicInfo_1 = require("../models/employee/employeeBasicInfo");
-const employeeRepository_1 = require("../repository/employeeRepository");
-const orderHelpers_1 = require("../utils/helper/modelHelper/orderHelpers");
-const employeeCompanyInfo_1 = require("../models/employee/employeeCompanyInfo");
-const excelExporter_1 = require("../utils/helper/excelExporter");
-const employeeRowAndColumn_1 = require("../utils/mapping/employeeRowAndColumn");
-const transactionHelper_1 = require("../utils/helper/transactionHelper");
-const redis_connect_1 = __importDefault(require("../assets/configs/connect/redis.connect"));
-const cacheKey_1 = require("../utils/helper/cache/cacheKey");
-const meilisearch_connect_1 = require("../assets/configs/connect/meilisearch.connect");
-const meiliService_1 = require("./meiliService");
+const meiliService_1 = require("./system/meiliService");
 const labelFields_1 = require("../assets/labelFields");
+const cacheKey_1 = require("../utils/helper/cache/cacheKey");
+const redis_connect_1 = __importDefault(require("../assets/configs/connect/redis.connect"));
+const cacheManager_1 = require("../utils/helper/cache/cacheManager");
+const excelExporter_1 = require("../utils/helper/excelExporter");
+const transactionHelper_1 = require("../utils/helper/transactionHelper");
+const employeeRepository_1 = require("../repository/employeeRepository");
+const employeeBasicInfo_1 = require("../models/employee/employeeBasicInfo");
+const meilisearch_connect_1 = require("../assets/configs/connect/meilisearch.connect");
+const employeeCompanyInfo_1 = require("../models/employee/employeeCompanyInfo");
+const meiliTransformer_1 = require("../assets/configs/meilisearch/meiliTransformer");
+const orderHelpers_1 = require("../utils/helper/modelHelper/orderHelpers");
+const employeeRowAndColumn_1 = require("../utils/mapping/employeeRowAndColumn");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { employee } = cacheKey_1.CacheKey;
 exports.employeeService = {
@@ -48,7 +49,8 @@ exports.employeeService = {
                 totalPages = 1;
             }
             else {
-                const { rows, count } = await employeeRepository_1.employeeRepository.findEmployeeByPage({ page, pageSize });
+                const queryOptions = employeeRepository_1.employeeRepository.buildEmployeeOptions({ page, pageSize });
+                const { rows, count } = await employeeBasicInfo_1.EmployeeBasicInfo.findAndCountAll(queryOptions);
                 data = rows;
                 totalEmployees = count;
                 totalPages = Math.ceil(totalEmployees / pageSize);
@@ -92,9 +94,10 @@ exports.employeeService = {
                 };
             }
             //query db
-            const fullEmployees = await employeeRepository_1.employeeRepository.getEmployeeByField({
-                employeeId: { [sequelize_1.Op.in]: employeeIds },
+            const queryOptions = employeeRepository_1.employeeRepository.buildEmployeeOptions({
+                whereCondition: { employeeId: { [sequelize_1.Op.in]: employeeIds } },
             });
+            const fullEmployees = await employeeBasicInfo_1.EmployeeBasicInfo.findAll(queryOptions);
             // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
             const finalData = employeeIds
                 .map((id) => fullEmployees.find((employee) => employee.employeeId === id))
@@ -185,8 +188,8 @@ exports.employeeService = {
                     transaction,
                 });
                 //--------------------MEILISEARCH-----------------------
-                const updatedEmployee = await employeeRepository_1.employeeRepository.findEmployeeForMeili(employeeId, transaction);
-                return { message: "Cập nhật nhân viên thành công", data: updatedEmployee };
+                await exports.employeeService.syncEmployeeForMeili(employeeId, transaction);
+                return { message: "Cập nhật nhân viên thành công" };
             });
         }
         catch (error) {
@@ -198,11 +201,12 @@ exports.employeeService = {
     },
     syncEmployeeForMeili: async (employeeId, transaction) => {
         try {
-            const employee = await employeeRepository_1.employeeRepository.findEmployeeForMeili(employeeId, transaction);
+            const employee = await employeeRepository_1.employeeRepository.syncEmployeeForMeili(employeeId, transaction);
             if (employee) {
+                const flattenData = meiliTransformer_1.meiliTransformer.employee(employee);
                 await meiliService_1.meiliService.syncOrUpdateMeiliData({
                     indexKey: labelFields_1.MEILI_INDEX.EMPLOYEES,
-                    data: employee.toJSON(),
+                    data: flattenData,
                     transaction,
                 });
             }
@@ -224,7 +228,11 @@ exports.employeeService = {
                 // Xóa bản ghi chính
                 await employee.destroy({ transaction });
                 //--------------------MEILISEARCH-----------------------
-                await meiliService_1.meiliService.deleteMeiliData(labelFields_1.MEILI_INDEX.EMPLOYEES, employeeId, transaction);
+                await meiliService_1.meiliService.deleteMeiliData({
+                    indexKey: labelFields_1.MEILI_INDEX.EMPLOYEES,
+                    idOrIds: employeeId,
+                    transaction,
+                });
                 return { message: "delete employee successfully" };
             });
         }
@@ -251,11 +259,15 @@ exports.employeeService = {
                 end.setHours(23, 59, 59, 999);
                 whereCondition["$companyInfo.joinDate$"] = { [sequelize_1.Op.between]: [start, end] };
             }
-            const { rows } = await employeeRepository_1.employeeRepository.findEmployeeByPage({ whereCondition });
-            await (0, excelExporter_1.exportExcelResponse)(res, {
-                data: rows,
+            const baseQuery = employeeRepository_1.employeeRepository.buildEmployeeOptions({
+                whereCondition,
+                isExport: true,
+            });
+            await (0, excelExporter_1.exportExcelStreamResponse)(res, {
+                baseQuery: baseQuery,
+                model: employeeBasicInfo_1.EmployeeBasicInfo,
                 sheetName: "Danh sách nhân viên",
-                fileName: "employee",
+                fileName: "employees",
                 columns: employeeRowAndColumn_1.employeeColumns,
                 rows: employeeRowAndColumn_1.mappingEmployeeRow,
             });

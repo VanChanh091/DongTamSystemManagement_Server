@@ -10,11 +10,11 @@ const sequelize_1 = require("sequelize");
 const box_1 = require("../models/order/box");
 const appError_1 = require("../utils/appError");
 const order_1 = require("../models/order/order");
+const meiliService_1 = require("./system/meiliService");
 const orderImage_1 = require("../models/order/orderImage");
 const cacheKey_1 = require("../utils/helper/cache/cacheKey");
-const meiliService_1 = require("./meiliService");
-const redis_connect_1 = __importDefault(require("../assets/configs/connect/redis.connect"));
 const orderRepository_1 = require("../repository/orderRepository");
+const redis_connect_1 = __importDefault(require("../assets/configs/connect/redis.connect"));
 const cacheManager_1 = require("../utils/helper/cache/cacheManager");
 const transactionHelper_1 = require("../utils/helper/transactionHelper");
 const crud_helper_repository_1 = require("../repository/helper/crud.helper.repository");
@@ -25,39 +25,36 @@ const labelFields_1 = require("../assets/labelFields");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { order } = cacheKey_1.CacheKey;
 exports.orderService = {
-    getOrderAcceptAndPlanning: async (page, pageSize, ownOnly, user) => {
+    getOrderAcceptted: async (ownOnly, user) => {
         const { userId, role } = user;
         try {
             const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
-            const cacheKey = order.acceptPlanning(keyRole, page); //orders:all:accept_planning:page:1
-            const { isChanged } = await cacheManager_1.CacheManager.check([{ model: order_1.Order, where: { status: ["accept", "planning"] } }], "orderAccept");
+            const cacheKey = order.accept(keyRole, ownOnly); //orders:all:accept:page:1
+            const { isChanged } = await cacheManager_1.CacheManager.check([{ model: order_1.Order, where: { status: ["accept"] } }], "orderAccept");
             if (isChanged) {
-                await cacheManager_1.CacheManager.clear("orderAcceptPlanning", keyRole);
+                await cacheManager_1.CacheManager.clear("orderAcceptted", keyRole);
             }
             else {
                 const cachedData = await redis_connect_1.default.get(cacheKey);
                 if (cachedData) {
                     if (devEnvironment)
-                        console.log("✅ Data Order accept_planning from Redis");
+                        console.log("✅ Data Order accept from Redis");
                     const parsed = JSON.parse(cachedData);
                     return { message: "Get Order from cache", ...parsed };
                 }
             }
             // Lấy data đã lọc từ cachedStatus
             const result = await (0, orderHelpers_1.getOrderByStatus)({
-                statusList: ["accept", "planning"],
+                statusList: ["accept"],
                 userId,
                 role,
-                page: page,
-                pageSize: pageSize,
                 ownOnly,
-                isPaging: true,
             });
             await redis_connect_1.default.set(cacheKey, JSON.stringify(result), "EX", 3600);
-            return { message: "Get all orders from DB with status: accept and planning", ...result };
+            return { message: "Get all orders from DB with status: accept", ...result };
         }
         catch (error) {
-            console.error("Error in getOrderAcceptAndPlanning:", error);
+            console.error("Error get order acceptted:", error);
             if (error instanceof appError_1.AppError)
                 throw error;
             throw appError_1.AppError.ServerError();
@@ -66,20 +63,16 @@ exports.orderService = {
     getOrderPendingAndReject: async (ownOnly, user) => {
         const { userId, role } = user;
         try {
-            if (!userId) {
-                throw appError_1.AppError.BadRequest("Invalid userId parameter", "INVALID_FIELD");
-            }
             const keyRole = role === "admin" || role === "manager" ? "all" : `userId:${userId}`;
-            const cacheKey = order.pendingReject(keyRole);
+            const cacheKey = order.pendingReject(keyRole, ownOnly);
             const { isChanged } = await cacheManager_1.CacheManager.check([{ model: order_1.Order, where: { status: ["pending", "reject"] } }], "orderPending");
             if (isChanged) {
                 await cacheManager_1.CacheManager.clear("orderPendingReject", keyRole);
             }
             else {
                 const cachedResult = await (0, orderHelpers_1.cachedStatus)(redis_connect_1.default, "pending", "reject", userId, role);
-                if (cachedResult) {
-                    if (devEnvironment)
-                        console.log("✅ Data Order pending_reject from Redis");
+                if (cachedResult && devEnvironment) {
+                    console.log("✅ Data Order pending_reject from Redis");
                     return { message: "Get Order from cache", data: cachedResult };
                 }
             }
@@ -88,7 +81,6 @@ exports.orderService = {
                 userId,
                 role,
                 ownOnly,
-                isPaging: false,
             });
             await redis_connect_1.default.set(cacheKey, JSON.stringify(result), "EX", 3600);
             return { message: "Get all orders from DB with status: pending and reject", ...result };
@@ -100,7 +92,7 @@ exports.orderService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    getOrderByField: async ({ field, keyword, page, pageSize, user }) => {
+    getOrderByField: async ({ field, keyword, user }) => {
         const { userId, role } = user;
         try {
             const validFields = ["orderId", "customerName", "productName", "QC_box", "price"];
@@ -109,7 +101,7 @@ exports.orderService = {
             }
             const index = meilisearch_connect_1.meiliClient.index("orders");
             // Phân quyền và Trạng thái
-            let filters = ["status IN [accept, planning]"];
+            let filters = [`status IN ["accept"]`];
             if (role !== "admin" && role !== "manager") {
                 filters.push(`userId = ${userId}`);
             }
@@ -118,21 +110,15 @@ exports.orderService = {
                 filter: filters.join(" AND "),
                 attributesToSearchOn: [field],
                 attributesToRetrieve: ["orderId"], // Chỉ lấy orderId
-                page: Number(page) || 1,
-                hitsPerPage: Number(pageSize) || 25,
             });
             const orderIds = searchResult.hits.map((hit) => hit.orderId);
             if (orderIds.length === 0) {
-                return {
-                    message: "No orders found",
-                    data: [],
-                    totalOrders: 0,
-                    totalPages: 1,
-                    currentPage: page,
-                };
+                return { message: "No orders found", data: [] };
             }
             // Truy vấn DB để lấy data dựa trên orderIds
-            const query = orderRepository_1.orderRepository.buildQueryOptions({ orderId: { [sequelize_1.Op.in]: orderIds } });
+            const query = orderRepository_1.orderRepository.buildOrdersOptions({
+                whereCondition: { orderId: { [sequelize_1.Op.in]: orderIds } },
+            });
             const fullOrders = await order_1.Order.findAll(query);
             // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
             const finalData = orderIds
@@ -141,9 +127,6 @@ exports.orderService = {
             return {
                 message: "Get orders from Meilisearch & DB successfully",
                 data: finalData,
-                totalOrders: searchResult.totalHits,
-                totalPages: searchResult.totalPages,
-                currentPage: page,
             };
         }
         catch (error) {
@@ -196,12 +179,12 @@ exports.orderService = {
                 if (!userId) {
                     throw appError_1.AppError.BadRequest("Invalid userId parameter", "INVALID_FIELD");
                 }
-                const validation = await (0, orderHelpers_1.validateCustomerAndProduct)(customerId, productId);
+                const validation = await (0, orderHelpers_1.validateCustomerAndProduct)(customerId, productId, transaction);
                 if (!validation.success)
                     throw appError_1.AppError.NotFound(validation.message);
                 //create id + number auto increase
-                const metrics = await (0, orderHelpers_1.calculateOrderMetrics)(restOrderData);
-                const { newOrderId, existingCustomerId } = await (0, orderHelpers_1.generateOrderId)(prefix);
+                const metrics = await (0, orderHelpers_1.calculateOrderMetrics)(restOrderData, transaction);
+                const { newOrderId, existingCustomerId } = await (0, orderHelpers_1.generateOrderId)(prefix, transaction);
                 if (existingCustomerId && existingCustomerId !== customerId) {
                     throw appError_1.AppError.Conflict(`Mã đơn hàng: ${newOrderId} đã liên kết với khách hàng ${existingCustomerId}.`, "PREFIX_CUSTOMER_MISMATCH");
                 }
@@ -211,6 +194,7 @@ exports.orderService = {
                     customerId: customerId,
                     productId: productId,
                     userId: userId,
+                    dayReceiveOrder: new Date(),
                     ...restOrderData,
                     ...metrics,
                 }, { transaction });
@@ -240,8 +224,10 @@ exports.orderService = {
                     }
                 }
                 //--------------------MEILISEARCH-----------------------
-                const orderCreated = await orderRepository_1.orderRepository.findOrderForMeili(newOrderId, transaction);
-                console.log(orderCreated);
+                const orderCreated = await orderRepository_1.orderRepository.syncOrderForMeili({
+                    orderId: newOrderId,
+                    transaction,
+                });
                 if (orderCreated) {
                     const flattenData = meiliTransformer_1.meiliTransformer.order(orderCreated);
                     await meiliService_1.meiliService.syncOrUpdateMeiliData({
@@ -267,12 +253,16 @@ exports.orderService = {
         const { box, imageData, isDeleteImage, ...restOrderData } = parsedOrderData;
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
-                const order = await crud_helper_repository_1.CrudHelper.findOne({ model: order_1.Order, whereCondition: { orderId } });
+                const order = await crud_helper_repository_1.CrudHelper.findOne({
+                    model: order_1.Order,
+                    where: { orderId },
+                    options: { transaction },
+                });
                 if (!order) {
                     throw appError_1.AppError.NotFound("Order not found");
                 }
                 const mergedData = { ...order.toJSON(), ...restOrderData };
-                const metrics = await (0, orderHelpers_1.calculateOrderMetrics)(mergedData);
+                const metrics = await (0, orderHelpers_1.calculateOrderMetrics)(mergedData, transaction);
                 //Cập nhật thông tin hoặc xóa hình ảnh
                 if (isDeleteImage) {
                     await orderImage_1.OrderImage.destroy({ where: { orderId }, transaction });
@@ -304,7 +294,7 @@ exports.orderService = {
                     });
                 }
                 else {
-                    await box_1.Box.destroy({ where: { orderId } });
+                    await box_1.Box.destroy({ where: { orderId }, transaction });
                 }
                 //update socket for reject order
                 const ownerId = order.userId;
@@ -317,17 +307,17 @@ exports.orderService = {
                     count: badgeCount,
                 });
                 //--------------------MEILISEARCH-----------------------
-                const orderUpdated = await orderRepository_1.orderRepository.findOrderForMeili(orderId, transaction);
-                console.log(orderUpdated);
+                const orderUpdated = await orderRepository_1.orderRepository.syncOrderForMeili({ orderId, transaction });
                 if (orderUpdated) {
                     const flattenData = meiliTransformer_1.meiliTransformer.order(orderUpdated);
                     await meiliService_1.meiliService.syncOrUpdateMeiliData({
                         indexKey: labelFields_1.MEILI_INDEX.ORDERS,
                         data: flattenData,
                         transaction,
+                        isUpdate: true,
                     });
                 }
-                return { message: "Order updated successfully", data: order };
+                return { message: "Order updated successfully", data: order, orderId };
             });
         }
         catch (error) {
@@ -349,7 +339,11 @@ exports.orderService = {
                 const orderValue = order.orderSortValue;
                 await order.destroy({ transaction });
                 //--------------------MEILISEARCH-----------------------
-                await meiliService_1.meiliService.deleteMeiliData(labelFields_1.MEILI_INDEX.ORDERS, orderValue, transaction);
+                await meiliService_1.meiliService.deleteMeiliData({
+                    indexKey: labelFields_1.MEILI_INDEX.ORDERS,
+                    idOrIds: orderValue,
+                    transaction,
+                });
                 return { message: "Order deleted successfully" };
             });
         }
@@ -357,6 +351,24 @@ exports.orderService = {
             console.error("Error in getOrderPendingAndReject:", error);
             if (error instanceof appError_1.AppError)
                 throw error;
+            throw appError_1.AppError.ServerError();
+        }
+    },
+    //-------------------- PAPER CODE -----------------------
+    //using for structure order
+    getMasterDataForStructure: async () => {
+        try {
+            const records = await orderRepository_1.orderRepository.getAllPaperClassifications();
+            const papers = records.map((item) => ({
+                classificationId: item.classificationId,
+                paperCode: item.paperCode,
+                layerType: item.supplierPaper?.layerType,
+                supplierName: item.supplierPaper?.Supplier?.supplierName,
+            }));
+            return { message: "Successfully retrieved master data for structure", data: papers };
+        }
+        catch (error) {
+            console.error("get master data for structure failed:", error);
             throw appError_1.AppError.ServerError();
         }
     },

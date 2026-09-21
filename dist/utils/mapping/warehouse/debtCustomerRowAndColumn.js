@@ -1,0 +1,46 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.mappingDebtCustomerRow = exports.debtCustomerColumns = void 0;
+exports.debtCustomerColumns = [
+    { header: "STT", key: "index" },
+    { header: "Mã Khách Hàng", key: "customerId" },
+    { header: "Tên Khách Hàng", key: "customerName" },
+    { header: "Tên Công Ty", key: "companyName" },
+    { header: "Số Đơn Chưa TT", key: "unpaidOutboundCount" },
+    { header: "Tổng Nợ", key: "totalDebt", style: { numFmt: "#,##0" } },
+    // Nợ trong hạn
+    { header: "Nợ Trong Hạn", key: "notDueDebt", style: { numFmt: "#,##0" } },
+    { header: "Nợ Chưa Chốt", key: "currentPeriodDebt", style: { numFmt: "#,##0" } },
+    { header: "Nợ Đã Chốt", key: "closedDebt", style: { numFmt: "#,##0" } },
+    { header: "Sắp Tới Hạn", key: "dueIn1_3", style: { numFmt: "#,##0" } },
+    // Nợ quá hạn
+    { header: "1-30 Ngày", key: "overdue1_30", style: { numFmt: "#,##0" } },
+    { header: "31-60 Ngày", key: "overdue31_60", style: { numFmt: "#,##0" } },
+    { header: "61-90 Ngày", key: "overdue61_90", style: { numFmt: "#,##0" } },
+    { header: "91-120 Ngày", key: "overdue91_120", style: { numFmt: "#,##0" } },
+    { header: "Trên 120 Ngày", key: "overdueOver120", style: { numFmt: "#,##0" } },
+    { header: "Tổng Quá Hạn", key: "dueDebt", style: { numFmt: "#,##0" } },
+];
+const mappingDebtCustomerRow = (item, index) => {
+    return {
+        index: index + 1,
+        customerId: item.customerId,
+        customerName: item.customerName,
+        companyName: item.companyName,
+        totalDebt: item.totalDebt,
+        // Nợ trong hạn
+        notDueDebt: item.notDueDebt,
+        currentPeriodDebt: item.currentPeriodDebt,
+        closedDebt: item.closedDebt,
+        dueIn1_3: item.aging.dueIn1_3,
+        // Nợ quá hạn
+        overdue1_30: item.aging.overdue1_30,
+        overdue31_60: item.aging.overdue31_60,
+        overdue61_90: item.aging.overdue61_90,
+        overdue91_120: item.aging.overdue91_120,
+        overdueOver120: item.aging.overdueOver120,
+        dueDebt: item.overdueDebt,
+    };
+};
+exports.mappingDebtCustomerRow = mappingDebtCustomerRow;
+//# sourceMappingURL=debtCustomerRowAndColumn.js.map

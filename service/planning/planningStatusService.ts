@@ -182,7 +182,7 @@ export const planningStatusService = {
           runningPlan: paperPlan.runningPlan,
           length: lengthPaper,
           size: paperPlan.sizePaperPLaning,
-          ghepKho: ghepKho,
+          ghepKho,
           transaction,
         });
 
@@ -500,13 +500,13 @@ const calculateWaste = ({
     }
   }
 
-  // 5.1) Lớp liner cuối cùng
+  // Lớp liner cuối cùng
   const lastLiner = [...layers].reverse().find((l) => l.kind === "liner");
   if (lastLiner) {
     softLiner = gkTh * wasteNorm.waveCrestSoft * (lastLiner.thickness / 1000);
   }
 
-  // 5.2) Tính hao phí, dao, tổng hao hụt
+  // Tính hao phí, dao, tổng hao hụt
   const bottom = flute.E + flute.B + flute.C + softLiner;
   const totalLength = runningPlan / numberChild;
   const oneM2WaveCrestSoft = bottom / wasteNorm.waveCrestSoft;
@@ -651,6 +651,8 @@ const handlePaperRequirements = async ({
   ghepKho: number;
   transaction: any;
 }) => {
+  const isRollMachine = planningData.chooseMachine === "Máy Quấn Cuồn";
+
   const layerConfigs = [
     { rawCode: planningData.dayReplace, isFlute: false },
     { rawCode: planningData.songEReplace, isFlute: true, fluteLetter: "E" },
@@ -672,7 +674,7 @@ const handlePaperRequirements = async ({
   const roundSmart = (num: number) => Math.round(num * 100) / 100;
 
   // Tính toán định mức từng lớp
-  const layersCalculated = layerConfigs.map((layer, idx) => {
+  const preparedLayers = layerConfigs.map((layer, idx) => {
     const layerIndex = idx + 1;
     let layerRole: layerRoleType;
     let fluteFactor = 1.0;
@@ -715,20 +717,8 @@ const handlePaperRequirements = async ({
     const gsmMatch = layer.rawCode.match(/\d+$/);
     const weightGsm = gsmMatch ? parseFloat(gsmMatch[0]) : 0;
 
-    // Công thức kg định mức
-    const requiredQty = roundSmart(
-      (length * size * runningPlan * weightGsm * fluteFactor) / 10_000_000,
-    );
-
-    console.log(`===========================`);
-    console.log(`length: ${length}`);
-    console.log(`size: ${size}`);
-    console.log(`runningPlan: ${runningPlan}`);
-    console.log(`weightGsm: ${weightGsm}`);
-    console.log(`fluteFactor: ${fluteFactor}`);
-    console.log(`requiredQty: ${requiredQty}`);
-
-    totalRequiredQty += requiredQty;
+    // Trọng số định lượng thực tế tính cả hệ số sóng
+    const effectiveGsm = weightGsm * fluteFactor;
 
     return {
       layerIndex,
@@ -737,8 +727,36 @@ const handlePaperRequirements = async ({
       weightGsm,
       fluteType,
       fluteFactor,
-      requiredQty,
+      effectiveGsm,
+    };
+  });
 
+  // Tổng trọng số định lượng (dùng tính tỷ lệ cho Máy Quấn Cuồn)
+  const totalEffectiveGsm = preparedLayers.reduce((sum, l) => sum + l.effectiveGsm, 0);
+
+  // Tính khối lượng định mức theo từng loại máy
+  const layersCalculated = preparedLayers.map((layer) => {
+    let requiredQty = 0;
+
+    if (isRollMachine) {
+      const ratio = totalEffectiveGsm > 0 ? layer.effectiveGsm / totalEffectiveGsm : 0;
+      requiredQty = roundSmart(runningPlan * ratio);
+    } else {
+      requiredQty = roundSmart(
+        (length * size * runningPlan * layer.weightGsm * layer.fluteFactor) / 10_000_000,
+      );
+    }
+
+    totalRequiredQty += requiredQty;
+
+    return {
+      layerIndex: layer.layerIndex,
+      layerRole: layer.layerRole,
+      paperCode: layer.paperCode,
+      weightGsm: layer.weightGsm,
+      fluteType: layer.fluteType,
+      fluteFactor: layer.fluteFactor,
+      requiredQty,
       availableStock: 0,
       shortageQty: requiredQty,
       isEnoughQty: false,

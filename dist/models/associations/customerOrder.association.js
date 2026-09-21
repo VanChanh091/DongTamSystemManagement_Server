@@ -1,0 +1,40 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.default = customerOrderAssociations;
+function customerOrderAssociations(models) {
+    const { Customer, CustomerPayment, Order, OutboundHistory, Product, Box, OrderImage, OrderApproved, User, PaymentAllocation, } = models;
+    // CUSTOMER & PAYMENT
+    Customer.hasOne(CustomerPayment, {
+        foreignKey: "customerId",
+        as: "payment",
+        onDelete: "CASCADE",
+    });
+    CustomerPayment.belongsTo(Customer, { foreignKey: "customerId" });
+    Customer.hasMany(Order, { foreignKey: "customerId", onDelete: "CASCADE" });
+    Order.belongsTo(Customer, { foreignKey: "customerId" });
+    Customer.hasMany(OutboundHistory, { foreignKey: "customerId", onDelete: "RESTRICT" });
+    OutboundHistory.belongsTo(Customer, { foreignKey: "customerId" });
+    // PRODUCT
+    Product.hasMany(Order, { foreignKey: "productId", onDelete: "CASCADE" });
+    Order.belongsTo(Product, { foreignKey: "productId" });
+    // ORDER
+    Order.hasOne(Box, { foreignKey: "orderId", as: "box", onDelete: "CASCADE" });
+    Box.belongsTo(Order, { foreignKey: "orderId" });
+    Order.hasOne(OrderImage, { foreignKey: "orderId", onDelete: "CASCADE" });
+    OrderImage.belongsTo(Order, { foreignKey: "orderId" });
+    Order.hasMany(OrderApproved, { foreignKey: "orderId", onDelete: "CASCADE" });
+    OrderApproved.belongsTo(Order, { foreignKey: "orderId" });
+    // USER
+    User.hasMany(Order, { foreignKey: "userId", onDelete: "RESTRICT" });
+    Order.belongsTo(User, { foreignKey: "userId" });
+    User.hasMany(Customer, { foreignKey: "userId", onDelete: "RESTRICT" });
+    Customer.belongsTo(User, { foreignKey: "userId" });
+    // PAYMENT ALLOCATION
+    OutboundHistory.hasMany(PaymentAllocation, {
+        foreignKey: "outboundId",
+        as: "allocations",
+        onDelete: "CASCADE",
+    });
+    PaymentAllocation.belongsTo(OutboundHistory, { foreignKey: "outboundId", as: "outbound" });
+}
+//# sourceMappingURL=customerOrder.association.js.map

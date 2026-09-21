@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mappingEmployeeRow = exports.employeeColumns = void 0;
+const dayjs_config_1 = require("../../assets/configs/dayjs/dayjs.config");
 exports.employeeColumns = [
     { header: "STT", key: "index" },
     { header: "Mã Nhân Viên", key: "employeeCode" },
@@ -31,15 +32,17 @@ const mappingEmployeeRow = (item, index) => {
         index: index + 1,
         employeeCode: companyInfo.employeeCode,
         fullName: item.fullName,
-        joinDate: companyInfo.joinDate,
+        joinDate: companyInfo.joinDate ? (0, dayjs_config_1.dayjsUtc)(companyInfo.joinDate).format("DD/MM/YYYY") : "",
         department: companyInfo.department,
         position: companyInfo.position,
         gender: item.gender,
-        birthday: item.birthday,
+        birthday: item.birthday ? (0, dayjs_config_1.dayjsUtc)(item.birthday).format("DD/MM/YYYY") : "",
         birthPlace: item.birthPlace,
         homeTown: item.homeTown,
         citizenId: item.citizenId,
-        citizenIssuedDate: item.citizenIssuedDate,
+        citizenIssuedDate: item.citizenIssuedDate
+            ? (0, dayjs_config_1.dayjsUtc)(item.citizenIssuedDate).format("DD/MM/YYYY")
+            : "",
         citizenIssuedPlace: item.citizenIssuedPlace,
         permanentAddress: item.permanentAddress,
         temporaryAddress: item.temporaryAddress,

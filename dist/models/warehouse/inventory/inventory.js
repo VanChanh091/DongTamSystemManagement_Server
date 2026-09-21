@@ -13,7 +13,9 @@ function initInventoryModel(sequelize) {
         totalQtyInbound: { type: sequelize_1.DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
         totalQtyOutbound: { type: sequelize_1.DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
         qtyInventory: { type: sequelize_1.DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+        qtyVariance: { type: sequelize_1.DataTypes.INTEGER },
         valueInventory: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false, defaultValue: 0 },
+        dateInbound: { type: sequelize_1.DataTypes.DATE },
         //FK
         orderId: { type: sequelize_1.DataTypes.STRING, allowNull: false },
     }, {

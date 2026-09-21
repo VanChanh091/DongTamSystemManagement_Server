@@ -75,6 +75,9 @@ export function initPaperRequirementsModel(sequelize: Sequelize): typeof PaperRe
       indexes: [
         //FK
         { fields: ["planningId"] },
+
+        //composite index
+        { fields: ["planningId", "totalRequiredQty"] },
       ],
     },
   );

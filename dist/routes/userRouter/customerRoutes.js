@@ -10,6 +10,7 @@ const permissionMiddleware_1 = require("../../middlewares/permissionMiddleware")
 const router = (0, express_1.default)();
 router.get("/", authMiddleware_1.default, customerController_1.getCustomers);
 router.get("/order-count", authMiddleware_1.default, customerController_1.checkCustomerInOrders);
+router.get("/user-sales", authMiddleware_1.default, customerController_1.getUserSales);
 router.post("/", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["sale"]), customerController_1.createCustomer);
 router.post("/export", authMiddleware_1.default, customerController_1.exportExcelCustomer);
 router.put("/", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["sale"]), customerController_1.updateCustomer);

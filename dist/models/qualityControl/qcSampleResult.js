@@ -17,7 +17,7 @@ function initQcSamepleResultModel(sequelize) {
         qcSessionId: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
     }, {
         sequelize,
-        tableName: "QcSampleResult",
+        tableName: "qc_sample_results",
         timestamps: true,
         indexes: [
             //FK

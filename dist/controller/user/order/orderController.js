@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteOrder = exports.updateOrder = exports.addOrder = exports.getOrderPendingAndReject = exports.getOrdersAcceptPlanning = exports.getCloudinarySignature = exports.getOrderDetail = exports.getOrderIdRaw = void 0;
+exports.getPaperCodeForStructure = exports.deleteOrder = exports.updateOrder = exports.addOrder = exports.getOrderPendingAndReject = exports.getOrderAcceptted = exports.getCloudinarySignature = exports.getOrderDetail = exports.getOrderIdRaw = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const orderService_1 = require("../../../service/orderService");
@@ -53,24 +53,16 @@ const getCloudinarySignature = async (req, res) => {
     });
 };
 exports.getCloudinarySignature = getCloudinarySignature;
-//===============================ACCEPT AND PLANNING=====================================
-const getOrdersAcceptPlanning = async (req, res, next) => {
-    const { field, keyword, page = 1, pageSize = 20, ownOnly = "false", } = req.query;
+//===============================ORDERS=====================================
+const getOrderAcceptted = async (req, res, next) => {
+    const { field, keyword, ownOnly = "false", } = req.query;
     try {
         let response;
-        // 1. Nhánh tìm kiếm theo field
         if (field && keyword) {
-            response = await orderService_1.orderService.getOrderByField({
-                field,
-                keyword,
-                page: Number(page),
-                pageSize: Number(pageSize),
-                user: req.user,
-            });
+            response = await orderService_1.orderService.getOrderByField({ field, keyword, user: req.user });
         }
-        // 2. Nhánh lấy tất cả
         else {
-            response = await orderService_1.orderService.getOrderAcceptAndPlanning(Number(page), Number(pageSize), ownOnly, req.user);
+            response = await orderService_1.orderService.getOrderAcceptted(ownOnly, req.user);
         }
         return res.status(200).json(response);
     }
@@ -78,9 +70,7 @@ const getOrdersAcceptPlanning = async (req, res, next) => {
         next(error);
     }
 };
-exports.getOrdersAcceptPlanning = getOrdersAcceptPlanning;
-//===============================PENDING AND REJECT=====================================
-//get order pending and reject
+exports.getOrderAcceptted = getOrderAcceptted;
 const getOrderPendingAndReject = async (req, res, next) => {
     const { ownOnly = "false" } = req.query;
     try {
@@ -92,7 +82,6 @@ const getOrderPendingAndReject = async (req, res, next) => {
     }
 };
 exports.getOrderPendingAndReject = getOrderPendingAndReject;
-//add order
 const addOrder = async (req, res, next) => {
     try {
         const response = await orderService_1.orderService.createOrder(req);
@@ -103,7 +92,6 @@ const addOrder = async (req, res, next) => {
     }
 };
 exports.addOrder = addOrder;
-// update order
 const updateOrder = async (req, res, next) => {
     const { orderId } = req.query;
     try {
@@ -115,7 +103,6 @@ const updateOrder = async (req, res, next) => {
     }
 };
 exports.updateOrder = updateOrder;
-// delete order
 const deleteOrder = async (req, res, next) => {
     const { orderId } = req.query;
     try {
@@ -127,4 +114,15 @@ const deleteOrder = async (req, res, next) => {
     }
 };
 exports.deleteOrder = deleteOrder;
+//=========================PAPER CODE FOR STRUCTURE==============================
+const getPaperCodeForStructure = async (req, res, next) => {
+    try {
+        const response = await orderService_1.orderService.getMasterDataForStructure();
+        return res.status(201).json(response);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.getPaperCodeForStructure = getPaperCodeForStructure;
 //# sourceMappingURL=orderController.js.map

@@ -1,91 +1,70 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deliveryRepository = void 0;
-const sequelize_1 = require("sequelize");
-const planningPaper_1 = require("../models/planning/planningPaper");
-const timeOverflowPlanning_1 = require("../models/planning/timeOverflowPlanning");
-const order_1 = require("../models/order/order");
-const customer_1 = require("../models/customer/customer");
-const product_1 = require("../models/product/product");
 const user_1 = require("../models/user/user");
-const inventory_1 = require("../models/warehouse/inventory/inventory");
-const planningBox_1 = require("../models/planning/planningBox");
-const planningBoxMachineTime_1 = require("../models/planning/planningBoxMachineTime");
-const deliveryPlan_1 = require("../models/delivery/deliveryPlan");
-const deliveryItem_1 = require("../models/delivery/deliveryItem");
+const sequelize_1 = require("sequelize");
+const order_1 = require("../models/order/order");
 const vehicle_1 = require("../models/admin/vehicle");
+const product_1 = require("../models/product/product");
+const customer_1 = require("../models/customer/customer");
+const planningBox_1 = require("../models/planning/planningBox");
+const deliveryPlan_1 = require("../models/delivery/deliveryPlan");
+const planningPaper_1 = require("../models/planning/planningPaper");
+const inventory_1 = require("../models/warehouse/inventory/inventory");
+const planningBoxMachineTime_1 = require("../models/planning/planningBoxMachineTime");
+const deliveryItem_1 = require("../models/delivery/deliveryItem");
 const deliveryRequest_1 = require("../models/delivery/deliveryRequest");
+const outboundDetail_1 = require("../models/warehouse/outbound/outboundDetail");
 exports.deliveryRepository = {
     //================================PLANNING ESTIMATE TIME==================================
-    getPlanningEstimateTime: async (dayStart, userId, all) => {
-        return await planningPaper_1.PlanningPaper.findAll({
-            where: {
-                deliveryPlanned: { [sequelize_1.Op.in]: ["none", "pending"] },
-                dayStart: { [sequelize_1.Op.lte]: dayStart },
-                status: { [sequelize_1.Op.notIn]: ["stop", "cancel"] },
-            },
-            attributes: {
-                exclude: [
-                    "createdAt",
-                    "updatedAt",
-                    "sortPlanning",
-                    "statusRequest",
-                    "hasOverFlow",
-                    "bottom",
-                    "fluteE",
-                    "fluteB",
-                    "fluteC",
-                    "fluteE2",
-                    "knife",
-                    "totalLoss",
-                    "qtyWasteNorm",
-                    "chooseMachine",
-                    "shiftProduction",
-                    "shiftManagement",
-                ],
-            },
+    buildPlanningEstimateOptions: ({ whereCondition, userId, all = "false", dayStart, isSearch, }) => {
+        const queryOptions = {
+            where: whereCondition,
+            attributes: [
+                "planningId",
+                "dayStart",
+                "dayReplace",
+                "matEReplace",
+                "matBReplace",
+                "matCReplace",
+                "matE2Replace",
+                "songEReplace",
+                "songBReplace",
+                "songCReplace",
+                "songE2Replace",
+                "qtyProduced",
+                "hasBox",
+                "timeRunning",
+                "orderId",
+                "status",
+                "deliveryPlanned",
+            ],
             include: [
                 {
-                    model: timeOverflowPlanning_1.timeOverflowPlanning,
-                    as: "timeOverFlow",
-                    attributes: ["overflowDayStart", "overflowTimeRunning", "status"],
-                },
-                {
                     model: order_1.Order,
-                    attributes: {
-                        exclude: [
-                            "rejectReason",
-                            "createdAt",
-                            "updatedAt",
-                            "day",
-                            "matE",
-                            "matE2",
-                            "matB",
-                            "matC",
-                            "songE",
-                            "songB",
-                            "songC",
-                            "songE2",
-                            "status",
-                            "lengthPaperCustomer",
-                            "paperSizeCustomer",
-                            "quantityCustomer",
-                            "lengthPaperManufacture",
-                            "paperSizeManufacture",
-                            "numberChild",
-                            "isBox",
-                            "canLan",
-                            "daoXa",
-                            "acreage",
-                            "pricePaper",
-                            "profit",
-                        ],
-                    },
+                    attributes: [
+                        "orderId",
+                        "dayReceiveOrder",
+                        "dateRequestShipping",
+                        "QC_box",
+                        "paperSizeManufacture",
+                        "lengthPaperManufacture",
+                        "quantityManufacture",
+                        "dvt",
+                        "isBox",
+                        "volume",
+                        "instructSpecial",
+                        "orderIdCustomer",
+                        "note",
+                        "customerId",
+                        "productId",
+                        "userId",
+                    ],
                     include: [
-                        { model: customer_1.Customer, attributes: ["customerName", "companyName"] },
-                        { model: product_1.Product, attributes: ["typeProduct", "productName"] },
+                        { model: customer_1.Customer, attributes: ["customerName"] },
+                        { model: product_1.Product, attributes: ["productName"] },
                         { model: user_1.User, where: all === "true" ? {} : { userId }, attributes: ["fullName"] },
-                        { model: inventory_1.Inventory, attributes: ["qtyInventory"] },
+                        { model: inventory_1.Inventory, attributes: ["qtyInventory", "totalQtyOutbound"] },
                     ],
                 },
                 {
@@ -94,21 +73,9 @@ exports.deliveryRepository = {
                     attributes: ["planningBoxId"],
                     include: [
                         {
-                            model: timeOverflowPlanning_1.timeOverflowPlanning,
-                            as: "timeOverFlow",
-                            attributes: ["overflowDayStart", "overflowTimeRunning", "status"],
-                        },
-                        {
                             model: planningBoxMachineTime_1.PlanningBoxTime,
                             as: "boxTimes",
-                            attributes: [
-                                "runningPlan",
-                                "timeRunning",
-                                "dayStart",
-                                "qtyProduced",
-                                "machine",
-                                "status",
-                            ],
+                            attributes: ["timeRunning", "dayStart", "qtyProduced", "machine"],
                             required: false,
                             where: {
                                 dayStart: { [sequelize_1.Op.lte]: dayStart },
@@ -118,15 +85,55 @@ exports.deliveryRepository = {
                     ],
                 },
             ],
-            order: [
+        };
+        if (!isSearch) {
+            queryOptions.order = [
                 [{ model: order_1.Order, as: "Order" }, { model: customer_1.Customer, as: "Customer" }, "customerName", "ASC"],
+            ];
+            queryOptions.limit = 600;
+        }
+        return queryOptions;
+    },
+    getPlanningEstimateTime: ({ dayStart, userId, all, }) => {
+        return planningPaper_1.PlanningPaper.findAll(exports.deliveryRepository.buildPlanningEstimateOptions({
+            whereCondition: {
+                dayStart: { [sequelize_1.Op.lte]: dayStart },
+                status: { [sequelize_1.Op.notIn]: ["stop", "cancel"] },
+                deliveryPlanned: { [sequelize_1.Op.ne]: "delivered" },
+            },
+            userId,
+            all,
+            dayStart,
+            isSearch: false,
+        }));
+    },
+    getPlanningEstimateByField: async ({ planningIds, dayStart, all, }) => {
+        return await planningPaper_1.PlanningPaper.findAll(exports.deliveryRepository.buildPlanningEstimateOptions({
+            whereCondition: {
+                planningId: { [sequelize_1.Op.in]: planningIds },
+                dayStart: { [sequelize_1.Op.lte]: dayStart },
+            },
+            dayStart,
+            all,
+            isSearch: true,
+        }));
+    },
+    getPaperWaitingRegister: async (planningId, transaction) => {
+        return await planningPaper_1.PlanningPaper.findOne({
+            where: { planningId, deliveryPlanned: { [sequelize_1.Op.ne]: "delivered" } },
+            include: [
+                {
+                    model: order_1.Order,
+                    attributes: ["quantityCustomer", "lengthPaperCustomer", "paperSizeCustomer", "flute"],
+                },
             ],
-            limit: 300,
+            transaction,
+            lock: transaction.LOCK.UPDATE,
         });
     },
-    getPaperDeliveryPlanned: async (planningId, transaction) => {
-        return await planningPaper_1.PlanningPaper.findOne({
-            where: { planningId, deliveryPlanned: { [sequelize_1.Op.in]: ["none", "pending"] } },
+    getPaperWaitingClose: async (planningId, transaction) => {
+        return await planningPaper_1.PlanningPaper.findAll({
+            where: { planningId, deliveryPlanned: { [sequelize_1.Op.ne]: "delivered" } },
             include: [
                 {
                     model: order_1.Order,
@@ -138,54 +145,49 @@ exports.deliveryRepository = {
         });
     },
     //=================================PLANNING DELIVERY=====================================
-    getPlanningPendingDelivery: async () => {
-        return await planningPaper_1.PlanningPaper.findAll({
-            where: { deliveryPlanned: "pending" },
-            attributes: [
-                "planningId",
-                "lengthPaperPlanning",
-                "sizePaperPLaning",
-                "hasBox",
-                "deliveryPlanned",
-                "orderId",
-            ],
-            include: [
-                {
-                    model: order_1.Order,
-                    attributes: ["orderId", "dayReceiveOrder", "flute", "QC_box", "volume"],
-                    include: [
-                        { model: customer_1.Customer, attributes: ["customerName", "companyName"] },
-                        { model: product_1.Product, attributes: ["typeProduct", "productName"] },
-                    ],
-                },
-                {
-                    model: planningBox_1.PlanningBox,
-                    required: false,
-                    attributes: ["planningBoxId"],
-                },
-            ],
-        });
-    },
-    getDeliveryRequest: async () => {
+    getDeliveryRequest: async ({ isSearch, requestId, }) => {
+        const whereCondition = { status: "requested" };
+        if (requestId && isSearch === "true") {
+            whereCondition.requestId = { [sequelize_1.Op.in]: requestId };
+        }
         return await deliveryRequest_1.DeliveryRequest.findAll({
-            where: { status: "requested" },
-            attributes: { exclude: ["createdAt", "updatedAt"] },
+            where: whereCondition,
+            attributes: ["requestId", "qtyRegistered", "volume", "note", "status", "planningId"],
             include: [
                 {
                     model: planningPaper_1.PlanningPaper,
-                    attributes: ["planningId", "orderId", "lengthPaperPlanning", "sizePaperPLaning"],
+                    required: true,
+                    attributes: [
+                        "planningId",
+                        "lengthPaperPlanning",
+                        "sizePaperPLaning",
+                        "dayStart",
+                        "timeRunning",
+                    ],
                     include: [
                         {
                             model: order_1.Order,
-                            attributes: ["orderId", "dayReceiveOrder", "flute", "QC_box"],
+                            required: true,
+                            attributes: [
+                                "orderId",
+                                "quantityCustomer",
+                                "dayReceiveOrder",
+                                "flute",
+                                "QC_box",
+                                "orderSortValue",
+                            ],
                             include: [
-                                { model: customer_1.Customer, attributes: ["customerName", "companyName"] },
-                                { model: product_1.Product, attributes: ["typeProduct", "productName"] },
+                                { model: customer_1.Customer, required: true, attributes: ["customerName"] },
+                                { model: product_1.Product, required: true, attributes: ["productName"] },
+                                { model: inventory_1.Inventory, attributes: ["qtyInventory", "totalQtyOutbound"] },
                             ],
                         },
                     ],
                 },
-                { model: user_1.User, attributes: ["fullName"] },
+            ],
+            order: [
+                [planningPaper_1.PlanningPaper, order_1.Order, customer_1.Customer, "customerName", "ASC"],
+                [planningPaper_1.PlanningPaper, order_1.Order, "orderSortValue", "ASC"],
             ],
         });
     },
@@ -196,34 +198,57 @@ exports.deliveryRepository = {
             include: [
                 {
                     model: deliveryItem_1.DeliveryItem,
-                    attributes: { exclude: ["createdAt", "updatedAt"] },
+                    attributes: {
+                        exclude: ["createdAt", "updatedAt", "recipient", "dayRequested", "dayCompleted"],
+                    },
                     include: [
                         {
                             model: deliveryRequest_1.DeliveryRequest,
-                            attributes: ["requestId", "volume", "qtyRegistered"],
+                            attributes: ["requestId", "volume", "qtyRegistered", "note"],
                             include: [
                                 {
                                     model: planningPaper_1.PlanningPaper,
-                                    attributes: ["planningId", "orderId", "lengthPaperPlanning", "sizePaperPLaning"],
+                                    attributes: [
+                                        "planningId",
+                                        "lengthPaperPlanning",
+                                        "sizePaperPLaning",
+                                        "dayStart",
+                                        "timeRunning",
+                                    ],
                                     include: [
                                         {
                                             model: order_1.Order,
-                                            attributes: ["orderId", "dayReceiveOrder", "flute", "QC_box"],
+                                            attributes: [
+                                                "orderId",
+                                                "dayReceiveOrder",
+                                                "flute",
+                                                "QC_box",
+                                                "orderSortValue",
+                                            ],
                                             include: [
-                                                { model: customer_1.Customer, attributes: ["customerName", "companyName"] },
-                                                { model: product_1.Product, attributes: ["typeProduct", "productName"] },
+                                                { model: customer_1.Customer, attributes: ["customerName"] },
+                                                { model: product_1.Product, attributes: ["productName"] },
+                                                { model: inventory_1.Inventory, attributes: ["qtyInventory", "totalQtyOutbound"] },
                                             ],
                                         },
                                     ],
                                 },
-                                { model: user_1.User, attributes: ["fullName"] },
                             ],
                         },
                         { model: vehicle_1.Vehicle, attributes: ["vehicleName", "licensePlate"] },
+                        { model: outboundDetail_1.OutboundDetail, attributes: ["outboundQty"] },
                     ],
                 },
             ],
-            order: [["deliveryId", "ASC"]],
+            order: [[deliveryItem_1.DeliveryItem, "idxOrder", "ASC"]],
+        });
+    },
+    getDeliveryPlanByIds: async ({ requestId, transaction, }) => {
+        return await deliveryRequest_1.DeliveryRequest.findAll({
+            where: { requestId, status: { [sequelize_1.Op.ne]: "scheduled" } },
+            attributes: ["requestId", "status", "planningId"],
+            include: [{ model: planningPaper_1.PlanningPaper, attributes: ["planningId", "deliveryPlanned"] }],
+            transaction,
         });
     },
     findOneDeliveryPlanByDate: async (deliveryDate, transaction) => {
@@ -233,78 +258,16 @@ exports.deliveryRepository = {
             lock: transaction.LOCK.UPDATE,
         });
     },
-    getAllBoxByIds: async (boxIds, isRaw) => {
-        return await planningBox_1.PlanningBox.findAll({
-            where: { planningBoxId: { [sequelize_1.Op.in]: boxIds } },
-            attributes: ["planningBoxId", "planningId"],
-            raw: isRaw,
-        });
-    },
-    getAllPaperByIds: async (allPlanningIds) => {
-        return planningPaper_1.PlanningPaper.findAll({
-            where: { planningId: { [sequelize_1.Op.in]: allPlanningIds } },
-            attributes: [
-                "planningId",
-                "lengthPaperPlanning",
-                "sizePaperPLaning",
-                "deliveryPlanned",
-                "orderId",
-            ],
-            include: [
-                {
-                    model: order_1.Order,
-                    attributes: ["orderId", "dayReceiveOrder", "flute", "QC_box"],
-                    include: [
-                        { model: customer_1.Customer, attributes: ["customerName", "companyName"] },
-                        { model: product_1.Product, attributes: ["typeProduct", "productName"] },
-                    ],
-                },
-            ],
-            nest: true,
-            raw: true,
-        });
-    },
-    getAllPaperScheduled: async (allPlanningIds) => {
-        return await planningPaper_1.PlanningPaper.findAll({
-            where: { planningId: { [sequelize_1.Op.in]: allPlanningIds } },
-            attributes: ["planningId"],
-            include: [
-                {
-                    model: order_1.Order,
-                    attributes: [
-                        "orderId",
-                        "dayReceiveOrder",
-                        "flute",
-                        "QC_box",
-                        "day",
-                        "matE",
-                        "matB",
-                        "matC",
-                        "matE2",
-                        "songE",
-                        "songB",
-                        "songC",
-                        "songE2",
-                        "lengthPaperManufacture",
-                        "paperSizeManufacture",
-                        "quantityManufacture",
-                        "dvt",
-                    ],
-                    include: [
-                        { model: customer_1.Customer, attributes: ["customerName", "companyName"] },
-                        { model: product_1.Product, attributes: ["typeProduct", "productName"] },
-                        { model: inventory_1.Inventory, attributes: ["qtyInventory"] },
-                    ],
-                },
-            ],
-            raw: true,
-            nest: true,
-        });
-    },
     findOrCreateDeliveryPlan: async (deliveryDate, transaction) => {
         return await deliveryPlan_1.DeliveryPlan.findOrCreate({
             where: { deliveryDate: new Date(deliveryDate) },
-            include: [{ model: deliveryItem_1.DeliveryItem }],
+            include: [
+                {
+                    model: deliveryItem_1.DeliveryItem,
+                    attributes: { exclude: ["createdAt", "updatedAt"] },
+                    include: [{ model: deliveryRequest_1.DeliveryRequest, attributes: ["requestId", "planningId"] }],
+                },
+            ],
             transaction,
         });
     },
@@ -317,8 +280,7 @@ exports.deliveryRepository = {
     updateDeliveryItemById: async ({ statusUpdate, whereCondition, transaction, }) => {
         return await deliveryItem_1.DeliveryItem.update({ status: statusUpdate }, { where: whereCondition, transaction });
     },
-    // Trong delivery.repository.ts
-    updateDeliveryRequestStatus: async (requestIds, status, transaction) => {
+    updateRequestStatus: async (requestIds, status, transaction) => {
         return await deliveryRequest_1.DeliveryRequest.update({ status }, {
             where: { requestId: requestIds },
             transaction,
@@ -326,23 +288,65 @@ exports.deliveryRepository = {
     },
     bulkUpsert: async (item, transaction) => {
         return await deliveryItem_1.DeliveryItem.bulkCreate(item, {
-            updateOnDuplicate: ["vehicleId", "sequence", "note", "status"],
+            updateOnDuplicate: ["deliveryId", "vehicleId", "sequence", "status", "idxOrder"],
             transaction,
         });
+    },
+    //------------------------MEILISEARCH-----------------------------
+    buildMeiliDeliveryRequestOptions: ({ whereCondition, transaction, }) => {
+        const queryOptions = {
+            where: whereCondition,
+            attributes: ["requestId", "status"],
+            include: [
+                {
+                    model: planningPaper_1.PlanningPaper,
+                    attributes: ["planningId"],
+                    include: [
+                        {
+                            model: order_1.Order,
+                            attributes: ["orderId"],
+                            include: [{ model: customer_1.Customer, attributes: ["customerName"] }],
+                        },
+                    ],
+                },
+                { model: user_1.User, attributes: ["fullName"] },
+            ],
+            transaction,
+        };
+        return queryOptions;
+    },
+    syncDeliveryRequestForMeili: async (requestId, transaction) => {
+        return await deliveryRequest_1.DeliveryRequest.findOne(exports.deliveryRepository.buildMeiliDeliveryRequestOptions({
+            whereCondition: { requestId },
+            transaction,
+        }));
+    },
+    syncManyDeliveryRequestForMeili: async (requestIds, transaction) => {
+        return await deliveryRequest_1.DeliveryRequest.findAll(exports.deliveryRepository.buildMeiliDeliveryRequestOptions({
+            whereCondition: { requestId: { [sequelize_1.Op.in]: requestIds } },
+            transaction,
+        }));
+    },
+    syncAllDeliveryRequestForMeili: async ({ whereCondition }) => {
+        return await deliveryRequest_1.DeliveryRequest.findAll(exports.deliveryRepository.buildMeiliDeliveryRequestOptions({ whereCondition }));
     },
     //=================================SCHEDULE DELIVERY=====================================
     getAllDeliveryPlanByDate: async ({ deliveryDate, status, itemStatus, }) => {
         const whereCondition = { deliveryDate: new Date(deliveryDate) };
         if (status) {
-            whereCondition.status = status;
+            whereCondition.status = { [sequelize_1.Op.in]: Array.isArray(status) ? status : [status] };
         }
         const itemWhereCondition = {};
         if (itemStatus) {
-            itemWhereCondition.status = itemStatus;
+            itemWhereCondition.status = { [sequelize_1.Op.in]: itemStatus };
         }
         return await deliveryPlan_1.DeliveryPlan.findAll({
             attributes: { exclude: ["createdAt", "updatedAt"] },
             where: whereCondition,
+            order: [
+                [deliveryItem_1.DeliveryItem, "sequence", "ASC"],
+                [deliveryItem_1.DeliveryItem, "idxOrder", "ASC"],
+            ],
             include: [
                 {
                     model: deliveryItem_1.DeliveryItem,
@@ -355,7 +359,7 @@ exports.deliveryRepository = {
                             include: [
                                 {
                                     model: planningPaper_1.PlanningPaper,
-                                    attributes: ["planningId"],
+                                    attributes: ["planningId", "hasBox"],
                                     include: [
                                         {
                                             model: order_1.Order,
@@ -373,21 +377,27 @@ exports.deliveryRepository = {
                                                 "songB",
                                                 "songC",
                                                 "songE2",
+                                                "quantityCustomer",
                                                 "lengthPaperCustomer",
                                                 "paperSizeCustomer",
-                                                "quantityCustomer",
+                                                "lengthPaperManufacture",
+                                                "paperSizeManufacture",
                                                 "dvt",
+                                                "orderIdCustomer",
+                                                "isFSC",
                                             ],
                                             include: [
-                                                { model: customer_1.Customer, attributes: ["customerName", "companyName"] },
-                                                { model: product_1.Product, attributes: ["typeProduct", "productName"] },
+                                                { model: customer_1.Customer, attributes: ["customerName"] },
+                                                { model: product_1.Product, attributes: ["productName"] },
+                                                { model: inventory_1.Inventory, attributes: ["totalQtyOutbound"] },
                                             ],
                                         },
                                     ],
                                 },
                             ],
                         },
-                        { model: vehicle_1.Vehicle, attributes: { exclude: ["createdAt", "updatedAt"] } },
+                        { model: outboundDetail_1.OutboundDetail, attributes: ["outboundQty"] },
+                        { model: vehicle_1.Vehicle, attributes: ["vehicleId", "vehicleName", "vehicleHouse"] },
                     ],
                 },
             ],
@@ -409,5 +419,96 @@ exports.deliveryRepository = {
             lock: transaction.LOCK.UPDATE,
         });
     },
+    getDeliveryItemToUpdateStatus: async (itemIds, transaction) => {
+        return await deliveryItem_1.DeliveryItem.findAll({
+            where: { deliveryItemId: { [sequelize_1.Op.in]: itemIds } },
+            attributes: { exclude: ["createdAt", "updatedAt"] },
+            include: [
+                {
+                    model: deliveryRequest_1.DeliveryRequest,
+                    attributes: ["requestId"],
+                    include: [
+                        {
+                            model: planningPaper_1.PlanningPaper,
+                            attributes: ["planningId", "hasBox", "orderId"],
+                            include: [{ model: planningBox_1.PlanningBox, attributes: ["planningBoxId"] }],
+                        },
+                    ],
+                },
+            ],
+            transaction,
+        });
+    },
+    //start auto complete
+    getDeliveryItemsById: async (deliveryItemId) => {
+        return await deliveryItem_1.DeliveryItem.findOne({
+            where: { deliveryItemId, status: { [sequelize_1.Op.notIn]: ["cancelled", "completed"] } },
+            attributes: { exclude: ["createdAt", "updatedAt", "sequence", "idxOrder"] },
+            include: [
+                {
+                    model: deliveryRequest_1.DeliveryRequest,
+                    required: true,
+                    attributes: { exclude: ["createdAt", "updatedAt", "status", "userId", "volume"] },
+                    include: [
+                        {
+                            model: planningPaper_1.PlanningPaper,
+                            attributes: ["planningId", "orderId"],
+                            required: true,
+                            include: [
+                                {
+                                    model: order_1.Order,
+                                    required: true,
+                                    attributes: [
+                                        "orderId",
+                                        "dayReceiveOrder",
+                                        "lengthPaperManufacture",
+                                        "paperSizeManufacture",
+                                    ],
+                                    include: [{ model: customer_1.Customer, attributes: ["companyName"] }],
+                                },
+                            ],
+                        },
+                    ],
+                },
+                { model: vehicle_1.Vehicle, attributes: ["vehicleName"] },
+            ],
+        });
+    },
+    searchOrderIdInDeliveryItem: async (keyword) => {
+        return await deliveryItem_1.DeliveryItem.findAll({
+            where: { status: { [sequelize_1.Op.notIn]: ["cancelled", "completed"] } },
+            attributes: ["deliveryItemId"],
+            include: [
+                { model: deliveryPlan_1.DeliveryPlan, attributes: ["deliveryDate"] },
+                {
+                    model: deliveryRequest_1.DeliveryRequest,
+                    required: true,
+                    attributes: ["requestId"],
+                    include: [
+                        {
+                            model: planningPaper_1.PlanningPaper,
+                            attributes: ["planningId", "orderId"],
+                            required: true,
+                            include: [
+                                {
+                                    model: order_1.Order,
+                                    where: { orderId: { [sequelize_1.Op.startsWith]: keyword } },
+                                    required: true,
+                                    attributes: [
+                                        "orderId",
+                                        "dayReceiveOrder",
+                                        "lengthPaperManufacture",
+                                        "paperSizeManufacture",
+                                    ],
+                                    include: [{ model: customer_1.Customer, attributes: ["customerName"] }],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        });
+    },
+    //end auto complete
 };
 //# sourceMappingURL=deliveryRepository.js.map

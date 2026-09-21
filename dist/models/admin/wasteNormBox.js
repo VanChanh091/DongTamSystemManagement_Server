@@ -18,7 +18,7 @@ function initWasteNormBoxModel(sequelize) {
         paperNumberOnProduct: { type: sequelize_1.DataTypes.INTEGER },
         totalLossOnTotalQty: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false },
         machineName: { type: sequelize_1.DataTypes.STRING, allowNull: false },
-    }, { sequelize, tableName: "WasteNormBoxes", timestamps: true });
+    }, { sequelize, tableName: "waste_norm_boxes", timestamps: true });
     return WasteNormBox;
 }
 //# sourceMappingURL=wasteNormBox.js.map

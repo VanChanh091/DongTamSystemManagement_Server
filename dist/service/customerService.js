@@ -4,24 +4,27 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.customerService = void 0;
-const redis_connect_1 = __importDefault(require("../assets/configs/connect/redis.connect"));
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const sequelize_1 = require("sequelize");
 const appError_1 = require("../utils/appError");
 const order_1 = require("../models/order/order");
+const meiliService_1 = require("./system/meiliService");
+const labelFields_1 = require("../assets/labelFields");
 const customer_1 = require("../models/customer/customer");
 const cacheKey_1 = require("../utils/helper/cache/cacheKey");
+const dayjs_config_1 = require("../assets/configs/dayjs/dayjs.config");
+const redis_connect_1 = __importDefault(require("../assets/configs/connect/redis.connect"));
 const cacheManager_1 = require("../utils/helper/cache/cacheManager");
-const excelExporter_1 = require("../utils/helper/excelExporter");
 const customerPayment_1 = require("../models/customer/customerPayment");
 const transactionHelper_1 = require("../utils/helper/transactionHelper");
 const customerRepository_1 = require("../repository/customerRepository");
+const excelExporter_1 = require("../utils/helper/excelExporter");
 const meilisearch_connect_1 = require("../assets/configs/connect/meilisearch.connect");
+const meiliTransformer_1 = require("../assets/configs/meilisearch/meiliTransformer");
 const customerRowAndColumn_1 = require("../utils/mapping/customerRowAndColumn");
 const orderHelpers_1 = require("../utils/helper/modelHelper/orderHelpers");
-const meiliService_1 = require("./meiliService");
-const labelFields_1 = require("../assets/labelFields");
+const user_1 = require("../models/user/user");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { customer } = cacheKey_1.CacheKey;
 exports.customerService = {
@@ -29,7 +32,7 @@ exports.customerService = {
         const noPagingMode = noPaging === "true";
         const cacheKey = noPaging === "true" ? customer.all : customer.page(page);
         try {
-            const { isChanged } = await cacheManager_1.CacheManager.check(customer_1.Customer, "customer");
+            const { isChanged } = await cacheManager_1.CacheManager.check([{ model: customer_1.Customer }, { model: customerPayment_1.CustomerPayment }], "customer");
             if (isChanged) {
                 await cacheManager_1.CacheManager.clear("customer");
             }
@@ -48,7 +51,8 @@ exports.customerService = {
                 totalPages = 1;
             }
             else {
-                const { rows, count } = await customerRepository_1.customerRepository.findCustomerByPage({ page, pageSize });
+                const options = customerRepository_1.customerRepository.buildCustomersOptions({ page, pageSize });
+                const { rows, count } = await customer_1.Customer.findAndCountAll(options);
                 data = rows;
                 totalCustomers = count;
                 totalPages = Math.ceil(totalCustomers / pageSize);
@@ -68,16 +72,32 @@ exports.customerService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    getCustomerByFields: async ({ field, keyword, page, pageSize }) => {
+    getCustomerByFields: async ({ field, keyword, page, pageSize, startDate, endDate, }) => {
         try {
-            const validFields = ["customerId", "customerName", "cskh", "phone"];
+            const validFields = ["customerId", "customerName", "cskh", "phone", "createdAt"];
             if (!validFields.includes(field)) {
                 throw appError_1.AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
             }
             const index = meilisearch_connect_1.meiliClient.index("customers");
-            const searchResult = await index.search(keyword, {
-                attributesToSearchOn: [field],
+            // Lọc theo ngày nếu có
+            let searchKeyword = keyword;
+            let filters = [];
+            if (field === "createdAt") {
+                searchKeyword = "";
+                if (startDate && endDate) {
+                    const startTimestamp = dayjs_config_1.dayjsUtc.utc(startDate).startOf("day").unix();
+                    filters.push(`createdAt >= ${startTimestamp}`);
+                    const endTimestamp = dayjs_config_1.dayjsUtc.utc(endDate).endOf("day").unix();
+                    filters.push(`createdAt <= ${endTimestamp}`);
+                }
+                // console.log(`start: ${startDate} - end: ${endDate}`);
+                // console.log(`filter: ${filters.join(" AND ")}`);
+            }
+            const searchResult = await index.search(searchKeyword, {
+                filter: filters.join(" AND "),
                 attributesToRetrieve: ["customerId"],
+                attributesToSearchOn: searchKeyword ? [field] : [],
+                sort: ["customerSeq:desc"],
                 page: Number(page) || 1,
                 hitsPerPage: Number(pageSize) || 25, //pageSize
             });
@@ -92,12 +112,13 @@ exports.customerService = {
                 };
             }
             //query db
-            const { rows } = await customerRepository_1.customerRepository.findCustomerByPage({
+            const options = customerRepository_1.customerRepository.buildCustomersOptions({
                 whereCondition: { customerId: { [sequelize_1.Op.in]: customerIds } },
             });
+            const customers = await customer_1.Customer.findAll(options);
             // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
             const finalData = customerIds
-                .map((id) => rows.find((customer) => customer.customerId === id))
+                .map((id) => customers.find((customer) => customer.customerId === id))
                 .filter(Boolean);
             return {
                 message: "Get customers from Meilisearch & DB successfully",
@@ -114,8 +135,24 @@ exports.customerService = {
             throw appError_1.AppError.ServerError();
         }
     },
+    //auto generate username and userId
+    getUserSales: async () => {
+        try {
+            return await user_1.User.findAll({
+                where: sequelize_1.Sequelize.where(sequelize_1.Sequelize.fn("JSON_CONTAINS", sequelize_1.Sequelize.col("permissions"), JSON.stringify("sale")), 1),
+                attributes: ["userId", "fullName"],
+                raw: true,
+            });
+        }
+        catch (error) {
+            console.error("Failed to get all user sale", error);
+            if (error instanceof appError_1.AppError)
+                throw error;
+            throw appError_1.AppError.ServerError();
+        }
+    },
     createCustomer: async (data) => {
-        const { prefix = "CUSTOM", payment, ...customerData } = data;
+        const { prefix = "CUSTOM", payment, userId, ...customerData } = data;
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
                 const sanitizedPrefix = prefix.trim().replace(/\s+/g, "").toUpperCase();
@@ -134,7 +171,7 @@ exports.customerService = {
                 //create next id
                 const nextId = Number(maxSeq) + 1;
                 const newCustomerId = `${prefix}${String(nextId).padStart(4, "0")}`;
-                const newCustomer = await customerRepository_1.customerRepository.createCustomer({ customerId: newCustomerId, customerSeq: nextId, ...customerData }, transaction);
+                const newCustomer = await customer_1.Customer.create({ customerId: newCustomerId, customerSeq: nextId, userId, ...customerData }, { transaction });
                 //create customer payment
                 await (0, orderHelpers_1.createDataTable)({
                     model: customerPayment_1.CustomerPayment,
@@ -154,7 +191,7 @@ exports.customerService = {
         }
     },
     updateCustomer: async (customerId, customerData) => {
-        const { payment, ...restCustomerData } = customerData;
+        const { payment, userId, ...restCustomerData } = customerData;
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
                 const customer = await customerRepository_1.customerRepository.findCustomerByPk({
@@ -164,7 +201,7 @@ exports.customerService = {
                 if (!customer) {
                     throw appError_1.AppError.NotFound("Customer not found", "CUSTOMER_NOT_FOUND");
                 }
-                await customerRepository_1.customerRepository.updateCustomer(customer, restCustomerData, transaction);
+                await customer.update({ userId, ...restCustomerData }, { transaction });
                 await (0, orderHelpers_1.updateChildTable)({
                     model: customerPayment_1.CustomerPayment,
                     where: { customerId },
@@ -185,11 +222,12 @@ exports.customerService = {
     },
     syncCustomerForMeili: async (customerId, transaction) => {
         try {
-            const customer = await customerRepository_1.customerRepository.findCustomerForMeili(customerId, transaction);
+            const customer = await customerRepository_1.customerRepository.syncCustomerForMeili(customerId, transaction);
             if (customer) {
+                const flattenData = meiliTransformer_1.meiliTransformer.customer(customer);
                 await meiliService_1.meiliService.syncOrUpdateMeiliData({
                     indexKey: labelFields_1.MEILI_INDEX.CUSTOMERS,
-                    data: customer.toJSON(),
+                    data: flattenData,
                     transaction,
                 });
             }
@@ -214,12 +252,16 @@ exports.customerService = {
                 const orderCount = await order_1.Order.count({ where: { customerId }, transaction });
                 if (orderCount > 0) {
                     if (role != "admin") {
-                        throw appError_1.AppError.Conflict(`CustomerId: ${customerId} has order and cannot be deleted`, "CUSTOMER_HAS_ORDERS");
+                        throw appError_1.AppError.Conflict(`Khách hàng: ${customer.customerName} có ${orderCount} đơn hàng, không thể xóa`, "CUSTOMER_HAS_ORDERS");
                     }
                 }
                 await customer.destroy({ transaction });
                 //--------------------MEILISEARCH-----------------------
-                await meiliService_1.meiliService.deleteMeiliData(labelFields_1.MEILI_INDEX.CUSTOMERS, customerId, transaction);
+                await meiliService_1.meiliService.deleteMeiliData({
+                    indexKey: labelFields_1.MEILI_INDEX.CUSTOMERS,
+                    idOrIds: customerId,
+                    transaction,
+                });
                 return { message: "Customer deleted successfully" };
             });
         }
@@ -243,9 +285,13 @@ exports.customerService = {
                 end.setHours(23, 59, 59, 999);
                 whereCondition.timePayment = { [sequelize_1.Op.between]: [start, end] };
             }
-            const { rows } = await customerRepository_1.customerRepository.findCustomerByPage({ whereCondition });
-            await (0, excelExporter_1.exportExcelResponse)(res, {
-                data: rows,
+            const baseQuery = customerRepository_1.customerRepository.buildCustomersOptions({
+                whereCondition,
+                isExport: true,
+            });
+            await (0, excelExporter_1.exportExcelStreamResponse)(res, {
+                baseQuery: baseQuery,
+                model: customer_1.Customer,
                 sheetName: "Danh sách khách hàng",
                 fileName: "customer",
                 columns: customerRowAndColumn_1.customerColumns,

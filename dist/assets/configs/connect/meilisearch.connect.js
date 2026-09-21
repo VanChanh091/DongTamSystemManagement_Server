@@ -19,7 +19,7 @@ if (devEnvironment) {
 else {
     meiliConfig = {
         apiKey: process.env.MEILISEARCH_MASTER_KEY_PROD,
-        host: "192.168.1.81",
+        host: "192.168.1.151",
         port: 7700,
     };
 }

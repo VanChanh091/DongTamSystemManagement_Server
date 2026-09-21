@@ -4,7 +4,7 @@ import { statisticErrProductionService } from "../../../service/synthetic/statis
 
 //===========================REVENUE REPORT================================
 export const getRevenueReport = async (req: Request, res: Response, next: NextFunction) => {
-  const { type, month, year, fromYear, toYear, targetUserId, page, pageSize, keyword } =
+  const { type, month, year, fromYear, toYear, targetUserId, page, pageSize, keyword, all } =
     req.query as {
       type: string;
       month?: string;
@@ -15,10 +15,12 @@ export const getRevenueReport = async (req: Request, res: Response, next: NextFu
       page?: string;
       pageSize?: string;
       keyword?: string;
+      all?: string;
     };
 
   try {
     let response;
+    const isAll = all === "true";
 
     switch (type) {
       case "daily":
@@ -30,6 +32,7 @@ export const getRevenueReport = async (req: Request, res: Response, next: NextFu
           page: Number(page),
           pageSize: Number(pageSize),
           keyword: keyword ? String(keyword).trim() : undefined,
+          all: isAll,
         });
         break;
       case "monthly":
@@ -38,6 +41,7 @@ export const getRevenueReport = async (req: Request, res: Response, next: NextFu
           year: year ? Number(year) : undefined,
           targetUserId: targetUserId ? Number(targetUserId) : null,
           currentUser: req.user,
+          all: isAll,
         });
         break;
       case "yearly":
@@ -53,6 +57,7 @@ export const getRevenueReport = async (req: Request, res: Response, next: NextFu
           page: Number(page),
           pageSize: Number(pageSize),
           keyword: keyword ? String(keyword).trim() : undefined,
+          all: isAll,
         });
         break;
     }
@@ -67,7 +72,7 @@ export const getRevenueReport = async (req: Request, res: Response, next: NextFu
 export const getErrorProductionReport = async (req: Request, res: Response, next: NextFunction) => {
   const { action, month, year, machine, employeeId, type } = req.query as {
     action: string;
-    month: string;
+    month?: string;
     year: string;
     machine?: string;
     employeeId?: string;
@@ -88,6 +93,12 @@ export const getErrorProductionReport = async (req: Request, res: Response, next
         });
         break;
       case "yearly":
+        response = await statisticErrProductionService.getYearlyErrorReport({
+          year: Number(year),
+          machine: machine ? String(machine).trim() : undefined,
+          employeeId: employeeId ? Number(employeeId) : undefined,
+          type: type,
+        });
         break;
     }
 

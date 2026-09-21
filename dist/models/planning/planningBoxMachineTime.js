@@ -36,9 +36,13 @@ function initPlanningBoxTimeModel(sequelize) {
         },
         shiftManagement: { type: sequelize_1.DataTypes.STRING },
         status: {
-            type: sequelize_1.DataTypes.ENUM("planning", "lackOfQty", "complete", "producing", "stop"),
+            type: sequelize_1.DataTypes.ENUM("planning", "lackOfQty", "producing", "requested", "complete", "stop"),
             allowNull: false,
             defaultValue: "planning",
+        },
+        statusCheck: {
+            type: sequelize_1.DataTypes.ENUM("none", "failed", "fixed", "passed"),
+            defaultValue: "none",
         },
         sortPlanning: { type: sequelize_1.DataTypes.INTEGER },
         isRequest: { type: sequelize_1.DataTypes.BOOLEAN, defaultValue: false },
@@ -46,7 +50,7 @@ function initPlanningBoxTimeModel(sequelize) {
         planningBoxId: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
     }, {
         sequelize,
-        tableName: "PlanningBoxTimes",
+        tableName: "planning_box_times",
         timestamps: true,
         indexes: [
             //FK

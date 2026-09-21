@@ -3,10 +3,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const dotenv_1 = __importDefault(require("dotenv"));
-const user_1 = require("../models/user/user");
 dotenv_1.default.config();
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const user_1 = require("../models/user/user");
 // Mở rộng type cho Request để có thể gán req.user
 const authenticate = async (req, res, next) => {
     const token = req.headers.authorization?.split(" ")[1];
@@ -25,6 +25,8 @@ const authenticate = async (req, res, next) => {
             role: user.role,
             permissions: user.permissions,
             email: user.email,
+            fullName: user.fullName,
+            department: user.department,
         };
         next();
     }

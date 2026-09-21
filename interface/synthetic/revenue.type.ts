@@ -39,6 +39,7 @@ export interface RevenueReportFilterInput {
     userId: number;
     role: "manager" | "admin" | "user" | string;
   };
+  all?: boolean;
 }
 
 export interface DailyReportRow {
@@ -76,6 +77,7 @@ export interface YearlyReportFilterInput {
   };
   page?: number;
   pageSize?: number;
+  all?: boolean;
 }
 
 export interface YearSalesData {

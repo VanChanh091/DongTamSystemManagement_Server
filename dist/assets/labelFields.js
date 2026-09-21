@@ -54,12 +54,14 @@ const MEILI_INDEX = {
     EMPLOYEES: "employees",
     PLANNING_PAPERS: "planningPapers",
     PLANNING_BOXES: "planningBoxes",
+    SCRAP_REPORTS: "scrapReports",
     INBOUND: "inboundHistories",
     OUTBOUNDS: "outbounds",
     INVENTORIES: "inventories",
     REPORT_PAPERS: "reportPapers",
     REPORT_BOXES: "reportBoxes",
     DASHBOARD: "dashboard",
+    DELIVERY_REQUEST: "deliveryRequest",
 };
 exports.MEILI_INDEX = MEILI_INDEX;
 //# sourceMappingURL=labelFields.js.map

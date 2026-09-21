@@ -18,7 +18,7 @@ function initDeliveryPlanModel(sequelize) {
         },
     }, {
         sequelize,
-        tableName: "DeliveryPlan",
+        tableName: "delivery_plans",
         timestamps: true,
         indexes: [{ fields: ["deliveryDate"] }, { fields: ["status"] }],
     });

@@ -29,7 +29,10 @@ exports.planningBoxRepository = {
             include: [
                 {
                     model: planningBoxMachineTime_1.PlanningBoxTime,
-                    where: { machine: machine },
+                    where: {
+                        machine: machine,
+                        status: { [sequelize_1.Op.in]: ["planning", "lackOfQty", "producing", "requested"] },
+                    },
                     as: "boxTimes",
                     required: true,
                     attributes: { exclude: ["createdAt", "updatedAt"] },
@@ -67,7 +70,9 @@ exports.planningBoxRepository = {
                         "orderId",
                         "dayReceiveOrder",
                         "flute",
+                        "isFSC",
                         "QC_box",
+                        "totalPrice",
                         "numberChild",
                         "dateRequestShipping",
                         "customerId",
@@ -122,12 +127,10 @@ exports.planningBoxRepository = {
         });
     },
     getBoxsById: async ({ planningBoxIds, machine, options = {}, }) => {
-        const { attributes, include } = options;
         const ids = Array.isArray(planningBoxIds) ? planningBoxIds : [planningBoxIds];
         return await planningBoxMachineTime_1.PlanningBoxTime.findAll({
-            attributes,
-            include,
             where: { planningBoxId: { [sequelize_1.Op.in]: ids }, machine },
+            ...options,
         });
     },
     getBoxesByUpdateIndex: async (updateIndex, machine, transaction) => {

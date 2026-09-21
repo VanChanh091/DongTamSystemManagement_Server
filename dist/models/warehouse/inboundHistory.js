@@ -13,6 +13,7 @@ function initInboundHistoryModel(sequelize) {
         dateInbound: { type: sequelize_1.DataTypes.DATE, allowNull: false },
         qtyPaper: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
         qtyInbound: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
+        totalPrice: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false, defaultValue: 0 },
         //FK
         orderId: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         planningId: { type: sequelize_1.DataTypes.INTEGER },
@@ -20,7 +21,7 @@ function initInboundHistoryModel(sequelize) {
         qcSessionId: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
     }, {
         sequelize,
-        tableName: "InboundHistory",
+        tableName: "inbound_histories",
         timestamps: true,
         indexes: [
             //FK

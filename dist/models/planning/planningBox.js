@@ -39,11 +39,12 @@ function initPlanningBoxModel(sequelize) {
             type: sequelize_1.DataTypes.ENUM("none", "requested", "inbounded", "finalize"),
             defaultValue: "none",
         },
+        //FK
         orderId: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         planningId: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
     }, {
         sequelize,
-        tableName: "PlanningBoxes",
+        tableName: "planning_boxes",
         timestamps: true,
         indexes: [
             //FK

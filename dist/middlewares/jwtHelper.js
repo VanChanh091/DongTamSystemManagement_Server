@@ -10,9 +10,7 @@ const generateToken = (user) => {
     const key = process.env.NODE_ENV === "development"
         ? process.env.SECRET_KEY_DEV
         : process.env.SECRET_KEY_PROD;
-    return jsonwebtoken_1.default.sign({ userId: user.userId, role: user.role }, key, {
-        expiresIn: "1d",
-    });
+    return jsonwebtoken_1.default.sign({ userId: user.userId, role: user.role, department: user.department }, key, { expiresIn: "1d" });
 };
 exports.default = generateToken;
 //# sourceMappingURL=jwtHelper.js.map

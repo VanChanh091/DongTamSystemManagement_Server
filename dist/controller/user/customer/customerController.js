@@ -1,10 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.exportExcelCustomer = exports.deleteCustomer = exports.updateCustomer = exports.createCustomer = exports.checkCustomerInOrders = exports.getCustomers = void 0;
+exports.exportExcelCustomer = exports.deleteCustomer = exports.updateCustomer = exports.createCustomer = exports.getUserSales = exports.checkCustomerInOrders = exports.getCustomers = void 0;
 const order_1 = require("../../../models/order/order");
 const customerService_1 = require("../../../service/customerService");
 const getCustomers = async (req, res, next) => {
-    const { field, keyword, page = 1, pageSize = 20, noPaging = false, } = req.query;
+    const { field, keyword, page = 1, pageSize = 20, noPaging = false, startDate, endDate, } = req.query;
     try {
         let response;
         // 1. Nhánh tìm kiếm theo field
@@ -14,6 +14,8 @@ const getCustomers = async (req, res, next) => {
                 keyword,
                 page: Number(page),
                 pageSize: Number(pageSize),
+                startDate,
+                endDate,
             });
         }
         // 2. Nhánh lấy tất cả
@@ -43,6 +45,16 @@ const checkCustomerInOrders = async (req, res, next) => {
     }
 };
 exports.checkCustomerInOrders = checkCustomerInOrders;
+const getUserSales = async (req, res, next) => {
+    try {
+        const users = await customerService_1.customerService.getUserSales();
+        return res.status(200).json({ message: "Get user sales successfully", data: users });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.getUserSales = getUserSales;
 //create customer
 const createCustomer = async (req, res, next) => {
     try {

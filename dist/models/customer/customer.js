@@ -22,19 +22,17 @@ function initCustomerModel(sequelize) {
         mst: { type: sequelize_1.DataTypes.STRING },
         phone: { type: sequelize_1.DataTypes.STRING },
         contactPerson: { type: sequelize_1.DataTypes.STRING },
-        dayCreated: { type: sequelize_1.DataTypes.DATE },
         rateCustomer: { type: sequelize_1.DataTypes.STRING },
         customerSource: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         cskh: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         customerSeq: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
+        //FK
+        userId: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
     }, {
         sequelize,
         tableName: "Customers",
         timestamps: true,
-        indexes: [
-            //get
-            { fields: ["customerSeq"] },
-        ],
+        indexes: [{ fields: ["userId"] }, { fields: ["customerSeq"] }],
     });
     return Customer;
 }

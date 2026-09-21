@@ -8,17 +8,19 @@ const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const sequelize_1 = require("sequelize");
 const appError_1 = require("../utils/appError");
+const cacheKey_1 = require("../utils/helper/cache/cacheKey");
+const normalizeVN_1 = require("../utils/helper/normalizeVN");
+const dayjs_config_1 = require("../assets/configs/dayjs/dayjs.config");
+const redis_connect_1 = __importDefault(require("../assets/configs/connect/redis.connect"));
 const cacheManager_1 = require("../utils/helper/cache/cacheManager");
-const reportPlanningPaper_1 = require("../models/report/reportPlanningPaper");
 const reportRepository_1 = require("../repository/reportRepository");
 const reportPlanningBox_1 = require("../models/report/reportPlanningBox");
 const excelExporter_1 = require("../utils/helper/excelExporter");
-const reportPaperRowAndColumn_1 = require("../utils/mapping/reportPaperRowAndColumn");
-const reportBoxRowAndColumn_1 = require("../utils/mapping/reportBoxRowAndColumn");
-const redis_connect_1 = __importDefault(require("../assets/configs/connect/redis.connect"));
-const cacheKey_1 = require("../utils/helper/cache/cacheKey");
-const normalizeVN_1 = require("../utils/helper/normalizeVN");
+const reportPaperRowAndColumn_1 = require("../utils/mapping/report/reportPaperRowAndColumn");
+const reportPlanningPaper_1 = require("../models/report/reportPlanningPaper");
 const meilisearch_connect_1 = require("../assets/configs/connect/meilisearch.connect");
+const reportBoxRowAndColumn_1 = require("../utils/mapping/report/reportBoxRowAndColumn");
+const reportHelper_1 = require("../utils/helper/modelHelper/reportHelper");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper, box } = cacheKey_1.CacheKey.report;
 exports.reportService = {
@@ -39,15 +41,27 @@ exports.reportService = {
                     return { ...parsed, message: "Get all report planning paper from cache" };
                 }
             }
-            const offset = (page - 1) * pageSize;
-            const { rows, count } = await reportRepository_1.reportRepository.findReportPaperByMachine(machine, pageSize, offset);
+            const queryOptions = reportRepository_1.reportRepository.buildReportPaperOptions({ machine, page, pageSize });
+            const { rows, count } = await reportPlanningPaper_1.ReportPlanningPaper.findAndCountAll(queryOptions);
             const totalPages = Math.ceil(count / pageSize);
+            if (rows.length === 0) {
+                return {
+                    message: "No data",
+                    data: [],
+                    totalPapers: count,
+                    totalPages,
+                    currentPage: page,
+                    summaryByDate: {},
+                };
+            }
+            const summaryByDate = await (0, reportHelper_1.getPerformanceSummaryByRows)(rows, machine);
             const responseData = {
                 message: "get all report planning paper successfully",
                 data: rows,
                 totalPapers: count,
                 totalPages,
                 currentPage: page,
+                summaryByDate,
             };
             await redis_connect_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
             return responseData;
@@ -59,20 +73,34 @@ exports.reportService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    getReportPaperByField: async (field, keyword, machine, page, pageSize) => {
+    getReportPaperByField: async ({ field, keyword, machine, page, pageSize, startDate, endDate, }) => {
         try {
             const validFields = ["orderId", "customerName", "dayReported", "shiftManagement"];
             if (!validFields.includes(field)) {
                 throw appError_1.AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
             }
             const index = meilisearch_connect_1.meiliClient.index("reportPapers");
-            const searchResult = await index.search(keyword, {
-                attributesToSearchOn: [field],
-                attributesToRetrieve: ["reportPaperId"], // Chỉ lấy reportPaperId
-                filter: `chooseMachine = "${machine}"`,
+            // Lọc theo ngày nếu có
+            let searchKeyword = keyword;
+            let filters = [`chooseMachine = "${machine}"`];
+            if (field === "dayReported") {
+                searchKeyword = "";
+                if (startDate && endDate) {
+                    const startTimestamp = dayjs_config_1.dayjsUtc.utc(startDate).startOf("day").unix();
+                    filters.push(`dayReported >= ${startTimestamp}`);
+                    const endTimestamp = dayjs_config_1.dayjsUtc.utc(endDate).endOf("day").unix();
+                    filters.push(`dayReported <= ${endTimestamp}`);
+                }
+            }
+            const searchOptions = {
+                filter: filters.join(" AND "),
+                attributesToSearchOn: searchKeyword ? [field] : [],
+                attributesToRetrieve: ["reportPaperId"],
+                sort: ["dayReported:desc"],
                 page: Number(page) || 1,
                 hitsPerPage: Number(pageSize) || 25,
-            });
+            };
+            const searchResult = await index.search(searchKeyword, searchOptions);
             const paperIds = searchResult.hits.map((hit) => hit.reportPaperId);
             if (paperIds.length === 0) {
                 return {
@@ -84,23 +112,25 @@ exports.reportService = {
                 };
             }
             // Truy vấn DB để lấy data dựa trên orderIds
-            const fullOrders = (await reportRepository_1.reportRepository.getDataReportPaperOrBox({
-                isBox: false,
+            const queryOptions = reportRepository_1.reportRepository.buildReportPaperOptions({
                 machine,
                 whereCondition: {
                     reportPaperId: { [sequelize_1.Op.in]: paperIds },
                 },
-            }));
+            });
+            const result = await reportPlanningPaper_1.ReportPlanningPaper.findAll(queryOptions);
             // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
             const finalData = paperIds
-                .map((id) => fullOrders.find((r) => r.reportPaperId === id))
+                .map((id) => result.find((r) => r.reportPaperId === id))
                 .filter(Boolean);
+            const summaryByDate = (0, reportHelper_1.getPerformanceSearchSummary)(finalData);
             return {
                 message: "Get orders from Meilisearch & DB successfully",
                 data: finalData,
                 totalPapers: searchResult.totalHits,
                 totalPages: searchResult.totalPages,
                 currentPage: page,
+                summaryByDate,
             };
         }
         catch (error) {
@@ -127,11 +157,16 @@ exports.reportService = {
                     return { ...parsed, message: "Get all report planning box from cache" };
                 }
             }
-            const offset = (page - 1) * pageSize;
-            const { rows, count } = await reportRepository_1.reportRepository.findAllReportBox(machine, pageSize, offset);
+            const queryOptions = reportRepository_1.reportRepository.buildReportBoxOptions({
+                machine,
+                page,
+                pageSize,
+                whereCondition: { machine },
+            });
+            const { rows, count } = await reportPlanningBox_1.ReportPlanningBox.findAndCountAll(queryOptions);
             const totalPages = Math.ceil(count / pageSize);
             const responseData = {
-                message: "get all report planning paper successfully",
+                message: "get all report planning box successfully",
                 data: rows,
                 totalBoxes: count,
                 totalPages,
@@ -147,20 +182,34 @@ exports.reportService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    getReportBoxByField: async (field, keyword, machine, page, pageSize) => {
+    getReportBoxByField: async ({ field, keyword, machine, page, pageSize, startDate, endDate, }) => {
         try {
             const validFields = ["orderId", "customerName", "dayReported", "QC_box", "shiftManagement"];
             if (!validFields.includes(field)) {
                 throw appError_1.AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
             }
             const index = meilisearch_connect_1.meiliClient.index("reportBoxes");
-            const searchResult = await index.search(keyword, {
-                attributesToSearchOn: [field],
-                attributesToRetrieve: ["reportBoxId"], // Chỉ lấy reportBoxId
-                filter: `machine = "${machine}"`,
+            // Lọc theo ngày nếu có
+            let searchKeyword = keyword;
+            let filters = [`machine = "${machine}"`];
+            if (field === "dayReported") {
+                searchKeyword = "";
+                if (startDate && endDate) {
+                    const startTimestamp = dayjs_config_1.dayjsUtc.utc(startDate).startOf("day").unix();
+                    filters.push(`dayReported >= ${startTimestamp}`);
+                    const endTimestamp = dayjs_config_1.dayjsUtc.utc(endDate).endOf("day").unix();
+                    filters.push(`dayReported <= ${endTimestamp}`);
+                }
+            }
+            const searchOptions = {
+                filter: filters.join(" AND "),
+                attributesToSearchOn: searchKeyword ? [field] : [],
+                attributesToRetrieve: ["reportBoxId"],
+                sort: ["dayReported:desc"],
                 page: Number(page) || 1,
                 hitsPerPage: Number(pageSize) || 25,
-            });
+            };
+            const searchResult = await index.search(searchKeyword, searchOptions);
             const boxIds = searchResult.hits.map((hit) => hit.reportBoxId);
             if (boxIds.length === 0) {
                 return {
@@ -172,16 +221,14 @@ exports.reportService = {
                 };
             }
             // Truy vấn DB để lấy data dựa trên orderIds
-            const fullOrders = (await reportRepository_1.reportRepository.getDataReportPaperOrBox({
-                isBox: true,
+            const queryOptions = reportRepository_1.reportRepository.buildReportBoxOptions({
                 machine,
-                whereCondition: {
-                    reportBoxId: { [sequelize_1.Op.in]: boxIds },
-                },
-            }));
+                whereCondition: { machine, reportBoxId: { [sequelize_1.Op.in]: boxIds } },
+            });
+            const result = await reportPlanningBox_1.ReportPlanningBox.findAll(queryOptions);
             // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
             const finalData = boxIds
-                .map((id) => fullOrders.find((r) => r.reportBoxId === id))
+                .map((id) => result.find((r) => r.reportBoxId === id))
                 .filter(Boolean);
             return {
                 message: "Get orders from Meilisearch & DB successfully",
@@ -199,27 +246,28 @@ exports.reportService = {
         }
     },
     //====================================EXPORT EXCEL========================================
-    exportReportPaper: async (res, fromDate, toDate, reportPaperId, machine) => {
+    exportReportPaper: async ({ res, fromDate, toDate, userName, machine, }) => {
         try {
             let whereCondition = {};
-            if (reportPaperId && reportPaperId.length > 0) {
-                whereCondition.reportPaperId = reportPaperId;
+            if (fromDate && toDate) {
+                const startTimestamp = (0, dayjs_config_1.dayjsUtc)(fromDate).toDate();
+                const endTimestamp = (0, dayjs_config_1.dayjsUtc)(toDate).toDate();
+                // console.log(`start: ${fromDate} - end: ${toDate}`);
+                // console.log(`startTimestamp: ${startTimestamp} - endTimestamp: ${endTimestamp}`);
+                whereCondition.dayReport = { [sequelize_1.Op.between]: [startTimestamp, endTimestamp] };
             }
-            else if (fromDate && toDate) {
-                const start = new Date(fromDate);
-                start.setHours(0, 0, 0, 0);
-                const end = new Date(toDate);
-                end.setHours(23, 59, 59, 999);
-                whereCondition.dayReport = { [sequelize_1.Op.between]: [start, end] };
-            }
-            const data = await reportRepository_1.reportRepository.exportReportPaper(whereCondition, machine);
-            const safeMachineName = machine.replace(/\s+/g, "-");
-            await (0, excelExporter_1.exportExcelResponse)(res, {
-                data: data,
+            const baseQuery = reportRepository_1.reportRepository.buildReportPaperOptions({ machine, whereCondition });
+            const safeMachineName = machine && machine.trim() !== ""
+                ? (0, normalizeVN_1.normalizeVN)(machine.replace(/\s+/g, "-"))
+                : "all_machines";
+            await (0, excelExporter_1.exportExcelStreamResponse)(res, {
+                baseQuery: baseQuery,
+                model: reportPlanningPaper_1.ReportPlanningPaper,
                 sheetName: "Báo cáo sản xuất giấy tấm",
-                fileName: `bao-cao-${(0, normalizeVN_1.normalizeVN)(safeMachineName)}`,
+                fileName: `report_paper_${safeMachineName}`,
                 columns: reportPaperRowAndColumn_1.reportPaperColumns,
                 rows: reportPaperRowAndColumn_1.mapReportPaperRow,
+                userName: userName,
             });
         }
         catch (error) {
@@ -229,27 +277,28 @@ exports.reportService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    exportReportBox: async (res, fromDate, toDate, reportBoxId, machine) => {
+    exportReportBox: async (res, fromDate, toDate, userName, machine) => {
         try {
             let whereCondition = { machine: machine };
-            if (reportBoxId && reportBoxId.length > 0) {
-                whereCondition.reportBoxId = reportBoxId;
+            if (fromDate && toDate) {
+                const startTimestamp = (0, dayjs_config_1.dayjsUtc)(fromDate).startOf("day").toDate();
+                const endTimestamp = (0, dayjs_config_1.dayjsUtc)(toDate).endOf("day").toDate();
+                // console.log(`start: ${fromDate} - end: ${toDate}`);
+                // console.log(`startTimestamp: ${startTimestamp} - endTimestamp: ${endTimestamp}`);
+                whereCondition.dayReport = { [sequelize_1.Op.between]: [startTimestamp, endTimestamp] };
             }
-            else if (fromDate && toDate) {
-                const start = new Date(fromDate);
-                start.setHours(0, 0, 0, 0);
-                const end = new Date(toDate);
-                end.setHours(23, 59, 59, 999);
-                whereCondition.dayReport = { [sequelize_1.Op.between]: [start, end] };
-            }
-            const data = await reportRepository_1.reportRepository.exportReportBox(whereCondition, machine);
-            const safeMachineName = machine.replace(/\s+/g, "-");
-            await (0, excelExporter_1.exportExcelResponse)(res, {
-                data: data,
+            const baseQuery = reportRepository_1.reportRepository.buildReportBoxOptions({ machine, whereCondition });
+            const safeMachineName = machine && machine.trim() !== ""
+                ? (0, normalizeVN_1.normalizeVN)(machine.replace(/\s+/g, "-"))
+                : "all_machines";
+            await (0, excelExporter_1.exportExcelStreamResponse)(res, {
+                baseQuery: baseQuery,
+                model: reportPlanningBox_1.ReportPlanningBox,
                 sheetName: "Báo cáo sản xuất thùng",
-                fileName: `bao-cao-${(0, normalizeVN_1.normalizeVN)(safeMachineName)}`,
+                fileName: `report_box_${safeMachineName}`,
                 columns: reportBoxRowAndColumn_1.reportBoxColumns,
                 rows: reportBoxRowAndColumn_1.mapReportBoxRow,
+                userName: userName,
             });
         }
         catch (error) {

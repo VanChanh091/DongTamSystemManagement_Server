@@ -5,6 +5,29 @@ const sequelize_1 = require("sequelize");
 const employeeBasicInfo_1 = require("../models/employee/employeeBasicInfo");
 const employeeCompanyInfo_1 = require("../models/employee/employeeCompanyInfo");
 exports.employeeRepository = {
+    buildEmployeeOptions: ({ page, pageSize, whereCondition = {}, isExport = false, }) => {
+        const queryOptions = {
+            where: whereCondition,
+            attributes: { exclude: ["createdAt", "updatedAt"] },
+            include: [
+                {
+                    model: employeeCompanyInfo_1.EmployeeCompanyInfo,
+                    as: "companyInfo",
+                    attributes: { exclude: ["createdAt", "updatedAt"] },
+                },
+            ],
+        };
+        if (page && pageSize) {
+            queryOptions.offset = (page - 1) * pageSize;
+            queryOptions.limit = pageSize;
+            queryOptions.order = [["employeeId", "ASC"]];
+        }
+        if (isExport) {
+            queryOptions.raw = true;
+            queryOptions.nest = true;
+        }
+        return queryOptions;
+    },
     findEmployeeByPK: async (employeeId, transaction) => {
         return await employeeBasicInfo_1.EmployeeBasicInfo.findByPk(employeeId, {
             attributes: { exclude: ["createdAt", "updatedAt"] },
@@ -31,39 +54,6 @@ exports.employeeRepository = {
                     attributes: { exclude: ["createdAt", "updatedAt"] },
                 },
             ],
-        });
-    },
-    findEmployeeByPage: async ({ page, pageSize, whereCondition = {}, }) => {
-        const query = {
-            attributes: { exclude: ["createdAt", "updatedAt"] },
-            include: [
-                {
-                    model: employeeCompanyInfo_1.EmployeeCompanyInfo,
-                    where: whereCondition,
-                    as: "companyInfo",
-                    attributes: { exclude: ["createdAt", "updatedAt"] },
-                },
-            ],
-            order: [["employeeId", "ASC"]],
-        };
-        if (page && pageSize) {
-            query.offset = (page - 1) * pageSize;
-            query.limit = pageSize;
-        }
-        return await employeeBasicInfo_1.EmployeeBasicInfo.findAndCountAll(query);
-    },
-    getEmployeeByField: async (whereCondition) => {
-        return await employeeBasicInfo_1.EmployeeBasicInfo.findAll({
-            where: whereCondition,
-            attributes: { exclude: ["createdAt", "updatedAt"] },
-            include: [
-                {
-                    model: employeeCompanyInfo_1.EmployeeCompanyInfo,
-                    as: "companyInfo",
-                    attributes: { exclude: ["createdAt", "updatedAt"] },
-                },
-            ],
-            order: [["employeeId", "ASC"]],
         });
     },
     findEmployeeByPosition: async () => {
@@ -95,9 +85,10 @@ exports.employeeRepository = {
     deleteEmployee: async (employee, transaction) => {
         return await employee.destroy(transaction);
     },
-    //find customer for meilisearch
-    findEmployeeForMeili: async (employeeId, transaction) => {
-        return await employeeBasicInfo_1.EmployeeBasicInfo.findByPk(employeeId, {
+    //------------------------MEILISEARCH-----------------------------
+    buildMeiliEmployeeOptions: ({ whereCondition, transaction, }) => {
+        const queryOptions = {
+            where: whereCondition,
             attributes: ["employeeId", "fullName", "phoneNumber"],
             include: [
                 {
@@ -106,8 +97,16 @@ exports.employeeRepository = {
                     attributes: ["employeeCode", "status"],
                 },
             ],
+            order: [["employeeId", "ASC"]],
             transaction,
-        });
+        };
+        return queryOptions;
+    },
+    syncEmployeeForMeili: async (employeeId, transaction) => {
+        return await employeeBasicInfo_1.EmployeeBasicInfo.findOne(exports.employeeRepository.buildMeiliEmployeeOptions({ whereCondition: { employeeId }, transaction }));
+    },
+    syncAllEmployeesForMeili: async () => {
+        return await employeeBasicInfo_1.EmployeeBasicInfo.findAll(exports.employeeRepository.buildMeiliEmployeeOptions({}));
     },
 };
 //# sourceMappingURL=employeeRepository.js.map

@@ -10,29 +10,34 @@ const sequelize_1 = require("sequelize");
 const user_1 = require("../../models/user/user");
 const appError_1 = require("../../utils/appError");
 const order_1 = require("../../models/order/order");
-const labelFields_1 = require("../../assets/labelFields");
-const meiliService_1 = require("../meiliService");
+const meiliService_1 = require("../system/meiliService");
 const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
 const planningBox_1 = require("../../models/planning/planningBox");
 const wasteNormPaper_1 = require("../../models/admin/wasteNormPaper");
+const labelFields_1 = require("../../assets/labelFields");
 const redis_connect_1 = __importDefault(require("../../assets/configs/connect/redis.connect"));
 const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
-const planningHelper_1 = require("../../repository/planning/planningHelper");
+const inventory_1 = require("../../models/warehouse/inventory/inventory");
 const meilisearch_connect_1 = require("../../assets/configs/connect/meilisearch.connect");
 const waveCrestCoefficient_1 = require("../../models/admin/waveCrestCoefficient");
 const timeOverflowPlanning_1 = require("../../models/planning/timeOverflowPlanning");
 const meiliTransformer_1 = require("../../assets/configs/meilisearch/meiliTransformer");
-const planningPaper_1 = require("../../models/planning/planningPaper");
-const planningStatusRepository_1 = require("../../repository/planning/planningStatusRepository");
-const planningPaperRepository_1 = require("../../repository/planning/planningPaperRepository");
 const planningBoxRepository_1 = require("../../repository/planning/planningBoxRepository");
+const planningPaper_1 = require("../../models/planning/planningPaper");
+const planningPaperRepository_1 = require("../../repository/planning/planningPaperRepository");
+const planningStatusRepository_1 = require("../../repository/planning/planningStatusRepository");
+const paper_requirement_layers_1 = require("../../models/planning/requirement/paper_requirement_layers");
+const paperRequirements_1 = require("../../models/planning/requirement/paperRequirements");
+const crud_helper_repository_1 = require("../../repository/helper/crud.helper.repository");
+const orderApproved_1 = require("../../models/order/orderApproved");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { stop, order } = cacheKey_1.CacheKey.planning;
 exports.planningStatusService = {
     //===============================PLANNING ORDER=====================================
-    getOrderAccept: async (filter) => {
-        const cacheKey = order.all;
+    //"unplanned" | "planned" | "partial"
+    getOrderAccept: async (type) => {
+        // const cacheKey = order.all;
         try {
             // const { isChanged: order } = await CacheManager.check(
             //   [{ model: Order, where: { status: "accept" } }],
@@ -55,7 +60,7 @@ exports.planningStatusService = {
             //     return { ...JSON.parse(cachedData), fromCache: true };
             //   }
             // }
-            const result = await planningStatusRepository_1.planningStatusRepository.getOrderAccept(filter);
+            const result = await planningStatusRepository_1.planningStatusRepository.getOrderAccept(type);
             // await redisCache.set(cacheKey, JSON.stringify(result), "EX", 3600);
             return { message: "get order accept successfully", data: result };
         }
@@ -98,200 +103,80 @@ exports.planningStatusService = {
     planningOrder: async (orderId, planningData) => {
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
-                // 1) Lấy thông tin Order kèm các quan hệ
                 const order = await planningStatusRepository_1.planningStatusRepository.findOrderById(orderId, transaction);
                 if (!order)
                     throw appError_1.AppError.NotFound("Order not found", "ORDER_NOT_FOUND");
-                const { chooseMachine } = planningData;
-                // 2) Lấy thông số định mức và hệ số sóng cho máy đã chọn
-                const wasteNorm = await planningHelper_1.planningHelper.getModelById({
-                    model: wasteNormPaper_1.WasteNormPaper,
-                    where: { machineName: chooseMachine },
-                    transaction,
-                });
-                const waveCoeff = await planningHelper_1.planningHelper.getModelById({
-                    model: waveCrestCoefficient_1.WaveCrestCoefficient,
-                    where: {
-                        machineName: chooseMachine,
-                    },
-                    transaction,
-                });
+                const { chooseMachine, runningPlan, ghepKho } = planningData;
+                // Lấy thông số định mức và hệ số sóng cho máy đã chọn
+                const [wasteNorm, waveCoeff] = await Promise.all([
+                    crud_helper_repository_1.CrudHelper.findOne({
+                        model: wasteNormPaper_1.WasteNormPaper,
+                        where: { machineName: chooseMachine },
+                        options: { transaction },
+                    }),
+                    crud_helper_repository_1.CrudHelper.findOne({
+                        model: waveCrestCoefficient_1.WaveCrestCoefficient,
+                        where: { machineName: chooseMachine },
+                        options: { transaction },
+                    }),
+                ]);
                 if (!wasteNorm || !waveCoeff) {
                     throw new Error(`WasteNorm or WaveCrestCoefficient not found for machine: ${chooseMachine}`);
                 }
-                // 3) Parse cấu trúc giấy thành mảng lớp
-                const structStr = [
-                    planningData.dayReplace,
-                    planningData.songEReplace,
-                    planningData.matEReplace,
-                    planningData.songBReplace,
-                    planningData.matBReplace,
-                    planningData.songCReplace,
-                    planningData.matCReplace,
-                    planningData.songE2Replace,
-                    planningData.matE2Replace,
-                ]
-                    .filter(Boolean)
-                    .join("/");
-                const parseStructure = (str) => str.split("/").map((seg) => {
-                    if (/^[EBC]/.test(seg))
-                        return { kind: "flute", code: seg };
-                    return {
-                        kind: "liner",
-                        thickness: parseFloat(seg.replace(/\D+/g, "")),
-                    };
-                });
-                const layers = parseStructure(structStr);
-                // 4) Xác định loại sóng từ đơn hàng (flute: "5EB" => ["E", "B"])
+                // Parse cấu trúc giấy thành mảng lớp
+                const layers = parsePaperStructure(planningData);
                 const waveTypes = (order.flute?.match(/[EBC]/gi) || []).map((s) => s.toUpperCase());
-                const roundSmart = (num) => Math.round(num * 100) / 100;
-                // 5) Hàm tính phế liệu paper
-                const calculateWaste = (layers, ghepKho, wasteNorm, waveCoeff, runningPlan, numberChild, waveTypes) => {
-                    const gkTh = ghepKho / 100;
-                    let flute = { E: 0, B: 0, C: 0, E2: 0 };
-                    let softLiner = 0;
-                    let countE = 0;
-                    for (let i = 0; i < layers.length; i++) {
-                        const L = layers[i];
-                        if (L.kind === "flute") {
-                            const letter = L.code[0].toUpperCase();
-                            if (!waveTypes.includes(letter))
-                                continue;
-                            const fluteTh = parseFloat(L.code.replace(/\D+/g, "")) / 1000;
-                            const prev = layers[i - 1];
-                            const linerBefore = prev && prev.kind === "liner" ? prev.thickness / 1000 : 0;
-                            let coef = 0;
-                            if (letter === "E") {
-                                const isFirstE = countE === 0;
-                                coef = isFirstE ? waveCoeff.fluteE_1 : waveCoeff.fluteE_2;
-                                const loss = gkTh * wasteNorm.waveCrest * linerBefore +
-                                    gkTh * wasteNorm.waveCrest * fluteTh * coef;
-                                if (isFirstE) {
-                                    flute.E += loss;
-                                }
-                                else {
-                                    flute.E2 += loss;
-                                }
-                                countE++;
-                            }
-                            else {
-                                coef = waveCoeff[`flute${letter}`] || 0;
-                                const loss = gkTh * wasteNorm.waveCrest * linerBefore +
-                                    gkTh * wasteNorm.waveCrest * fluteTh * coef;
-                                if (letter in flute) {
-                                    flute[letter] += loss;
-                                }
-                            }
-                        }
-                    }
-                    // 5.1) Lớp liner cuối cùng
-                    const lastLiner = [...layers].reverse().find((l) => l.kind === "liner");
-                    if (lastLiner) {
-                        softLiner = gkTh * wasteNorm.waveCrestSoft * (lastLiner.thickness / 1000);
-                    }
-                    // 5.2) Tính hao phí, dao, tổng hao hụt
-                    const bottom = flute.E + flute.B + flute.C + softLiner;
-                    const totalLength = runningPlan / numberChild;
-                    const oneM2WaveCrestSoft = bottom / wasteNorm.waveCrestSoft;
-                    const haoPhi = wasteNorm.waveCrestSoft > 0
-                        ? totalLength * oneM2WaveCrestSoft * (wasteNorm.lossInProcess / 100)
-                        : 0;
-                    const knife = wasteNorm.waveCrestSoft > 0
-                        ? oneM2WaveCrestSoft * wasteNorm.lossInSheetingAndSlitting
-                        : 0;
-                    const totalLoss = flute.E + flute.B + flute.C + flute.E2 + haoPhi + knife + bottom;
-                    return {
-                        fluteE: roundSmart(flute.E),
-                        fluteB: roundSmart(flute.B),
-                        fluteC: roundSmart(flute.C),
-                        fluteE2: roundSmart(flute.E2),
-                        bottom: roundSmart(bottom),
-                        haoPhi: roundSmart(haoPhi),
-                        knife: roundSmart(knife),
-                        totalLoss: roundSmart(totalLoss),
-                    };
-                };
-                // 6) Tạo kế hoạch làm giấy tấm
-                const paperPlan = await planningHelper_1.planningHelper.createData({
+                // Tính toán phế liệu định mức
+                const wasteResult = calculateWaste({
+                    layers,
+                    ghepKho: ghepKho,
+                    wasteNorm,
+                    waveCoeff,
+                    runningPlan: runningPlan,
+                    numberChild: order.numberChild,
+                    waveTypes,
+                });
+                // Tạo kế hoạch làm giấy tấm
+                const paperPlan = await crud_helper_repository_1.CrudHelper.createData({
                     model: planningPaper_1.PlanningPaper,
                     data: {
                         orderId,
                         status: "planning",
+                        totalPrice: order.pricePaper * runningPlan,
                         ...planningData,
+                        ...wasteResult,
                     },
                     transaction,
                 });
-                // 7) Tính phế liệu và cập nhật lại plan giấy tấm
-                const waste = calculateWaste(layers, planningData.ghepKho, wasteNorm, waveCoeff, planningData.runningPlan, order.numberChild, waveTypes);
-                Object.assign(paperPlan, waste);
-                await paperPlan.save({ transaction });
-                let boxPlan = null;
-                // 8) Nếu đơn hàng có làm thùng, tạo thêm kế hoạch làm thùng
-                const box = order.box;
-                if (order.isBox) {
-                    boxPlan = await planningHelper_1.planningHelper.createData({
-                        model: planningBox_1.PlanningBox,
-                        data: {
-                            planningId: paperPlan.planningId,
-                            orderId,
-                            day: paperPlan.dayReplace,
-                            matE: paperPlan.matEReplace,
-                            matB: paperPlan.matBReplace,
-                            matC: paperPlan.matCReplace,
-                            matE2: paperPlan.matE2Replace,
-                            songE: paperPlan.songEReplace,
-                            songB: paperPlan.songBReplace,
-                            songC: paperPlan.songCReplace,
-                            songE2: paperPlan.songE2Replace,
-                            length: paperPlan.lengthPaperPlanning,
-                            size: paperPlan.sizePaperPLaning,
-                            hasIn: !!(box.inMatTruoc || box.inMatSau),
-                            hasCanLan: !!box.canLan,
-                            hasBe: !!box.be,
-                            hasXa: !!box.Xa,
-                            hasDan: !!(box.dan_1_Manh || box.dan_2_Manh),
-                            hasCatKhe: !!box.catKhe,
-                            hasCanMang: !!box.canMang,
-                            hasDongGhim: !!(box.dongGhim1Manh || box.dongGhim2Manh),
-                        },
-                        transaction,
-                    });
-                }
-                //9) dựa vào các hasIn, hasBe, hasXa... để tạo ra planning box time
-                if (boxPlan) {
-                    const machineTimes = Object.entries(labelFields_1.machineMap)
-                        .filter(([flag]) => boxPlan[flag] === true)
-                        .map(([_, machineName]) => ({
-                        planningBoxId: boxPlan.planningBoxId,
-                        machine: machineName,
-                        runningPlan: paperPlan.runningPlan,
-                    }));
-                    if (machineTimes.length > 0) {
-                        await planningStatusRepository_1.planningStatusRepository.createPlanningBoxTime(machineTimes, transaction);
-                    }
-                }
+                //tính toán định mức giấy sản xuất
+                const lengthPaper = paperPlan.chooseMachine === "Máy Quấn Cuồn" ? 1 : paperPlan.lengthPaperPlanning;
+                const paperRequirement = await handlePaperRequirements({
+                    planningId: paperPlan.planningId,
+                    planningData,
+                    waveCoeff,
+                    runningPlan: paperPlan.runningPlan,
+                    length: lengthPaper,
+                    size: paperPlan.sizePaperPLaning,
+                    ghepKho: ghepKho,
+                    transaction,
+                });
+                // Nếu đơn hàng có làm thùng, tạo thêm kế hoạch làm thùng
+                const boxPlan = await handleCreateBoxPlanning({
+                    order,
+                    paperPlan,
+                    machineMap: labelFields_1.machineMap,
+                    transaction,
+                });
                 //--------------------MEILISEARCH-----------------------
-                const paperToSync = await planningPaperRepository_1.planningPaperRepository.syncPaperFromOrderToMeili(paperPlan.planningId, transaction);
-                if (paperToSync) {
-                    const flatPaperData = meiliTransformer_1.meiliTransformer.planningPaper(paperToSync);
-                    await meiliService_1.meiliService.syncOrUpdateMeiliData({
-                        indexKey: labelFields_1.MEILI_INDEX.PLANNING_PAPERS,
-                        data: flatPaperData,
-                        transaction,
-                    });
-                    if (order.isBox) {
-                        const boxToSync = await planningBoxRepository_1.planningBoxRepository.syncPlanningBoxByPlanningId(paperToSync.planningId, transaction);
-                        const flatBoxData = meiliTransformer_1.meiliTransformer.planningBox(boxToSync);
-                        await meiliService_1.meiliService.syncOrUpdateMeiliData({
-                            indexKey: labelFields_1.MEILI_INDEX.PLANNING_BOXES,
-                            data: flatBoxData,
-                            transaction,
-                        });
-                    }
-                }
+                await syncPlanningOrderToMeili({
+                    planningId: paperPlan.planningId,
+                    isBox: !!order.isBox,
+                    transaction,
+                });
                 return {
                     message: "Đã tạo kế hoạch thành công.",
                     planning: [paperPlan, boxPlan].filter(Boolean),
+                    paperRequirement,
                 };
             });
         }
@@ -322,17 +207,35 @@ exports.planningStatusService = {
                 if (planningPapers.some((p) => (p.qtyProduced ?? 0) > 0)) {
                     throw appError_1.AppError.BadRequest("Order has produced items", "ORDER_HAS_PRODUCED_ITEMS");
                 }
-                await order.update({ status: "reject" }, { transaction });
-                //--------------------MEILISEARCH-----------------------
-                await meiliService_1.meiliService.syncOrUpdateMeiliData({
-                    indexKey: labelFields_1.MEILI_INDEX.ORDERS,
-                    data: { orderSortValue: order.orderSortValue, status: "reject" },
+                //check inventory
+                const inventory = await inventory_1.Inventory.findOne({
+                    where: { orderId },
                     transaction,
-                    isUpdate: true,
                 });
+                if (inventory) {
+                    if ((inventory.valueInventory ?? 0) !== 0) {
+                        throw appError_1.AppError.BadRequest("Không thể hoàn đơn đã có giá trị tồn", "INVENTORY_VALUE_NOT_ZERO");
+                    }
+                    await inventory.destroy({ transaction });
+                }
+                await Promise.all([
+                    order.update({ status: "reject" }, { transaction }),
+                    crud_helper_repository_1.CrudHelper.createData({
+                        model: orderApproved_1.OrderApproved,
+                        data: {
+                            approvedBy: req.user.fullName,
+                            action: "RETURNED",
+                            orderId: order.orderId,
+                        },
+                        transaction,
+                    }),
+                ]);
                 //socket
                 const ownerId = order.userId;
-                const badgeCount = await order_1.Order.count({ where: { status: "reject", userId: ownerId } });
+                const badgeCount = await order_1.Order.count({
+                    where: { status: "reject", userId: ownerId },
+                    transaction,
+                });
                 const roomName = `reject-order-${ownerId}`;
                 const sockets = await req.io?.in(roomName).fetchSockets();
                 // console.log(`-----------------------------------`);
@@ -342,14 +245,20 @@ exports.planningStatusService = {
                 // console.log(`-----------------------------------`);
                 const hasSocket = sockets && sockets.length > 0;
                 if (!hasSocket) {
-                    if (devEnvironment) {
+                    if (devEnvironment)
                         console.log(`⚠️ No one is in room ${roomName}, skip emitting.`);
-                    }
                     return { message: "Order status updated successfully, no active socket to notify" };
                 }
                 req.io?.to(roomName).emit("updateBadgeCount", {
                     type: "REJECTED_ORDER",
                     count: badgeCount,
+                });
+                //--------------------MEILISEARCH-----------------------
+                await meiliService_1.meiliService.syncOrUpdateMeiliData({
+                    indexKey: labelFields_1.MEILI_INDEX.ORDERS,
+                    data: { orderSortValue: order.orderSortValue, status: "reject" },
+                    transaction,
+                    isUpdate: true,
                 });
             });
         }
@@ -406,20 +315,18 @@ exports.planningStatusService = {
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
                 const ids = Array.isArray(planningId) ? planningId : [planningId];
-                const plannings = await planningStatusRepository_1.planningStatusRepository.getStopByIds(ids);
+                const plannings = await planningStatusRepository_1.planningStatusRepository.getStopByIds(ids, transaction);
                 if (plannings.length == 0) {
                     throw appError_1.AppError.BadRequest("planning not found", "PLANNING_NOT_FOUND");
                 }
                 const planningUpdated = await planningStatusRepository_1.planningStatusRepository.updateStatusPlanning({
                     planningIds: ids,
                     action: action,
+                    transaction,
                 });
                 const orderIds = [...new Set(planningUpdated.map((p) => p.orderId))];
                 if (action === "planning") {
-                    await order_1.Order.update({ status: "planning" }, {
-                        where: { orderId: { [sequelize_1.Op.in]: orderIds } },
-                        transaction,
-                    });
+                    await order_1.Order.update({ status: "planning" }, { where: { orderId: { [sequelize_1.Op.in]: orderIds } }, transaction });
                 }
                 //--------------------MEILISEARCH-----------------------
                 if (planningUpdated.length > 0) {
@@ -444,5 +351,281 @@ exports.planningStatusService = {
             throw appError_1.AppError.ServerError();
         }
     },
+};
+//helper for planning order
+const parsePaperStructure = (planningData) => {
+    const structStr = [
+        planningData.dayReplace,
+        planningData.songEReplace,
+        planningData.matEReplace,
+        planningData.songBReplace,
+        planningData.matBReplace,
+        planningData.songCReplace,
+        planningData.matCReplace,
+        planningData.songE2Replace,
+        planningData.matE2Replace,
+    ]
+        .filter(Boolean)
+        .join("/");
+    return structStr.split("/").map((seg) => {
+        if (/^[EBC]/.test(seg))
+            return { kind: "flute", code: seg };
+        const thicknessMatch = seg.match(/\d+$/);
+        return {
+            kind: "liner",
+            thickness: thicknessMatch ? parseFloat(thicknessMatch[0]) : 0,
+        };
+    });
+};
+const calculateWaste = ({ layers, ghepKho, wasteNorm, waveCoeff, runningPlan, numberChild, waveTypes, }) => {
+    const gkTh = ghepKho / 100;
+    let flute = { E: 0, B: 0, C: 0, E2: 0 };
+    let softLiner = 0;
+    let countE = 0;
+    for (let i = 0; i < layers.length; i++) {
+        const L = layers[i];
+        if (L.kind === "flute") {
+            const letter = L.code[0].toUpperCase();
+            if (!waveTypes.includes(letter))
+                continue;
+            const fluteTh = parseFloat(L.code.match(/\d+$/)?.[0] || "0") / 1000;
+            const prev = layers[i - 1];
+            const linerBefore = prev && prev.kind === "liner" ? prev.thickness / 1000 : 0;
+            let coef = 0;
+            if (letter === "E") {
+                const isFirstE = countE === 0;
+                coef = isFirstE ? waveCoeff.fluteE_1 : waveCoeff.fluteE_2;
+                const loss = gkTh * wasteNorm.waveCrest * linerBefore + gkTh * wasteNorm.waveCrest * fluteTh * coef;
+                if (isFirstE) {
+                    flute.E += loss;
+                }
+                else {
+                    flute.E2 += loss;
+                }
+                countE++;
+            }
+            else {
+                coef = waveCoeff[`flute${letter}`] || 0;
+                const loss = gkTh * wasteNorm.waveCrest * linerBefore + gkTh * wasteNorm.waveCrest * fluteTh * coef;
+                if (letter in flute) {
+                    flute[letter] += loss;
+                }
+            }
+        }
+    }
+    // 5.1) Lớp liner cuối cùng
+    const lastLiner = [...layers].reverse().find((l) => l.kind === "liner");
+    if (lastLiner) {
+        softLiner = gkTh * wasteNorm.waveCrestSoft * (lastLiner.thickness / 1000);
+    }
+    // 5.2) Tính hao phí, dao, tổng hao hụt
+    const bottom = flute.E + flute.B + flute.C + softLiner;
+    const totalLength = runningPlan / numberChild;
+    const oneM2WaveCrestSoft = bottom / wasteNorm.waveCrestSoft;
+    const haoPhi = wasteNorm.waveCrestSoft > 0
+        ? totalLength * oneM2WaveCrestSoft * (wasteNorm.lossInProcess / 100)
+        : 0;
+    const knife = wasteNorm.waveCrestSoft > 0 ? oneM2WaveCrestSoft * wasteNorm.lossInSheetingAndSlitting : 0;
+    const totalLoss = flute.E + flute.B + flute.C + flute.E2 + haoPhi + knife + bottom;
+    const roundSmart = (num) => Math.round(num * 100) / 100;
+    return {
+        fluteE: roundSmart(flute.E),
+        fluteB: roundSmart(flute.B),
+        fluteC: roundSmart(flute.C),
+        fluteE2: roundSmart(flute.E2),
+        bottom: roundSmart(bottom),
+        haoPhi: roundSmart(haoPhi),
+        knife: roundSmart(knife),
+        totalLoss: roundSmart(totalLoss),
+    };
+};
+const handleCreateBoxPlanning = async ({ order, paperPlan, machineMap, transaction, }) => {
+    if (!order.isBox)
+        return null;
+    const box = order.box;
+    const boxPlan = await crud_helper_repository_1.CrudHelper.createData({
+        model: planningBox_1.PlanningBox,
+        data: {
+            planningId: paperPlan.planningId,
+            orderId: order.orderId,
+            day: paperPlan.dayReplace,
+            matE: paperPlan.matEReplace,
+            matB: paperPlan.matBReplace,
+            matC: paperPlan.matCReplace,
+            matE2: paperPlan.matE2Replace,
+            songE: paperPlan.songEReplace,
+            songB: paperPlan.songBReplace,
+            songC: paperPlan.songCReplace,
+            songE2: paperPlan.songE2Replace,
+            length: paperPlan.lengthPaperPlanning,
+            size: paperPlan.sizePaperPLaning,
+            hasIn: !!(box.inMatTruoc || box.inMatSau),
+            hasCanLan: !!box.canLan,
+            hasBe: !!box.be,
+            hasXa: !!box.Xa,
+            hasDan: !!(box.dan_1_Manh || box.dan_2_Manh),
+            hasCatKhe: !!box.catKhe,
+            hasCanMang: !!box.canMang,
+            hasDongGhim: !!(box.dongGhim1Manh || box.dongGhim2Manh),
+        },
+        transaction,
+    });
+    const machineTimes = Object.entries(machineMap)
+        .filter(([flag]) => boxPlan[flag] === true)
+        .map(([_, machineName]) => ({
+        planningBoxId: boxPlan.planningBoxId,
+        machine: machineName,
+        runningPlan: paperPlan.runningPlan,
+    }));
+    if (machineTimes.length > 0) {
+        await planningStatusRepository_1.planningStatusRepository.createPlanningBoxTime(machineTimes, transaction);
+    }
+};
+const syncPlanningOrderToMeili = async ({ planningId, isBox, transaction, }) => {
+    const paperToSync = await planningPaperRepository_1.planningPaperRepository.syncPaperFromOrderToMeili({
+        planningId,
+        transaction,
+    });
+    if (paperToSync) {
+        const flatPaperData = meiliTransformer_1.meiliTransformer.planningPaper(paperToSync);
+        await meiliService_1.meiliService.syncOrUpdateMeiliData({
+            indexKey: labelFields_1.MEILI_INDEX.PLANNING_PAPERS,
+            data: flatPaperData,
+            transaction,
+        });
+        if (isBox) {
+            const boxToSync = await planningBoxRepository_1.planningBoxRepository.syncPlanningBoxByPlanningId(paperToSync.planningId, transaction);
+            if (boxToSync) {
+                const flatBoxData = meiliTransformer_1.meiliTransformer.planningBox(boxToSync);
+                await meiliService_1.meiliService.syncOrUpdateMeiliData({
+                    indexKey: labelFields_1.MEILI_INDEX.PLANNING_BOXES,
+                    data: flatBoxData,
+                    transaction,
+                });
+            }
+        }
+    }
+};
+//helper create paper requirement
+const handlePaperRequirements = async ({ planningId, planningData, waveCoeff, runningPlan, length, size, ghepKho, transaction, }) => {
+    const isRollMachine = planningData.chooseMachine === "Máy Quấn Cuồn";
+    const layerConfigs = [
+        { rawCode: planningData.dayReplace, isFlute: false },
+        { rawCode: planningData.songEReplace, isFlute: true, fluteLetter: "E" },
+        { rawCode: planningData.matEReplace, isFlute: false },
+        { rawCode: planningData.songBReplace, isFlute: true, fluteLetter: "B" },
+        { rawCode: planningData.matBReplace, isFlute: false },
+        { rawCode: planningData.songCReplace, isFlute: true, fluteLetter: "C" },
+        { rawCode: planningData.matCReplace, isFlute: false },
+        { rawCode: planningData.songE2Replace, isFlute: true, fluteLetter: "E2" },
+        { rawCode: planningData.matE2Replace, isFlute: false },
+    ].filter((item) => Boolean(item.rawCode));
+    const totalLayers = layerConfigs.length;
+    let fluteCounter = 0;
+    let midCounter = 0;
+    let countE = 0;
+    let totalRequiredQty = 0;
+    const roundSmart = (num) => Math.round(num * 100) / 100;
+    // Tính toán định mức từng lớp
+    const preparedLayers = layerConfigs.map((layer, idx) => {
+        const layerIndex = idx + 1;
+        let layerRole;
+        let fluteFactor = 1.0;
+        let fluteType = null;
+        if (layerIndex === 1) {
+            layerRole = "BOTTOM";
+        }
+        else if (layerIndex === totalLayers && !layer.isFlute) {
+            layerRole = "TOP";
+        }
+        else if (layer.isFlute) {
+            fluteCounter++;
+            layerRole = `FLUTE_${fluteCounter}`;
+            fluteType = layer.fluteLetter || null;
+        }
+        else {
+            midCounter++;
+            layerRole = `MID_${midCounter}`;
+        }
+        if (layer.isFlute) {
+            if (layer.fluteLetter === "E") {
+                fluteFactor = countE === 0 ? waveCoeff.fluteE_1 : waveCoeff.fluteE_2;
+                countE++;
+            }
+            else if (layer.fluteLetter === "E2") {
+                fluteFactor = waveCoeff.fluteE_2;
+            }
+            else if (layer.fluteLetter === "B") {
+                fluteFactor = waveCoeff.fluteB;
+            }
+            else if (layer.fluteLetter === "C") {
+                fluteFactor = waveCoeff.fluteC;
+            }
+        }
+        //loại bỏ tiền tố của sóng
+        let paperCode = layer.rawCode;
+        if (layer.isFlute && layer.fluteLetter) {
+            const regex = new RegExp(`^${layer.fluteLetter}`, "i");
+            paperCode = paperCode.replace(regex, "");
+        }
+        // Bóc tách định lượng GSM (VD: "TC120" => 120)
+        const gsmMatch = layer.rawCode.match(/\d+$/);
+        const weightGsm = gsmMatch ? parseFloat(gsmMatch[0]) : 0;
+        // Trọng số định lượng thực tế tính cả hệ số sóng
+        const effectiveGsm = weightGsm * fluteFactor;
+        return {
+            layerIndex,
+            layerRole,
+            paperCode,
+            weightGsm,
+            fluteType,
+            fluteFactor,
+            effectiveGsm,
+        };
+    });
+    // Tổng trọng số định lượng (dùng tính tỷ lệ cho Máy Quấn Cuồn)
+    const totalEffectiveGsm = preparedLayers.reduce((sum, l) => sum + l.effectiveGsm, 0);
+    // Tính khối lượng định mức theo từng loại máy
+    const layersCalculated = preparedLayers.map((layer) => {
+        let requiredQty = 0;
+        if (isRollMachine) {
+            const ratio = totalEffectiveGsm > 0 ? layer.effectiveGsm / totalEffectiveGsm : 0;
+            requiredQty = roundSmart(runningPlan * ratio);
+        }
+        else {
+            requiredQty = roundSmart((length * size * runningPlan * layer.weightGsm * layer.fluteFactor) / 10_000_000);
+        }
+        totalRequiredQty += requiredQty;
+        return {
+            layerIndex: layer.layerIndex,
+            layerRole: layer.layerRole,
+            paperCode: layer.paperCode,
+            weightGsm: layer.weightGsm,
+            fluteType: layer.fluteType,
+            fluteFactor: layer.fluteFactor,
+            requiredQty,
+            availableStock: 0,
+            shortageQty: requiredQty,
+            isEnoughQty: false,
+        };
+    });
+    totalRequiredQty = roundSmart(totalRequiredQty);
+    // Ghi bảng Header
+    const paperRequirement = await crud_helper_repository_1.CrudHelper.createData({
+        model: paperRequirements_1.PaperRequirements,
+        data: { planningId, paperRollWidth: ghepKho, totalRequiredQty, inventoryStatus: "SHORTAGE" },
+        transaction,
+    });
+    // Ghi bảng Detail
+    const layersData = layersCalculated.map((layer) => ({
+        ...layer,
+        requirementId: paperRequirement.requirementId,
+    }));
+    await crud_helper_repository_1.CrudHelper.bulkCreate({
+        model: paper_requirement_layers_1.PaperRequirementLayers,
+        data: layersData,
+        options: { transaction },
+    });
+    return { header: paperRequirement, layers: layersData };
 };
 //# sourceMappingURL=planningStatusService.js.map

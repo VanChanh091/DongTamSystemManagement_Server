@@ -8,34 +8,11 @@ class User extends sequelize_1.Model {
 exports.User = User;
 function initUserModel(sequelize) {
     User.init({
-        userId: {
-            type: sequelize_1.DataTypes.INTEGER,
-            primaryKey: true,
-            autoIncrement: true,
-        },
-        fullName: {
-            type: sequelize_1.DataTypes.STRING,
-            allowNull: false,
-        },
-        email: {
-            type: sequelize_1.DataTypes.STRING,
-            allowNull: false,
-            unique: true,
-        },
-        password: {
-            type: sequelize_1.DataTypes.STRING,
-            allowNull: false,
-        },
-        sex: {
-            type: sequelize_1.DataTypes.STRING,
-        },
-        phone: {
-            type: sequelize_1.DataTypes.STRING,
-        },
-        role: {
-            type: sequelize_1.DataTypes.ENUM("admin", "user", "manager"),
-            defaultValue: "user",
-        },
+        userId: { type: sequelize_1.DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+        fullName: { type: sequelize_1.DataTypes.STRING, allowNull: false },
+        email: { type: sequelize_1.DataTypes.STRING, allowNull: false, unique: true },
+        password: { type: sequelize_1.DataTypes.STRING, allowNull: false },
+        role: { type: sequelize_1.DataTypes.ENUM("admin", "user", "manager"), defaultValue: "user" },
         permissions: {
             type: sequelize_1.DataTypes.TEXT,
             get() {
@@ -47,10 +24,12 @@ function initUserModel(sequelize) {
             },
             defaultValue: "[]",
         },
-        avatar: {
-            type: sequelize_1.DataTypes.STRING,
-            defaultValue: "https://static.vecteezy.com/system/resources/previews/024/983/914/original/simple-user-default-icon-free-png.png",
-        },
+        department: { type: sequelize_1.DataTypes.STRING, allowNull: false, defaultValue: "none" },
+        // avatar: {
+        //   type: DataTypes.STRING,
+        //   defaultValue:
+        //     "https://static.vecteezy.com/system/resources/previews/024/983/914/original/simple-user-default-icon-free-png.png",
+        // },
     }, {
         sequelize,
         tableName: "Users",

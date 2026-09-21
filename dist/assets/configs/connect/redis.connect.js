@@ -36,16 +36,24 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.subClient = exports.pubClient = void 0;
 const RedisImport = __importStar(require("ioredis"));
 const Redis = RedisImport.default || RedisImport;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const redisCache = new Redis({
+const redisConfig = {
     host: process.env.REDIS_HOST,
     port: Number(process.env.REDIS_PORT) || 6379,
     db: Number(process.env.REDIS_DB) || 0,
-});
+};
+const redisCache = new Redis(redisConfig);
+const pubClient = new Redis(redisConfig);
+exports.pubClient = pubClient;
+const subClient = pubClient.duplicate();
+exports.subClient = subClient;
 redisCache.on("connect", () => console.log("✅ Redis connected"));
 redisCache.on("error", (err) => console.error("❌ Redis error:", err));
+pubClient.on("error", (err) => console.error("❌ Redis Pub error:", err));
+subClient.on("error", (err) => console.error("❌ Redis Sub error:", err));
 exports.default = redisCache;
 //# sourceMappingURL=redis.connect.js.map

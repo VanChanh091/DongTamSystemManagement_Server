@@ -11,474 +11,189 @@ const planningPaper_1 = require("../models/planning/planningPaper");
 const reportPlanningBox_1 = require("../models/report/reportPlanningBox");
 const reportPlanningPaper_1 = require("../models/report/reportPlanningPaper");
 exports.reportRepository = {
-    findReportPaperByMachine: async (machine, pageSize, offset) => {
-        return await reportPlanningPaper_1.ReportPlanningPaper.findAndCountAll({
+    buildReportPaperOptions: ({ machine, page, pageSize, whereCondition, isExport = false, }) => {
+        const reportPaperWhere = {};
+        if (machine) {
+            reportPaperWhere.chooseMachine = machine;
+        }
+        const queryOptions = {
+            where: whereCondition,
             attributes: { exclude: ["createdAt", "updatedAt"] },
             include: [
                 {
                     model: planningPaper_1.PlanningPaper,
-                    where: { chooseMachine: machine },
+                    where: reportPaperWhere,
                     attributes: {
                         exclude: [
                             "createdAt",
                             "updatedAt",
                             "dayCompleted",
                             "shiftProduction",
-                            "shiftProduction",
                             "shiftManagement",
                             "status",
                             "hasOverFlow",
                             "sortPlanning",
+                            "totalPrice",
+                            "qtyWasteNorm",
+                            "note",
+                            "statusRequest",
+                            "deliveryPlanned",
                         ],
                     },
                     include: [
                         {
                             model: order_1.Order,
-                            attributes: {
-                                exclude: [
-                                    "acreage",
-                                    "dvt",
-                                    "price",
-                                    "pricePaper",
-                                    "discount",
-                                    "profit",
-                                    "vat",
-                                    "rejectReason",
-                                    "createdAt",
-                                    "updatedAt",
-                                    "lengthPaperCustomer",
-                                    "paperSizeCustomer",
-                                    "quantityCustomer",
-                                    "day",
-                                    "matE",
-                                    "matB",
-                                    "matC",
-                                    "songE",
-                                    "songB",
-                                    "songC",
-                                    "songE2",
-                                    "lengthPaperManufacture",
-                                    "status",
-                                ],
-                            },
-                            include: [{ model: customer_1.Customer, attributes: ["customerName", "companyName"] }],
-                        },
-                    ],
-                },
-            ],
-            offset,
-            limit: pageSize,
-            order: [["dayReport", "DESC"]],
-        });
-    },
-    findAllReportBox: async (machine, pageSize, offset) => {
-        return await reportPlanningBox_1.ReportPlanningBox.findAndCountAll({
-            where: { machine: machine },
-            attributes: { exclude: ["createdAt", "updatedAt"] },
-            include: [
-                {
-                    model: planningBox_1.PlanningBox,
-                    attributes: {
-                        exclude: [
-                            "hasIn",
-                            "hasBe",
-                            "hasXa",
-                            "hasDan",
-                            "hasCanLan",
-                            "hasCatKhe",
-                            "hasCanMang",
-                            "hasDongGhim",
-                            "createdAt",
-                            "updatedAt",
-                        ],
-                    },
-                    include: [
-                        {
-                            model: planningBoxMachineTime_1.PlanningBoxTime,
-                            where: { machine: machine }, //tìm machine thỏa điều kiện
-                            as: "boxTimes",
-                            attributes: { exclude: ["createdAt", "updatedAt"] },
-                        },
-                        {
-                            model: planningBoxMachineTime_1.PlanningBoxTime,
-                            as: "allBoxTimes",
-                            where: {
-                                machine: { [sequelize_1.Op.ne]: machine }, //lọc machine ra khỏi danh sách
-                            },
-                            attributes: {
-                                exclude: [
-                                    "timeRunning",
-                                    "dayStart",
-                                    "dayCompleted",
-                                    "wasteBox",
-                                    "shiftManagement",
-                                    "status",
-                                    "sortPlanning",
-                                    "createdAt",
-                                    "updatedAt",
-                                    "rpWasteLoss",
-                                ],
-                            },
-                        },
-                        {
-                            model: order_1.Order,
-                            attributes: {
-                                exclude: [
-                                    "acreage",
-                                    "dvt",
-                                    "price",
-                                    "pricePaper",
-                                    "discount",
-                                    "profit",
-                                    "vat",
-                                    "rejectReason",
-                                    "createdAt",
-                                    "updatedAt",
-                                    "lengthPaperCustomer",
-                                    "paperSizeCustomer",
-                                    "day",
-                                    "matE",
-                                    "matB",
-                                    "matC",
-                                    "songE",
-                                    "songB",
-                                    "songC",
-                                    "songE2",
-                                    "lengthPaperManufacture",
-                                    "status",
-                                ],
-                            },
-                            include: [
-                                { model: customer_1.Customer, attributes: ["customerName", "companyName"] },
-                                {
-                                    model: box_1.Box,
-                                    as: "box",
-                                    attributes: { exclude: ["createdAt", "updatedAt"] },
-                                },
+                            attributes: [
+                                "orderId",
+                                "dayReceiveOrder",
+                                "dateRequestShipping",
+                                "flute",
+                                "canLan",
+                                "daoXa",
+                                "dvt",
+                                "instructSpecial",
+                                "isFSC",
                             ],
+                            include: [{ model: customer_1.Customer, attributes: ["customerName"] }],
                         },
                     ],
                 },
             ],
-            offset,
-            limit: pageSize,
-            order: [["dayReport", "DESC"]],
-        });
+        };
+        if (page && pageSize) {
+            queryOptions.offset = (page - 1) * pageSize;
+            queryOptions.limit = pageSize;
+            queryOptions.order = [["dayReport", "DESC"]];
+        }
+        if (isExport) {
+            queryOptions.raw = true;
+            queryOptions.nest = true;
+        }
+        return queryOptions;
     },
-    exportReportPaper: async (whereCondition = {}, machine) => {
-        return await reportPlanningPaper_1.ReportPlanningPaper.findAll({
-            where: whereCondition,
-            attributes: { exclude: ["createdAt", "updatedAt"] },
-            include: [
-                {
-                    model: planningPaper_1.PlanningPaper,
-                    where: { chooseMachine: machine },
-                    attributes: {
-                        exclude: [
-                            "createdAt",
-                            "updatedAt",
-                            "dayCompleted",
-                            "shiftProduction",
-                            "shiftProduction",
-                            "shiftManagement",
-                            "status",
-                            "hasOverFlow",
-                            "sortPlanning",
-                        ],
-                    },
-                    include: [
-                        {
-                            model: order_1.Order,
-                            attributes: {
-                                exclude: [
-                                    "acreage",
-                                    "dvt",
-                                    "price",
-                                    "pricePaper",
-                                    "discount",
-                                    "profit",
-                                    "vat",
-                                    "rejectReason",
-                                    "createdAt",
-                                    "updatedAt",
-                                    "lengthPaperCustomer",
-                                    "paperSizeCustomer",
-                                    "quantityCustomer",
-                                    "day",
-                                    "matE",
-                                    "matB",
-                                    "matC",
-                                    "songE",
-                                    "songB",
-                                    "songC",
-                                    "songE2",
-                                    "lengthPaperManufacture",
-                                    "status",
-                                ],
-                            },
-                            include: [{ model: customer_1.Customer, attributes: ["customerName", "companyName"] }],
-                        },
-                    ],
-                },
-            ],
-            order: [["dayReport", "ASC"]],
-        });
-    },
-    exportReportBox: async (whereCondition = {}, machine) => {
-        return reportPlanningBox_1.ReportPlanningBox.findAll({
-            where: whereCondition,
-            attributes: { exclude: ["createdAt", "updatedAt"] },
-            include: [
-                {
-                    model: planningBox_1.PlanningBox,
-                    attributes: {
-                        exclude: [
-                            "hasIn",
-                            "hasBe",
-                            "hasXa",
-                            "hasDan",
-                            "hasCanLan",
-                            "hasCatKhe",
-                            "hasCanMang",
-                            "hasDongGhim",
-                            "createdAt",
-                            "updatedAt",
-                        ],
-                    },
-                    include: [
-                        {
-                            model: planningBoxMachineTime_1.PlanningBoxTime,
-                            where: { machine: machine },
-                            as: "boxTimes",
-                            attributes: { exclude: ["createdAt", "updatedAt"] },
-                        },
-                        {
-                            model: planningBoxMachineTime_1.PlanningBoxTime,
-                            as: "allBoxTimes",
-                            where: {
-                                machine: { [sequelize_1.Op.ne]: machine },
-                            },
-                            attributes: {
-                                exclude: [
-                                    "timeRunning",
-                                    "dayStart",
-                                    "dayCompleted",
-                                    "wasteBox",
-                                    "shiftManagement",
-                                    "status",
-                                    "sortPlanning",
-                                    "createdAt",
-                                    "updatedAt",
-                                    "rpWasteLoss",
-                                ],
-                            },
-                        },
-                        {
-                            model: order_1.Order,
-                            attributes: {
-                                exclude: [
-                                    "acreage",
-                                    "dvt",
-                                    "price",
-                                    "pricePaper",
-                                    "discount",
-                                    "profit",
-                                    "vat",
-                                    "rejectReason",
-                                    "createdAt",
-                                    "updatedAt",
-                                    "lengthPaperCustomer",
-                                    "paperSizeCustomer",
-                                    "day",
-                                    "matE",
-                                    "matB",
-                                    "matC",
-                                    "songE",
-                                    "songB",
-                                    "songC",
-                                    "songE2",
-                                    "lengthPaperManufacture",
-                                    "status",
-                                ],
-                            },
-                            include: [
-                                { model: customer_1.Customer, attributes: ["customerName", "companyName"] },
-                                {
-                                    model: box_1.Box,
-                                    as: "box",
-                                    attributes: { exclude: ["createdAt", "updatedAt"] },
-                                },
-                            ],
-                        },
-                    ],
-                },
-            ],
-        });
-    },
-    //sync report paper or box for meili
-    getDataReportPaperOrBox: async ({ isBox, machine, whereCondition, }) => {
-        let data;
-        if (isBox) {
-            data = await reportPlanningBox_1.ReportPlanningBox.findAll({
-                where: whereCondition,
-                attributes: { exclude: ["createdAt", "updatedAt"] },
-                include: [
-                    {
-                        model: planningBox_1.PlanningBox,
-                        attributes: {
-                            exclude: [
-                                "hasIn",
-                                "hasBe",
-                                "hasXa",
-                                "hasDan",
-                                "hasCanLan",
-                                "hasCatKhe",
-                                "hasCanMang",
-                                "hasDongGhim",
-                                "createdAt",
-                                "updatedAt",
-                            ],
-                        },
-                        include: [
-                            {
-                                model: planningBoxMachineTime_1.PlanningBoxTime,
-                                where: { machine: machine },
-                                as: "boxTimes",
-                                attributes: { exclude: ["createdAt", "updatedAt"] },
-                            },
-                            {
-                                model: planningBoxMachineTime_1.PlanningBoxTime,
-                                as: "allBoxTimes",
-                                where: {
-                                    machine: { [sequelize_1.Op.ne]: machine },
-                                },
-                                attributes: {
-                                    exclude: [
-                                        "timeRunning",
-                                        "dayStart",
-                                        "dayCompleted",
-                                        "wasteBox",
-                                        "shiftManagement",
-                                        "status",
-                                        "sortPlanning",
-                                        "createdAt",
-                                        "updatedAt",
-                                        "rpWasteLoss",
-                                    ],
-                                },
-                            },
-                            {
-                                model: order_1.Order,
-                                attributes: {
-                                    exclude: [
-                                        "acreage",
-                                        "dvt",
-                                        "price",
-                                        "pricePaper",
-                                        "discount",
-                                        "profit",
-                                        "vat",
-                                        "rejectReason",
-                                        "createdAt",
-                                        "updatedAt",
-                                        "lengthPaperCustomer",
-                                        "paperSizeCustomer",
-                                        "day",
-                                        "matE",
-                                        "matB",
-                                        "matC",
-                                        "songE",
-                                        "songB",
-                                        "songC",
-                                        "songE2",
-                                        "lengthPaperManufacture",
-                                        "status",
-                                    ],
-                                },
-                                include: [
-                                    { model: customer_1.Customer, attributes: ["customerName", "companyName"] },
-                                    {
-                                        model: box_1.Box,
-                                        as: "box",
-                                        attributes: { exclude: ["createdAt", "updatedAt"] },
-                                    },
-                                ],
-                            },
-                        ],
-                    },
-                ],
-            });
+    buildReportBoxOptions: ({ machine, page, pageSize, whereCondition, isExport = false, }) => {
+        const boxTimesWhere = {};
+        const allBoxTimesWhere = {};
+        if (machine && machine.trim() !== "") {
+            boxTimesWhere.machine = machine;
+            allBoxTimesWhere.machine = { [sequelize_1.Op.ne]: machine };
         }
         else {
-            data = await reportPlanningPaper_1.ReportPlanningPaper.findAll({
-                where: whereCondition,
-                attributes: { exclude: ["createdAt", "updatedAt"] },
-                include: [
-                    {
-                        model: planningPaper_1.PlanningPaper,
-                        where: { chooseMachine: machine },
-                        attributes: {
-                            exclude: [
-                                "createdAt",
-                                "updatedAt",
-                                "dayCompleted",
-                                "shiftProduction",
-                                "shiftProduction",
-                                "shiftManagement",
-                                "status",
-                                "hasOverFlow",
-                                "sortPlanning",
-                            ],
-                        },
-                        include: [
-                            {
-                                model: order_1.Order,
-                                attributes: {
-                                    exclude: [
-                                        "acreage",
-                                        "dvt",
-                                        "price",
-                                        "pricePaper",
-                                        "discount",
-                                        "profit",
-                                        "vat",
-                                        "rejectReason",
-                                        "createdAt",
-                                        "updatedAt",
-                                        "lengthPaperCustomer",
-                                        "paperSizeCustomer",
-                                        "quantityCustomer",
-                                        "day",
-                                        "matE",
-                                        "matB",
-                                        "matC",
-                                        "songE",
-                                        "songB",
-                                        "songC",
-                                        "songE2",
-                                        "lengthPaperManufacture",
-                                        "status",
-                                    ],
-                                },
-                                include: [
-                                    { model: customer_1.Customer, attributes: ["customerName", "companyName"] },
-                                    {
-                                        model: box_1.Box,
-                                        as: "box",
-                                        attributes: { exclude: ["createdAt", "updatedAt"] },
-                                    },
-                                ],
-                            },
+            // Nếu KHÔNG truyền máy (Xuất tất cả):
+            // boxTimesWhere để trống để lấy tất cả các máy.
+            // allBoxTimesWhere đặt một giá trị không tồn tại để trả về mảng rỗng [],
+            allBoxTimesWhere.machine = "__ALL_MACHINES_SELECTED__";
+        }
+        const queryOptions = {
+            where: whereCondition, //machine: machine
+            attributes: { exclude: ["createdAt", "updatedAt"] },
+            include: [
+                {
+                    model: planningBox_1.PlanningBox,
+                    attributes: {
+                        exclude: [
+                            "hasIn",
+                            "hasBe",
+                            "hasXa",
+                            "hasDan",
+                            "hasCanLan",
+                            "hasCatKhe",
+                            "hasCanMang",
+                            "hasDongGhim",
+                            "createdAt",
+                            "updatedAt",
+                            "statusRequest",
                         ],
                     },
-                ],
-            });
+                    include: [
+                        {
+                            model: planningBoxMachineTime_1.PlanningBoxTime,
+                            where: boxTimesWhere, //tìm machine thỏa điều kiện
+                            as: "boxTimes",
+                            required: false,
+                            attributes: [
+                                "dayCompleted",
+                                "boxTimeId",
+                                "runningPlan",
+                                "timeRunning",
+                                "dayStart",
+                                "wasteBox",
+                                "rpWasteLoss",
+                                "qtyProduced",
+                                "machine",
+                                "shiftManagement",
+                            ],
+                        },
+                        {
+                            model: planningBoxMachineTime_1.PlanningBoxTime,
+                            as: "allBoxTimes",
+                            where: allBoxTimesWhere,
+                            required: false,
+                            attributes: ["boxTimeId", "runningPlan", "qtyProduced", "machine"],
+                        },
+                        {
+                            model: order_1.Order,
+                            attributes: [
+                                "orderId",
+                                "dayReceiveOrder",
+                                "dateRequestShipping",
+                                "flute",
+                                "QC_box",
+                                "canLan",
+                                "daoXa",
+                                "paperSizeManufacture",
+                                "quantityCustomer",
+                                "quantityManufacture",
+                                "numberChild",
+                                "totalPrice",
+                                "totalPriceVAT",
+                                "volume",
+                                "instructSpecial",
+                                "isBox",
+                                "isFSC",
+                                "chongTham",
+                            ],
+                            include: [
+                                { model: customer_1.Customer, attributes: ["customerName"] },
+                                {
+                                    model: box_1.Box,
+                                    as: "box",
+                                    attributes: { exclude: ["createdAt", "updatedAt"] },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        };
+        if (page && pageSize) {
+            queryOptions.offset = (page - 1) * pageSize;
+            queryOptions.limit = pageSize;
+            queryOptions.order = [["dayReport", "DESC"]];
         }
-        return data;
+        if (isExport) {
+            queryOptions.raw = true;
+            queryOptions.nest = true;
+        }
+        return queryOptions;
     },
-    syncReportPaperForMeili: async (reportPaperId, transaction) => {
-        return await reportPlanningPaper_1.ReportPlanningPaper.findOne({
-            where: { reportPaperId },
+    getReportPaperByIds: async (planningIds, transaction) => {
+        return await reportPlanningPaper_1.ReportPlanningPaper.findAll({
+            where: { planningId: { [sequelize_1.Op.in]: planningIds } },
+            attributes: [
+                "reportPaperId",
+                "planningId",
+                "qtyWasteNorm",
+                "shiftProduction",
+                "shiftManagement",
+            ],
+            transaction,
+        });
+    },
+    //------------------------MEILISEARCH-----------------------------
+    buildMeiliReportPaperOptions: ({ whereCondition, transaction, }) => {
+        const queryOptions = {
+            where: whereCondition,
             attributes: ["reportPaperId", "dayReport", "shiftManagement"],
             include: [
                 {
@@ -494,11 +209,21 @@ exports.reportRepository = {
                 },
             ],
             transaction,
-        });
+        };
+        return queryOptions;
     },
-    syncReportBoxesForMeili: async (reportBoxId, transaction) => {
-        return await reportPlanningBox_1.ReportPlanningBox.findOne({
-            where: { reportBoxId },
+    syncReportPaperForMeili: async (reportPaperId, transaction) => {
+        return await reportPlanningPaper_1.ReportPlanningPaper.findOne(exports.reportRepository.buildMeiliReportPaperOptions({
+            whereCondition: { reportPaperId },
+            transaction,
+        }));
+    },
+    syncAllReportPapersForMeili: async () => {
+        return await reportPlanningPaper_1.ReportPlanningPaper.findAll(exports.reportRepository.buildMeiliReportPaperOptions({}));
+    },
+    buildMeiliReportBoxOptions: ({ whereCondition, transaction, }) => {
+        const queryOptions = {
+            where: whereCondition,
             attributes: ["reportBoxId", "dayReport", "shiftManagement", "machine"],
             include: [
                 {
@@ -514,7 +239,17 @@ exports.reportRepository = {
                 },
             ],
             transaction,
-        });
+        };
+        return queryOptions;
+    },
+    syncReportBoxesForMeili: async (reportBoxId, transaction) => {
+        return await reportPlanningBox_1.ReportPlanningBox.findOne(exports.reportRepository.buildMeiliReportBoxOptions({
+            whereCondition: { reportBoxId },
+            transaction,
+        }));
+    },
+    syncAllReportBoxesForMeili: async () => {
+        return await reportPlanningBox_1.ReportPlanningBox.findAll(exports.reportRepository.buildMeiliReportBoxOptions({}));
     },
 };
 //# sourceMappingURL=reportRepository.js.map

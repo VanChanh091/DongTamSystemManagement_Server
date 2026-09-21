@@ -1,31 +1,19 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.adminRepository = void 0;
-const sequelize_1 = require("sequelize");
-const customer_1 = require("../models/customer/customer");
 const box_1 = require("../models/order/box");
+const user_1 = require("../models/user/user");
 const order_1 = require("../models/order/order");
 const product_1 = require("../models/product/product");
-const user_1 = require("../models/user/user");
+const customer_1 = require("../models/customer/customer");
 const orderImage_1 = require("../models/order/orderImage");
 const customerPayment_1 = require("../models/customer/customerPayment");
+const supplierPaperCodes_1 = require("../models/admin/paperClassifications/supplierPaperCodes");
+const suppliers_1 = require("../models/admin/paperClassifications/suppliers");
+const paperTypes_1 = require("../models/admin/paperClassifications/paperTypes");
+const paperClassifications_1 = require("../models/admin/paperClassifications/paperClassifications");
+const paperBasisWeights_1 = require("../models/admin/paperClassifications/paperBasisWeights");
 exports.adminRepository = {
-    //===============================ADMIN CRUD=====================================
-    getAllItems: async ({ model }) => {
-        return await model.findAll({ attributes: { exclude: ["createdAt", "updatedAt"] } });
-    },
-    getItemByPk: async ({ model, itemId }) => {
-        return await model.findByPk(itemId);
-    },
-    createNewItem: async ({ model, data, transaction, }) => {
-        return await model.create(data, { transaction });
-    },
-    updateItem: async ({ model, dataUpdated, transaction, }) => {
-        return await model.update(dataUpdated, { transaction });
-    },
-    deleteItem: async ({ model }) => {
-        return await model.destroy();
-    },
     //===============================ADMIN ORDER=====================================
     findOrderPending: async () => {
         return await order_1.Order.findAll({
@@ -71,7 +59,7 @@ exports.adminRepository = {
                     attributes: ["productId", "typeProduct"],
                 },
                 { model: box_1.Box, as: "box" },
-                { model: user_1.User, attributes: ["fullName"] },
+                { model: user_1.User, attributes: ["fullName", "department"] },
             ],
             transaction,
         });
@@ -83,22 +71,54 @@ exports.adminRepository = {
     getAllUser: async () => {
         return await user_1.User.findAll({ attributes: { exclude: ["password", "createdAt", "updatedAt"] } });
     },
-    getUserByName: async (nameLower) => {
-        return await user_1.User.findAll({
-            where: (0, sequelize_1.where)((0, sequelize_1.fn)("LOWER", (0, sequelize_1.col)("fullName")), {
-                [sequelize_1.Op.like]: `%${nameLower}%`,
-            }),
-            attributes: { exclude: ["password"] },
+    getUserByPk: async (userId, transaction) => {
+        return await user_1.User.findByPk(userId, {
+            attributes: { exclude: ["password", "createdAt", "updatedAt"] },
+            transaction,
         });
     },
-    getUserByPhone: async (phone) => {
-        return await user_1.User.findAll({
-            where: { phone },
-            attributes: { exclude: ["password"] },
+    //===============================PAPER CODE=====================================
+    getAllSupplierPaperCode: async () => {
+        return await supplierPaperCodes_1.SupplierPaperCodes.findAll({
+            attributes: { exclude: ["createdAt", "updatedAt"] },
+            include: [
+                {
+                    model: suppliers_1.Suppliers,
+                    attributes: ["supplierName", "supplierCode", "grade"],
+                    where: { isActive: true },
+                },
+                { model: paperTypes_1.PaperTypes, attributes: ["paperName", "paperCode"] },
+            ],
+            order: [[suppliers_1.Suppliers, "supplierName", "ASC"]],
         });
     },
-    getUserByPk: async (userId) => {
-        return await user_1.User.findByPk(userId);
+    getPaperClassification: async ({ page, pageSize }) => {
+        return await paperClassifications_1.PaperClassifications.findAndCountAll({
+            attributes: { exclude: ["createdAt", "updatedAt"] },
+            include: [
+                { model: paperBasisWeights_1.PaperBasisWeights, attributes: ["basisWeight"], as: "basisWeight" },
+                {
+                    model: supplierPaperCodes_1.SupplierPaperCodes,
+                    attributes: ["companyCode"],
+                    as: "supplierPaper",
+                    include: [
+                        {
+                            model: suppliers_1.Suppliers,
+                            attributes: ["supplierName", "supplierCode", "grade"],
+                            required: false,
+                            where: { isActive: true },
+                        },
+                        { model: paperTypes_1.PaperTypes, attributes: ["paperName", "paperCode"] },
+                    ],
+                },
+            ],
+            offset: (page - 1) * pageSize,
+            limit: pageSize,
+            order: [
+                [{ model: supplierPaperCodes_1.SupplierPaperCodes, as: "supplierPaper" }, suppliers_1.Suppliers, "supplierName", "ASC"],
+                [{ model: paperBasisWeights_1.PaperBasisWeights, as: "basisWeight" }, "basisWeight", "ASC"],
+            ],
+        });
     },
 };
 //# sourceMappingURL=adminRepository.js.map

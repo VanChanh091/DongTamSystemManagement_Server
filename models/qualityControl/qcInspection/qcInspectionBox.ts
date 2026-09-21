@@ -86,6 +86,10 @@ export function initQcInspectionBoxModel(sequelize: Sequelize): typeof QcInspect
       indexes: [
         //FK
         { fields: ["boxTimeId"] },
+        { fields: ["userId"] },
+
+        //composite index
+        { fields: ["timeInspection", "boxTimeId"] },
       ],
     },
   );

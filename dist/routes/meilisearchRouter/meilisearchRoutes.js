@@ -7,6 +7,7 @@ const express_1 = require("express");
 const authMiddleware_1 = __importDefault(require("../../middlewares/authMiddleware"));
 const syncMeili_1 = require("../../assets/configs/meilisearch/sync/syncMeili");
 const appError_1 = require("../../utils/appError");
+const syncAllMeili_1 = require("../../assets/configs/meilisearch/sync/syncAllMeili");
 const router = (0, express_1.Router)();
 const syncFunctions = {
     customers: syncMeili_1.syncCustomerToMeili,
@@ -15,11 +16,13 @@ const syncFunctions = {
     employees: syncMeili_1.syncEmployeeToMeili,
     papers: syncMeili_1.syncPlanningPaperToMeili,
     boxes: syncMeili_1.syncPlanningBoxToMeili,
+    scrapReports: syncMeili_1.syncScrapReportToMeili,
     inbound: syncMeili_1.syncInboundToMeili,
     inventory: syncMeili_1.syncInventoryToMeili,
     outbounds: syncMeili_1.syncOutboundToMeili,
     reportPapers: syncMeili_1.syncReportPaperToMeili,
     reportBoxes: syncMeili_1.syncReportBoxToMeili,
+    deliveryRequest: syncMeili_1.syncDeliveryRequestToMeili,
     dashboard: syncMeili_1.syncDashboardToMeili,
 };
 router.get("/:entity", authMiddleware_1.default, async (req, res, next) => {
@@ -44,6 +47,16 @@ router.delete("/", authMiddleware_1.default, async (req, res, next) => {
         const { indexName } = req.query;
         await (0, syncMeili_1.resetMeiliIndex)(indexName);
         return res.status(200).json({ message: `Delete ${indexName} from Meilisearch successfully` });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+router.delete("/all", authMiddleware_1.default, async (req, res, next) => {
+    try {
+        const { isDeleteAll } = req.query;
+        await (0, syncAllMeili_1.syncOrDeleteAllDataToMeili)(isDeleteAll);
+        return res.status(200).json({ message: "Delete all data from Meilisearch successfully" });
     }
     catch (error) {
         next(error);

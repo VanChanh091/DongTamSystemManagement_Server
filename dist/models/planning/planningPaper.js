@@ -14,6 +14,7 @@ function initPlanningPaperModel(sequelize) {
             primaryKey: true,
             autoIncrement: true,
         },
+        //date & time
         dayStart: { type: sequelize_1.DataTypes.DATE },
         dayCompleted: {
             type: sequelize_1.DataTypes.DATE,
@@ -24,7 +25,9 @@ function initPlanningPaperModel(sequelize) {
                 return new Date(rawValue.getTime() - rawValue.getTimezoneOffset() * 60000).toISOString();
             },
         },
+        timeStart: { type: sequelize_1.DataTypes.TIME },
         timeRunning: { type: sequelize_1.DataTypes.TIME },
+        //structure replace
         dayReplace: { type: sequelize_1.DataTypes.STRING },
         matEReplace: { type: sequelize_1.DataTypes.STRING },
         matBReplace: { type: sequelize_1.DataTypes.STRING },
@@ -38,8 +41,10 @@ function initPlanningPaperModel(sequelize) {
         sizePaperPLaning: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false },
         runningPlan: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
         qtyProduced: { type: sequelize_1.DataTypes.INTEGER },
+        totalPrice: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false, defaultValue: 0 },
         numberChild: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
         ghepKho: { type: sequelize_1.DataTypes.INTEGER },
+        //waste norm
         bottom: { type: sequelize_1.DataTypes.DOUBLE },
         fluteE: { type: sequelize_1.DataTypes.DOUBLE },
         fluteB: { type: sequelize_1.DataTypes.DOUBLE },
@@ -47,20 +52,26 @@ function initPlanningPaperModel(sequelize) {
         fluteE2: { type: sequelize_1.DataTypes.DOUBLE },
         knife: { type: sequelize_1.DataTypes.DOUBLE },
         totalLoss: { type: sequelize_1.DataTypes.DOUBLE },
-        qtyWasteNorm: { type: sequelize_1.DataTypes.DOUBLE },
+        qtyWasteNorm: { type: sequelize_1.DataTypes.DOUBLE, defaultValue: 0 },
+        //other info
         shiftProduction: { type: sequelize_1.DataTypes.STRING },
         shiftManagement: { type: sequelize_1.DataTypes.STRING },
+        note: { type: sequelize_1.DataTypes.STRING },
         chooseMachine: {
             type: sequelize_1.DataTypes.ENUM("Máy 1350", "Máy 1900", "Máy 2 Lớp", "Máy Quấn Cuồn"),
             allowNull: false,
         },
         status: {
-            type: sequelize_1.DataTypes.ENUM("planning", "complete", "lackQty", "producing", "stop", "cancel"),
+            type: sequelize_1.DataTypes.ENUM("planning", "lackQty", "producing", "requested", "complete", "stop", "cancel"),
             allowNull: false,
             defaultValue: "planning",
         },
         statusRequest: {
             type: sequelize_1.DataTypes.ENUM("none", "requested", "inbounded", "finalize"),
+            defaultValue: "none",
+        },
+        statusCheck: {
+            type: sequelize_1.DataTypes.ENUM("none", "failed", "fixed", "passed"),
             defaultValue: "none",
         },
         hasOverFlow: {
@@ -78,7 +89,7 @@ function initPlanningPaperModel(sequelize) {
         orderId: { type: sequelize_1.DataTypes.STRING },
     }, {
         sequelize,
-        tableName: "Plannings",
+        tableName: "planning_papers",
         timestamps: true,
         indexes: [
             //FK
@@ -89,11 +100,13 @@ function initPlanningPaperModel(sequelize) {
             //Composite indexes
             { fields: ["chooseMachine", "status"] },
             { fields: ["chooseMachine", "dayStart"] },
+            { fields: ["chooseMachine", "status", "dayStart"] },
             { fields: ["deliveryPlanned", "dayStart", "status"] },
             { fields: ["dayStart", "timeRunning"] },
+            { fields: ["dayCompleted", "shiftProduction"] },
             //get paper waiting check
-            { fields: ["statusRequest"] },
-            { fields: ["hasBox", "statusRequest"] },
+            { fields: ["statusRequest", "hasBox"] },
+            { fields: ["chooseMachine", "status", "statusCheck"] },
         ],
     });
     return PlanningPaper;

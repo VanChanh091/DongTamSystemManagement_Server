@@ -18,7 +18,7 @@ function initWasteNormPaperModel(sequelize) {
         lossInProcess: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false }, //hao phí trong quá trình chạy
         lossInSheetingAndSlitting: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false }, //hao phí xả tờ - chia khổ
         machineName: { type: sequelize_1.DataTypes.STRING },
-    }, { sequelize, tableName: "WasteNorms", timestamps: true });
+    }, { sequelize, tableName: "waste_norm_papers", timestamps: true });
     return WasteNormPaper;
 }
 //# sourceMappingURL=wasteNormPaper.js.map

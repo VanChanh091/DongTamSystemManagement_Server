@@ -22,7 +22,7 @@ function initReportPlanningBoxModel(sequelize) {
         },
         qtyProduced: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
         lackOfQty: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
-        wasteLoss: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false },
+        wasteLoss: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false, defaultValue: 0 },
         shiftManagement: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         machine: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         reportedBy: { type: sequelize_1.DataTypes.STRING, allowNull: false },
@@ -30,7 +30,7 @@ function initReportPlanningBoxModel(sequelize) {
         planningBoxId: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
     }, {
         sequelize,
-        tableName: "ReportPlanningBoxes",
+        tableName: "report_planning_boxes",
         timestamps: true,
         indexes: [
             //FK

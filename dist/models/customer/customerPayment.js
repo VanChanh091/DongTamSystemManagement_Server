@@ -14,22 +14,31 @@ function initCustomerPaymentModel(sequelize) {
             autoIncrement: true,
             primaryKey: true,
         },
-        debtCurrent: { type: sequelize_1.DataTypes.DOUBLE },
-        debtLimit: { type: sequelize_1.DataTypes.DOUBLE },
-        timePayment: { type: sequelize_1.DataTypes.DATE, allowNull: false },
-        paymentType: { type: sequelize_1.DataTypes.ENUM("daily", "monthly"), allowNull: false },
-        closingDate: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
+        closingDays: {
+            type: sequelize_1.DataTypes.JSON,
+            defaultValue: [],
+            comment: "Mảng lưu các ngày chốt nợ. VD: [15, 30] hoặc [0] cho Chủ Nhật",
+        },
+        paymentTermDays: {
+            type: sequelize_1.DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0,
+            comment: "Số ngày được nợ thêm kể từ ngày xuất/chốt",
+        },
+        paymentType: {
+            type: sequelize_1.DataTypes.ENUM("daily", "weekly", "monthly", "custom_days"),
+            allowNull: false,
+            defaultValue: "daily",
+        },
+        debtCurrent: { type: sequelize_1.DataTypes.DOUBLE, defaultValue: 0 },
+        debtLimit: { type: sequelize_1.DataTypes.DOUBLE, defaultValue: 0 },
         //FK
         customerId: { type: sequelize_1.DataTypes.STRING, allowNull: false },
     }, {
         sequelize,
-        tableName: "CustomerPayments",
+        tableName: "customer_payments",
         timestamps: true,
-        indexes: [
-            { unique: true, fields: ["customerId"] },
-            { fields: ["paymentType"] },
-            { fields: ["closingDate"] },
-        ],
+        indexes: [{ unique: true, fields: ["customerId"] }, { fields: ["paymentType"] }],
     });
     return CustomerPayment;
 }

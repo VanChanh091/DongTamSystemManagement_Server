@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.meilisearchRoutes = exports.processingRoutes = exports.badgeRoutes = exports.deliveryRoutes = exports.qcRoutes = exports.warehouseRoutes = exports.employeeRoutes = exports.dashboardRoutes = exports.reportRoutes = exports.manufactureRoutes = exports.usersRoutes = exports.authRoutes = exports.adminRoutes = exports.productRoutes = exports.planningRoutes = exports.orderRoutes = exports.customerRoutes = void 0;
+exports.notificationRoutes = exports.meilisearchRoutes = exports.systemRoutes = exports.debtManagementRoutes = exports.scrapRoutes = exports.badgeRoutes = exports.deliveryRoutes = exports.qcRoutes = exports.warehouseRoutes = exports.employeeRoutes = exports.syntheticRoutes = exports.reportRoutes = exports.manufactureRoutes = exports.usersRoutes = exports.authRoutes = exports.adminRoutes = exports.productRoutes = exports.planningRoutes = exports.orderRoutes = exports.customerRoutes = void 0;
 const adminRoutes_1 = __importDefault(require("./adminRouter/adminRoutes"));
 exports.adminRoutes = adminRoutes_1.default;
 const authRoutes_1 = __importDefault(require("./authRouter/authRoutes"));
@@ -22,8 +22,8 @@ const manufactureRoutes_1 = __importDefault(require("./userRouter/manufactureRou
 exports.manufactureRoutes = manufactureRoutes_1.default;
 const reportRoutes_1 = __importDefault(require("./userRouter/reportRoutes"));
 exports.reportRoutes = reportRoutes_1.default;
-const dashboardRoutes_1 = __importDefault(require("./dashboard/dashboardRoutes"));
-exports.dashboardRoutes = dashboardRoutes_1.default;
+const syntheticRoutes_1 = __importDefault(require("./userRouter/syntheticRoutes"));
+exports.syntheticRoutes = syntheticRoutes_1.default;
 const employeeRoutes_1 = __importDefault(require("./userRouter/employeeRoutes"));
 exports.employeeRoutes = employeeRoutes_1.default;
 const warehouseRoutes_1 = __importDefault(require("./userRouter/warehouseRoutes"));
@@ -32,10 +32,16 @@ const qualityControlRoutes_1 = __importDefault(require("./userRouter/qualityCont
 exports.qcRoutes = qualityControlRoutes_1.default;
 const deliveryRoutes_1 = __importDefault(require("./userRouter/deliveryRoutes"));
 exports.deliveryRoutes = deliveryRoutes_1.default;
+const scrapReportRoutes_1 = __importDefault(require("./userRouter/scrapReportRoutes"));
+exports.scrapRoutes = scrapReportRoutes_1.default;
 const badgeRoutes_1 = __importDefault(require("./badgeRouter/badgeRoutes"));
 exports.badgeRoutes = badgeRoutes_1.default;
-const processingRoutes_1 = __importDefault(require("./processingRouter/processingRoutes"));
-exports.processingRoutes = processingRoutes_1.default;
+const systemRoutes_1 = __importDefault(require("./systemRouter/systemRoutes"));
+exports.systemRoutes = systemRoutes_1.default;
 const meilisearchRoutes_1 = __importDefault(require("./meilisearchRouter/meilisearchRoutes"));
 exports.meilisearchRoutes = meilisearchRoutes_1.default;
+const notificationRoutes_1 = __importDefault(require("./notification/notificationRoutes"));
+exports.notificationRoutes = notificationRoutes_1.default;
+const debtManagementRoutes_1 = __importDefault(require("./userRouter/debtManagementRoutes"));
+exports.debtManagementRoutes = debtManagementRoutes_1.default;
 //# sourceMappingURL=index.js.map
