@@ -70,6 +70,12 @@ const getErrorProductionReport = async (req, res, next) => {
                 });
                 break;
             case "yearly":
+                response = await errProductionService_1.statisticErrProductionService.getYearlyErrorReport({
+                    year: Number(year),
+                    machine: machine ? String(machine).trim() : undefined,
+                    employeeId: employeeId ? Number(employeeId) : undefined,
+                    type: type,
+                });
                 break;
         }
         return res.status(200).json(response);

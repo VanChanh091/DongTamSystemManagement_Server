@@ -33,6 +33,9 @@ function initQcInspectionBoxModel(sequelize) {
         indexes: [
             //FK
             { fields: ["boxTimeId"] },
+            { fields: ["userId"] },
+            //composite index
+            { fields: ["timeInspection", "boxTimeId"] },
         ],
     });
     return QcInspectionBox;

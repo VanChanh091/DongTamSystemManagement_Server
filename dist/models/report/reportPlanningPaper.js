@@ -37,10 +37,11 @@ function initReportPlanningPaperModel(sequelize) {
         tableName: "report_planning_papers",
         timestamps: true,
         indexes: [
-            //FK
-            { fields: ["planningId"] },
             //indexes
+            { fields: ["planningId"] },
             { fields: ["dayReport"] },
+            //composite index
+            { fields: ["dayReport", "planningId"] },
         ],
     });
     return ReportPlanningPaper;

@@ -33,6 +33,8 @@ function initPaperRequirementsModel(sequelize) {
         indexes: [
             //FK
             { fields: ["planningId"] },
+            //composite index
+            { fields: ["planningId", "totalRequiredQty"] },
         ],
     });
     return PaperRequirements;

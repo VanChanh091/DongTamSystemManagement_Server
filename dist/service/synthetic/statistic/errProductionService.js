@@ -3,13 +3,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.statisticErrProductionService = void 0;
+exports.calculateMetric = exports.statisticErrProductionService = void 0;
 const sequelize_1 = require("sequelize");
 const appError_1 = require("../../../utils/appError");
 const cacheKey_1 = require("../../../utils/helper/cache/cacheKey");
 const dayjs_config_1 = require("../../../assets/configs/dayjs/dayjs.config");
 const redis_connect_1 = __importDefault(require("../../../assets/configs/connect/redis.connect"));
 const synthetic_reportRepository_1 = require("../../../repository/synthetic/synthetic.reportRepository");
+const criteriaPaperCheck_1 = require("../../../models/admin/criteriaCheck/criteriaPaperCheck");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { reports } = cacheKey_1.CacheKey.synthetic;
 const VN_TZ = "Asia/Ho_Chi_Minh";
@@ -33,7 +34,7 @@ exports.statisticErrProductionService = {
         const endOfMonth = startOfMonth.endOf("month");
         const daysInMonth = startOfMonth.daysInMonth();
         try {
-            // :ấy thông tin nhân viên cần lọc
+            // lấy thông tin nhân viên cần lọc
             let targetEmployeeName = null;
             if (employeeId && employeeId !== "all") {
                 const emp = await synthetic_reportRepository_1.syntheticReportRepository.getEmployeeErrorProduction(employeeId);
@@ -50,7 +51,7 @@ exports.statisticErrProductionService = {
             const cached = await redis_connect_1.default.get(cacheKey);
             if (cached) {
                 if (devEnvironment)
-                    console.log("✅ Data Error Production from Redis");
+                    console.log("✅ Data Error Production Monthly from Redis");
                 const masterReport = JSON.parse(cached);
                 return filterAndBuildResponse({
                     allRows: masterReport.data,
@@ -70,7 +71,10 @@ exports.statisticErrProductionService = {
                 const paperWhere = { shiftManagement: { [sequelize_1.Op.and]: [{ [sequelize_1.Op.ne]: null }] } };
                 const [paperInspections, reportsData] = await Promise.all([
                     synthetic_reportRepository_1.syntheticReportRepository.getQcInspectionPaper({ paperWhere, startDate, endDate }),
-                    synthetic_reportRepository_1.syntheticReportRepository.getPlanningPaper({ reportStartDate, reportEndDate }),
+                    synthetic_reportRepository_1.syntheticReportRepository.getReportPlanningPaper({
+                        startDate: reportStartDate,
+                        endDate: reportEndDate,
+                    }),
                 ]);
                 const reportMap = new Map();
                 for (let i = 0; i < reportsData.length; i++) {
@@ -123,7 +127,10 @@ exports.statisticErrProductionService = {
                 const boxWhere = { shiftManagement: { [sequelize_1.Op.and]: [{ [sequelize_1.Op.ne]: null }] } };
                 const [boxInspections, reportsData] = await Promise.all([
                     synthetic_reportRepository_1.syntheticReportRepository.getQcInspectionBox({ boxWhere, startDate, endDate }),
-                    synthetic_reportRepository_1.syntheticReportRepository.getPlanningBoxTime({ reportStartDate, reportEndDate }),
+                    synthetic_reportRepository_1.syntheticReportRepository.getReportPlanningBox({
+                        startDate: reportStartDate,
+                        endDate: reportEndDate,
+                    }),
                 ]);
                 const reportMap = new Map();
                 for (let i = 0; i < reportsData.length; i++) {
@@ -188,21 +195,201 @@ exports.statisticErrProductionService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    getYearlyErrorReport: async (dto) => { },
+    getYearlyErrorReport: async (dto) => {
+        const { year, machine, employeeId, type } = dto;
+        // 1. Phân định cache key theo điều kiện filter
+        const isFiltered = Boolean((machine && machine !== "all") || (employeeId && employeeId !== "all"));
+        const cacheKey = isFiltered
+            ? `${reports.error_yearly(year, type)}:m_${machine || "all"}:e_${employeeId || "all"}`
+            : reports.error_yearly(year, type);
+        // 2. CHECK REDIS TRƯỚC TIÊN - Cache hit trả về ngay lập tức
+        const cached = await redis_connect_1.default.get(cacheKey);
+        if (cached) {
+            if (devEnvironment)
+                console.log("✅ Data Error Production Yearly from Redis");
+            const cachedPayload = JSON.parse(cached);
+            return {
+                message: "Get yearly error report by criteria successfully (from Redis cache)",
+                summary: cachedPayload.summary,
+                data: cachedPayload.data,
+            };
+        }
+        // 3. NẾU CACHE MISS: Chuẩn bị mốc thời gian
+        const startOfYear = dayjs_config_1.dayjsUtc.tz(`${year}-01-01`, VN_TZ).startOf("year");
+        const endOfYear = startOfYear.endOf("year");
+        const startDate = startOfYear.toDate();
+        const endDate = endOfYear.toDate();
+        const reportStartDate = startOfYear.subtract(1, "day").toDate();
+        const reportEndDate = endOfYear.add(1, "day").toDate();
+        try {
+            const paperWhere = {};
+            if (machine && machine !== "all") {
+                paperWhere.chooseMachine = machine;
+            }
+            // 4. Chạy song song tất cả các truy vấn DB cần thiết
+            const [allCriteria, emp, inspections, reportsData] = await Promise.all([
+                criteriaPaperCheck_1.CriteriaPaperCheck.findAll({
+                    attributes: [
+                        ["criteriaPaperCode", "code"],
+                        ["criteriaPaperName", "name"],
+                    ],
+                    raw: true,
+                }),
+                employeeId && employeeId !== "all"
+                    ? synthetic_reportRepository_1.syntheticReportRepository.getEmployeeErrorProduction(Number(employeeId))
+                    : Promise.resolve(null),
+                synthetic_reportRepository_1.syntheticReportRepository.getQcInspectionPaper({ paperWhere, startDate, endDate }),
+                synthetic_reportRepository_1.syntheticReportRepository.getReportPlanningPaper({
+                    paperWhere: machine && machine !== "all" ? { chooseMachine: machine } : undefined,
+                    startDate: reportStartDate,
+                    endDate: reportEndDate,
+                }),
+            ]);
+            const targetEmployeeName = emp?.fullName?.trim().toLowerCase() || null;
+            // 5. Query Paper Requirements
+            const planningIds = Array.from(new Set(reportsData.map((r) => r.planningId).filter(Boolean)));
+            const paperReqs = planningIds.length > 0
+                ? await synthetic_reportRepository_1.syntheticReportRepository.getPaperRequirement(planningIds)
+                : [];
+            const planningTonMap = new Map(paperReqs.map((i) => [i.planningId, (Number(i.totalRequiredQty) || 0) / 1000]));
+            const planningTotalQtyMap = new Map();
+            const shiftOperatorMap = new Map();
+            for (const r of reportsData) {
+                planningTotalQtyMap.set(r.planningId, (planningTotalQtyMap.get(r.planningId) || 0) + (Number(r.qtyProduced) || 0));
+                shiftOperatorMap.set(`${r.planningId}___${r.shiftProduction}`, (r.shiftManagement || "").trim());
+            }
+            // Khởi tạo bucket 12 tháng
+            const monthlyErrors = {};
+            const monthlyTonnage = {};
+            for (let m = 1; m <= 12; m++) {
+                monthlyErrors[m] = {};
+                monthlyTonnage[m] = 0;
+            }
+            // 6. Phân bổ sản lượng giấy theo tháng
+            for (const r of reportsData) {
+                const op = r.shiftManagement?.trim();
+                if (!op || op === "Chưa phân ca")
+                    continue;
+                if (targetEmployeeName && !op.toLowerCase().includes(targetEmployeeName))
+                    continue;
+                const totalPlanQty = planningTotalQtyMap.get(r.planningId) || 0;
+                const totalPlanTons = planningTonMap.get(r.planningId) || 0;
+                const shareTons = totalPlanQty > 0 ? ((Number(r.qtyProduced) || 0) / totalPlanQty) * totalPlanTons : 0;
+                const repTime = r.dayReport instanceof Date ? r.dayReport.getTime() : new Date(r.dayReport).getTime();
+                const month = new Date(repTime + VN_TIMEZONE_OFFSET_MS).getUTCMonth() + 1;
+                monthlyTonnage[month] = (monthlyTonnage[month] || 0) + shareTons;
+            }
+            // 7. Đếm số lỗi theo checklist
+            for (const item of inspections) {
+                const cl = item.checkList;
+                if (!cl)
+                    continue;
+                if (targetEmployeeName) {
+                    const { shift } = getVnTimeDetails(item.timeInspection);
+                    const op = shiftOperatorMap.get(`${item.planningId}___${shift}`) ||
+                        (item.PlanningPaper?.shiftManagement || "").split(/[,;/]+/)[0].trim();
+                    if (!op.toLowerCase().includes(targetEmployeeName))
+                        continue;
+                }
+                const insTime = item.timeInspection instanceof Date
+                    ? item.timeInspection.getTime()
+                    : new Date(item.timeInspection).getTime();
+                const month = new Date(insTime + VN_TIMEZONE_OFFSET_MS).getUTCMonth() + 1;
+                const monthBucket = monthlyErrors[month];
+                for (const code in cl) {
+                    if (cl[code] === false) {
+                        if (!monthBucket[code]) {
+                            monthBucket[code] = { errorCount: 1 };
+                        }
+                        else {
+                            monthBucket[code].errorCount++;
+                        }
+                    }
+                }
+            }
+            // 8. Tính tổng sản lượng năm & tổng kết riêng từng tháng cho Summary (làm tròn 2 chữ số thập phân)
+            let totalTonnageYear = 0;
+            let grandTotalErrors = 0;
+            const summaryMonthlyMetrics = {};
+            for (let m = 1; m <= 12; m++) {
+                const mTon = Number((monthlyTonnage[m] || 0).toFixed(2));
+                totalTonnageYear += mTon;
+                let mErr = 0;
+                const mBucket = monthlyErrors[m];
+                for (const code in mBucket) {
+                    mErr += mBucket[code].errorCount;
+                }
+                grandTotalErrors += mErr;
+                const mRate = mTon > 0 ? Number(((mErr / mTon) * 100).toFixed(2)) : 0;
+                summaryMonthlyMetrics[m] = {
+                    errorCount: mErr,
+                    tonnage: mTon,
+                    errorRate: mRate,
+                };
+            }
+            const totalTon = Number(totalTonnageYear.toFixed(2));
+            const grandTotalRate = totalTon > 0 ? Number(((grandTotalErrors / totalTon) * 100).toFixed(2)) : 0;
+            // 9. Format dữ liệu từng dòng (mỗi tiêu chí dùng chung tonnage đã làm tròn 2 số)
+            const dataRows = allCriteria.map((criteria) => {
+                const monthlyMetrics = {};
+                let totalErr = 0;
+                for (let m = 1; m <= 12; m++) {
+                    const ton = summaryMonthlyMetrics[m].tonnage;
+                    const errCount = monthlyErrors[m]?.[criteria.code]?.errorCount || 0;
+                    const rate = ton > 0 ? Number(((errCount / ton) * 100).toFixed(2)) : 0;
+                    monthlyMetrics[m] = {
+                        errorCount: errCount,
+                        tonnage: ton,
+                        errorRate: rate,
+                    };
+                    totalErr += errCount;
+                }
+                const totalRate = totalTon > 0 ? Number(((totalErr / totalTon) * 100).toFixed(2)) : 0;
+                return {
+                    criteriaCode: criteria.code,
+                    criteriaName: criteria.name,
+                    monthlyMetrics,
+                    totalMetrics: { errorCount: totalErr, tonnage: totalTon, errorRate: totalRate },
+                };
+            });
+            const responsePayload = {
+                summary: {
+                    totalTonnage: totalTon,
+                    totalErrorCount: grandTotalErrors,
+                    totalErrorRate: grandTotalRate,
+                    monthlyMetrics: summaryMonthlyMetrics,
+                },
+                data: dataRows,
+            };
+            // 10. Cache toàn bộ payload vào Redis
+            const isPastYear = year < (0, dayjs_config_1.dayjsUtc)().tz(VN_TZ).year();
+            const ttl = isPastYear ? TIMETTL : CACHETTL;
+            await redis_connect_1.default.set(cacheKey, JSON.stringify(responsePayload), "EX", ttl);
+            return {
+                message: "Get yearly error report by criteria successfully",
+                ...responsePayload,
+            };
+        }
+        catch (error) {
+            console.error("Error getting yearly error report:", error);
+            throw appError_1.AppError.ServerError();
+        }
+    },
 };
 //helper
 const getVnTimeDetails = (date) => {
     // Từ 06:00 đến 17:59 là Ca ngày
     // Từ 18:00 đến 05:59 sáng hôm sau là Ca đêm
     const d = new Date(new Date(date).getTime() + VN_TIMEZONE_OFFSET_MS);
+    const month = d.getUTCMonth() + 1;
     const day = d.getUTCDate();
     const hour = d.getUTCHours();
     const shift = hour >= 6 && hour < 18 ? "Ca 1" : "Ca 2";
     const yyyy = d.getUTCFullYear();
-    const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const mm = String(month).padStart(2, "0");
     const dd = String(day).padStart(2, "0");
     const dateKey = `${yyyy}-${mm}-${dd}`;
-    return { day, hour, shift, dateKey };
+    return { month, day, hour, shift, dateKey };
 };
 const initDailyMap = (daysInMonth) => {
     const map = {};
@@ -233,4 +420,19 @@ const filterAndBuildResponse = ({ allRows, daysInMonth, targetEmpName, targetMac
         data: filteredData,
     };
 };
+/**
+ * Tính toán bộ chỉ số lỗi và sản lượng
+ * - tonnage: Làm tròn 3 chữ số thập phân (đơn vị: Tấn)
+ * - errorRate: (Tổng lỗi / Tấn) * 1000, làm tròn 2 chữ số thập phân
+ */
+const calculateMetric = (errors, tonnage) => {
+    const roundedTonnage = Number(tonnage.toFixed(3));
+    const errorRate = roundedTonnage > 0 ? Number(((errors / roundedTonnage) * 100).toFixed(2)) : 0;
+    return {
+        errorCount: errors,
+        tonnage: roundedTonnage,
+        errorRate, // Ví dụ: 15.95 (trên UI Flutter chỉ cần thêm ký tự "%")
+    };
+};
+exports.calculateMetric = calculateMetric;
 //# sourceMappingURL=errProductionService.js.map

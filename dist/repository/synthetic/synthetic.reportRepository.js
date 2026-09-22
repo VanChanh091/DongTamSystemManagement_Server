@@ -15,6 +15,7 @@ const reportPlanningPaper_1 = require("../../models/report/reportPlanningPaper")
 const qcInspectionBox_1 = require("../../models/qualityControl/qcInspection/qcInspectionBox");
 const planningBoxMachineTime_1 = require("../../models/planning/planningBoxMachineTime");
 const reportPlanningBox_1 = require("../../models/report/reportPlanningBox");
+const paperRequirements_1 = require("../../models/planning/requirement/paperRequirements");
 exports.syntheticReportRepository = {
     //====================================REVENUE DAY========================================
     getRawOutboundByCustomer: async ({ startDate, endDate, userId, }) => {
@@ -123,16 +124,17 @@ exports.syntheticReportRepository = {
             raw: true,
         });
     },
-    getQcInspectionPaper: async ({ paperWhere, startDate, endDate, }) => {
+    getQcInspectionPaper: async ({ paperWhere, startDate, endDate, hasErrorOnly = false, }) => {
         return await qcInspectionPaper_1.QcInspectionPaper.findAll({
             attributes: ["timeInspection", "checkList", "planningId"],
-            where: { timeInspection: { [sequelize_1.Op.between]: [startDate, endDate] } },
+            where: {
+                timeInspection: { [sequelize_1.Op.between]: [startDate, endDate] },
+            },
             include: [
                 {
                     model: planningPaper_1.PlanningPaper,
-                    as: "PlanningPaper",
                     attributes: ["chooseMachine", "shiftManagement"],
-                    where: paperWhere,
+                    where: paperWhere ?? {},
                     required: true,
                 },
             ],
@@ -157,17 +159,50 @@ exports.syntheticReportRepository = {
             nest: true,
         });
     },
-    getPlanningPaper: async ({ reportStartDate, reportEndDate, }) => {
-        return await reportPlanningPaper_1.ReportPlanningPaper.findAll({
-            attributes: ["planningId", "shiftProduction", "shiftManagement"],
-            where: { dayReport: { [sequelize_1.Op.between]: [reportStartDate, reportEndDate] } },
+    getReportPlanningPaper: async ({ startDate, endDate, paperWhere, attributes, }) => {
+        const defaultAttributes = [
+            "planningId",
+            "shiftProduction",
+            "shiftManagement",
+            "dayReport",
+            "qtyProduced",
+        ];
+        const options = {
+            attributes: attributes ?? defaultAttributes,
+            where: {
+                dayReport: { [sequelize_1.Op.between]: [startDate, endDate] },
+            },
+            raw: true,
+        };
+        if (paperWhere) {
+            options.include = [
+                {
+                    model: planningPaper_1.PlanningPaper,
+                    attributes: ["chooseMachine"],
+                    where: paperWhere,
+                    required: true,
+                },
+            ];
+            options.nest = true;
+        }
+        return await reportPlanningPaper_1.ReportPlanningPaper.findAll(options);
+    },
+    getReportPlanningBox: async ({ startDate, endDate, }) => {
+        return await reportPlanningBox_1.ReportPlanningBox.findAll({
+            attributes: ["planningBoxId", "dayReport", "machine", "shiftManagement", "qtyProduced"],
+            where: { dayReport: { [sequelize_1.Op.between]: [startDate, endDate] } },
             raw: true,
         });
     },
-    getPlanningBoxTime: async ({ reportStartDate, reportEndDate, }) => {
-        return await reportPlanningBox_1.ReportPlanningBox.findAll({
-            attributes: ["planningBoxId", "dayReport", "machine", "shiftManagement"],
-            where: { dayReport: { [sequelize_1.Op.between]: [reportStartDate, reportEndDate] } },
+    getPaperRequirement: async (planningIds) => {
+        const whereCondition = {};
+        if (planningIds && planningIds.length > 0) {
+            whereCondition.planningId = { [sequelize_1.Op.in]: planningIds };
+        }
+        return await paperRequirements_1.PaperRequirements.findAll({
+            attributes: ["planningId", [(0, sequelize_1.fn)("SUM", (0, sequelize_1.col)("totalRequiredQty")), "totalRequiredQty"]],
+            where: whereCondition,
+            group: ["planningId"],
             raw: true,
         });
     },

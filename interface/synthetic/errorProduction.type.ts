@@ -33,27 +33,26 @@ export interface YearlyErrorReportInput {
   type: "paper" | "box";
 }
 
-// Chỉ số thống kê theo từng mốc (tháng hoặc cả năm)
 export interface ErrorStatMetric {
-  errorCount: number; // Tổng số lỗi phát sinh
-  tonnage: number; // Sản lượng giấy (Đơn vị: Tấn)
-  errorRate: number; // Tỉ lệ lỗi (Số lỗi / Tấn), làm tròn 2-3 chữ số thập phân
+  errorCount: number; // Số lần tiêu chí lỗi này bị false
+  tonnage: number; // Tổng sản lượng giấy trong phạm vi (Đơn vị: Tấn)
+  errorRate: number; // Tỉ lệ lỗi = (errorCount / tonnage) * 1000, làm tròn 2 chữ số thập phân
 }
 
 export interface YearlyErrorReportRow {
-  machine: string;
-  employeeName: string;
+  criteriaCode: string;
+  criteriaName: string;
   monthlyMetrics: Record<number, ErrorStatMetric>; // { 1: {...}, 2: {...}, ..., 12: {...} }
   totalMetrics: ErrorStatMetric; // Tổng hợp cả năm
 }
 
 export interface YearlyErrorReportResponse {
   message: string;
-  year: number;
   summary: {
-    totalError: number; // Tổng số lỗi trong năm
-    totalTonnage: number; // Tổng sản lượng giấy trong năm
-    averageErrorRate: number; // Tỉ lệ lỗi trung bình trong năm
+    totalTonnage: number; // Tổng sản lượng giấy trong năm (tấn)
+    totalErrorCount: number; // Tổng số lần xuất hiện lỗi trong năm
+    totalErrorRate: number; // Tỷ lệ lỗi chung cả năm (số lỗi / tấn * 1000)
+    monthlyMetrics: Record<number, ErrorStatMetric>; // Tổng hợp riêng từng tháng (1 -> 12) phục vụ UI
   };
   data: YearlyErrorReportRow[];
 }

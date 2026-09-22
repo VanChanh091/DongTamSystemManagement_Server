@@ -157,7 +157,7 @@ exports.planningStatusService = {
                     runningPlan: paperPlan.runningPlan,
                     length: lengthPaper,
                     size: paperPlan.sizePaperPLaning,
-                    ghepKho: ghepKho,
+                    ghepKho,
                     transaction,
                 });
                 // Nếu đơn hàng có làm thùng, tạo thêm kế hoạch làm thùng
@@ -413,12 +413,12 @@ const calculateWaste = ({ layers, ghepKho, wasteNorm, waveCoeff, runningPlan, nu
             }
         }
     }
-    // 5.1) Lớp liner cuối cùng
+    // Lớp liner cuối cùng
     const lastLiner = [...layers].reverse().find((l) => l.kind === "liner");
     if (lastLiner) {
         softLiner = gkTh * wasteNorm.waveCrestSoft * (lastLiner.thickness / 1000);
     }
-    // 5.2) Tính hao phí, dao, tổng hao hụt
+    // Tính hao phí, dao, tổng hao hụt
     const bottom = flute.E + flute.B + flute.C + softLiner;
     const totalLength = runningPlan / numberChild;
     const oneM2WaveCrestSoft = bottom / wasteNorm.waveCrestSoft;
