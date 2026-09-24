@@ -95,12 +95,12 @@ export const checkingInspection = async (req: Request, res: Response, next: Next
       response = await qcInspectionService.checkingInspectionPaper({
         req,
         machine,
-        checking: checking!,
         planningId: planningId!,
-        errProgress: errProgress as qcCheckPaper,
         username: req.user.fullName,
         userId: req.user.userId,
         note: note,
+        checking: checking!,
+        errProgress: errProgress as qcCheckPaper,
       });
     } else if (isPaper === "box") {
       response = await qcInspectionService.checkingInspectionBox({

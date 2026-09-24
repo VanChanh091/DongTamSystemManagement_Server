@@ -190,7 +190,7 @@ export const planningPaperService = {
         data: finalData,
       };
     } catch (error) {
-      console.error(`Failed to get customers by ${field}`, error);
+      console.error(`Failed to get planning paper by ${field}`, error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }

@@ -9,8 +9,6 @@ interface QcInspectionPaperAttributes {
   inspecPaperId: number;
   timeInspection: Date;
 
-  numberPallet: number;
-  machineSpeed: number;
   moisture: number;
   steamPressure: number;
   preheaterTemp: number;
@@ -20,6 +18,8 @@ interface QcInspectionPaperAttributes {
   checkedBy: string;
 
   note?: string;
+  result: boolean;
+  imgError?: string;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -36,6 +36,8 @@ export type QcInspectionPaperCreationAttributes = Optional<
   | "timeInspection"
   | "checkedBy"
   | "note"
+  | "result"
+  | "imgError"
   | "planningId"
   | "userId"
   | "createdAt"
@@ -50,8 +52,6 @@ export class QcInspectionPaper
   declare inspecPaperId: number;
   declare timeInspection: Date;
 
-  declare numberPallet: number;
-  declare machineSpeed: number;
   declare moisture: number;
   declare steamPressure: number;
   declare preheaterTemp: number;
@@ -62,6 +62,8 @@ export class QcInspectionPaper
   declare checkedBy: string;
 
   declare note?: string;
+  declare result: boolean;
+  declare imgError?: string;
 
   //FK
   declare planningId: number;
@@ -89,9 +91,7 @@ export function initQcInspectionPaperModel(sequelize: Sequelize): typeof QcInspe
       },
 
       //user input
-      numberPallet: { type: DataTypes.INTEGER },
-      machineSpeed: { type: DataTypes.DOUBLE, allowNull: false },
-      moisture: { type: DataTypes.DOUBLE, allowNull: false }, //độ ẩm
+      moisture: { type: DataTypes.DOUBLE, allowNull: true }, //độ ẩm
       steamPressure: { type: DataTypes.DOUBLE, allowNull: false }, //áp suất hơi
       preheaterTemp: { type: DataTypes.DOUBLE, allowNull: false }, //nhiệt độ đầu sóng
       fctValue: { type: DataTypes.DOUBLE, allowNull: false }, //giá trị FCT
@@ -101,6 +101,8 @@ export function initQcInspectionPaperModel(sequelize: Sequelize): typeof QcInspe
       checkedBy: { type: DataTypes.STRING, allowNull: false }, //người kiểm tra
 
       note: { type: DataTypes.STRING }, //ghi chú
+      result: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false }, //kết quả kiểm tra
+      imgError: { type: DataTypes.STRING }, //ảnh lỗi
 
       //FK
       planningId: { type: DataTypes.INTEGER, allowNull: false },

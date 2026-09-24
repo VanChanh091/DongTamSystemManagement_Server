@@ -27,9 +27,6 @@ import {
 import { meiliTransformer } from "../assets/configs/meilisearch/meiliTransformer";
 import { searchFieldAtribute } from "../interface/types";
 import { MEILI_INDEX } from "../assets/labelFields";
-import { PaperClassifications } from "../models/admin/paperClassifications/paperClassifications";
-import { SupplierPaperCodes } from "../models/admin/paperClassifications/supplierPaperCodes";
-import { Suppliers } from "../models/admin/paperClassifications/suppliers";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { order } = CacheKey;

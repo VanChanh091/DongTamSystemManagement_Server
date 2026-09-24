@@ -139,14 +139,20 @@ export const qcInspectionService = {
           );
         }
 
-        dbData.checkList = errProgress;
-        await QcInspectionPaper.create(dbData, { transaction });
-
-        //lọc các tiêu chí bị lỗi
+        // Lọc tiêu chí lỗi & tính toán result
         const failedCriteria = Object.entries(errProgress)
           .filter(([_, value]) => value === false)
           .map(([key]) => key);
 
+        // false nếu có ít nhất 1 tiêu chí false
+        const isPassed = failedCriteria.length === 0;
+
+        dbData.checkList = errProgress;
+        dbData.result = isPassed;
+
+        await QcInspectionPaper.create(dbData, { transaction });
+
+        // Cập nhật trạng thái PlanningPaper dựa trên kết quả
         const currentStatusCheck = failedCriteria.length > 0 ? "failed" : "passed";
         await PlanningPaper.update(
           { statusCheck: currentStatusCheck },
@@ -164,6 +170,7 @@ export const qcInspectionService = {
           const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
           const item: any = {
             from: "QC",
+            planningId: planningId,
             message: `Đơn hàng: ${planning?.orderId} đang bị lỗi tại ${machine}`,
           };
 
@@ -414,14 +421,19 @@ export const qcInspectionService = {
           );
         }
 
-        dbData.checkList = errProgress;
-        await QcInspectionBox.create(dbData, { transaction });
-
-        //lọc các tiêu chí bị lỗi
+        // Lọc tiêu chí lỗi & tính toán result
         const failedCriteria = Object.entries(errProgress)
           .filter(([_, value]) => value === false)
           .map(([key]) => key);
 
+        // false nếu có ít nhất 1 cái false
+        const isPassed = failedCriteria.length === 0;
+
+        dbData.checkList = errProgress;
+        dbData.result = isPassed;
+        await QcInspectionBox.create(dbData, { transaction });
+
+        // Cập nhật trạng thái PlanningBoxTime
         const currentStatusCheck = failedCriteria.length > 0 ? "failed" : "passed";
         await PlanningBoxTime.update(
           { statusCheck: currentStatusCheck },
@@ -433,6 +445,8 @@ export const qcInspectionService = {
           const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
           const item: any = {
             from: "QC",
+            planningBoxId: planningBoxId,
+            machine: machine,
             message: `Có đơn hàng sản xuất đang bị lỗi tại ${machine}`,
           };
 

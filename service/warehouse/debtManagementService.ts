@@ -18,6 +18,7 @@ import {
   debtCustomerColumns,
   mappingDebtCustomerRow,
 } from "../../utils/mapping/warehouse/debtCustomerRowAndColumn";
+import { normalizeVN } from "../../utils/helper/normalizeVN";
 
 export const debtManagementService = {
   //================================DEBT CLOSING=================================
@@ -39,17 +40,32 @@ export const debtManagementService = {
       const unpaidOutbounds = await debtRepository.findOutboundUnpaid({
         userId,
         targetDate,
-        search,
       });
 
       // Gom nhóm và tính toán Grand Total cho TOÀN BỘ hệ thống
       const { sortedCustomers, grandTotal } = processDebtAggregation(unpaidOutbounds, targetDate);
 
+      // 3. Lọc khách hàng bằng hàm normalizeVN
+      let filteredCustomers = sortedCustomers;
+      if (search && search.trim()) {
+        const keyword = normalizeVN(search);
+
+        filteredCustomers = sortedCustomers.filter((cust) => {
+          const nameMatch = normalizeVN(cust.customerName).includes(keyword);
+          const companyMatch = normalizeVN(cust.companyName).includes(keyword);
+          const idMatch = cust.customerId
+            ? cust.customerId.toString().toLowerCase().includes(keyword)
+            : false;
+
+          return nameMatch || companyMatch || idMatch;
+        });
+      }
+
       // Phân trang chỉ cho mảng dữ liệu hiển thị (data)
-      const totalCustomers = sortedCustomers.length;
+      const totalCustomers = filteredCustomers.length;
       const totalPages = Math.ceil(totalCustomers / pageSize) || 1;
       const startIndex = (page - 1) * pageSize;
-      const paginatedItems = sortedCustomers.slice(startIndex, startIndex + pageSize);
+      const paginatedItems = filteredCustomers.slice(startIndex, startIndex + pageSize);
 
       return {
         message: "Lấy danh sách công nợ thành công",

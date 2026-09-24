@@ -29,6 +29,7 @@ export const paperRequirementRepo = {
             "dayStart",
             "ghepKho",
             "runningPlan",
+            "totalPrice",
             "dayReplace",
             "matEReplace",
             "matBReplace",

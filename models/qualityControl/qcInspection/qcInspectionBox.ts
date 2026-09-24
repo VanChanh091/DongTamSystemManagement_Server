@@ -12,6 +12,8 @@ interface QcInspectionBoxAttributes {
   checkedBy: string;
 
   note?: string;
+  result: boolean;
+  imgError?: string;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -28,6 +30,8 @@ export type QcInspectionBoxCreationAttributes = Optional<
   | "timeInspection"
   | "checkedBy"
   | "note"
+  | "result"
+  | "imgError"
   | "boxTimeId"
   | "userId"
   | "createdAt"
@@ -45,6 +49,8 @@ export class QcInspectionBox
   declare checkedBy: string;
 
   declare note?: string;
+  declare result: boolean;
+  declare imgError?: string;
 
   //FK
   declare boxTimeId: number;
@@ -74,6 +80,8 @@ export function initQcInspectionBoxModel(sequelize: Sequelize): typeof QcInspect
       checkedBy: { type: DataTypes.STRING, allowNull: false }, //người kiểm tra
 
       note: { type: DataTypes.STRING }, //ghi chú
+      result: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false }, //kết quả kiểm tra
+      imgError: { type: DataTypes.STRING }, //ảnh lỗi
 
       //FK
       boxTimeId: { type: DataTypes.INTEGER, allowNull: false },
