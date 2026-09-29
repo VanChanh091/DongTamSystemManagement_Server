@@ -107,6 +107,21 @@ export const deliveryRequestSettings: Settings = {
   rankingRules: rule,
 };
 
+//inspection paper & box
+export const inspectionPaperSettings: Settings = {
+  searchableAttributes: ["orderId", "customerName", "checkedBy"],
+  filterableAttributes: ["machine"],
+  sortableAttributes: ["inspecPaperId"],
+  rankingRules: rule,
+};
+
+export const inspectionBoxSettings: Settings = {
+  searchableAttributes: ["orderId", "customerName", "checkedBy"],
+  filterableAttributes: ["machine"],
+  sortableAttributes: ["inspecBoxId"],
+  rankingRules: rule,
+};
+
 //dashboard
 export const dashboardSettings: Settings = {
   searchableAttributes: [

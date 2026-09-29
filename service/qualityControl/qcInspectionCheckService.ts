@@ -19,6 +19,8 @@ import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
 import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
 import { Op } from "sequelize";
+import { searchFieldAtribute } from "../../interface/types";
+import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 
 const { paper } = CacheKey.qcInspection;
 const devEnvironment = process.env.NODE_ENV !== "production";
@@ -71,6 +73,66 @@ export const qcInspectionService = {
       return responseData;
     } catch (error) {
       console.error("get all Qc Inspection Paper failed:", error);
+      throw AppError.ServerError();
+    }
+  },
+
+  getInspectionPaperByField: async ({
+    page,
+    pageSize,
+    machine,
+    field,
+    keyword,
+  }: searchFieldAtribute) => {
+    try {
+      const validFields = ["orderId", "customerName", "checkedBy"];
+      if (!validFields.includes(field)) {
+        throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
+      }
+
+      const index = meiliClient.index("inspection_papers");
+
+      const searchResult = await index.search(keyword, {
+        attributesToSearchOn: [field],
+        attributesToRetrieve: ["inspecPaperId"],
+        sort: ["inspecPaperId:desc"],
+        filter: `machine = "${machine}"`,
+        page: Number(page) || 1,
+        hitsPerPage: Number(pageSize) || 25, //pageSize
+      });
+
+      const inspecPaperIds = searchResult.hits.map((hit: any) => hit.inspecPaperId);
+      if (inspecPaperIds.length === 0) {
+        return {
+          message: "No inspection papers found",
+          data: [],
+          totalInventory: 0,
+          totalPages: 0,
+          currentPage: page,
+        };
+      }
+
+      //query db
+      const options = qcRepository.buildInspectionPaperOptions({
+        whereCondition: { inspecPaperId: { [Op.in]: inspecPaperIds } },
+        machine: machine!,
+      });
+      const { rows } = await QcInspectionPaper.findAndCountAll(options);
+
+      // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
+      const finalData = inspecPaperIds
+        .map((id) => rows.find((inspec) => inspec.inspecPaperId === id))
+        .filter(Boolean);
+
+      return {
+        message: "Get InspectionPaper from Meilisearch & DB successfully",
+        data: finalData,
+        totalInventory: searchResult.totalHits,
+        totalPages: searchResult.totalPages,
+        currentPage: searchResult.page,
+      };
+    } catch (error) {
+      console.error("Failed to get Qc Inspection Paper by field:", error);
       throw AppError.ServerError();
     }
   },
@@ -333,6 +395,66 @@ export const qcInspectionService = {
       return responseData;
     } catch (error) {
       console.error("get all Qc Inspection Box failed:", error);
+      throw AppError.ServerError();
+    }
+  },
+
+  getInspectionBoxByField: async ({
+    page,
+    pageSize,
+    machine,
+    field,
+    keyword,
+  }: searchFieldAtribute) => {
+    try {
+      const validFields = ["orderId", "customerName", "checkedBy"];
+      if (!validFields.includes(field)) {
+        throw AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
+      }
+
+      const index = meiliClient.index("inspection_boxes");
+
+      const searchResult = await index.search(keyword, {
+        attributesToSearchOn: [field],
+        attributesToRetrieve: ["inspecBoxId"],
+        sort: ["inspecBoxId:desc"],
+        filter: `machine = "${machine}"`,
+        page: Number(page) || 1,
+        hitsPerPage: Number(pageSize) || 25, //pageSize
+      });
+
+      const inspecBoxIds = searchResult.hits.map((hit: any) => hit.inspecBoxId);
+      if (inspecBoxIds.length === 0) {
+        return {
+          message: "No inspection boxes found",
+          data: [],
+          totalInventory: 0,
+          totalPages: 0,
+          currentPage: page,
+        };
+      }
+
+      //query db
+      const options = qcRepository.buildInspectionBoxOptions({
+        whereCondition: { inspecBoxId: { [Op.in]: inspecBoxIds } },
+        machine: machine!,
+      });
+      const { rows } = await QcInspectionBox.findAndCountAll(options);
+
+      // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
+      const finalData = inspecBoxIds
+        .map((id) => rows.find((inspec) => inspec.inspecBoxId === id))
+        .filter(Boolean);
+
+      return {
+        message: "Get InspectionBox from Meilisearch & DB successfully",
+        data: finalData,
+        totalInventory: searchResult.totalHits,
+        totalPages: searchResult.totalPages,
+        currentPage: searchResult.page,
+      };
+    } catch (error) {
+      console.error("Failed to get Qc Inspection Box by field:", error);
       throw AppError.ServerError();
     }
   },

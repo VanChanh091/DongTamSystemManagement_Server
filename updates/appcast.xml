@@ -3,9 +3,10 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.8.0</title>
-            <sparkle:version>4.8.0</sparkle:version> 
-            <description></description>
+            <title>Version 4.8.1</title>
+            <sparkle:version>4.8.1</sparkle:version> 
+            <description>
+            </description>
             <pubDate>Sar, 17 August 2026</pubDate>
             <enclosure url="dongtam.exe" 
                     sparkle:os="windows" 

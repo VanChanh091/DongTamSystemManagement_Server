@@ -1,5 +1,4 @@
 import ExcelJS from "exceljs";
-import { Transaction, WhereOptions } from "sequelize";
 export interface FilterDataFromCacheProps<T> {
   model?: any;
   cacheKey: string;

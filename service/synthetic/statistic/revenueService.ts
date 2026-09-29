@@ -108,10 +108,10 @@ export const statisticRevenueService = {
 
           const dayNumber = new Date(timestamp + VN_TIMEZONE_OFFSET_MS).getUTCDate();
 
-          const amount = Number(record.totalPricePayment) || 0;
-          const debt = Number(record.remainingAmount) || 0;
+          const amount = roundInt(record.totalPricePayment);
+          const debt = roundInt(record.remainingAmount);
 
-          if (amount === 0) continue;
+          if (amount === 0 && debt === 0) continue;
 
           if (!customerMap.has(customer.customerId)) {
             const initialDays: Record<number, number> = {};
@@ -134,31 +134,27 @@ export const statisticRevenueService = {
           dailyTotals[dayNumber] += amount;
         }
 
-        // Làm tròn từng khách hàng và ô ngày
         const allDetails: CustomerDailySalesRow[] = Array.from(customerMap.values()).map((row) => {
-          const roundedDaily: Record<number, number> = {};
-          for (let d = 1; d <= daysInMonth; d++) {
-            roundedDaily[d] = roundInt(row.dailyAmounts[d]);
-          }
-
           return {
             customerId: row.customerId,
             customerName: row.customerName,
-            dailyAmounts: roundedDaily,
-            totalCustomerSales: roundInt(row.totalCustomerSales),
-            totalCustomerDebt: roundInt(row.totalCustomerDebt),
+            dailyAmounts: row.dailyAmounts,
+            totalCustomerSales: row.totalCustomerSales,
+            totalCustomerDebt: row.totalCustomerDebt,
           };
         });
 
         // Làm tròn footer và tính tổng từ allDetails
+        let totalMonthSales = 0;
         for (let d = 1; d <= daysInMonth; d++) {
-          dailyTotals[d] = roundInt(dailyTotals[d]);
+          const daySum = allDetails.reduce((sum, r) => sum + r.dailyAmounts[d], 0);
+          dailyTotals[d] = daySum;
+          totalMonthSales += daySum;
         }
 
-        const totalMonthSales = allDetails.reduce((sum, r) => sum + r.totalCustomerSales, 0);
         const totalMonthDebt = allDetails.reduce((sum, r) => sum + r.totalCustomerDebt, 0);
 
-        // Sắp xếp khách có tổng doanh số lớn nhất lên đầu
+        // Sắp xếp khách theo tổng doanh số giảm dần
         allDetails.sort((a, b) => b.totalCustomerSales - a.totalCustomerSales);
 
         fullReportData = {
@@ -166,7 +162,6 @@ export const statisticRevenueService = {
           daysInMonth,
           allDetails,
         };
-
         if (isPastMonth) {
           await redisCache.set(cacheKey, JSON.stringify(fullReportData), "EX", TIMETTL);
         }
@@ -183,15 +178,19 @@ export const statisticRevenueService = {
 
         // Tính lại dòng footer cho danh sách đã lọc
         const filteredDailyTotals: Record<number, number> = {};
+        let filteredTotalMonthSales = 0;
+
         for (let d = 1; d <= fullReportData.daysInMonth; d++) {
-          filteredDailyTotals[d] = filteredDetails.reduce(
+          const daySum = filteredDetails.reduce(
             (sum, item) => sum + (item.dailyAmounts[d] || 0),
             0,
           );
+          filteredDailyTotals[d] = daySum;
+          filteredTotalMonthSales += daySum;
         }
 
         responseSummary = {
-          totalMonthSales: filteredDetails.reduce((sum, item) => sum + item.totalCustomerSales, 0),
+          totalMonthSales: filteredTotalMonthSales,
           totalMonthDebt: filteredDetails.reduce((sum, item) => sum + item.totalCustomerDebt, 0),
           dailyTotals: filteredDailyTotals,
         };
@@ -245,8 +244,6 @@ export const statisticRevenueService = {
 
       // Kiểm tra xem tháng được chọn có phải là tháng cũ không
       const cacheKey = reports.revenue_monthly(year, month, effectiveUserId ?? "all");
-
-      //check past month
       const isPastMonth = year < currentYear || (year === currentYear && month < currentMonth);
 
       if (isPastMonth) {
@@ -261,8 +258,8 @@ export const statisticRevenueService = {
 
       // Xác định biên thời gian
       const paddedMonth = String(month).padStart(2, "0");
-      const startDate = `${year}-${paddedMonth}-01 00:00:00`;
       const daysInMonth = new Date(year, month, 0).getDate();
+      const startDate = `${year}-${paddedMonth}-01 00:00:00`;
       const endDate = `${year}-${paddedMonth}-${daysInMonth} 23:59:59`;
 
       // Chạy 3 query gom nhóm song song
@@ -308,11 +305,11 @@ export const statisticRevenueService = {
 
       const salesMap = aggregateDailyAmounts(
         outboundData,
-        (item) => item.createdAt,
-        (item) => item.totalPriceOutbound,
+        (item) => item.dateOutbound,
+        (item) => item.totalPricePayment,
       );
 
-      // 5. Khởi tạo danh sách đủ các ngày trong tháng (từ ngày 1 đến 28/30/31)
+      // Khởi tạo danh sách đủ các ngày trong tháng
       const details: DailyReportRow[] = [];
       const summary = {
         totalOrderApproved: 0,
@@ -325,9 +322,9 @@ export const statisticRevenueService = {
         const paddedDay = String(day).padStart(2, "0");
         const dateKey = `${year}-${paddedMonth}-${paddedDay}`;
 
-        const orderAmount = orderMap.get(dateKey) || 0;
-        const prodAmount = prodMap.get(dateKey) || 0;
-        const saleAmount = salesMap.get(dateKey) || 0;
+        const orderAmount = roundInt(orderMap.get(dateKey) || 0);
+        const prodAmount = roundInt(prodMap.get(dateKey) || 0);
+        const saleAmount = roundInt(salesMap.get(dateKey) || 0);
         const returnAmount = 0;
 
         details.push({
@@ -382,15 +379,17 @@ export const statisticRevenueService = {
       }
 
       // Phân quyền
-      let effectiveUserId: number | null = dto.targetUserId ? Number(dto.targetUserId) : null;
       const isManager = ["manager", "admin"].includes(dto.currentUser.role.toLowerCase());
-      if (dto.all) {
-        effectiveUserId = isManager && dto.targetUserId ? Number(dto.targetUserId) : null;
-      } else if (!isManager) {
+      let effectiveUserId: number | null = null;
+
+      if (!isManager) {
         effectiveUserId = dto.currentUser.userId;
+      } else if (!dto.all) {
+        effectiveUserId = dto.targetUserId ? Number(dto.targetUserId) : null;
       }
 
       // Caching
+      const isPastYears = toYear < currentYear;
       const cacheKey = reports.revenue_yearly(fromYear, toYear, effectiveUserId ?? "all");
 
       let fullReportData: {
@@ -404,7 +403,6 @@ export const statisticRevenueService = {
       } | null = null;
 
       let isFromCache = false;
-
       const cached = await redisCache.get(cacheKey);
       if (cached) {
         if (devEnvironment) console.log("✅ Data Multi-Year Matrix from Redis");
@@ -430,8 +428,8 @@ export const statisticRevenueService = {
         // Gom nhóm dư nợ theo từng customerId
         const debtMap = new Map<string, number>();
         for (const pxk of unpaidOutbounds) {
-          const custId = pxk.customerId;
-          const remaining = Number(pxk.remainingAmount) || 0;
+          const custId = String(pxk.customerId);
+          const remaining = roundInt(pxk.remainingAmount);
           debtMap.set(custId, (debtMap.get(custId) || 0) + remaining);
         }
 
@@ -446,22 +444,23 @@ export const statisticRevenueService = {
           const customer = record.Customer;
           if (!customer?.customerId) continue;
 
+          const custId = String(customer.customerId);
           const vnDate = toVNDate(record.dateOutbound);
           if (!vnDate) continue;
 
           const reportYear = vnDate.getUTCFullYear();
-          const reportMonth = vnDate.getUTCMonth() + 1; // 1 -> 12
-          const amount = Number(record.totalPricePayment) || 0;
+          const reportMonth = vnDate.getUTCMonth() + 1;
+          const amount = roundInt(record.totalPricePayment);
           if (amount === 0) continue;
 
           if (!yearsList.includes(reportYear)) continue;
 
-          if (!customerMap.has(customer.customerId)) {
+          if (!customerMap.has(custId)) {
             const initialYears: Record<number, YearSalesData> = {};
             for (const y of yearsList) initialYears[y] = createEmptyYear();
 
-            customerMap.set(customer.customerId, {
-              customerId: customer.customerId,
+            customerMap.set(custId, {
+              customerId: custId,
               customerName: customer.customerName,
               currentDebt: 0,
               years: initialYears,
@@ -469,26 +468,22 @@ export const statisticRevenueService = {
             });
           }
 
-          const customerRow = customerMap.get(customer.customerId)!;
+          const customerRow = customerMap.get(custId)!;
           customerRow.years[reportYear].months[reportMonth] += amount;
         }
 
         // Gán dư nợ, làm tròn từng tháng và tính tổng cho từng khách
         const allDetails = Array.from(customerMap.values()).map((customer) => {
           let customerGrandTotal = 0;
-
-          // Gán dư nợ hiện tại từ debtMap
           customer.currentDebt = roundInt(debtMap.get(customer.customerId) || 0);
 
           for (const y of yearsList) {
             let yearTotal = 0;
-
             for (let m = 1; m <= 12; m++) {
               const roundedVal = roundInt(customer.years[y].months[m]);
               customer.years[y].months[m] = roundedVal;
               yearTotal += roundedVal;
             }
-
             customer.years[y].yearTotal = yearTotal;
             customerGrandTotal += yearTotal;
           }
@@ -502,7 +497,6 @@ export const statisticRevenueService = {
         for (const y of yearsList) summaryYears[y] = createEmptyYear();
 
         let summaryGrandTotal = 0;
-
         for (const y of yearsList) {
           let yearSum = 0;
           for (let m = 1; m <= 12; m++) {
@@ -516,8 +510,6 @@ export const statisticRevenueService = {
 
         // Tổng nợ của các khách hàng có phát sinh doanh số trong danh sách
         const totalCurrentDebt = allDetails.reduce((sum, c) => sum + c.currentDebt, 0);
-
-        // Sắp xếp ưu tiên khách có tổng doanh số lớn nhất lên đầu
         allDetails.sort((a, b) => b.grandTotal - a.grandTotal);
 
         fullReportData = {
@@ -526,7 +518,9 @@ export const statisticRevenueService = {
           yearsList,
         };
 
-        await redisCache.set(cacheKey, JSON.stringify(fullReportData), "EX", CACHETTL);
+        if (isPastYears) {
+          await redisCache.set(cacheKey, JSON.stringify(fullReportData), "EX", CACHETTL);
+        }
       }
 
       // Lọc theo tên khách hàng & Tính lại Summary tương ứng
@@ -538,14 +532,10 @@ export const statisticRevenueService = {
           normalizeVN(item.customerName).includes(keyword),
         );
 
-        // Tính lại footer của ma trận nhiều năm theo tập khách đã lọc
         const filteredSummaryYears: Record<number, YearSalesData> = {};
-        for (const y of fullReportData.yearsList) {
-          filteredSummaryYears[y] = createEmptyYear();
-        }
+        for (const y of fullReportData.yearsList) filteredSummaryYears[y] = createEmptyYear();
 
         let filteredGrandTotal = 0;
-
         for (const y of fullReportData.yearsList) {
           let yearSum = 0;
           for (let m = 1; m <= 12; m++) {
@@ -560,12 +550,10 @@ export const statisticRevenueService = {
           filteredGrandTotal += yearSum;
         }
 
-        const filteredTotalDebt = filteredDetails.reduce((sum, c) => sum + c.currentDebt, 0);
-
         responseSummary = {
           years: filteredSummaryYears,
           grandTotal: filteredGrandTotal,
-          totalCurrentDebt: filteredTotalDebt,
+          totalCurrentDebt: filteredDetails.reduce((sum, c) => sum + c.currentDebt, 0),
         };
       }
 
@@ -597,6 +585,9 @@ export const statisticRevenueService = {
 };
 
 // ===============================HELPER FUNCTIONS========================================
+const roundInt = (val: number | string | undefined | null): number =>
+  Math.round(Number(val) || 0);
+
 const aggregateDailyAmounts = <T>(
   records: T[],
   getDateFn: (item: T) => Date | string | undefined | null,
@@ -615,8 +606,8 @@ const aggregateDailyAmounts = <T>(
     // 2. Dịch sang UTC+7 và cắt chuỗi 'YYYY-MM-DD'
     const dateKey = new Date(timestamp + VN_TIMEZONE_OFFSET_MS).toISOString().slice(0, 10);
 
-    // 3. Gom dồn số tiền
-    const amount = Number(getAmountFn(item)) || 0;
+    // 3. Gom dồn số tiền (làm tròn số tiền của từng bản ghi)
+    const amount = roundInt(getAmountFn(item));
     map.set(dateKey, (map.get(dateKey) || 0) + amount);
   }
 
@@ -636,5 +627,3 @@ const createEmptyYear = (): YearSalesData => {
   for (let m = 1; m <= 12; m++) months[m] = 0;
   return { months, yearTotal: 0 };
 };
-
-const roundInt = (val: number | undefined | null): number => Math.round(Number(val) || 0);

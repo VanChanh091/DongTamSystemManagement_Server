@@ -2,17 +2,16 @@ import { col, fn, Op } from "sequelize";
 import { Order } from "../../models/order/order";
 import { Customer } from "../../models/customer/customer";
 import { OrderApproved } from "../../models/order/orderApproved";
-import { InboundHistory } from "../../models/warehouse/inboundHistory";
-import { OutboundDetail } from "../../models/warehouse/outbound/outboundDetail";
-import { OutboundHistory } from "../../models/warehouse/outbound/outboundHistory";
-import { EmployeeBasicInfo } from "../../models/employee/employeeBasicInfo";
-import { QcInspectionPaper } from "../../models/qualityControl/qcInspection/qcInspectionPaper";
 import { PlanningPaper } from "../../models/planning/planningPaper";
-import { ReportPlanningPaper } from "../../models/report/reportPlanningPaper";
-import { QcInspectionBox } from "../../models/qualityControl/qcInspection/qcInspectionBox";
-import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
+import { InboundHistory } from "../../models/warehouse/inboundHistory";
 import { ReportPlanningBox } from "../../models/report/reportPlanningBox";
+import { EmployeeBasicInfo } from "../../models/employee/employeeBasicInfo";
+import { ReportPlanningPaper } from "../../models/report/reportPlanningPaper";
+import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
+import { OutboundHistory } from "../../models/warehouse/outbound/outboundHistory";
 import { PaperRequirements } from "../../models/planning/requirement/paperRequirements";
+import { QcInspectionBox } from "../../models/qualityControl/qcInspection/qcInspectionBox";
+import { QcInspectionPaper } from "../../models/qualityControl/qcInspection/qcInspectionPaper";
 
 export const syntheticReportRepository = {
   //====================================REVENUE DAY========================================
@@ -26,7 +25,7 @@ export const syntheticReportRepository = {
     userId?: number;
   }) => {
     return OutboundHistory.findAll({
-      attributes: ["customerId", "dateOutbound", "totalPricePayment"],
+      attributes: ["customerId", "dateOutbound", "totalPricePayment", "remainingAmount"],
       where: { dateOutbound: { [Op.between]: [startDate, endDate] } },
       include: [
         {
@@ -99,7 +98,6 @@ export const syntheticReportRepository = {
           },
         },
       ],
-
       raw: true,
     });
   },
@@ -114,18 +112,15 @@ export const syntheticReportRepository = {
     endDate: string | Date;
     userId?: number;
   }) => {
-    return OutboundDetail.findAll({
-      attributes: ["totalPriceOutbound", "createdAt"],
-      where: { createdAt: { [Op.between]: [startDate, endDate] } },
+    return OutboundHistory.findAll({
+      attributes: ["totalPricePayment", "dateOutbound"],
+      where: { dateOutbound: { [Op.between]: [startDate, endDate] } },
       include: [
         {
-          model: Order,
+          model: Customer,
           required: true,
           attributes: [],
-          where: {
-            ...(userId ? { userId } : {}),
-            status: { [Op.in]: ["accept", "planning", "completed"] },
-          },
+          where: userId ? { userId } : undefined,
         },
       ],
       raw: true,
@@ -146,7 +141,7 @@ export const syntheticReportRepository = {
       attributes: ["customerId", "dateOutbound", "totalPricePayment"],
       where: {
         dateOutbound: { [Op.between]: [startDate, endDate] },
-        totalPricePayment: { [Op.gt]: 0 },
+        totalPricePayment: { [Op.gt]: 0 }, // Lấy cả âm lẫn dương, chỉ loại bỏ đơn = 0
       },
       include: [
         {
@@ -173,12 +168,10 @@ export const syntheticReportRepository = {
     paperWhere,
     startDate,
     endDate,
-    hasErrorOnly = false,
   }: {
     paperWhere: any;
     startDate: string | Date;
     endDate: string | Date;
-    hasErrorOnly?: boolean;
   }) => {
     return await QcInspectionPaper.findAll({
       attributes: ["timeInspection", "checkList", "planningId"],

@@ -5,6 +5,8 @@ import {
   deliveryRequestSettings,
   employeesSettings,
   inboundSettings,
+  inspectionBoxSettings,
+  inspectionPaperSettings,
   inventorySettings,
   ordersSettings,
   outboundSettings,
@@ -31,6 +33,8 @@ export const setupMeilisearch = async () => {
     meiliClient.index("reportPapers").updateSettings(reportPaperSettings),
     meiliClient.index("reportBoxes").updateSettings(reportBoxSettings),
     meiliClient.index("deliveryRequest").updateSettings(deliveryRequestSettings),
+    meiliClient.index("inspection_papers").updateSettings(inspectionPaperSettings),
+    meiliClient.index("inspection_boxes").updateSettings(inspectionBoxSettings),
     meiliClient.index("dashboard").updateSettings(dashboardSettings),
   ]);
 };

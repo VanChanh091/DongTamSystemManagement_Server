@@ -5,48 +5,51 @@ import { qcInspectionService } from "../../../service/qualityControl/qcInspectio
 
 //====================================INSPECTION PAPER========================================
 export const getQcInspection = async (req: Request, res: Response, next: NextFunction) => {
-  const { page, pageSize, machine, field, keyword, startDate, endDate, isPaper } = req.query;
+  const { isPaper, page, pageSize, machine, field, keyword } = req.query as {
+    isPaper: "paper" | "box";
+    page: string;
+    pageSize: string;
+    machine: string;
+    field?: string;
+    keyword?: string;
+  };
 
   try {
     const commonParams = {
       page: Number(page),
       pageSize: Number(pageSize),
-      machine: machine as string,
+      machine,
     };
-    // const hasSearch = !!(field && keyword);
+    const hasSearch = !!(field && keyword);
 
     const serviceMap = {
       paper: {
-        // search: () =>
-        //   qcInspectionService.getInspectionPaperByField({
-        //     ...commonParams,
-        //     field,
-        //     keyword,
-        //     startDate,
-        //     endDate,
-        //   } as any),
+        search: () =>
+          qcInspectionService.getInspectionPaperByField({
+            ...commonParams,
+            field,
+            keyword,
+          } as any),
         all: () => qcInspectionService.getAllQcInspectionPaper(commonParams),
       },
       box: {
-        // search: () =>
-        //   qcInspectionService.getInspectionBoxByField({
-        //     ...commonParams,
-        //     field,
-        //     keyword,
-        //     startDate,
-        //     endDate,
-        //   } as any),
+        search: () =>
+          qcInspectionService.getInspectionBoxByField({
+            ...commonParams,
+            field,
+            keyword,
+          } as any),
         all: () => qcInspectionService.getAllQcInspectionBox(commonParams),
       },
     };
 
-    const targetService = serviceMap[isPaper as "paper" | "box"];
+    const targetService = serviceMap[isPaper];
     if (!targetService) {
       return res.status(400).json({ message: "isPaper parameter must be 'paper' or 'box'" });
     }
 
-    // const response = hasSearch ? await targetService.search() : await targetService.all();
-    const response = await targetService.all();
+    const response = hasSearch ? await targetService.search() : await targetService.all();
+    // const response = await targetService.all();
 
     return res.status(200).json(response);
   } catch (error) {

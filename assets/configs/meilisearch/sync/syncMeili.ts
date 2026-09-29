@@ -15,9 +15,10 @@ import { customerRepository } from "../../../../repository/customerRepository";
 import { employeeRepository } from "../../../../repository/employeeRepository";
 import { warehouseRepository } from "../../../../repository/warehouseRepository";
 import { inventoryRepository } from "../../../../repository/inventoryRepository";
+import { scrapReportRepository } from "../../../../repository/scrapReportRepository";
 import { planningBoxRepository } from "../../../../repository/planning/planningBoxRepository";
 import { planningPaperRepository } from "../../../../repository/planning/planningPaperRepository";
-import { scrapReportRepository } from "../../../../repository/scrapReportRepository";
+import { qcRepository } from "../../../../repository/qcRepository";
 
 interface SyncMeiliData {
   data: any[];
@@ -60,12 +61,6 @@ const syncMeiliData = async ({
     throw AppError.ServerError();
   }
 };
-
-//delete or add all data in meilisearch
-// export const syncOrDeleteAllDataToMeili = async (isDeleteAll: boolean) => {
-//   try {
-//   } catch (error) {}
-// };
 
 export const resetMeiliIndex = async (indexName: string) => {
   try {
@@ -245,6 +240,34 @@ export const syncReportBoxToMeili = async (isDeleteAll: boolean) => {
   });
 };
 
+//sync inspection paper & box
+export const syncInspectionPaperToMeili = async (isDeleteAll: boolean) => {
+  const papers = await qcRepository.syncAllInspecPaperForMeili();
+  const flattenData = papers.map(meiliTransformer.inspectionPaper);
+
+  return await syncMeiliData({
+    data: flattenData,
+    indexName: "inspection_papers",
+    displayName: "inspection_papers",
+    primaryKey: "inspecPaperId",
+    isDeleteAll: isDeleteAll,
+  });
+};
+
+export const syncInspectionBoxToMeili = async (isDeleteAll: boolean) => {
+  const boxes = await qcRepository.syncAllInspecBoxForMeili();
+  const flattenData = boxes.map(meiliTransformer.inspectionBox);
+
+  return await syncMeiliData({
+    data: flattenData,
+    indexName: "inspection_boxes",
+    displayName: "inspection_boxes",
+    primaryKey: "inspecBoxId",
+    isDeleteAll: isDeleteAll,
+  });
+};
+
+//sync delivery
 export const syncDeliveryRequestToMeili = async (isDeleteAll: boolean) => {
   const requests = await deliveryRepository.syncAllDeliveryRequestForMeili({
     whereCondition: { status: { [Op.notIn]: ["scheduled", "cancelled"] } },

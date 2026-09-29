@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { Op, Sequelize } from "sequelize";
+import { Op } from "sequelize";
 import { Request, Response } from "express";
 import { User } from "../../models/user/user";
 import { meiliService } from "../system/meiliService";

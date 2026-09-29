@@ -7,6 +7,8 @@ import {
   syncDeliveryRequestToMeili,
   syncEmployeeToMeili,
   syncInboundToMeili,
+  syncInspectionBoxToMeili,
+  syncInspectionPaperToMeili,
   syncInventoryToMeili,
   syncOrderToMeili,
   syncOutboundToMeili,
@@ -36,6 +38,8 @@ const syncFunctions: Record<string, (isDeleteAll: boolean) => Promise<any>> = {
   reportPapers: syncReportPaperToMeili,
   reportBoxes: syncReportBoxToMeili,
   deliveryRequest: syncDeliveryRequestToMeili,
+  inspectionPaper: syncInspectionPaperToMeili,
+  inspectionBox: syncInspectionBoxToMeili,
   dashboard: syncDashboardToMeili,
 };
 

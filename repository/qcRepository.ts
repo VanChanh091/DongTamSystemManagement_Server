@@ -76,17 +76,19 @@ export const qcRepository = {
     });
   },
 
-  //=========================INSPECTION PAPER & BOX============================
+  //========================INSPECTION PAPER============================
   buildInspectionPaperOptions: ({
     page,
     pageSize,
     machine,
     whereCondition,
+    transaction,
   }: {
-    page: number;
-    pageSize: number;
-    machine: string;
+    page?: number;
+    pageSize?: number;
+    machine?: string | null;
     whereCondition?: any;
+    transaction?: Transaction;
   }): FindOptions => {
     const queryOptions: FindOptions = {
       where: whereCondition,
@@ -94,7 +96,7 @@ export const qcRepository = {
       include: [
         {
           model: PlanningPaper,
-          where: { chooseMachine: machine },
+          ...(machine ? { where: { chooseMachine: machine } } : {}),
           attributes: [
             "orderId",
             "planningId",
@@ -125,6 +127,7 @@ export const qcRepository = {
           ],
         },
       ],
+      transaction,
     };
 
     if (page && pageSize) {
@@ -136,16 +139,52 @@ export const qcRepository = {
     return queryOptions;
   },
 
+  syncInspecPaperForMeili: async (inspecPaperId: number, transaction: Transaction) => {
+    return await QcInspectionPaper.findOne(
+      qcRepository.buildInspectionPaperOptions({
+        whereCondition: { inspecPaperId },
+        transaction,
+      }),
+    );
+  },
+
+  syncAllInspecPaperForMeili: async () => {
+    return await QcInspectionPaper.findAll(qcRepository.buildInspectionPaperOptions({}));
+  },
+
+  getChecklistInspectionPaper: async ({
+    whereConditions,
+    machine,
+  }: {
+    whereConditions: any;
+    machine: string;
+  }) => {
+    return await QcInspectionPaper.findAll({
+      attributes: ["checkList"],
+      where: whereConditions,
+      include: [
+        {
+          model: PlanningPaper,
+          attributes: ["planningId", "chooseMachine"],
+          where: { chooseMachine: machine },
+        },
+      ],
+    });
+  },
+
+  //=========================INSPECTION BOX============================
   buildInspectionBoxOptions: ({
     page,
     pageSize,
     machine,
     whereCondition,
+    transaction,
   }: {
-    page: number;
-    pageSize: number;
-    machine: string;
+    page?: number;
+    pageSize?: number;
+    machine?: string | null;
     whereCondition?: any;
+    transaction?: Transaction;
   }): FindOptions => {
     const queryOptions: FindOptions = {
       where: whereCondition,
@@ -153,7 +192,7 @@ export const qcRepository = {
       include: [
         {
           model: PlanningBoxTime,
-          where: { machine },
+          ...(machine ? { where: { machine } } : {}),
           attributes: ["dayStart", "runningPlan", "machine"],
           include: [
             {
@@ -187,6 +226,7 @@ export const qcRepository = {
           ],
         },
       ],
+      transaction,
     };
 
     if (page && pageSize) {
@@ -196,26 +236,6 @@ export const qcRepository = {
     }
 
     return queryOptions;
-  },
-
-  getChecklistInspectionPaper: async ({
-    whereConditions,
-    machine,
-  }: {
-    whereConditions: any;
-    machine: string;
-  }) => {
-    return await QcInspectionPaper.findAll({
-      attributes: ["checkList"],
-      where: whereConditions,
-      include: [
-        {
-          model: PlanningPaper,
-          attributes: ["planningId", "chooseMachine"],
-          where: { chooseMachine: machine },
-        },
-      ],
-    });
   },
 
   getChecklistInspectionBox: async ({
@@ -230,5 +250,15 @@ export const qcRepository = {
       where: whereConditions,
       include: [{ model: PlanningBoxTime, where: { machine }, attributes: [] }],
     });
+  },
+
+  syncInspecBoxForMeili: async (inspecBoxId: number, transaction: Transaction) => {
+    return await QcInspectionBox.findAll(
+      qcRepository.buildInspectionBoxOptions({ whereCondition: { inspecBoxId }, transaction }),
+    );
+  },
+
+  syncAllInspecBoxForMeili: async () => {
+    return await QcInspectionBox.findAll(qcRepository.buildInspectionBoxOptions({}));
   },
 };

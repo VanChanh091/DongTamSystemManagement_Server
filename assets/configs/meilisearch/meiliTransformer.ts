@@ -190,6 +190,35 @@ export const meiliTransformer = {
     };
   },
 
+  // inspection paper and box
+  inspectionPaper: (db: any) => {
+    const raw = db.get({ plain: true });
+    const paper = raw.PlanningPaper;
+    const customer = paper?.Order?.Customer;
+
+    return {
+      inspecPaperId: raw.inspecPaperId,
+      orderId: paper?.orderId,
+      customerName: customer?.customerName,
+      checkedBy: raw.checkedBy,
+      machine: paper?.chooseMachine,
+    };
+  },
+
+  inspectionBox: (db: any) => {
+    const raw = db.get({ plain: true });
+    const box = raw.PlanningBoxTime?.PlanningBox;
+    const customer = box?.Order?.Customer;
+
+    return {
+      inspecBoxId: raw.inspecBoxId,
+      orderId: box?.orderId,
+      customerName: customer?.customerName,
+      checkedBy: raw.checkedBy,
+      machine: raw.PlanningBoxTime?.machine,
+    };
+  },
+
   dashboard: (db: any) => {
     const raw = db.get({ plain: true });
 
