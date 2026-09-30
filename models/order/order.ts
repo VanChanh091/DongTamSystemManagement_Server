@@ -315,6 +315,7 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
         //other field
         { fields: ["status"] },
         { fields: ["createdAt"] },
+        { fields: ["dayApproved"] },
         { fields: ["orderSortValue"] },
 
         //sort

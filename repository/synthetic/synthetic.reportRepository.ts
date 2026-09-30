@@ -51,31 +51,55 @@ export const syntheticReportRepository = {
     endDate: string | Date;
     userId?: number;
   }) => {
-    return OrderApproved.findAll({
-      attributes: ["orderId", "createdAt"],
+    return Order.findAll({
+      attributes: ["orderId", "totalPrice", "dayApproved"],
       where: {
-        action: "APPROVED",
-        createdAt: { [Op.between]: [startDate, endDate] },
+        dayApproved: { [Op.between]: [startDate, endDate] },
+        status: { [Op.in]: ["accept", "planning", "completed"] },
+        ...(userId ? { userId } : {}),
       },
-      include: [
-        {
-          model: Order,
-          required: true,
-          attributes: ["totalPrice"],
-          where: {
-            ...(userId ? { userId } : {}),
-            status: { [Op.in]: ["accept", "planning", "completed"] },
-          },
-        },
-      ],
-      order: [["approverId", "DESC"]],
       raw: true,
-      nest: true,
     });
   },
 
-  //gom nhóm theo ngày nhập kho
-  getDailyProductionInbound: async ({
+  // lấy doanh số của giấy tấm
+  getDailyPaperProduction: async ({
+    startDate,
+    endDate,
+    userId,
+  }: {
+    startDate: string | Date;
+    endDate: string | Date;
+    userId?: number;
+  }) => {
+    return ReportPlanningPaper.findAll({
+      attributes: ["totalPrice", "dayReport"],
+      where: { dayReport: { [Op.between]: [startDate, endDate] } },
+      include: [
+        {
+          model: PlanningPaper,
+          required: true,
+          attributes: [],
+          include: [
+            {
+              model: Order,
+              required: true,
+              attributes: [],
+              where: {
+                isBox: false,
+                status: { [Op.in]: ["accept", "planning", "completed"] },
+                ...(userId ? { userId } : {}),
+              },
+            },
+          ],
+        },
+      ],
+      raw: true,
+    });
+  },
+
+  //gom nhóm đơn làm thùng theo ngày nhập kho
+  getDailyBoxProductionInbound: async ({
     startDate,
     endDate,
     userId,
@@ -85,16 +109,17 @@ export const syntheticReportRepository = {
     userId?: number;
   }) => {
     return InboundHistory.findAll({
-      attributes: ["totalPrice", "createdAt"],
-      where: { createdAt: { [Op.between]: [startDate, endDate] } },
+      attributes: ["totalPrice", "dateInbound"],
+      where: { dateInbound: { [Op.between]: [startDate, endDate] } },
       include: [
         {
           model: Order,
           required: true,
           attributes: [],
           where: {
-            ...(userId ? { userId } : {}),
+            isBox: true,
             status: { [Op.in]: ["accept", "planning", "completed"] },
+            ...(userId ? { userId } : {}),
           },
         },
       ],

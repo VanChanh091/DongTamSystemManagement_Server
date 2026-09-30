@@ -26,7 +26,20 @@ interface SyncMeiliData {
   primaryKey: string;
   displayName: string;
   isDeleteAll?: boolean;
+  isResync?: boolean;
 }
+
+export type SyncOptions = boolean | { isDeleteAll?: boolean; isResync?: boolean };
+
+export const parseSyncOptions = (options?: SyncOptions) => {
+  if (typeof options === "boolean") {
+    return { isDeleteAll: options, isResync: false };
+  }
+  return {
+    isDeleteAll: Boolean(options?.isDeleteAll),
+    isResync: Boolean(options?.isResync),
+  };
+};
 
 const syncMeiliData = async ({
   indexName,
@@ -34,27 +47,38 @@ const syncMeiliData = async ({
   data,
   displayName,
   isDeleteAll,
+  isResync,
 }: SyncMeiliData) => {
   try {
-    if (!isDeleteAll) {
+    const index = meiliClient.index(indexName);
+
+    if (isDeleteAll) {
+      const task = await index.deleteAllDocuments();
+      console.log(`🗑️ Đã gửi lệnh xóa toàn bộ dữ liệu của ${displayName}... TaskID: ${task.taskUid}`);
+      return task.taskUid;
+    }
+
+    if (isResync) {
+      console.log(`🧹 Đang làm sạch toàn bộ dữ liệu cũ của ${displayName}...`);
+      const deleteTask = await index.deleteAllDocuments();
+      await meiliClient.tasks.waitForTask(deleteTask.taskUid);
+
+      if (!data || data.length === 0) {
+        console.log(`ℹ️ Không có dữ liệu mới để đồng bộ cho ${displayName}.`);
+        return deleteTask.taskUid;
+      }
+
+      const task = await index.addDocuments(data, { primaryKey });
+      console.log(`🚀 Đã đồng bộ lại ${data.length} ${displayName}... TaskID: ${task.taskUid}`);
+      return task.taskUid;
+    } else {
       if (!data || data.length === 0) {
         return null;
       }
+      const task = await index.addDocuments(data, { primaryKey });
+      console.log(`🚀 Đang đồng bộ ${data.length} ${displayName}... TaskID: ${task.taskUid}`);
+      return task.taskUid;
     }
-
-    const index = meiliClient.index(indexName);
-
-    let task;
-    if (isDeleteAll) {
-      task = await index.deleteAllDocuments();
-    } else {
-      task = await index.addDocuments(data, { primaryKey });
-    }
-
-    // Khai customerId là primary key
-    console.log(`🚀 Đang đồng bộ ${data.length} ${displayName}... TaskID: ${task.taskUid}`);
-
-    return task.taskUid;
   } catch (error) {
     console.error("❌ Lỗi đồng bộ Meilisearch:", error);
     if (error instanceof AppError) throw error;
@@ -72,7 +96,8 @@ export const resetMeiliIndex = async (indexName: string) => {
 };
 
 //sync customer
-export const syncCustomerToMeili = async (isDeleteAll: boolean) => {
+export const syncCustomerToMeili = async (options?: SyncOptions) => {
+  const { isDeleteAll, isResync } = parseSyncOptions(options);
   const customers = await customerRepository.syncAllCustomersForMeili();
   const flattenData = customers.map(meiliTransformer.customer);
 
@@ -81,12 +106,14 @@ export const syncCustomerToMeili = async (isDeleteAll: boolean) => {
     indexName: "customers",
     displayName: "customers",
     primaryKey: "customerId",
-    isDeleteAll: isDeleteAll,
+    isDeleteAll,
+    isResync,
   });
 };
 
 //sync product
-export const syncProductToMeili = async (isDeleteAll: boolean) => {
+export const syncProductToMeili = async (options?: SyncOptions) => {
+  const { isDeleteAll, isResync } = parseSyncOptions(options);
   const query = productRepository.buildProductOptions({});
   const products = await Product.findAll(query);
 
@@ -95,12 +122,14 @@ export const syncProductToMeili = async (isDeleteAll: boolean) => {
     indexName: "products",
     displayName: "products",
     primaryKey: "productId",
-    isDeleteAll: isDeleteAll,
+    isDeleteAll,
+    isResync,
   });
 };
 
 //sync employee
-export const syncEmployeeToMeili = async (isDeleteAll: boolean) => {
+export const syncEmployeeToMeili = async (options?: SyncOptions) => {
+  const { isDeleteAll, isResync } = parseSyncOptions(options);
   const employees = await employeeRepository.syncAllEmployeesForMeili();
   const flattenData = employees.map(meiliTransformer.employee);
 
@@ -109,12 +138,14 @@ export const syncEmployeeToMeili = async (isDeleteAll: boolean) => {
     indexName: "employees",
     displayName: "employees",
     primaryKey: "employeeId",
-    isDeleteAll: isDeleteAll,
+    isDeleteAll,
+    isResync,
   });
 };
 
 //sync order
-export const syncOrderToMeili = async (isDeleteAll: boolean) => {
+export const syncOrderToMeili = async (options?: SyncOptions) => {
+  const { isDeleteAll, isResync } = parseSyncOptions(options);
   const orders = await orderRepository.syncAllOrdersForMeili();
   const flattenData = orders.map(meiliTransformer.order);
 
@@ -123,12 +154,14 @@ export const syncOrderToMeili = async (isDeleteAll: boolean) => {
     indexName: "orders",
     displayName: "orders",
     primaryKey: "orderSortValue",
-    isDeleteAll: isDeleteAll,
+    isDeleteAll,
+    isResync,
   });
 };
 
 //sync planning
-export const syncPlanningPaperToMeili = async (isDeleteAll: boolean) => {
+export const syncPlanningPaperToMeili = async (options?: SyncOptions) => {
+  const { isDeleteAll, isResync } = parseSyncOptions(options);
   const papers = await planningPaperRepository.syncAllPaperToMeili({
     whereCondition: { deliveryPlanned: { [Op.ne]: "delivered" } },
   });
@@ -139,11 +172,13 @@ export const syncPlanningPaperToMeili = async (isDeleteAll: boolean) => {
     indexName: "planningPapers",
     displayName: "planningPapers",
     primaryKey: "planningId",
-    isDeleteAll: isDeleteAll,
+    isDeleteAll,
+    isResync,
   });
 };
 
-export const syncPlanningBoxToMeili = async (isDeleteAll: boolean) => {
+export const syncPlanningBoxToMeili = async (options?: SyncOptions) => {
+  const { isDeleteAll, isResync } = parseSyncOptions(options);
   const boxes = await planningBoxRepository.syncPlanningBoxToMeili({});
   const flattenData = boxes.map(meiliTransformer.planningBox);
 
@@ -152,12 +187,14 @@ export const syncPlanningBoxToMeili = async (isDeleteAll: boolean) => {
     indexName: "planningBoxes",
     displayName: "planningBoxes",
     primaryKey: "planningBoxId",
-    isDeleteAll: isDeleteAll,
+    isDeleteAll,
+    isResync,
   });
 };
 
 //scrap report
-export const syncScrapReportToMeili = async (isDeleteAll: boolean) => {
+export const syncScrapReportToMeili = async (options?: SyncOptions) => {
+  const { isDeleteAll, isResync } = parseSyncOptions(options);
   const scrapReport = await scrapReportRepository.syncAllScrapReportForMeili({});
   const flattenData = scrapReport.map(meiliTransformer.scrapReport);
 
@@ -166,12 +203,14 @@ export const syncScrapReportToMeili = async (isDeleteAll: boolean) => {
     indexName: "scrapReports",
     displayName: "scrapReports",
     primaryKey: "scrapId",
-    isDeleteAll: isDeleteAll,
+    isDeleteAll,
+    isResync,
   });
 };
 
 //sync inbound & outbound
-export const syncInboundToMeili = async (isDeleteAll: boolean) => {
+export const syncInboundToMeili = async (options?: SyncOptions) => {
+  const { isDeleteAll, isResync } = parseSyncOptions(options);
   const inbounds = await warehouseRepository.syncAllInboundsForMeili();
   const flattenData = inbounds.map(meiliTransformer.inbound);
 
@@ -180,11 +219,13 @@ export const syncInboundToMeili = async (isDeleteAll: boolean) => {
     indexName: "inboundHistories",
     displayName: "inboundHistories",
     primaryKey: "inboundId",
-    isDeleteAll: isDeleteAll,
+    isDeleteAll,
+    isResync,
   });
 };
 
-export const syncOutboundToMeili = async (isDeleteAll: boolean) => {
+export const syncOutboundToMeili = async (options?: SyncOptions) => {
+  const { isDeleteAll, isResync } = parseSyncOptions(options);
   const outbounds = await warehouseRepository.syncAllOutboundsForMeili();
   const flattenData = outbounds.map(meiliTransformer.outbound);
 
@@ -193,12 +234,14 @@ export const syncOutboundToMeili = async (isDeleteAll: boolean) => {
     indexName: "outbounds",
     displayName: "outbounds",
     primaryKey: "outboundId",
-    isDeleteAll: isDeleteAll,
+    isDeleteAll,
+    isResync,
   });
 };
 
 //sync inventory
-export const syncInventoryToMeili = async (isDeleteAll: boolean) => {
+export const syncInventoryToMeili = async (options?: SyncOptions) => {
+  const { isDeleteAll, isResync } = parseSyncOptions(options);
   const inventories = await inventoryRepository.syncAllInventoryForMeili({
     qtyInventory: { [Op.ne]: 0 },
   });
@@ -209,12 +252,14 @@ export const syncInventoryToMeili = async (isDeleteAll: boolean) => {
     indexName: "inventories",
     displayName: "inventories",
     primaryKey: "inventoryId",
-    isDeleteAll: isDeleteAll,
+    isDeleteAll,
+    isResync,
   });
 };
 
 //sync report
-export const syncReportPaperToMeili = async (isDeleteAll: boolean) => {
+export const syncReportPaperToMeili = async (options?: SyncOptions) => {
+  const { isDeleteAll, isResync } = parseSyncOptions(options);
   const papers = await reportRepository.syncAllReportPapersForMeili();
   const flattenData = papers.map(meiliTransformer.reportPaper);
 
@@ -223,11 +268,13 @@ export const syncReportPaperToMeili = async (isDeleteAll: boolean) => {
     indexName: "reportPapers",
     displayName: "reportPapers",
     primaryKey: "reportPaperId",
-    isDeleteAll: isDeleteAll,
+    isDeleteAll,
+    isResync,
   });
 };
 
-export const syncReportBoxToMeili = async (isDeleteAll: boolean) => {
+export const syncReportBoxToMeili = async (options?: SyncOptions) => {
+  const { isDeleteAll, isResync } = parseSyncOptions(options);
   const boxes = await reportRepository.syncAllReportBoxesForMeili();
   const flattenData = boxes.map(meiliTransformer.reportBox);
 
@@ -236,12 +283,14 @@ export const syncReportBoxToMeili = async (isDeleteAll: boolean) => {
     indexName: "reportBoxes",
     displayName: "reportBoxes",
     primaryKey: "reportBoxId",
-    isDeleteAll: isDeleteAll,
+    isDeleteAll,
+    isResync,
   });
 };
 
 //sync inspection paper & box
-export const syncInspectionPaperToMeili = async (isDeleteAll: boolean) => {
+export const syncInspectionPaperToMeili = async (options?: SyncOptions) => {
+  const { isDeleteAll, isResync } = parseSyncOptions(options);
   const papers = await qcRepository.syncAllInspecPaperForMeili();
   const flattenData = papers.map(meiliTransformer.inspectionPaper);
 
@@ -250,11 +299,13 @@ export const syncInspectionPaperToMeili = async (isDeleteAll: boolean) => {
     indexName: "inspection_papers",
     displayName: "inspection_papers",
     primaryKey: "inspecPaperId",
-    isDeleteAll: isDeleteAll,
+    isDeleteAll,
+    isResync,
   });
 };
 
-export const syncInspectionBoxToMeili = async (isDeleteAll: boolean) => {
+export const syncInspectionBoxToMeili = async (options?: SyncOptions) => {
+  const { isDeleteAll, isResync } = parseSyncOptions(options);
   const boxes = await qcRepository.syncAllInspecBoxForMeili();
   const flattenData = boxes.map(meiliTransformer.inspectionBox);
 
@@ -263,12 +314,14 @@ export const syncInspectionBoxToMeili = async (isDeleteAll: boolean) => {
     indexName: "inspection_boxes",
     displayName: "inspection_boxes",
     primaryKey: "inspecBoxId",
-    isDeleteAll: isDeleteAll,
+    isDeleteAll,
+    isResync,
   });
 };
 
 //sync delivery
-export const syncDeliveryRequestToMeili = async (isDeleteAll: boolean) => {
+export const syncDeliveryRequestToMeili = async (options?: SyncOptions) => {
+  const { isDeleteAll, isResync } = parseSyncOptions(options);
   const requests = await deliveryRepository.syncAllDeliveryRequestForMeili({
     whereCondition: { status: { [Op.notIn]: ["scheduled", "cancelled"] } },
   });
@@ -279,12 +332,14 @@ export const syncDeliveryRequestToMeili = async (isDeleteAll: boolean) => {
     indexName: "deliveryRequest",
     displayName: "deliveryRequest",
     primaryKey: "requestId",
-    isDeleteAll: isDeleteAll,
+    isDeleteAll,
+    isResync,
   });
 };
 
 //sync dashboard
-export const syncDashboardToMeili = async (isDeleteAll: boolean) => {
+export const syncDashboardToMeili = async (options?: SyncOptions) => {
+  const { isDeleteAll, isResync } = parseSyncOptions(options);
   const dashboard = await PlanningPaper.findAll({
     attributes: ["planningId", "ghepKho", "chooseMachine", "status"],
     include: [
@@ -306,6 +361,7 @@ export const syncDashboardToMeili = async (isDeleteAll: boolean) => {
     indexName: "dashboard",
     displayName: "dashboard",
     primaryKey: "planningId",
-    isDeleteAll: isDeleteAll,
+    isDeleteAll,
+    isResync,
   });
 };

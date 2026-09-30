@@ -24,7 +24,7 @@ import { syncOrDeleteAllDataToMeili } from "../../assets/configs/meilisearch/syn
 
 const router = Router();
 
-const syncFunctions: Record<string, (isDeleteAll: boolean) => Promise<any>> = {
+const syncFunctions: Record<string, (options?: any) => Promise<any>> = {
   customers: syncCustomerToMeili,
   products: syncProductToMeili,
   orders: syncOrderToMeili,
@@ -46,9 +46,10 @@ const syncFunctions: Record<string, (isDeleteAll: boolean) => Promise<any>> = {
 router.get("/:entity", authenticate, async (req, res, next) => {
   try {
     const { entity } = req.params;
-    const { isDeleteAll } = req.query;
+    const { isDeleteAll, isResync, mode } = req.query;
 
-    const isDelete = isDeleteAll === "true";
+    const shouldDeleteOnly = isDeleteAll === "true" || mode === "delete";
+    const shouldResync = isResync === "true" || mode === "resync";
 
     const syncFn = syncFunctions[entity as string];
     if (!syncFn) {
@@ -59,9 +60,18 @@ router.get("/:entity", authenticate, async (req, res, next) => {
     }
 
     // Thực hiện gọi hàm sync tương ứng
-    await syncFn(Boolean(isDelete));
+    await syncFn({
+      isDeleteAll: shouldDeleteOnly,
+      isResync: shouldResync,
+    });
 
-    return res.status(200).json({ message: `Sync ${entity} to Meilisearch successfully` });
+    const actionMessage = shouldDeleteOnly
+      ? `Delete all data of ${entity} from Meilisearch successfully`
+      : shouldResync
+      ? `Reset and re-sync ${entity} to Meilisearch successfully`
+      : `Sync ${entity} to Meilisearch successfully`;
+
+    return res.status(200).json({ message: actionMessage });
   } catch (error) {
     next(error);
   }

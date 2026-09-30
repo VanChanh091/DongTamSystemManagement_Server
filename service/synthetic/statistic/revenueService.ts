@@ -234,12 +234,13 @@ export const statisticRevenueService = {
 
     try {
       // Phân quyền
-      let effectiveUserId: number | null = dto.targetUserId ? Number(dto.targetUserId) : null;
       const isManager = ["manager", "admin"].includes(dto.currentUser.role.toLowerCase());
-      if (dto.all) {
-        effectiveUserId = isManager && dto.targetUserId ? Number(dto.targetUserId) : null;
-      } else if (!isManager) {
+      let effectiveUserId: number | null = null;
+
+      if (!isManager) {
         effectiveUserId = dto.currentUser.userId;
+      } else if (!dto.all) {
+        effectiveUserId = dto.targetUserId ? Number(dto.targetUserId) : null;
       }
 
       // Kiểm tra xem tháng được chọn có phải là tháng cũ không
@@ -263,13 +264,18 @@ export const statisticRevenueService = {
       const endDate = `${year}-${paddedMonth}-${daysInMonth} 23:59:59`;
 
       // Chạy 3 query gom nhóm song song
-      const [ordersData, inboundData, outboundData] = await Promise.all([
+      const [ordersData, paperProdData, boxProdData, outboundData] = await Promise.all([
         syntheticReportRepository.getDailyApprovedOrders({
           startDate,
           endDate,
           userId: effectiveUserId ?? undefined,
         }),
-        syntheticReportRepository.getDailyProductionInbound({
+        syntheticReportRepository.getDailyPaperProduction({
+          startDate,
+          endDate,
+          userId: effectiveUserId ?? undefined,
+        }),
+        syntheticReportRepository.getDailyBoxProductionInbound({
           startDate,
           endDate,
           userId: effectiveUserId ?? undefined,
@@ -281,28 +287,37 @@ export const statisticRevenueService = {
         }),
       ]);
 
-      // Lọc bỏ đơn trùng lặp
+      // Lọc bỏ đơn trùng lặp cùng 1 orderId, chỉ lấy đơn được duyệt mới nhất
       const uniqueOrdersMap = new Map<string, (typeof ordersData)[0]>();
       for (const row of ordersData) {
         if (!uniqueOrdersMap.has(row.orderId)) {
-          uniqueOrdersMap.set(row.orderId, row); // Vì đã sort DESC nên bản ghi đầu tiên là mới nhất
+          uniqueOrdersMap.set(row.orderId, row);
         }
       }
-      const latestApprovedOrders = Array.from(uniqueOrdersMap.values());
 
-      // Gom nhóm thành Map
+      // === Gom nhóm thành Map ===
+      // Doanh số nhận đơn theo ngày duyệt dayApproved
       const orderMap = aggregateDailyAmounts(
-        latestApprovedOrders,
-        (item) => item.createdAt,
-        (item) => item.Order.totalPrice,
-      );
-
-      const prodMap = aggregateDailyAmounts(
-        inboundData,
-        (item) => item.createdAt,
+        ordersData,
+        (item) => item.dayApproved,
         (item) => item.totalPrice,
       );
 
+      // Doanh số sản xuất giấy tấm theo ngày chạy máy
+      const paperProdMap = aggregateDailyAmounts(
+        paperProdData,
+        (item) => item.dayReport,
+        (item) => item.totalPrice,
+      );
+
+      // Doanh số sản xuất thùng theo ngày nhập kho
+      const boxProdMap = aggregateDailyAmounts(
+        boxProdData,
+        (item) => item.dateInbound,
+        (item) => item.totalPrice,
+      );
+
+      // Doanh số bán hàng / xuất kho
       const salesMap = aggregateDailyAmounts(
         outboundData,
         (item) => item.dateOutbound,
@@ -323,7 +338,12 @@ export const statisticRevenueService = {
         const dateKey = `${year}-${paddedMonth}-${paddedDay}`;
 
         const orderAmount = roundInt(orderMap.get(dateKey) || 0);
-        const prodAmount = roundInt(prodMap.get(dateKey) || 0);
+
+        // Doanh số sản xuất = Giấy tấm (Report) + Thùng carton (Inbound)
+        const paperAmount = roundInt(paperProdMap.get(dateKey) || 0);
+        const boxAmount = roundInt(boxProdMap.get(dateKey) || 0);
+        const prodAmount = paperAmount + boxAmount;
+
         const saleAmount = roundInt(salesMap.get(dateKey) || 0);
         const returnAmount = 0;
 
@@ -585,8 +605,7 @@ export const statisticRevenueService = {
 };
 
 // ===============================HELPER FUNCTIONS========================================
-const roundInt = (val: number | string | undefined | null): number =>
-  Math.round(Number(val) || 0);
+const roundInt = (val: number | string | undefined | null): number => Math.round(Number(val) || 0);
 
 const aggregateDailyAmounts = <T>(
   records: T[],

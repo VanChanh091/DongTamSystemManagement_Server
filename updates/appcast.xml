@@ -3,8 +3,8 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.8.1</title>
-            <sparkle:version>4.8.1</sparkle:version> 
+            <title>Version 4.8.2</title>
+            <sparkle:version>4.8.2</sparkle:version> 
             <description>
             </description>
             <pubDate>Sar, 17 August 2026</pubDate>
@@ -15,4 +15,4 @@
             />
         </item>
     </channel>
-</rss>
+</rss>  
