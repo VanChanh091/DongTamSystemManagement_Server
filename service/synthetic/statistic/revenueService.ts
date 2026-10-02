@@ -41,13 +41,7 @@ export const statisticRevenueService = {
 
     try {
       // Phân quyền
-      let effectiveUserId: number | null = dto.targetUserId ? Number(dto.targetUserId) : null;
-      const isManager = ["manager", "admin"].includes(dto.currentUser.role.toLowerCase());
-      if (dto.all) {
-        effectiveUserId = isManager && dto.targetUserId ? Number(dto.targetUserId) : null;
-      } else if (!isManager) {
-        effectiveUserId = dto.currentUser.userId;
-      }
+      const effectiveUserId = reportEffectiveUserId(dto.currentUser, dto.targetUserId, dto.all);
 
       // Kiểm tra xem tháng được chọn có phải là tháng cũ không
       const cacheKey = reports.revenue_daily(year, month, effectiveUserId ?? "all");
@@ -234,14 +228,7 @@ export const statisticRevenueService = {
 
     try {
       // Phân quyền
-      const isManager = ["manager", "admin"].includes(dto.currentUser.role.toLowerCase());
-      let effectiveUserId: number | null = null;
-
-      if (!isManager) {
-        effectiveUserId = dto.currentUser.userId;
-      } else if (!dto.all) {
-        effectiveUserId = dto.targetUserId ? Number(dto.targetUserId) : null;
-      }
+      const effectiveUserId = reportEffectiveUserId(dto.currentUser, dto.targetUserId, dto.all);
 
       // Kiểm tra xem tháng được chọn có phải là tháng cũ không
       const cacheKey = reports.revenue_monthly(year, month, effectiveUserId ?? "all");
@@ -399,14 +386,7 @@ export const statisticRevenueService = {
       }
 
       // Phân quyền
-      const isManager = ["manager", "admin"].includes(dto.currentUser.role.toLowerCase());
-      let effectiveUserId: number | null = null;
-
-      if (!isManager) {
-        effectiveUserId = dto.currentUser.userId;
-      } else if (!dto.all) {
-        effectiveUserId = dto.targetUserId ? Number(dto.targetUserId) : null;
-      }
+      const effectiveUserId = reportEffectiveUserId(dto.currentUser, dto.targetUserId, dto.all);
 
       // Caching
       const isPastYears = toYear < currentYear;
@@ -645,4 +625,28 @@ const createEmptyYear = (): YearSalesData => {
   const months: Record<number, number> = {};
   for (let m = 1; m <= 12; m++) months[m] = 0;
   return { months, yearTotal: 0 };
+};
+
+const reportEffectiveUserId = (
+  currentUser: {
+    userId: number;
+    role: string;
+    permissions?: string[];
+  },
+  targetUserId?: number | null,
+  all?: boolean,
+): number | null => {
+  const role = currentUser.role?.toLowerCase();
+
+  const isManager = ["admin", "manager"].includes(role);
+  const isSales = currentUser.permissions?.includes("sale") ?? false;
+
+  if (isManager) {
+    return !all && targetUserId ? Number(targetUserId) : null;
+  } else if (isSales) {
+    return currentUser.userId;
+  }
+
+  // chỉ xem tổng quát
+  return null;
 };

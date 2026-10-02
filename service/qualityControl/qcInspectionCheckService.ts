@@ -22,7 +22,7 @@ import { Op } from "sequelize";
 import { searchFieldAtribute } from "../../interface/types";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 
-const { paper } = CacheKey.qcInspection;
+const { paper, box } = CacheKey.qcInspection;
 const devEnvironment = process.env.NODE_ENV !== "production";
 
 export const qcInspectionService = {
@@ -155,28 +155,27 @@ export const qcInspectionService = {
     req,
     checking,
     errProgress,
-    planningId,
-    username,
-    machine,
-    userId,
-    note,
+    otherData,
   }: {
     req: Request;
     checking: Record<string, number>;
     errProgress: qcCheckPaper;
-    planningId: number;
-    username: string;
-    machine: string;
-    userId: number;
-    note?: string;
+    otherData: {
+      planningId: number;
+      machine: string;
+      note?: string;
+      imgErr?: string;
+    };
   }) => {
+    const { planningId, machine, note, imgErr } = otherData;
+
     try {
       return runInTransaction(async (transaction) => {
         const dbData: any = {
           planningId: planningId,
           timeInspection: new Date(),
-          checkedBy: username,
-          userId: userId,
+          checkedBy: req.user.fullName,
+          userId: req.user.userId,
           note: note || null,
         };
 
@@ -211,6 +210,7 @@ export const qcInspectionService = {
 
         dbData.checkList = errProgress;
         dbData.result = isPassed;
+        if (imgErr) dbData.imgError = imgErr;
 
         await QcInspectionPaper.create(dbData, { transaction });
 
@@ -221,13 +221,13 @@ export const qcInspectionService = {
           { where: { planningId }, transaction },
         );
 
+        //socket
         const planning = await PlanningPaper.findOne({
           attributes: ["orderId"],
           where: { planningId },
           transaction,
         });
 
-        //socket
         if (currentStatusCheck === "failed") {
           const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
           const item: any = {
@@ -359,25 +359,22 @@ export const qcInspectionService = {
     machine: string;
   }) => {
     try {
-      // const cacheKey = paper.page(machine, page);
+      const cacheKey = box.page(machine, page);
 
-      // const { isChanged } = await CacheManager.check(
-      //   [{ model: QcInspectionPaper }],
-      //   "inspectionPaper",
-      // );
+      const { isChanged } = await CacheManager.check([{ model: QcInspectionBox }], "inspectionBox");
 
-      // if (isChanged) {
-      //   await CacheManager.clear("inspectionPaper");
-      // } else {
-      //   const cachedData = await redisCache.get(cacheKey);
-      //   if (cachedData) {
-      //     if (devEnvironment) console.log("✅ Data Inspection Box from Redis");
-      //     return {
-      //       ...JSON.parse(cachedData),
-      //       message: `get all Qc Inspection Box from cache successfully`,
-      //     };
-      //   }
-      // }
+      if (isChanged) {
+        await CacheManager.clear("inspectionBox");
+      } else {
+        const cachedData = await redisCache.get(cacheKey);
+        if (cachedData) {
+          if (devEnvironment) console.log("✅ Data Inspection Box from Redis");
+          return {
+            ...JSON.parse(cachedData),
+            message: `get all Qc Inspection Box from cache`,
+          };
+        }
+      }
 
       const options = qcRepository.buildInspectionBoxOptions({ page, pageSize, machine });
       const { rows, count } = await QcInspectionBox.findAndCountAll(options);
@@ -390,7 +387,7 @@ export const qcInspectionService = {
         currentPage: page,
       };
 
-      // await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 1800);
+      await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 1800);
 
       return responseData;
     } catch (error) {
@@ -486,27 +483,26 @@ export const qcInspectionService = {
 
   checkingInspectionBox: async ({
     req,
-    machine,
-    planningBoxId,
-    username,
     errProgress,
-    userId,
-    note,
+    otherData,
   }: {
     req: Request;
-    planningBoxId: number;
-    machine: string;
-    username: string;
     errProgress: qcCheckBox;
-    userId: number;
-    note?: string;
+    otherData: {
+      planningBoxId: number;
+      machine: string;
+      note?: string;
+      imgErr?: string;
+    };
   }) => {
+    const { planningBoxId, machine, note, imgErr } = otherData;
+
     try {
       return runInTransaction(async (transaction) => {
         const dbData: any = {
           timeInspection: new Date(),
-          checkedBy: username,
-          userId: userId,
+          checkedBy: req.user.fullName,
+          userId: req.user.userId,
           note: note || null,
         };
 
@@ -525,14 +521,14 @@ export const qcInspectionService = {
         const boxTimeId = boxTime.boxTimeId;
         dbData.boxTimeId = boxTimeId;
 
-        //lay criteria check
+        //get criteria check
         const requiredCriteria = await CriteriaBoxCheck.findAll({
           attributes: ["criteriaBoxCode"],
           where: { machine },
           transaction,
         });
 
-        //so sánh với criteria check
+        //compare with criteria check
         const requiredCriteriaCodes = requiredCriteria.map((c) => c.criteriaBoxCode);
         const missingCriteria = requiredCriteriaCodes.filter((code) => !(code in errProgress));
 
@@ -553,6 +549,8 @@ export const qcInspectionService = {
 
         dbData.checkList = errProgress;
         dbData.result = isPassed;
+        if (imgErr) dbData.imgError = imgErr;
+
         await QcInspectionBox.create(dbData, { transaction });
 
         // Cập nhật trạng thái PlanningBoxTime

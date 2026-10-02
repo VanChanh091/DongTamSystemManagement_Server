@@ -140,5 +140,9 @@ export const CacheKey = {
       page: (machine: string, page: number) => `inspection:paper:${machine}:${page}`,
       lastUpdated: "qcInspectionPaper:lastUpdated",
     },
+    box: {
+      page: (machine: string, page: number) => `inspection:box:${machine}:${page}`,
+      lastUpdated: "qcInspectionBox:lastUpdated",
+    },
   },
 };

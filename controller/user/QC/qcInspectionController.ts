@@ -83,37 +83,41 @@ export const getQcInspectionErr = async (req: Request, res: Response, next: Next
 //create
 export const checkingInspection = async (req: Request, res: Response, next: NextFunction) => {
   const { isPaper } = req.query as { isPaper: string };
-  const { checking, errProgress, planningId, planningBoxId, machine, note } = req.body as {
-    checking?: Record<string, number>;
-    errProgress: qcCheckPaper | qcCheckBox;
+  const { planningId, planningBoxId, checking, errProgress, machine, note, imgErr } = req.body as {
     planningId?: number;
     planningBoxId?: number;
+    checking?: Record<string, number>;
+    errProgress: qcCheckPaper | qcCheckBox;
     machine: string;
     note?: string;
+    imgErr?: string;
   };
 
   try {
     let response;
+
     if (isPaper === "paper") {
       response = await qcInspectionService.checkingInspectionPaper({
         req,
-        machine,
-        planningId: planningId!,
-        username: req.user.fullName,
-        userId: req.user.userId,
-        note: note,
         checking: checking!,
         errProgress: errProgress as qcCheckPaper,
+        otherData: {
+          planningId: planningId!,
+          machine,
+          note: note,
+          imgErr: imgErr,
+        },
       });
     } else if (isPaper === "box") {
       response = await qcInspectionService.checkingInspectionBox({
         req,
-        machine,
-        planningBoxId: planningBoxId!,
         errProgress: errProgress as qcCheckBox,
-        username: req.user.fullName,
-        userId: req.user.userId,
-        note: note,
+        otherData: {
+          planningBoxId: planningBoxId!,
+          machine,
+          note: note,
+          imgErr: imgErr,
+        },
       });
     }
     return res.status(200).json(response);

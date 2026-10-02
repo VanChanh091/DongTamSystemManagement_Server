@@ -55,6 +55,7 @@ const CACHE_CONFIG = {
 
   //qcInspection
   inspectionPaper: ["inspection:paper:"],
+  inspectionBox: ["inspection:box:"],
 };
 
 export const CacheManager = {
@@ -151,6 +152,7 @@ export const CacheManager = {
 
       //qcInspection
       inspectionPaper: CacheKey.qcInspection.paper.lastUpdated,
+      inspectionBox: CacheKey.qcInspection.box.lastUpdated,
     };
 
     const key = map[module];

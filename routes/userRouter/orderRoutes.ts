@@ -52,7 +52,7 @@ router.get("/paper-code", authenticate, authorizeAnyPermission(["sale"]), getPap
 router.get(
   "/get-signature",
   authenticate,
-  authorizeAnyPermission(["sale"]),
+  authorizeAnyPermission(["sale", "QC"]),
   getCloudinarySignature,
 );
 

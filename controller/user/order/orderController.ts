@@ -30,6 +30,7 @@ export const getOrderDetail = async (req: Request, res: Response, next: NextFunc
 
 //===============================CLOUDINARY IMAGE=====================================
 export const getCloudinarySignature = async (req: Request, res: Response) => {
+  const { folder } = req.query as { folder: string };
   const { CLOUDINARY_API_SECRET, CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY } = process.env;
 
   // Kiểm tra xem các biến môi trường có tồn tại không
@@ -39,8 +40,13 @@ export const getCloudinarySignature = async (req: Request, res: Response) => {
     });
   }
 
+  // orders | qcInspection
+  if (!folder) {
+    return res.status(400).json({
+      message: "Folder is required",
+    });
+  }
   const timestamp = Math.round(new Date().getTime() / 1000);
-  const folder = "orders";
 
   // Bây giờ TypeScript sẽ biết chắc chắn CLOUDINARY_API_SECRET là string
   const signature = cloudinary.utils.api_sign_request({ timestamp, folder }, CLOUDINARY_API_SECRET);
