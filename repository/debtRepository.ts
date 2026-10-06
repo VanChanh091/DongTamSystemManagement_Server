@@ -1,4 +1,4 @@
-import { FindOptions, Op, Transaction, WhereOptions } from "sequelize";
+import { FindOptions, Op, Sequelize, Transaction, WhereOptions } from "sequelize";
 import { CustomerPayment } from "../models/customer/customerPayment";
 import { OutboundHistory } from "../models/warehouse/outbound/outboundHistory";
 import { Customer } from "../models/customer/customer";
@@ -149,4 +149,39 @@ export const debtRepository = {
   bulkCreatePaymentAllocation: async (allocationsToCreate: any[], transaction: Transaction) => {
     return await PaymentAllocation.bulkCreate(allocationsToCreate, { transaction });
   },
+
+  getCustomerCurrentDebt: async (customerId: string, transaction?: Transaction): Promise<number> => {
+    const total = await OutboundHistory.sum("remainingAmount", {
+      where: {
+        customerId,
+        status: { [Op.in]: ["unpaid", "partial"] },
+        remainingAmount: { [Op.gt]: 0 },
+      },
+      transaction,
+    });
+    return Number(total || 0);
+  },
+
+  getCustomersCurrentDebt: async (customerIds: string[]): Promise<Map<string, number>> => {
+    const records = await OutboundHistory.findAll({
+      attributes: [
+        "customerId",
+        [Sequelize.fn("SUM", Sequelize.col("remainingAmount")), "totalDebt"],
+      ],
+      where: {
+        customerId: { [Op.in]: customerIds },
+        status: { [Op.in]: ["unpaid", "partial"] },
+        remainingAmount: { [Op.gt]: 0 },
+      },
+      group: ["customerId"],
+      raw: true,
+    });
+
+    const map = new Map<string, number>();
+    for (const record of records as any[]) {
+      map.set(record.customerId, Number(record.totalDebt || 0));
+    }
+    return map;
+  },
 };
+

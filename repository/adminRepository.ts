@@ -20,7 +20,17 @@ export const adminRepository = {
       where: { status: "pending" },
       attributes: { exclude: ["createdAt", "updatedAt"] },
       include: [
-        { model: Customer, attributes: ["customerName", "companyName"] },
+        {
+          model: Customer,
+          attributes: ["customerId", "customerName", "companyName"],
+          include: [
+            {
+              model: CustomerPayment,
+              as: "payment",
+              attributes: ["cusPaymentId", "customerId", "debtLimit"],
+            },
+          ],
+        },
         {
           model: Product,
           attributes: ["typeProduct", "productName", "maKhuon", "productImage"],
@@ -56,7 +66,7 @@ export const adminRepository = {
             {
               model: CustomerPayment,
               as: "payment",
-              attributes: ["cusPaymentId", "customerId", "debtCurrent", "debtLimit"],
+              attributes: ["cusPaymentId", "customerId", "debtLimit"],
             },
           ],
         },
@@ -69,10 +79,6 @@ export const adminRepository = {
       ],
       transaction,
     });
-  },
-
-  updateDebtCustomer: async (customer: any, newDebt: number) => {
-    return await customer.update({ debtCurrent: newDebt });
   },
 
   //===============================ADMIN USER=====================================

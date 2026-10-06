@@ -22,6 +22,7 @@ import { meiliTransformer } from "../assets/configs/meilisearch/meiliTransformer
 import { customerColumns, mappingCustomerRow } from "../utils/mapping/customerRowAndColumn";
 import { createDataTable, updateChildTable } from "../utils/helper/modelHelper/orderHelpers";
 import { User } from "../models/user/user";
+import { debtRepository } from "../repository/debtRepository";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { customer } = CacheKey;
@@ -67,6 +68,18 @@ export const customerService = {
         data = rows;
         totalCustomers = count;
         totalPages = Math.ceil(totalCustomers / pageSize);
+      }
+
+      // Gắn nợ động từ debtRepository
+      const customerIds = data.map((c: any) => c.customerId).filter(Boolean);
+      if (customerIds.length > 0) {
+        const debtMap = await debtRepository.getCustomersCurrentDebt(customerIds);
+        for (const cust of data) {
+          if (cust.payment) {
+            const currentDebt = debtMap.get(cust.customerId) || 0;
+            (cust.payment as any).setDataValue("debtCurrent", currentDebt);
+          }
+        }
       }
 
       const responseData = {
@@ -151,6 +164,18 @@ export const customerService = {
       const finalData = customerIds
         .map((id) => customers.find((customer) => customer.customerId === id))
         .filter(Boolean);
+
+      // Gắn nợ động từ debtRepository
+      const validCustomerIds = finalData.map((c: any) => c.customerId).filter(Boolean);
+      if (validCustomerIds.length > 0) {
+        const debtMap = await debtRepository.getCustomersCurrentDebt(validCustomerIds);
+        for (const cust of finalData) {
+          if (cust && cust.payment) {
+            const currentDebt = debtMap.get(cust.customerId) || 0;
+            (cust.payment as any).setDataValue("debtCurrent", currentDebt);
+          }
+        }
+      }
 
       return {
         message: "Get customers from Meilisearch & DB successfully",

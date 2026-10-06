@@ -523,7 +523,7 @@ export const warehouseRepository = {
   getCustomerPaymentById: async (customerId: string, transaction: Transaction) => {
     return await CustomerPayment.findOne({
       where: { customerId },
-      attributes: ["cusPaymentId", "customerId", "debtCurrent", "debtLimit"],
+      attributes: ["cusPaymentId", "customerId", "debtLimit"],
       transaction,
       lock: transaction.LOCK.UPDATE,
     });

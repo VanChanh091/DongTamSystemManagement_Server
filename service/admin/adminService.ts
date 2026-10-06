@@ -19,12 +19,14 @@ import { NotificationModel } from "../../models/notification/notification";
 import { REQUEST_CONFIG } from "../notification/requestType";
 import { UserNotifications } from "../../models/notification/userNotifications";
 import { CrudHelper } from "../../repository/helper/crud.helper.repository";
+import { debtRepository } from "../../repository/debtRepository";
 import { CustomerPayment } from "../../models/customer/customerPayment";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { Customer } from "../../models/customer/customer";
 import { sendTelegramAlertOtp } from "../../utils/telegram/telegramSendAlert";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
+const debtOtpThresholdPercent = Number(process.env.DEBT_OTP_THRESHOLD_PERCENT);
 
 export const adminService = {
   //===============================ADMIN CRUD=====================================
@@ -129,6 +131,20 @@ export const adminService = {
   getOrderPending: async () => {
     try {
       const data = await adminRepository.findOrderPending();
+
+      const customerIds = Array.from(
+        new Set(data.map((o: any) => o.customerId).filter(Boolean)),
+      );
+      if (customerIds.length > 0) {
+        const debtMap = await debtRepository.getCustomersCurrentDebt(customerIds);
+        for (const order of data) {
+          if (order.Customer?.payment) {
+            const currentDebt = debtMap.get(order.customerId) || 0;
+            (order.Customer.payment as any).setDataValue("debtCurrent", currentDebt);
+          }
+        }
+      }
+
       return { message: "get all order have status:pending", data };
     } catch (error) {
       console.error("failed to get order pending", error);
@@ -210,7 +226,10 @@ export const adminService = {
           // Logic kiểm tra và cập nhật hạn mức công nợ khách hàng
           const payment = order.Customer?.payment;
 
-          const currentDebt = Number(payment?.debtCurrent || 0);
+          const currentDebt = await debtRepository.getCustomerCurrentDebt(
+            order.customerId,
+            transaction,
+          );
           const debtLimit = Number(payment?.debtLimit || 0);
           const totalPrice = Number(order.totalPriceVAT || 0);
 
@@ -218,8 +237,11 @@ export const adminService = {
           const newDebt = currentDebt + totalPrice;
 
           if (!isAdmin) {
-            //case > 130% limit
-            if (newDebt > debtLimit * 1.3) {
+            const thresholdPercent = Number(debtOtpThresholdPercent);
+            const otpMultiplier = 1 + thresholdPercent / 100;
+
+            //case > debtLimit * (1 + thresholdPercent%)
+            if (newDebt > debtLimit * otpMultiplier) {
               if (!confirmationOTP) {
                 throw AppError.BadRequest(
                   `Vượt quá hạn mức cho phép, cần nhập OTP để duyệt đơn này!`,
@@ -236,7 +258,7 @@ export const adminService = {
 
               await redisCache.del(redisKey); // Xóa mã OTP sau khi dùng
             }
-            //case > 100% && < 130% limit
+            //case > 100%
             else if (newDebt > debtLimit) {
               if (!confirmOverLimit) {
                 throw AppError.BadRequest(
@@ -332,7 +354,7 @@ export const adminService = {
       }
 
       const payment = order.Customer?.payment;
-      const currentDebt = Number(payment?.debtCurrent || 0);
+      const currentDebt = await debtRepository.getCustomerCurrentDebt(order.customerId);
       const debtLimit = Number(payment?.debtLimit || 0);
       const orderPrice = Number(order.totalPriceVAT || 0);
       const debtToCheck = currentDebt + orderPrice;

@@ -6,7 +6,14 @@ export const customerRepository = {
   //get all
   findAllCustomer: async () => {
     return await Customer.findAll({
-      attributes: ["customerName", "phone"],
+      attributes: { exclude: ["updatedAt"] },
+      include: [
+        {
+          model: CustomerPayment,
+          as: "payment",
+          attributes: { exclude: ["createdAt", "updatedAt"] },
+        },
+      ],
     });
   },
 

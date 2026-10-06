@@ -12,9 +12,8 @@ export const customerColumns: Partial<ExcelJS.Column>[] = [
   { header: "Ngày Tạo", key: "createdAt", style: { numFmt: "dd/mm/yyyy" } },
 
   { header: "Hạn Mức Công Nợ", key: "debtLimit", style: { numFmt: "#,##0" } },
-  { header: "Công Nợ Hiện Tại", key: "debtCurrent", style: { numFmt: "#,##0" } },
   { header: "Kiểu Thanh Toán", key: "paymentType" },
-
+ 
   { header: "Tên Công Ty", key: "companyName" },
   { header: "Địa Chỉ Công Ty", key: "companyAddress" },
   { header: "Địa Chỉ Giao Hàng", key: "shippingAddress" },
@@ -36,7 +35,6 @@ export const mappingCustomerRow = (item: Customer, index: number) => {
     createdAt: item.createdAt ? dayjsUtc(item.createdAt).format("DD/MM/YYYY") : "",
 
     debtLimit: Number(payment?.debtLimit ?? 0),
-    debtCurrent: Number(payment?.debtCurrent ?? 0),
     paymentType: payment?.paymentType === "daily" ? "Ngày" : "Tháng",
 
     companyName: item.companyName,

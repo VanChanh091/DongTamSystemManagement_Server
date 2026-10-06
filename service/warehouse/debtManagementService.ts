@@ -45,7 +45,7 @@ export const debtManagementService = {
       // Gom nhóm và tính toán Grand Total cho TOÀN BỘ hệ thống
       const { sortedCustomers, grandTotal } = processDebtAggregation(unpaidOutbounds, targetDate);
 
-      // 3. Lọc khách hàng bằng hàm normalizeVN
+      // Lọc khách hàng bằng hàm normalizeVN
       let filteredCustomers = sortedCustomers;
       if (search && search.trim()) {
         const keyword = normalizeVN(search);

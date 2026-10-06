@@ -35,7 +35,6 @@ import {
   calculateTotalPriceByDate,
 } from "../../utils/helper/modelHelper/warehouseHelper";
 import { CrudHelper } from "../../repository/helper/crud.helper.repository";
-import { CustomerPayment } from "../../models/customer/customerPayment";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { outbound } = CacheKey.warehouse;
@@ -432,46 +431,6 @@ export const outboundService = {
         const roundedTotalPriceVAT = Math.round(totalPriceVAT);
         const roundedTotalPricePayment = Math.round(totalPricePayment);
 
-        // cập nhật hạn mức công nợ cho khách hàng
-        if (!customerId) {
-          throw AppError.BadRequest("Không tìm thấy thông tin khách hàng", "CUSTOMER_NOT_FOUND");
-        }
-
-        console.log(`customerId: ${customerId}`);
-
-        const payment = await warehouseRepository.getCustomerPaymentById(customerId, transaction);
-
-        const currentDebt = Number(payment?.debtCurrent || 0);
-        const debtLimit = Number(payment?.debtLimit || 0);
-        const newDebt = currentDebt + roundedTotalPricePayment;
-
-        console.log(
-          `currentDebt: ${currentDebt}, newDebt: ${newDebt}, debtLimit: ${debtLimit}, totalPrice: ${roundedTotalPricePayment}, `,
-        );
-
-        // check debt limit of customer
-        if (debtLimit > 0 && newDebt > debtLimit) {
-          throw AppError.BadRequest(
-            "Vượt quá hạn mức công nợ của khách hàng này!",
-            "DEBT_LIMIT_EXCEEDED",
-          );
-        }
-
-        if (payment) {
-          await payment.update({ debtCurrent: newDebt }, { transaction });
-        } else {
-          await CustomerPayment.create(
-            {
-              customerId,
-              debtCurrent: newDebt,
-              debtLimit: 0,
-              paymentType: "daily",
-              paymentTermDays: 0,
-            },
-            { transaction },
-          );
-        }
-
         // Tạo outbound
         const outbound = await CrudHelper.createData({
           model: OutboundHistory,
@@ -770,31 +729,6 @@ export const outboundService = {
         const paidAmount = Math.round(Number(outbound.paidAmount ?? 0));
         const remainingAmount = Math.round(roundedTotalPricePayment - paidAmount);
 
-        //logic update debt limit of customer
-        const diffPayment = roundedTotalPricePayment - oldTotalPricePayment;
-
-        if (diffPayment !== 0 && customerId) {
-          const payment = await warehouseRepository.getCustomerPaymentById(customerId, transaction);
-
-          const currentDebt = Number(payment?.debtCurrent || 0);
-          const newDebt = currentDebt + diffPayment;
-
-          if (payment) {
-            await payment.update({ debtCurrent: newDebt }, { transaction });
-          } else {
-            await CustomerPayment.create(
-              {
-                customerId,
-                debtCurrent: newDebt,
-                debtLimit: 0,
-                paymentType: "daily",
-                paymentTermDays: 0,
-              },
-              { transaction },
-            );
-          }
-        }
-
         // Cập nhật outbound header
         await outbound.update(
           {
@@ -853,22 +787,6 @@ export const outboundService = {
             "Không thể hủy phiếu xuất kho đã có thanh toán!",
             "OUTBOUND_ALREADY_PAID",
           );
-        }
-
-        //logic return debt current for customer
-        const debtToReturn = Number(outbound.totalPricePayment || 0);
-        if (debtToReturn > 0 && outbound.customerId) {
-          const payment = await warehouseRepository.getCustomerPaymentById(
-            outbound.customerId,
-            transaction,
-          );
-
-          if (payment) {
-            const currentDebt = Number(payment.debtCurrent || 0);
-            const newDebt = currentDebt - debtToReturn;
-
-            await payment.update({ debtCurrent: newDebt }, { transaction });
-          }
         }
 
         const logItems: { inventoryId: number; changeQty: number }[] = [];
