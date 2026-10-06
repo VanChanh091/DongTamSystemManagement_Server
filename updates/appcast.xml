@@ -3,9 +3,13 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.8.2</title>
-            <sparkle:version>4.8.2</sparkle:version> 
+            <title>Version 4.8.3</title>
+            <sparkle:version>4.8.3</sparkle:version> 
             <description>
+                Thêm tính năng chặn duyệt khách hàng vượt hạn mức cho phép
+                Tự động tính hạn mức cho khách hàng khi có phiếu xuất kho
+                Thêm tính năng duyệt đơn qua mã OTP
+                Điều chỉnh lại thời gian tính doanh số sản xuất
             </description>
             <pubDate>Sar, 17 August 2026</pubDate>
             <enclosure url="dongtam.exe" 

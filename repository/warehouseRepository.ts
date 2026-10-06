@@ -14,6 +14,7 @@ import { OutboundDetail } from "../models/warehouse/outbound/outboundDetail";
 import { OutboundHistory } from "../models/warehouse/outbound/outboundHistory";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
+import { CustomerPayment } from "../models/customer/customerPayment";
 
 export const warehouseRepository = {
   //====================================WAITING CHECK========================================
@@ -517,5 +518,14 @@ export const warehouseRepository = {
 
   syncAllOutboundsForMeili: async () => {
     return await OutboundHistory.findAll(warehouseRepository.buildMeiliOutboundOptions({}));
+  },
+
+  getCustomerPaymentById: async (customerId: string, transaction: Transaction) => {
+    return await CustomerPayment.findOne({
+      where: { customerId },
+      attributes: ["cusPaymentId", "customerId", "debtCurrent", "debtLimit"],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
   },
 };

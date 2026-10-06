@@ -39,6 +39,7 @@ export const adminRepository = {
       attributes: [
         "orderId",
         "totalPrice",
+        "totalPriceVAT",
         "status",
         "rejectReason",
         "customerId",
@@ -52,7 +53,11 @@ export const adminRepository = {
           model: Customer,
           attributes: ["customerId"],
           include: [
-            { model: CustomerPayment, as: "payment", attributes: ["debtCurrent", "debtLimit"] },
+            {
+              model: CustomerPayment,
+              as: "payment",
+              attributes: ["cusPaymentId", "customerId", "debtCurrent", "debtLimit"],
+            },
           ],
         },
         {

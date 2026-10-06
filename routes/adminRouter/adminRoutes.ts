@@ -47,6 +47,7 @@ import {
   deleteUser,
   getUsersAdmin,
   updateInfoUser,
+  requestOtpCode,
 } from "../../controller/admin/adminController";
 import {
   createBasisWeight,
@@ -71,6 +72,7 @@ const router = Router();
 // Admin routes for managing orders
 //===============================ORDERS=====================================
 router.get("/orders", authenticate, authorizeRole(["admin", "manager"]), getOrderPending);
+router.post("/orders/send-otp", authenticate, authorizeRole(["admin", "manager"]), requestOtpCode);
 router.put("/orders", authenticate, authorizeRole(["admin", "manager"]), updateStatusAdmin);
 
 //===============================USERS=====================================
@@ -133,12 +135,12 @@ router.put("/vehicles", authenticate, authorizeRole(["admin", "manager"]), updat
 router.delete("/vehicles", authenticate, authorizeRole(["admin", "manager"]), deleteVehicle);
 
 // =========================== SUPPLIERS =================================
-router.get("/suppliers", authenticate,  getAllSuppliers);
+router.get("/suppliers", authenticate, getAllSuppliers);
 router.post("/suppliers", authenticate, authorizeRole(["admin"]), createSupplier);
 router.put("/suppliers", authenticate, authorizeRole(["admin"]), handleUpdateSupplier);
 
 // ========================== PAPER TYPES ================================
-router.get("/paper-types", authenticate,  getAllPaperTypes);
+router.get("/paper-types", authenticate, getAllPaperTypes);
 router.post("/paper-types", authenticate, authorizeRole(["admin"]), createPaperType);
 router.put("/paper-types", authenticate, authorizeRole(["admin"]), updatePaperType);
 

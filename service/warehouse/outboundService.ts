@@ -35,6 +35,7 @@ import {
   calculateTotalPriceByDate,
 } from "../../utils/helper/modelHelper/warehouseHelper";
 import { CrudHelper } from "../../repository/helper/crud.helper.repository";
+import { CustomerPayment } from "../../models/customer/customerPayment";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { outbound } = CacheKey.warehouse;
@@ -431,6 +432,46 @@ export const outboundService = {
         const roundedTotalPriceVAT = Math.round(totalPriceVAT);
         const roundedTotalPricePayment = Math.round(totalPricePayment);
 
+        // cập nhật hạn mức công nợ cho khách hàng
+        if (!customerId) {
+          throw AppError.BadRequest("Không tìm thấy thông tin khách hàng", "CUSTOMER_NOT_FOUND");
+        }
+
+        console.log(`customerId: ${customerId}`);
+
+        const payment = await warehouseRepository.getCustomerPaymentById(customerId, transaction);
+
+        const currentDebt = Number(payment?.debtCurrent || 0);
+        const debtLimit = Number(payment?.debtLimit || 0);
+        const newDebt = currentDebt + roundedTotalPricePayment;
+
+        console.log(
+          `currentDebt: ${currentDebt}, newDebt: ${newDebt}, debtLimit: ${debtLimit}, totalPrice: ${roundedTotalPricePayment}, `,
+        );
+
+        // check debt limit of customer
+        if (debtLimit > 0 && newDebt > debtLimit) {
+          throw AppError.BadRequest(
+            "Vượt quá hạn mức công nợ của khách hàng này!",
+            "DEBT_LIMIT_EXCEEDED",
+          );
+        }
+
+        if (payment) {
+          await payment.update({ debtCurrent: newDebt }, { transaction });
+        } else {
+          await CustomerPayment.create(
+            {
+              customerId,
+              debtCurrent: newDebt,
+              debtLimit: 0,
+              paymentType: "daily",
+              paymentTermDays: 0,
+            },
+            { transaction },
+          );
+        }
+
         // Tạo outbound
         const outbound = await CrudHelper.createData({
           model: OutboundHistory,
@@ -518,7 +559,7 @@ export const outboundService = {
 
         //--------------------MEILISEARCH-----------------------
         const orderIdMeili = preparedDetails.map((item) => item.orderId);
-        await outboundService.syncDataOutbound(outbound.outboundId, orderIdMeili, transaction);
+        await syncDataOutbound(outbound.outboundId, orderIdMeili, transaction);
 
         return outbound;
       });
@@ -559,8 +600,10 @@ export const outboundService = {
           throw AppError.NotFound("Phiếu xuất kho không tồn tại", "OUTBOUND_NOT_FOUND");
         }
 
-        const logItems: { inventoryId: number; changeQty: number }[] = [];
+        // Lấy giá trị cũ của totalPricePayment trước khi cập nhật
+        const oldTotalPricePayment = Number(outbound.totalPricePayment || 0);
 
+        const logItems: { inventoryId: number; changeQty: number }[] = [];
         const oldDetails = outbound.detail ?? [];
         const usedOldDetailIds = new Set<number>();
 
@@ -720,12 +763,37 @@ export const outboundService = {
           }
         }
 
-        // Tính toán lại tổng tiền thanh toán và số tiền còn lại (làm tròn số nguyên VNĐ)
+        // Tính toán lại tổng tiền thanh toán và số tiền còn lại
         const roundedTotalPriceOrder = Math.round(totalPriceOrder);
         const roundedTotalPriceVAT = Math.round(totalPriceVAT);
         const roundedTotalPricePayment = Math.round(totalPricePayment);
         const paidAmount = Math.round(Number(outbound.paidAmount ?? 0));
         const remainingAmount = Math.round(roundedTotalPricePayment - paidAmount);
+
+        //logic update debt limit of customer
+        const diffPayment = roundedTotalPricePayment - oldTotalPricePayment;
+
+        if (diffPayment !== 0 && customerId) {
+          const payment = await warehouseRepository.getCustomerPaymentById(customerId, transaction);
+
+          const currentDebt = Number(payment?.debtCurrent || 0);
+          const newDebt = currentDebt + diffPayment;
+
+          if (payment) {
+            await payment.update({ debtCurrent: newDebt }, { transaction });
+          } else {
+            await CustomerPayment.create(
+              {
+                customerId,
+                debtCurrent: newDebt,
+                debtLimit: 0,
+                paymentType: "daily",
+                paymentTermDays: 0,
+              },
+              { transaction },
+            );
+          }
+        }
 
         // Cập nhật outbound header
         await outbound.update(
@@ -757,73 +825,13 @@ export const outboundService = {
         // Gộp mảng và sử dụng Set để loại bỏ các orderId trùng lặp
         const affectedOrderIds = [...new Set([...currentOrderIds, ...oldOrderIds])];
 
-        await outboundService.syncDataOutbound(outboundId, affectedOrderIds, transaction);
+        await syncDataOutbound(outboundId, affectedOrderIds, transaction);
 
         return outbound;
       });
     } catch (error) {
       console.log("err to update outbound: ", error);
       if (error instanceof AppError) throw error;
-      throw AppError.ServerError();
-    }
-  },
-
-  syncDataOutbound: async (
-    outboundId: number,
-    orderIds: string | string[],
-    transaction: Transaction,
-  ) => {
-    try {
-      const listOrderIds = Array.isArray(orderIds) ? orderIds : [orderIds];
-
-      const [outbound, inventories] = await Promise.all([
-        warehouseRepository.syncOutboundForMeili(outboundId, transaction),
-        inventoryRepository.syncAllInventoryToMeili(listOrderIds, transaction),
-      ]);
-
-      const flattenInventory = inventories.map(meiliTransformer.inventory);
-
-      if (outbound) {
-        const meiliFormatted = meiliTransformer.outbound(outbound);
-        await meiliService.syncOrUpdateMeiliData({
-          indexKey: MEILI_INDEX.OUTBOUNDS,
-          data: meiliFormatted,
-          transaction,
-        });
-      }
-
-      // Phân loại: Khác 0 thì giữ/cập nhật, Bằng 0 thì xóa
-      const validInventories: any[] = [];
-      const deleteInventoryIds: number[] = [];
-
-      for (const inv of inventories) {
-        if (inv.qtyInventory !== 0) {
-          validInventories.push(inv);
-        } else {
-          deleteInventoryIds.push(inv.inventoryId);
-        }
-      }
-
-      // Upsert các đơn còn tồn kho
-      if (validInventories.length > 0) {
-        const flattenInventory = validInventories.map(meiliTransformer.inventory);
-        await meiliService.syncOrUpdateMeiliData({
-          indexKey: MEILI_INDEX.INVENTORIES,
-          data: flattenInventory,
-          transaction,
-        });
-      }
-
-      // Delete khỏi Meilisearch các đơn đã hết tồn kho
-      if (deleteInventoryIds.length > 0) {
-        await meiliService.deleteMeiliData({
-          indexKey: MEILI_INDEX.INVENTORIES,
-          idOrIds: deleteInventoryIds,
-          transaction,
-        });
-      }
-    } catch (error) {
-      console.log("err to sync data outbound: ", error);
       throw AppError.ServerError();
     }
   },
@@ -845,6 +853,22 @@ export const outboundService = {
             "Không thể hủy phiếu xuất kho đã có thanh toán!",
             "OUTBOUND_ALREADY_PAID",
           );
+        }
+
+        //logic return debt current for customer
+        const debtToReturn = Number(outbound.totalPricePayment || 0);
+        if (debtToReturn > 0 && outbound.customerId) {
+          const payment = await warehouseRepository.getCustomerPaymentById(
+            outbound.customerId,
+            transaction,
+          );
+
+          if (payment) {
+            const currentDebt = Number(payment.debtCurrent || 0);
+            const newDebt = currentDebt - debtToReturn;
+
+            await payment.update({ debtCurrent: newDebt }, { transaction });
+          }
         }
 
         const logItems: { inventoryId: number; changeQty: number }[] = [];
@@ -917,7 +941,6 @@ export const outboundService = {
 
         //update inventory in meilisearch
         const orderIds = details.map((d) => d.orderId);
-
         if (orderIds.length > 0) {
           const updatedInvs = await inventoryRepository.syncAllInventoryToMeili(
             orderIds,
@@ -1044,4 +1067,62 @@ export const outboundService = {
       throw AppError.ServerError();
     }
   },
+};
+
+const syncDataOutbound = async (
+  outboundId: number,
+  orderIds: string | string[],
+  transaction: Transaction,
+) => {
+  try {
+    const listOrderIds = Array.isArray(orderIds) ? orderIds : [orderIds];
+
+    const [outbound, inventories] = await Promise.all([
+      warehouseRepository.syncOutboundForMeili(outboundId, transaction),
+      inventoryRepository.syncAllInventoryToMeili(listOrderIds, transaction),
+    ]);
+
+    if (outbound) {
+      const meiliFormatted = meiliTransformer.outbound(outbound);
+      await meiliService.syncOrUpdateMeiliData({
+        indexKey: MEILI_INDEX.OUTBOUNDS,
+        data: meiliFormatted,
+        transaction,
+      });
+    }
+
+    // Phân loại: Khác 0 thì giữ/cập nhật, Bằng 0 thì xóa
+    const validInventories: any[] = [];
+    const deleteInventoryIds: number[] = [];
+
+    for (const inv of inventories) {
+      if (inv.qtyInventory !== 0) {
+        validInventories.push(inv);
+      } else {
+        deleteInventoryIds.push(inv.inventoryId);
+      }
+    }
+
+    // Upsert các đơn còn tồn kho
+    if (validInventories.length > 0) {
+      const flattenInventory = validInventories.map(meiliTransformer.inventory);
+      await meiliService.syncOrUpdateMeiliData({
+        indexKey: MEILI_INDEX.INVENTORIES,
+        data: flattenInventory,
+        transaction,
+      });
+    }
+
+    // Delete khỏi Meilisearch các đơn đã hết tồn kho
+    if (deleteInventoryIds.length > 0) {
+      await meiliService.deleteMeiliData({
+        indexKey: MEILI_INDEX.INVENTORIES,
+        idOrIds: deleteInventoryIds,
+        transaction,
+      });
+    }
+  } catch (error) {
+    console.log("err to sync data outbound: ", error);
+    throw AppError.ServerError();
+  }
 };

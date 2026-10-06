@@ -37,7 +37,7 @@ import {
 import "./models/index";
 import { initSocket } from "./utils/socket/socket";
 import { AppError } from "./utils/appError";
-import { cleanStackTrace, sendTelegramAlert } from "./utils/telegram/telegramSending";
+import { cleanStackTrace, sendTelegramAlertError } from "./utils/telegram/telegramSendAlert";
 
 //cron job
 import "./utils/cronJob/autoDeleteImage";
@@ -140,7 +140,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   *Time:* ${new Date().toLocaleString("vi-VN")}
   *Stack Trace:*\`\`\`${cleanedStack}\`\`\``;
 
-  sendTelegramAlert(alertMessage).catch(console.error);
+  sendTelegramAlertError(alertMessage).catch(console.error);
 
   // Lỗi server thật (bug, DB lỗi, runtime crash)
   console.error("🔥 SERVER ERROR:", {

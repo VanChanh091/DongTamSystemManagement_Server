@@ -6,7 +6,7 @@ import { Request } from "express";
 import { meiliService } from "../system/meiliService";
 import { AppError } from "../../utils/appError";
 import { User, userRole } from "../../models/user/user";
-import { OrderStatus } from "../../models/order/order";
+import { Order, OrderStatus } from "../../models/order/order";
 import { adminRepository } from "../../repository/adminRepository";
 import { Inventory } from "../../models/warehouse/inventory/inventory";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
@@ -19,6 +19,10 @@ import { NotificationModel } from "../../models/notification/notification";
 import { REQUEST_CONFIG } from "../notification/requestType";
 import { UserNotifications } from "../../models/notification/userNotifications";
 import { CrudHelper } from "../../repository/helper/crud.helper.repository";
+import { CustomerPayment } from "../../models/customer/customerPayment";
+import redisCache from "../../assets/configs/connect/redis.connect";
+import { Customer } from "../../models/customer/customer";
+import { sendTelegramAlertOtp } from "../../utils/telegram/telegramSendAlert";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 
@@ -138,12 +142,16 @@ export const adminService = {
     newStatus,
     rejectReason,
     senderId,
+    confirmOverLimit,
+    confirmationOTP,
   }: {
     req: Request;
     orderId: string;
     newStatus: OrderStatus;
     rejectReason: string;
     senderId: number;
+    confirmOverLimit?: boolean;
+    confirmationOTP?: number;
   }) => {
     try {
       return await runInTransaction(async (transaction) => {
@@ -155,9 +163,6 @@ export const adminService = {
         if (!order) {
           throw AppError.NotFound("Order not found", "ORDER_NOT_FOUND");
         }
-
-        // const customer = order.Customer;
-        // const newDebt = Number(customer.debtCurrent || 0) + Number(order.totalPrice || 0);
 
         const ownerId = order.userId;
 
@@ -199,28 +204,60 @@ export const adminService = {
           //socket
           req.io?.to(`user-${ownerId}`).emit("new-notification", newNotif);
         } else {
-          //calculate debt limit of customer
-          // if (req.user.role !== "admin") {
-          //   if (newDebt > customer.debtLimit!) {
-          //     throw AppError.BadRequest("Debt limit exceeded", "DEBT_LIMIT_EXCEEDED");
-          //   }
-          // }
-          // await customer.update({ debtCurrent: newDebt });
+          //check role admin
+          const isAdmin = req.user.role === "admin";
+
+          // Logic kiểm tra và cập nhật hạn mức công nợ khách hàng
+          const payment = order.Customer?.payment;
+
+          const currentDebt = Number(payment?.debtCurrent || 0);
+          const debtLimit = Number(payment?.debtLimit || 0);
+          const totalPrice = Number(order.totalPriceVAT || 0);
+
+          // total debt after this order
+          const newDebt = currentDebt + totalPrice;
+
+          if (!isAdmin) {
+            //case > 130% limit
+            if (newDebt > debtLimit * 1.3) {
+              if (!confirmationOTP) {
+                throw AppError.BadRequest(
+                  `Vượt quá hạn mức cho phép, cần nhập OTP để duyệt đơn này!`,
+                  "REQUIRE_OTP_CONFIRMATION",
+                );
+              }
+
+              const redisKey = `order_otp_code:${orderId}`;
+              const savedCode = await redisCache.get(redisKey);
+
+              if (!savedCode || Number(savedCode) !== confirmationOTP) {
+                throw AppError.BadRequest("Mã OTP không hợp lệ hoặc đã hết hạn.", "INVALID_OTP");
+              }
+
+              await redisCache.del(redisKey); // Xóa mã OTP sau khi dùng
+            }
+            //case > 100% && < 130% limit
+            else if (newDebt > debtLimit) {
+              if (!confirmOverLimit) {
+                throw AppError.BadRequest(
+                  `Khách hàng vượt quá hạn mức cho phép!`,
+                  "DEBT_LIMIT_EXCEEDED",
+                );
+              }
+            }
+          }
 
           //check type product
-
           const phiKhac = order.Product.typeProduct == "Phí Khác";
-
           order.set({
             status: phiKhac ? "planning" : newStatus,
             rejectReason: null,
             dayApproved: new Date(),
           });
 
-          let success;
-
           await OrderApproved.create({ orderId, approvedBy: req.user.fullName }, { transaction });
 
+          let success;
           if (phiKhac) {
             success = await Inventory.create(
               {
@@ -264,6 +301,78 @@ export const adminService = {
       });
     } catch (error) {
       console.error("failed to update order", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  requestApprovalOTP: async ({
+    orderId,
+    requesterName,
+  }: {
+    orderId: string;
+    requesterName: string;
+  }) => {
+    try {
+      const order = await Order.findByPk(orderId, {
+        attributes: ["orderId", "totalPriceVAT"],
+        include: [
+          {
+            model: Customer,
+            attributes: ["customerId", "customerName"],
+            include: [
+              { model: CustomerPayment, as: "payment", attributes: ["debtCurrent", "debtLimit"] },
+            ],
+          },
+        ],
+      });
+
+      if (!order) {
+        throw AppError.NotFound("Không tìm thấy đơn hàng", "ORDER_NOT_FOUND");
+      }
+
+      const payment = order.Customer?.payment;
+      const currentDebt = Number(payment?.debtCurrent || 0);
+      const debtLimit = Number(payment?.debtLimit || 0);
+      const orderPrice = Number(order.totalPriceVAT || 0);
+      const debtToCheck = currentDebt + orderPrice;
+
+      // Tính % vượt hạn mức
+      const exceededAmount = debtToCheck - debtLimit;
+      const exceededPercent = debtLimit > 0 ? Math.round((exceededAmount / debtLimit) * 100) : 100;
+
+      // generate OTP code
+      const otp = Math.floor(1000 + Math.random() * 9000);
+
+      // save OTP code into Redis with 30 minutes expiration
+      const redisKey = `order_otp_code:${orderId}`;
+      await redisCache.set(redisKey, otp, "EX", 1800);
+
+      const message = `
+        🚨 <b>YÊU CẦU OTP DUYỆT ĐƠN VƯỢT HẠN MỨC</b>
+
+        📦 <b>Mã đơn hàng:</b> <code>${orderId}</code>
+        👤 <b>Người yêu cầu:</b> ${requesterName}
+        🏢 <b>Khách hàng:</b> ${order.Customer?.customerName || order.customerId}
+
+        💰 <b>Giá trị đơn:</b> ${orderPrice.toLocaleString()} đ
+        📊 <b>Công nợ hiện tại:</b> ${currentDebt.toLocaleString()} đ
+        🎯 <b>Hạn mức cấp phép:</b> ${debtLimit.toLocaleString()} đ
+        ⚠️ <b>Nợ sau duyệt:</b> <b>${debtToCheck.toLocaleString()} đ</b> (Vượt ${exceededPercent}%)
+
+        ───────────────────────
+        🔑 <b>MÃ OTP XÁC NHẬN:</b> <code>${otp}</code>
+        <i>(Mã có hiệu lực trong 30 phút. Chạm vào số để copy)</i>
+        `.trim();
+
+      // send alert to Telegram
+      sendTelegramAlertOtp(message);
+
+      return {
+        message: "Đã gửi mã OTP xác nhận tới Telegram. Mã có hiệu lực trong 30 phút!",
+      };
+    } catch (error) {
+      console.error("Lỗi gửi OTP Telegram:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }

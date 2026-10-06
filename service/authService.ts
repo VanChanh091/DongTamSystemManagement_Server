@@ -38,9 +38,8 @@ export const authService = {
       //random code
       const otp = Math.round(1000 + Math.random() * 9000);
 
-      const userData = JSON.stringify({ email, otp });
-
       //save new data user into Redis in 5m
+      const userData = JSON.stringify({ email, otp });
       await redisCache.setex(`user:${email}`, 600, userData);
 
       // Send OTP email

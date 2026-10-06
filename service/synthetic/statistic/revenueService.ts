@@ -15,6 +15,14 @@ import { CacheKey } from "../../../utils/helper/cache/cacheKey";
 import redisCache from "../../../assets/configs/connect/redis.connect";
 import { debtRepository } from "../../../repository/debtRepository";
 import { normalizeVN } from "../../../utils/helper/normalizeVN";
+import {
+  aggregateDailyAmounts,
+  createEmptyYear,
+  reportEffectiveUserId,
+  roundInt,
+  toVNDate,
+} from "../../../utils/helper/modelHelper/revenueHelper";
+import { dayjsUtc } from "../../../assets/configs/dayjs/dayjs.config";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { reports } = CacheKey.synthetic;
@@ -244,11 +252,19 @@ export const statisticRevenueService = {
         }
       }
 
-      // Xác định biên thời gian
+      // =============== Xác định biên thời gian ==============
       const paddedMonth = String(month).padStart(2, "0");
-      const daysInMonth = new Date(year, month, 0).getDate();
-      const startDate = `${year}-${paddedMonth}-01 00:00:00`;
-      const endDate = `${year}-${paddedMonth}-${daysInMonth} 23:59:59`;
+      const startOfMonth = dayjsUtc(`${year}-${paddedMonth}-01`);
+      const daysInMonth = startOfMonth.daysInMonth(); // Đảm bảo luôn có biến cho vòng lặp phía dưới
+
+      // Biên thời gian thông thường: 00:00:00 ngày 01 -> 23:59:59 ngày cuối tháng
+      const startDate = startOfMonth.startOf("month").format("YYYY-MM-DD 00:00:00");
+      const endDate = startOfMonth.endOf("month").format("YYYY-MM-DD 23:59:59");
+
+      // Biên ca sản xuất giấy: 06:00:00 ngày 01 -> 05:59:59 ngày 01 tháng kế tiếp
+      const productionStartDate = `${year}-${paddedMonth}-01 06:00:00`;
+      const nextMonth = startOfMonth.add(1, "month");
+      const productionEndDate = `${nextMonth.format("YYYY-MM")}-01 05:59:59`;
 
       // Chạy 3 query gom nhóm song song
       const [ordersData, paperProdData, boxProdData, outboundData] = await Promise.all([
@@ -257,14 +273,16 @@ export const statisticRevenueService = {
           endDate,
           userId: effectiveUserId ?? undefined,
         }),
+        // Sản xuất giấy tấm: lọc theo ca 6h
         syntheticReportRepository.getDailyPaperProduction({
-          startDate,
-          endDate,
+          startDate: productionStartDate,
+          endDate: productionEndDate,
           userId: effectiveUserId ?? undefined,
         }),
+        // Sản xuất thùng carton: lọc theo ca 6h
         syntheticReportRepository.getDailyBoxProductionInbound({
-          startDate,
-          endDate,
+          startDate: productionStartDate,
+          endDate: productionEndDate,
           userId: effectiveUserId ?? undefined,
         }),
         syntheticReportRepository.getDailyProductionOutbound({
@@ -281,35 +299,40 @@ export const statisticRevenueService = {
           uniqueOrdersMap.set(row.orderId, row);
         }
       }
+      const cleanOrdersData = Array.from(uniqueOrdersMap.values());
 
       // === Gom nhóm thành Map ===
       // Doanh số nhận đơn theo ngày duyệt dayApproved
-      const orderMap = aggregateDailyAmounts(
-        ordersData,
-        (item) => item.dayApproved,
-        (item) => item.totalPrice,
-      );
+      const orderMap = aggregateDailyAmounts({
+        records: cleanOrdersData,
+        getDateFn: (item) => item.dayApproved,
+        getAmountFn: (item) => item.totalPrice,
+        timezone: VN_TIMEZONE_OFFSET_MS,
+      });
 
       // Doanh số sản xuất giấy tấm theo ngày chạy máy
-      const paperProdMap = aggregateDailyAmounts(
-        paperProdData,
-        (item) => item.dayReport,
-        (item) => item.totalPrice,
-      );
+      const paperProdMap = aggregateDailyAmounts({
+        records: paperProdData,
+        getDateFn: (item) => dayjsUtc(item.dayReport).subtract(6, "hour").toDate(),
+        getAmountFn: (item) => item.totalPrice,
+        timezone: VN_TIMEZONE_OFFSET_MS,
+      });
 
       // Doanh số sản xuất thùng theo ngày nhập kho
-      const boxProdMap = aggregateDailyAmounts(
-        boxProdData,
-        (item) => item.dateInbound,
-        (item) => item.totalPrice,
-      );
+      const boxProdMap = aggregateDailyAmounts({
+        records: boxProdData,
+        getDateFn: (item) => dayjsUtc(item.dateInbound).subtract(6, "hour").toDate(),
+        getAmountFn: (item) => item.totalPrice,
+        timezone: VN_TIMEZONE_OFFSET_MS,
+      });
 
       // Doanh số bán hàng / xuất kho
-      const salesMap = aggregateDailyAmounts(
-        outboundData,
-        (item) => item.dateOutbound,
-        (item) => item.totalPricePayment,
-      );
+      const salesMap = aggregateDailyAmounts({
+        records: outboundData,
+        getDateFn: (item) => item.dateOutbound,
+        getAmountFn: (item) => item.totalPricePayment,
+        timezone: VN_TIMEZONE_OFFSET_MS,
+      });
 
       // Khởi tạo danh sách đủ các ngày trong tháng
       const details: DailyReportRow[] = [];
@@ -445,7 +468,7 @@ export const statisticRevenueService = {
           if (!customer?.customerId) continue;
 
           const custId = String(customer.customerId);
-          const vnDate = toVNDate(record.dateOutbound);
+          const vnDate = toVNDate(record.dateOutbound, VN_TIMEZONE_OFFSET_MS);
           if (!vnDate) continue;
 
           const reportYear = vnDate.getUTCFullYear();
@@ -582,71 +605,4 @@ export const statisticRevenueService = {
       throw AppError.ServerError();
     }
   },
-};
-
-// ===============================HELPER FUNCTIONS========================================
-const roundInt = (val: number | string | undefined | null): number => Math.round(Number(val) || 0);
-
-const aggregateDailyAmounts = <T>(
-  records: T[],
-  getDateFn: (item: T) => Date | string | undefined | null,
-  getAmountFn: (item: T) => number | string | undefined | null,
-): Map<string, number> => {
-  const map = new Map<string, number>();
-
-  for (const item of records) {
-    const rawDate = getDateFn(item);
-    if (!rawDate) continue;
-
-    // 1. Lấy epoch time (tránh khởi tạo Date mới nếu Sequelize đã trả về sẵn Date object)
-    const timestamp = rawDate instanceof Date ? rawDate.getTime() : new Date(rawDate).getTime();
-    if (Number.isNaN(timestamp)) continue;
-
-    // 2. Dịch sang UTC+7 và cắt chuỗi 'YYYY-MM-DD'
-    const dateKey = new Date(timestamp + VN_TIMEZONE_OFFSET_MS).toISOString().slice(0, 10);
-
-    // 3. Gom dồn số tiền (làm tròn số tiền của từng bản ghi)
-    const amount = roundInt(getAmountFn(item));
-    map.set(dateKey, (map.get(dateKey) || 0) + amount);
-  }
-
-  return map;
-};
-
-const toVNDate = (rawDate: Date | string | undefined | null): Date | null => {
-  if (!rawDate) return null;
-  const timestamp = rawDate instanceof Date ? rawDate.getTime() : new Date(rawDate).getTime();
-  if (Number.isNaN(timestamp)) return null;
-  return new Date(timestamp + VN_TIMEZONE_OFFSET_MS);
-};
-
-// Helper tạo khung 12 tháng trắng
-const createEmptyYear = (): YearSalesData => {
-  const months: Record<number, number> = {};
-  for (let m = 1; m <= 12; m++) months[m] = 0;
-  return { months, yearTotal: 0 };
-};
-
-const reportEffectiveUserId = (
-  currentUser: {
-    userId: number;
-    role: string;
-    permissions?: string[];
-  },
-  targetUserId?: number | null,
-  all?: boolean,
-): number | null => {
-  const role = currentUser.role?.toLowerCase();
-
-  const isManager = ["admin", "manager"].includes(role);
-  const isSales = currentUser.permissions?.includes("sale") ?? false;
-
-  if (isManager) {
-    return !all && targetUserId ? Number(targetUserId) : null;
-  } else if (isSales) {
-    return currentUser.userId;
-  }
-
-  // chỉ xem tổng quát
-  return null;
 };

@@ -13,6 +13,7 @@ import {
   WaveCrestCoefficient,
   WaveCrestCreationAttributes,
 } from "../../models/admin/waveCrestCoefficient";
+import { OrderStatus } from "../../models/order/order";
 
 // ================================ ORDER ====================================
 
@@ -28,16 +29,38 @@ export const getOrderPending = async (req: Request, res: Response, next: NextFun
 
 //accept or reject order
 export const updateStatusAdmin = async (req: Request, res: Response, next: NextFunction) => {
-  const { id } = req.query as { id: string };
-  const { newStatus, rejectReason } = req.body;
+  const { orderId } = req.query as { orderId: string };
+  const { newStatus, rejectReason, confirmOverLimit, confirmationOTP } = req.body as {
+    newStatus: OrderStatus;
+    rejectReason: string;
+    confirmOverLimit?: boolean;
+    confirmationOTP?: number;
+  };
 
   try {
     const response = await adminService.updateStatusOrder({
       req,
-      orderId: id,
+      orderId,
       newStatus,
       rejectReason,
       senderId: req.user.userId,
+      confirmOverLimit,
+      confirmationOTP,
+    });
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+//request OTP code for approve order over limit
+export const requestOtpCode = async (req: Request, res: Response, next: NextFunction) => {
+  const { orderId } = req.query as { orderId: string };
+
+  try {
+    const response = await adminService.requestApprovalOTP({
+      orderId,
+      requesterName: req.user.fullName,
     });
     return res.status(200).json(response);
   } catch (error) {
