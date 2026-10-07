@@ -140,7 +140,7 @@ export const adminService = {
         for (const order of data) {
           if (order.Customer?.payment) {
             const currentDebt = debtMap.get(order.customerId) || 0;
-            (order.Customer.payment as any).setDataValue("debtCurrent", currentDebt);
+            (order.Customer.payment as any).setDataValue("debtCurrent", Math.round(currentDebt));
           }
         }
       }
