@@ -6,6 +6,9 @@ export enum RequestType {
   ORDER_CONFIRM = "ORDER_CONFIRM",
   ORDER_UPDATE = "ORDER_UPDATE",
 
+  // inspection
+  INSPECTION_REQUEST = "INSPECTION_REQUEST",
+
   //FORM
   // ... add more request types as needed
 }
@@ -38,5 +41,12 @@ export const REQUEST_CONFIG: Record<
     titleCreate: () => "Xác nhận đơn hàng",
     titleApproved: "Xác nhận",
     titleRejected: "Từ chối",
+  },
+
+  //inspection
+  [RequestType.INSPECTION_REQUEST]: {
+    titleCreate: (orderId: string) => `Có yêu cầu kiểm tra mới từ cho đơn hàng ${orderId}`,
+    titleApproved: "Đã nhận thông báo kiểm tra",
+    titleRejected: "Từ chối yêu cầu kiểm tra",
   },
 };

@@ -6,11 +6,11 @@ import { PlanningPaper } from "../../models/planning/planningPaper";
 import {
   qcCheckBox,
   QcInspectionBox,
-} from "../../models/qualityControl/qcInspection/qcInspectionBox";
+} from "../../models/qualityControl/inspection/qcInspectionBox";
 import {
   qcCheckPaper,
   QcInspectionPaper,
-} from "../../models/qualityControl/qcInspection/qcInspectionPaper";
+} from "../../models/qualityControl/inspection/qcInspectionPaper";
 import { qcRepository } from "../../repository/qcRepository";
 import { AppError } from "../../utils/appError";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";

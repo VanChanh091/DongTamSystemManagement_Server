@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
-import { qcCheckBox } from "../../../models/qualityControl/qcInspection/qcInspectionBox";
-import { qcCheckPaper } from "../../../models/qualityControl/qcInspection/qcInspectionPaper";
+import { qcCheckBox } from "../../../models/qualityControl/inspection/qcInspectionBox";
+import { qcCheckPaper } from "../../../models/qualityControl/inspection/qcInspectionPaper";
 import { qcInspectionService } from "../../../service/qualityControl/qcInspectionCheckService";
 
 //====================================INSPECTION PAPER========================================

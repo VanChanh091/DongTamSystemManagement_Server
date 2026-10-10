@@ -5,6 +5,8 @@ import { statusQcSession } from "../../../models/qualityControl/qcSession";
 import { qcSampleService } from "../../../service/qualityControl/qcSampleService";
 import { qcChecklistData } from "../../../models/qualityControl/qcSampleResult";
 import { qcSubmitService } from "../../../service/qualityControl/orchestratorService";
+import { qcShiftService } from "../../../service/qualityControl/qcShiftService";
+import { AppError } from "../../../utils/appError";
 
 //===============================QC SESSION=================================
 //get qc session
@@ -133,6 +135,33 @@ export const submitQC = async (req: Request, res: Response, next: NextFunction) 
       ...req.body,
       user: req.user,
     });
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+//===============================QC SHIFT=================================
+export const getCurrentShiftActive = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const response = await qcShiftService.getCurrentShiftActive(req.user.userId);
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const startShift = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const response = await qcShiftService.startShift(req.user);
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+export const endShift = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const response = await qcShiftService.endShift(req.user.userId);
     return res.status(200).json(response);
   } catch (error) {
     next(error);

@@ -237,7 +237,7 @@ export const manuPaperService = {
           });
         }
 
-        //3. tạo report theo số lần báo cáo
+        // tạo report theo số lần báo cáo
         const reportCreated = await createReportPlanning({
           planning: planning.toJSON(),
           model: ReportPlanningPaper,

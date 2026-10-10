@@ -132,9 +132,7 @@ export const adminService = {
     try {
       const data = await adminRepository.findOrderPending();
 
-      const customerIds = Array.from(
-        new Set(data.map((o: any) => o.customerId).filter(Boolean)),
-      );
+      const customerIds = Array.from(new Set(data.map((o: any) => o.customerId).filter(Boolean)));
       if (customerIds.length > 0) {
         const debtMap = await debtRepository.getCustomersCurrentDebt(customerIds);
         for (const order of data) {

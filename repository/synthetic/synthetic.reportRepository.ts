@@ -10,8 +10,8 @@ import { ReportPlanningPaper } from "../../models/report/reportPlanningPaper";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
 import { OutboundHistory } from "../../models/warehouse/outbound/outboundHistory";
 import { PaperRequirements } from "../../models/planning/requirement/paperRequirements";
-import { QcInspectionBox } from "../../models/qualityControl/qcInspection/qcInspectionBox";
-import { QcInspectionPaper } from "../../models/qualityControl/qcInspection/qcInspectionPaper";
+import { QcInspectionBox } from "../../models/qualityControl/inspection/qcInspectionBox";
+import { QcInspectionPaper } from "../../models/qualityControl/inspection/qcInspectionPaper";
 
 export const syntheticReportRepository = {
   //====================================REVENUE DAY========================================

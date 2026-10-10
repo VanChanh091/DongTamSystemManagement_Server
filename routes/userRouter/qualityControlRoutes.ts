@@ -3,8 +3,11 @@ import authenticate from "../../middlewares/authMiddleware";
 import {
   createNewResult,
   createNewSession,
+  endShift,
   getAllQcResult,
+  getCurrentShiftActive,
   getQcSession,
+  startShift,
   submitQC,
   updateResult,
   updateSession,
@@ -15,6 +18,13 @@ import {
   checkingInspection,
   getQcInspectionErr,
 } from "../../controller/user/QC/qcInspectionController";
+import {
+  createInspectionRequest,
+  getInspectionRequestByPlanningId,
+  getPendingInspectionRequests,
+  qcReceivedRequest,
+  updateInspectionRequest,
+} from "../../controller/user/QC/inspectionRequestController";
 
 const router = Router();
 
@@ -30,6 +40,18 @@ router.put("/result", authorizeAnyPermission(["QC"]), authenticate, updateResult
 
 //==================ORCHESTRATOR=======================
 router.post("/submit", authenticate, authorizeAnyPermission(["QC"]), submitQC);
+
+//====================QC SHIFT======================
+router.get("/shift", authenticate, getCurrentShiftActive);
+router.post("/shift/start", authenticate, authorizeAnyPermission(["QC"]), startShift);
+router.put("/shift/end", authenticate, authorizeAnyPermission(["QC"]), endShift);
+
+//==================INSPECTION REQUEST====================
+router.get("/pending", authenticate, getPendingInspectionRequests);
+router.get("/planning", authenticate, getInspectionRequestByPlanningId);
+router.post("/", authenticate, createInspectionRequest);
+router.put("/receive", authenticate, authorizeAnyPermission(["QC"]), qcReceivedRequest);
+router.put("/", authenticate, authorizeAnyPermission(["QC"]), updateInspectionRequest);
 
 //==================INSPECTION CHECK====================
 router.post("/inspection", authenticate, authorizeAnyPermission(["QC"]), checkingInspection);

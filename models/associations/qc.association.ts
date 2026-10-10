@@ -4,7 +4,9 @@ export default function qcAssociations(models: any) {
     PlanningBox,
     PlanningBoxTime,
     QcSession,
+    QcShift,
     QcSampleResult,
+    InspectionRequest,
     InboundHistory,
     QcInspectionPaper,
     QcInspectionBox,
@@ -32,6 +34,10 @@ export default function qcAssociations(models: any) {
   });
   InboundHistory.belongsTo(QcSession, { foreignKey: "qcSessionId" });
 
+  // QC SHIFT
+  User.hasMany(QcShift, { foreignKey: "userId", onDelete: "CASCADE" });
+  QcShift.belongsTo(User, { foreignKey: "userId" });
+
   // QC INSPECTION
   PlanningPaper.hasMany(QcInspectionPaper, {
     foreignKey: "planningId",
@@ -56,4 +62,12 @@ export default function qcAssociations(models: any) {
 
   User.hasMany(QcInspectionBox, { foreignKey: "userId", as: "inspecBox", onDelete: "set null" });
   QcInspectionBox.belongsTo(User, { foreignKey: "userId" });
+
+  // INSPECTION REQUEST
+  PlanningPaper.hasMany(InspectionRequest, {
+    foreignKey: "planningId",
+    as: "inspecRequests",
+    onDelete: "CASCADE",
+  });
+  InspectionRequest.belongsTo(PlanningPaper, { foreignKey: "planningId" });
 }

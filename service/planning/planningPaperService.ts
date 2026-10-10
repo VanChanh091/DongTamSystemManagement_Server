@@ -29,6 +29,8 @@ import { updateStatusPaper } from "../../utils/helper/modelHelper/manufactureHel
 import { PaperRequirements } from "../../models/planning/requirement/paperRequirements";
 import { CrudHelper } from "../../repository/helper/crud.helper.repository";
 import { OrderApproved } from "../../models/order/orderApproved";
+import { InspectionRequest } from "../../models/qualityControl/inspection/inspection_request";
+import { cancelInspectionTimers } from "../../assets/configs/queue/inspection.queue";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper } = CacheKey.planning;
@@ -235,7 +237,7 @@ export const planningPaperService = {
   },
 
   completePlanningPaper: async (planningId: number | number[], forceComplete: boolean = false) => {
-    return await updateStatusPaper({
+    const result = await updateStatusPaper({
       planningId,
       targetStatus: "complete",
       extraValidator: (papers) => {
@@ -266,6 +268,32 @@ export const planningPaperService = {
         }
       },
     });
+
+    // Kiểm tra xem QC có tới tiếp nhận kiểm tra chưa:
+    // Nếu có yêu cầu kiểm tra đang ở trạng thái "pending" (chưa tiếp nhận), đánh dấu result: false để ghi nhận lỗi cho QC
+    const ids = Array.isArray(planningId) ? planningId : [planningId];
+    const pendingInspections = await InspectionRequest.findAll({
+      where: {
+        planningId: { [Op.in]: ids },
+        status: "pending",
+      },
+    });
+
+    if (pendingInspections.length > 0) {
+      const pendingIds = pendingInspections.map((ins) => ins.inspectionId);
+      await InspectionRequest.update(
+        { result: false },
+        { where: { inspectionId: { [Op.in]: pendingIds } } },
+      );
+
+      for (const ins of pendingInspections) {
+        await cancelInspectionTimers(ins.inspectionId).catch((err) =>
+          console.error("Error cancelling inspection timer:", err),
+        );
+      }
+    }
+
+    return result;
   },
 
   pauseOrAcceptLackQtyPLanning: async ({

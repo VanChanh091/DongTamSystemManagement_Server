@@ -46,9 +46,7 @@ export const debtRepository = {
 
     if (targetDate) {
       const endOfDayStr = dayjsUtc(targetDate).endOf("day").format("YYYY-MM-DD HH:mm:ss");
-      whereCondition.dateOutbound = {
-        [Op.lte]: endOfDayStr,
-      };
+      whereCondition.dateOutbound = { [Op.lte]: endOfDayStr };
     }
 
     if (customerId) {
@@ -150,7 +148,10 @@ export const debtRepository = {
     return await PaymentAllocation.bulkCreate(allocationsToCreate, { transaction });
   },
 
-  getCustomerCurrentDebt: async (customerId: string, transaction?: Transaction): Promise<number> => {
+  getCustomerCurrentDebt: async (
+    customerId: string,
+    transaction?: Transaction,
+  ): Promise<number> => {
     const total = await OutboundHistory.sum("remainingAmount", {
       where: {
         customerId,
@@ -184,4 +185,3 @@ export const debtRepository = {
     return map;
   },
 };
-

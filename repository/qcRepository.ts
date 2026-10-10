@@ -5,11 +5,11 @@ import { QcSession } from "../models/qualityControl/qcSession";
 import { PlanningPaper } from "../models/planning/planningPaper";
 import { Order } from "../models/order/order";
 import { Customer } from "../models/customer/customer";
-import { QcInspectionBox } from "../models/qualityControl/qcInspection/qcInspectionBox";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { PlanningBox } from "../models/planning/planningBox";
 import { Product } from "../models/product/product";
-import { QcInspectionPaper } from "../models/qualityControl/qcInspection/qcInspectionPaper";
+import { QcInspectionPaper } from "../models/qualityControl/inspection/qcInspectionPaper";
+import { QcInspectionBox } from "../models/qualityControl/inspection/qcInspectionBox";
 
 export const qcRepository = {
   //===============================CRITERIA=================================

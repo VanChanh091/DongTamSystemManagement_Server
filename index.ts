@@ -33,15 +33,15 @@ import {
   debtManagementRoutes,
 } from "./routes/index";
 
-//create table
 import "./models/index";
+
 import { initSocket } from "./utils/socket/socket";
 import { AppError } from "./utils/appError";
 import { cleanStackTrace, sendTelegramAlertError } from "./utils/telegram/telegramSendAlert";
 
 //cron job
-import "./utils/cronJob/autoDeleteImage";
-import "./utils/cronJob/autoClosingDate";
+import "./utils/cronJob/cronjob";
+import "./assets/configs/queue/inspection.worker";
 
 import { connectMeilisearch } from "./assets/configs/connect/meilisearch.connect";
 import { setupMeilisearch } from "./assets/configs/meilisearch/configs";
@@ -160,7 +160,7 @@ server.listen({ port: Number(process.env.PORT) || 5000, host: "0.0.0.0" }, async
 
   await connectDB();
 
-  //setup meilisearch
+  // meilisearch
   await connectMeilisearch();
-  await setupMeilisearch();
+  // await setupMeilisearch();
 });

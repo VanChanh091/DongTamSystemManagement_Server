@@ -8,12 +8,10 @@ import { notificationRepository } from "../../repository/notificationRepository"
 
 export const notificationService = {
   getMyNofitications: async (req: Request) => {
-    const { userId } = req.user;
-
     try {
-      const userNotifications = await notificationRepository.getMyNotifications(userId);
+      const userNotifications = await notificationRepository.getMyNotifications(req.user.userId);
 
-      // Bóc tách JSON phẳng (Flatten) gửi về cho Flutter dễ parse
+      // Bóc tách JSON phẳng gửi về cho FE dễ parse
       const formattedData = userNotifications.map((item: any) => {
         const notifData = item.notification ? item.notification.toJSON() : {};
         return {
@@ -30,6 +28,7 @@ export const notificationService = {
     }
   },
 
+  // accept request from sale
   confirmRequestChanging: async ({
     notificationId,
     userId,

@@ -35,8 +35,8 @@ import { initPaperRequirementsModel } from "./planning/requirement/paperRequirem
 import { initTimeOverflowPlanningModel } from "./planning/timeOverflowPlanning";
 import { initProductModel } from "./product/product";
 import { initQcCriteriaModel } from "./qualityControl/qcCriteria";
-import { initQcInspectionBoxModel } from "./qualityControl/qcInspection/qcInspectionBox";
-import { initQcInspectionPaperModel } from "./qualityControl/qcInspection/qcInspectionPaper";
+import { initQcInspectionBoxModel } from "./qualityControl/inspection/qcInspectionBox";
+import { initQcInspectionPaperModel } from "./qualityControl/inspection/qcInspectionPaper";
 import { initQcSamepleResultModel } from "./qualityControl/qcSampleResult";
 import { initQcSessionModel } from "./qualityControl/qcSession";
 import { initDailyReportModel } from "./report/dailyReportPerformance";
@@ -52,6 +52,8 @@ import { initLiquidationInventoryModel } from "./warehouse/inventory/liquidation
 import { initOutboundDetailModel } from "./warehouse/outbound/outboundDetail";
 import { initOutboundHistoryModel } from "./warehouse/outbound/outboundHistory";
 import { initPaymentAllocationModel } from "./warehouse/payment/paymentAllocation";
+import { initQcShiftModel } from "./qualityControl/qcShift";
+import { initInspectionRequestModel } from "./qualityControl/inspection/inspection_request";
 
 //admin
 const MachinePaper = initMachinePaperModel(sequelize);
@@ -113,6 +115,8 @@ const EmployeeCompanyInfo = initEmployeeCompanyInfoModel(sequelize);
 const QcSession = initQcSessionModel(sequelize);
 const QcCriteria = initQcCriteriaModel(sequelize);
 const QcSampleResult = initQcSamepleResultModel(sequelize);
+const QcShift = initQcShiftModel(sequelize);
+const InspectionRequest = initInspectionRequestModel(sequelize);
 
 //QC Inspection
 const QcInspectionPaper = initQcInspectionPaperModel(sequelize);
@@ -199,6 +203,8 @@ const models = {
   QcCriteria,
   QcSession,
   QcSampleResult,
+  QcShift,
+  InspectionRequest,
 
   //QC Inspection
   QcInspectionPaper,

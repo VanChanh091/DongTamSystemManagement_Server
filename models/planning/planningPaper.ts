@@ -3,6 +3,7 @@ import { Order } from "../order/order";
 import { timeOverflowPlanning } from "./timeOverflowPlanning";
 import { PlanningBox } from "./planningBox";
 import { InboundHistory } from "../warehouse/inboundHistory";
+import { InspectionRequest } from "../qualityControl/inspection/inspection_request";
 
 export type machinePaperType = "Máy 1350" | "Máy 1900" | "Máy 2 Lớp" | "Máy Quấn Cuồn";
 export type planningPaperStatus =
@@ -121,7 +122,8 @@ export type PlanningPaperCreationAttributes = Optional<
 //định nghĩa kiểu OOP
 export class PlanningPaper
   extends Model<PlanningPaperAttributes, PlanningPaperCreationAttributes>
-  implements PlanningPaperAttributes {
+  implements PlanningPaperAttributes
+{
   declare planningId: number;
 
   declare dayStart?: Date | null;
@@ -172,9 +174,6 @@ export class PlanningPaper
   declare hasOverFlow?: boolean | null;
   declare sortPlanning?: number | null;
 
-  declare readonly createdAt?: Date;
-  declare readonly updatedAt?: Date;
-
   //FK
   declare orderId: string;
 
@@ -182,6 +181,10 @@ export class PlanningPaper
   declare PlanningBox?: PlanningBox;
   declare timeOverFlow?: timeOverflowPlanning;
   declare inbound: InboundHistory[];
+  declare inspecRequests: InspectionRequest[];
+
+  declare readonly createdAt?: Date;
+  declare readonly updatedAt?: Date;
 }
 
 export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPaper {

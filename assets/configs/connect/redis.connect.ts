@@ -4,10 +4,11 @@ const Redis = (RedisImport as any).default || RedisImport;
 import dotenv from "dotenv";
 dotenv.config();
 
-const redisConfig = {
+export const redisConfig = {
   host: process.env.REDIS_HOST as string,
   port: Number(process.env.REDIS_PORT) || 6379,
   db: Number(process.env.REDIS_DB) || 0,
+  maxRetriesPerRequest: null, // BẮT BUỘC đối với BullMQ
 };
 
 const redisCache = new Redis(redisConfig);

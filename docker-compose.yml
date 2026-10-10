@@ -1,0 +1,44 @@
+# chạy riêng biệt từng môi trường
+# docker compose --profile dev up -d
+# docker compose --profile prod up -d
+
+name: dongtam-services
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: redis-server
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  meilisearch_dev:
+    image: getmeili/meilisearch:latest
+    container_name: meilisearch_dev
+    restart: always
+    ports:
+      - "7701:7700"
+    environment:
+      - MEILI_MASTER_KEY=${MEILISEARCH_MASTER_KEY_DEV}
+      - MEILI_ENV=development
+    volumes:
+      - D:/meilisearch/meili_data_dev:/meili_data
+    profiles: ["dev"]
+
+  meilisearch_prod:
+    image: getmeili/meilisearch:latest
+    container_name: meilisearch_prod
+    restart: always
+    ports:
+      - "7700:7700"
+    environment:
+      - MEILI_MASTER_KEY=${MEILISEARCH_MASTER_KEY_PROD}
+      - MEILI_ENV=production
+    volumes:
+      - I:/DB_ServerApp/meilisearch/meili_data:/meili_data
+    profiles: ["prod"]
+
+volumes:
+  redis_data:

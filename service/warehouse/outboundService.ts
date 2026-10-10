@@ -732,6 +732,7 @@ export const outboundService = {
         // Cập nhật outbound header
         await outbound.update(
           {
+            customerId: customerId || outbound.customerId,
             totalPriceOrder: roundedTotalPriceOrder,
             totalPriceVAT: roundedTotalPriceVAT,
             totalPricePayment: roundedTotalPricePayment,
