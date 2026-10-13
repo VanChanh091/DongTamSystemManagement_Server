@@ -2,12 +2,12 @@ import { NextFunction, Request, Response } from "express";
 import { AppError } from "../../../utils/appError";
 import { inspectionRequestService } from "../../../service/manufacture/inspectionRequestService";
 
-// 1. Tạo yêu cầu kiểm tra mới từ xưởng sản xuất
+// Tạo yêu cầu kiểm tra mới từ xưởng sản xuất
 export const createInspectionRequest = async (req: Request, res: Response, next: NextFunction) => {
-  const { planningId } = req.body as { planningId: number };
+  const { planningId } = req.query as { planningId: string };
 
   try {
-    if (!planningId || isNaN(planningId)) {
+    if (!planningId) {
       throw AppError.BadRequest(
         "Mã kế hoạch planningId không hợp lệ hoặc bị thiếu",
         "MISSING_PARAMETERS",
@@ -15,7 +15,7 @@ export const createInspectionRequest = async (req: Request, res: Response, next:
     }
 
     const response = await inspectionRequestService.createInspectionRequest({
-      planningId,
+      planningId: Number(planningId),
       requestedBy: req.user.fullName,
       user: req.user,
       data: req.body,
@@ -27,7 +27,7 @@ export const createInspectionRequest = async (req: Request, res: Response, next:
   }
 };
 
-// 2. QC tiếp nhận yêu cầu kiểm tra
+// QC tiếp nhận yêu cầu kiểm tra
 export const qcReceivedRequest = async (req: Request, res: Response, next: NextFunction) => {
   const { inspectionId } = req.query as { inspectionId: string };
 
@@ -35,6 +35,7 @@ export const qcReceivedRequest = async (req: Request, res: Response, next: NextF
     const response = await inspectionRequestService.qcReceivedRequest({
       inspectionId: Number(inspectionId),
       userName: req.user.fullName,
+      userId: req.user.userId,
     });
 
     return res.status(200).json(response);
@@ -43,7 +44,7 @@ export const qcReceivedRequest = async (req: Request, res: Response, next: NextF
   }
 };
 
-// 3. QC cập nhật kết quả kiểm tra (passed / failed)
+// QC cập nhật kết quả kiểm tra (passed / failed)
 export const updateInspectionRequest = async (req: Request, res: Response, next: NextFunction) => {
   const { inspectionId, status } = req.query as {
     inspectionId: string;
@@ -63,25 +64,19 @@ export const updateInspectionRequest = async (req: Request, res: Response, next:
   }
 };
 
-// 4. Lấy lịch sử yêu cầu kiểm tra theo planningId
-export const getInspectionRequestByPlanningId = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+// Lấy lịch sử yêu cầu kiểm tra theo planningId
+export const getInspectionRequest = async (req: Request, res: Response, next: NextFunction) => {
   const { planningId } = req.query as { planningId: string };
 
   try {
-    const response = await inspectionRequestService.getInspectionRequestByPlanningId(
-      Number(planningId),
-    );
+    const response = await inspectionRequestService.getInspectionRequest(Number(planningId));
     return res.status(200).json(response);
   } catch (error) {
     next(error);
   }
 };
 
-// 5. Lấy danh sách các yêu cầu đang chờ QC tiếp nhận (pending)
+// Lấy danh sách các yêu cầu đang chờ QC tiếp nhận
 export const getPendingInspectionRequests = async (
   _req: Request,
   res: Response,

@@ -20,7 +20,7 @@ import {
 } from "../../controller/user/QC/qcInspectionController";
 import {
   createInspectionRequest,
-  getInspectionRequestByPlanningId,
+  getInspectionRequest,
   getPendingInspectionRequests,
   qcReceivedRequest,
   updateInspectionRequest,
@@ -47,11 +47,21 @@ router.post("/shift/start", authenticate, authorizeAnyPermission(["QC"]), startS
 router.put("/shift/end", authenticate, authorizeAnyPermission(["QC"]), endShift);
 
 //==================INSPECTION REQUEST====================
-router.get("/pending", authenticate, getPendingInspectionRequests);
-router.get("/planning", authenticate, getInspectionRequestByPlanningId);
-router.post("/", authenticate, createInspectionRequest);
-router.put("/receive", authenticate, authorizeAnyPermission(["QC"]), qcReceivedRequest);
-router.put("/", authenticate, authorizeAnyPermission(["QC"]), updateInspectionRequest);
+router.get("/inspection-request/pending", authenticate, getPendingInspectionRequests);
+router.get("/inspection-request/planning", authenticate, getInspectionRequest);
+router.post("/inspection-request", authenticate, createInspectionRequest);
+router.put(
+  "/inspection-request/receive",
+  authenticate,
+  authorizeAnyPermission(["QC"]),
+  qcReceivedRequest,
+);
+router.put(
+  "/inspection-request",
+  authenticate,
+  authorizeAnyPermission(["QC"]),
+  updateInspectionRequest,
+);
 
 //==================INSPECTION CHECK====================
 router.post("/inspection", authenticate, authorizeAnyPermission(["QC"]), checkingInspection);

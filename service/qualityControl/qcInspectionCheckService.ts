@@ -11,6 +11,7 @@ import {
   qcCheckPaper,
   QcInspectionPaper,
 } from "../../models/qualityControl/inspection/qcInspectionPaper";
+import { InspectionRequest } from "../../models/qualityControl/inspection/inspection_request";
 import { qcRepository } from "../../repository/qcRepository";
 import { AppError } from "../../utils/appError";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
@@ -220,6 +221,20 @@ export const qcInspectionService = {
           { statusCheck: currentStatusCheck },
           { where: { planningId }, transaction },
         );
+
+        // Cập nhật trạng thái cho InspectionRequest nếu đang chờ kiểm
+        const pendingOrInProgressReq = await InspectionRequest.findOne({
+          where: { planningId, status: { [Op.in]: ["pending", "in_progress"] } },
+          order: [["createdAt", "DESC"]],
+          transaction,
+        });
+
+        if (pendingOrInProgressReq) {
+          await pendingOrInProgressReq.update(
+            { status: currentStatusCheck, completedBy: req.user.fullName },
+            { transaction },
+          );
+        }
 
         //socket
         const planning = await PlanningPaper.findOne({

@@ -46,8 +46,23 @@ export function initQcShiftModel(sequelize: Sequelize): typeof QcShift {
     {
       qcShiftId: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
       username: { type: DataTypes.STRING, allowNull: false },
-      startedAt: { type: DataTypes.DATE, allowNull: false },
-      endedAt: { type: DataTypes.DATE },
+      startedAt: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        get() {
+          const rawValue = this.getDataValue("startedAt");
+          if (!rawValue) return null;
+          return new Date(rawValue.getTime() - rawValue.getTimezoneOffset() * 60000).toISOString();
+        },
+      },
+      endedAt: {
+        type: DataTypes.DATE,
+        get() {
+          const rawValue = this.getDataValue("endedAt");
+          if (!rawValue) return null;
+          return new Date(rawValue.getTime() - rawValue.getTimezoneOffset() * 60000).toISOString();
+        },
+      },
       isActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
 
       //FK

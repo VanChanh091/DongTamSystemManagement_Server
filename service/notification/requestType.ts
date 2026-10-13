@@ -8,6 +8,7 @@ export enum RequestType {
 
   // inspection
   INSPECTION_REQUEST = "INSPECTION_REQUEST",
+  INSPECTION_REMIND = "INSPECTION_REMIND",
 
   //FORM
   // ... add more request types as needed
@@ -48,5 +49,11 @@ export const REQUEST_CONFIG: Record<
     titleCreate: (orderId: string) => `Có yêu cầu kiểm tra mới từ cho đơn hàng ${orderId}`,
     titleApproved: "Đã nhận thông báo kiểm tra",
     titleRejected: "Từ chối yêu cầu kiểm tra",
+  },
+  [RequestType.INSPECTION_REMIND]: {
+    titleCreate: (payload?: any) =>
+      `[Nhắc nhở] Kế hoạch ${payload?.planningId || ""} tại ${payload?.machine || "máy"} sắp hết thời gian tiếp nhận!`,
+    titleApproved: "Đã xem",
+    titleRejected: "Bỏ qua",
   },
 };

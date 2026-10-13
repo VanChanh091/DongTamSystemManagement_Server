@@ -8,6 +8,7 @@ import {
   deleteMachinePaper,
   getMachineBoxes,
   getMachinePapers,
+  getRawMachinePapers,
   updateMachineBox,
   updateMachinePaper,
 } from "../../controller/admin/adminMachineController";
@@ -81,10 +82,14 @@ router.put("/users", authenticate, authorizeRole(["admin"]), updateInfoUser);
 router.delete("/users", authenticate, authorizeRole(["admin"]), deleteUser);
 
 //===============================MACHINE PAPER=====================================
+
 router.get("/machine-papers", authenticate, authorizeRole(["admin"]), getMachinePapers);
 router.post("/machine-papers", authenticate, authorizeRole(["admin"]), createMachinePaper);
 router.put("/machine-papers", authenticate, authorizeRole(["admin"]), updateMachinePaper);
 router.delete("/machine-papers", authenticate, authorizeRole(["admin"]), deleteMachinePaper);
+
+//using to get machine for FE
+router.get("/machine-papers/machine-name", authenticate, getRawMachinePapers);
 
 //===============================MACHINE BOX=====================================
 router.get("/machine-boxes", authenticate, authorizeRole(["admin"]), getMachineBoxes);

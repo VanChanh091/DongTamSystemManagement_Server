@@ -8,6 +8,8 @@ import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
 import { PlanningBox } from "../../models/planning/planningBox";
 import { PlanningPaper } from "../../models/planning/planningPaper";
+import { InspectionRequest } from "../../models/qualityControl/inspection/inspection_request";
+import { cancelInspectionTimers } from "../../assets/configs/queue/inspection.queue";
 import { reportRepository } from "../../repository/reportRepository";
 import { machineLabels, MEILI_INDEX } from "../../assets/labelFields";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
@@ -248,6 +250,23 @@ export const manuPaperService = {
           otherData,
           transaction,
         });
+
+        // Kiểm tra nếu có InspectionRequest nào đang pending -> chuyển sang missing và result: false
+        const pendingRequests = await InspectionRequest.findAll({
+          where: { planningId, status: "pending" },
+          transaction,
+        });
+
+        if (pendingRequests.length > 0) {
+          await InspectionRequest.update(
+            { status: "missing", result: false },
+            { where: { planningId, status: "pending" }, transaction },
+          );
+
+          for (const req of pendingRequests) {
+            await cancelInspectionTimers(req.inspectionId);
+          }
+        }
 
         //chuyển sang trang chờ kiểm
         await planning.update({ statusRequest: "requested" }, { transaction });

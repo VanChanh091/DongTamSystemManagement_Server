@@ -1,7 +1,7 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { PlanningPaper } from "../../planning/planningPaper";
 
-export type InspecRequestStatus = "pending" | "in_progress" | "passed" | "failed";
+export type InspecRequestStatus = "pending" | "in_progress" | "passed" | "failed" | "missing";
 
 //định nghĩa trường trong bảng
 interface InspectionRequestAttributes {
@@ -60,11 +60,11 @@ export function initInspectionRequestModel(sequelize: Sequelize): typeof Inspect
     {
       inspectionId: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
       requestedAt: { type: DataTypes.DATE, allowNull: false },
-      requestedBy: { type: DataTypes.STRING, allowNull: false },
       arrivedAt: { type: DataTypes.DATE },
+      requestedBy: { type: DataTypes.STRING, allowNull: false },
       completedBy: { type: DataTypes.STRING },
       status: {
-        type: DataTypes.ENUM("pending", "in_progress", "passed", "failed"),
+        type: DataTypes.ENUM("pending", "in_progress", "passed", "failed", "missing"),
         allowNull: false,
         defaultValue: "pending",
       },

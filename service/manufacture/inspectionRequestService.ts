@@ -7,13 +7,16 @@ import {
   scheduleInspectionTimers,
 } from "../../assets/configs/queue/inspection.queue";
 import { getIO } from "../../utils/socket/socket";
-import { User } from "../../models/user/user";
 import { NotificationModel } from "../../models/notification/notification";
 import { UserNotifications } from "../../models/notification/userNotifications";
 import { PlanningPaper } from "../../models/planning/planningPaper";
-import { REQUEST_CONFIG, RequestType } from "../notification/requestType";
+import { RequestType } from "../notification/requestType";
+import { notificationService } from "../notification/notificationService";
+
+const io = getIO();
 
 export const inspectionRequestService = {
+  //Tạo yêu cầu kiểm tra mới từ sản xuất
   createInspectionRequest: async ({
     planningId,
     requestedBy,
@@ -28,7 +31,7 @@ export const inspectionRequestService = {
     try {
       const requester = requestedBy || data?.requestedBy || user?.fullName || "Sản xuất";
 
-      // 1. Tìm thông tin kế hoạch để lấy máy sản xuất (chooseMachine) và mã đơn hàng (orderId)
+      // Tìm thông tin kế hoạch để lấy máy sản xuất và mã đơn hàng
       const planning = await PlanningPaper.findByPk(planningId, {
         attributes: ["planningId", "chooseMachine", "orderId"],
       });
@@ -44,7 +47,7 @@ export const inspectionRequestService = {
         });
         if (existingRequest) {
           throw AppError.BadRequest(
-            "Đã tồn tại yêu cầu kiểm tra cho kế hoạch này",
+            "Yêu cầu đã được tạo và đang chờ tiếp nhận",
             "INSPECTION_REQUEST_EXISTS",
           );
         }
@@ -66,8 +69,8 @@ export const inspectionRequestService = {
       // đẩy vào BullMQ để QC nhận yêu cầu
       await scheduleInspectionTimers(newRequest.inspectionId);
 
-      // gửi thông báo 1 chiều đến phòng QC (socket nghiệp vụ + lưu DB notification + realtime)
-      await notiffyQcDepartment({
+      // gửi thông báo 1 chiều đến phòng QC
+      await notificationService.notiffyQcDepartment({
         planningId: newRequest.planningId,
         inspectionId: newRequest.inspectionId,
         machine,
@@ -85,13 +88,15 @@ export const inspectionRequestService = {
     }
   },
 
-  // qc đã tiếp nhận yêu cầu
+  // QC đã tiếp nhận yêu cầu
   qcReceivedRequest: async ({
     inspectionId,
     userName,
+    userId,
   }: {
     inspectionId: number;
     userName: string;
+    userId?: number;
   }) => {
     try {
       let isQcOnTime = true;
@@ -133,12 +138,38 @@ export const inspectionRequestService = {
         return request;
       });
 
+      // Đánh dấu đã đọc tất cả thông báo liên quan đến inspection này cho user QC tiếp nhận
+      if (userId) {
+        try {
+          const relatedNotifs = await NotificationModel.findAll({
+            where: {
+              type: { [Op.in]: [RequestType.INSPECTION_REQUEST, RequestType.INSPECTION_REMIND] },
+              payload: { inspectionId },
+            },
+            attributes: ["notificationId"],
+          });
+          if (relatedNotifs.length > 0) {
+            const notifIds = relatedNotifs.map((n) => n.notificationId);
+            await UserNotifications.update(
+              { isRead: true },
+              {
+                where: {
+                  notificationId: { [Op.in]: notifIds },
+                  receiverId: userId,
+                },
+              },
+            );
+          }
+        } catch (notifErr) {
+          console.error("Lỗi khi cập nhật isRead thông báo QC:", notifErr);
+        }
+      }
+
       // hủy BullMQ timer
       await cancelInspectionTimers(inspectionId);
 
       // cập nhật socket trạng thái cho phòng QC
       try {
-        const io = getIO();
         io.to("department-qc").emit("INSPECTION_STATUS_CHANGED", {
           inspectionId: updatedRequest.inspectionId,
           planningId: updatedRequest.planningId,
@@ -162,6 +193,7 @@ export const inspectionRequestService = {
     }
   },
 
+  // QC cập nhật kết quả kiểm tra
   updateInspectionRequest: async ({
     inspectionId,
     status,
@@ -176,7 +208,7 @@ export const inspectionRequestService = {
         // 1. Kiểm tra tính hợp lệ của trạng thái
         if (!["passed", "failed"].includes(status)) {
           throw AppError.BadRequest(
-            "Trạng thái cập nhật không hợp lệ (passed/failed)",
+            "Trạng thái cập nhật không hợp lệ",
             "INVALID_INSPECTION_STATUS",
           );
         }
@@ -197,7 +229,6 @@ export const inspectionRequestService = {
 
       // cập nhật socket kết quả kiểm tra cho phòng QC
       try {
-        const io = getIO();
         io.to("department-qc").emit("INSPECTION_COMPLETED", {
           inspectionId: updatedRequest.inspectionId,
           planningId: updatedRequest.planningId,
@@ -222,7 +253,7 @@ export const inspectionRequestService = {
   },
 
   // Lấy lịch sử yêu cầu kiểm tra theo planningId
-  getInspectionRequestByPlanningId: async (planningId: number) => {
+  getInspectionRequest: async (planningId: number) => {
     try {
       const requests = await InspectionRequest.findAll({
         where: { planningId },
@@ -251,120 +282,4 @@ export const inspectionRequestService = {
       throw AppError.ServerError();
     }
   },
-};
-
-// ============================= HELPER FUNCTION =============================
-// Thông báo 1 chiều: Sản xuất gửi yêu cầu kiểm tra đến phòng QC
-const notiffyQcDepartment = async ({
-  orderId,
-  planningId,
-  inspectionId,
-  machine,
-  requestedBy,
-  requestedAt,
-  user,
-}: {
-  orderId?: string;
-  planningId: number;
-  inspectionId: number;
-  machine?: string;
-  requestedBy?: string;
-  requestedAt?: Date;
-  user?: {
-    userId?: number;
-    fullName?: string;
-    department?: string;
-  };
-}) => {
-  try {
-    const io = getIO();
-
-    // 1. Phát socket nghiệp vụ thông báo yêu cầu kiểm tra mới đến phòng QC
-    io.to("department-qc").emit("NEW_INSPECTION_REQUEST", {
-      inspectionId,
-      planningId,
-      machine,
-      requestedBy,
-      requestedAt,
-      message: `Có yêu cầu kiểm tra mới từ ${requestedBy || "Sản xuất"} tại ${machine || "máy"} cho kế hoạch ${planningId}`,
-    });
-
-    // 2. Lưu Notification vào Database & phát socket new-notification
-    const qcUsers = await User.findAll({
-      where: { department: "QC" },
-      attributes: ["userId", "department"],
-    });
-
-    if (qcUsers.length === 0) {
-      console.warn("⚠️ Không tìm thấy nhân viên nào có department = 'QC'");
-      return;
-    }
-
-    const config = REQUEST_CONFIG[RequestType.INSPECTION_REQUEST];
-    if (!config) {
-      throw AppError.BadRequest("Invalid request type", "INVALID_REQUEST_TYPE");
-    }
-
-    // Tìm orderId từ planningId nếu chưa có
-    let targetOrderId = orderId || "";
-    if (!targetOrderId && planningId) {
-      const planning = await PlanningPaper.findByPk(planningId, {
-        attributes: ["orderId"],
-      });
-      if (planning?.orderId) {
-        targetOrderId = planning.orderId;
-      }
-    }
-
-    // Xác định thông tin người gửi (bộ phận sản xuất)
-    let senderId = user?.userId || 0;
-    let senderName = user?.fullName || requestedBy || "Sản xuất";
-    let senderDept = user?.department || "SX";
-
-    if (!user?.userId && requestedBy) {
-      const foundUser = await User.findOne({
-        where: { fullName: requestedBy },
-        attributes: ["userId", "fullName", "department"],
-      });
-      if (foundUser) {
-        senderId = foundUser.userId;
-        senderName = foundUser.fullName;
-        senderDept = foundUser.department;
-      }
-    }
-
-    const newNotif = await NotificationModel.create({
-      title: config.titleCreate(targetOrderId || String(planningId)),
-      type: RequestType.INSPECTION_REQUEST,
-      targetType: "department",
-      senderId,
-      senderName,
-      senderDept,
-      payload: {
-        orderId: targetOrderId,
-        planningId,
-        inspectionId,
-        machine,
-        reason: `Yêu cầu kiểm tra sản phẩm tại ${machine || "máy"} cho kế hoạch ${planningId}`,
-        action: "REQUEST",
-        status: "pending",
-      },
-    });
-
-    const userNotifications = qcUsers.map((qcUser) => ({
-      notificationId: newNotif.notificationId,
-      receiverId: qcUser.userId,
-      receiverDept: qcUser.department || "QC",
-      isRead: false,
-    }));
-
-    await UserNotifications.bulkCreate(userNotifications);
-
-    // Phát socket realtime new-notification đến phòng QC
-    io.to("department-qc").emit("new-notification", newNotif);
-
-    return newNotif;
-  } catch (error) {
-    console.error("❌ Lỗi khi gửi thông báo cho phòng QC:", error);
-  }
 };

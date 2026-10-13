@@ -11,18 +11,10 @@ export const inspectionQueue = new Queue<{
 export async function scheduleInspectionTimers(inspectionId: number) {
   const payload = { inspectionId };
 
-  // 1. Nhắc nhở sau 3 phút
+  // Nhắc nhở sau 3 phút
   await inspectionQueue.add("REMIND_QC", payload, {
     delay: 3 * 60 * 1000,
     jobId: `remind_${inspectionId}`,
-    removeOnComplete: true,
-    removeOnFail: true,
-  });
-
-  // 2. Chốt hết hạn sau 5 phút
-  await inspectionQueue.add("TIMEOUT_EXPIRED", payload, {
-    delay: 5 * 60 * 1000,
-    jobId: `expire_${inspectionId}`,
     removeOnComplete: true,
     removeOnFail: true,
   });
@@ -32,7 +24,4 @@ export async function scheduleInspectionTimers(inspectionId: number) {
 export async function cancelInspectionTimers(requestId: number) {
   const remindJob = await inspectionQueue.getJob(`remind_${requestId}`);
   if (remindJob) await remindJob.remove();
-
-  const expireJob = await inspectionQueue.getJob(`expire_${requestId}`);
-  if (expireJob) await expireJob.remove();
 }
