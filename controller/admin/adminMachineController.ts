@@ -27,6 +27,8 @@ export const getMachinePapers = async (req: Request, res: Response, next: NextFu
 };
 
 export const getRawMachinePapers = async (req: Request, res: Response, next: NextFunction) => {
+  console.log(`hi`);
+
   try {
     const response = await MachinePaper.findAll({
       attributes: ["machineId", "machineName"],
@@ -80,7 +82,7 @@ export const getRawMachinePapers = async (req: Request, res: Response, next: Nex
       return (a.machineName ?? "").localeCompare(b.machineName ?? "", "vi");
     });
 
-    return res.status(200).json(sortedList);
+    return res.status(200).json({ message: "get raw machine successfully", data: sortedList });
   } catch (error) {
     next(error);
   }

@@ -1,15 +1,13 @@
 import { Request } from "express";
+import { User } from "../../models/user/user";
 import { AppError } from "../../utils/appError";
+import { getIO } from "../../utils/socket/socket";
 import { REQUEST_CONFIG, RequestType } from "./requestType";
+import { PlanningPaper } from "../../models/planning/planningPaper";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { NotificationModel } from "../../models/notification/notification";
 import { UserNotifications } from "../../models/notification/userNotifications";
 import { notificationRepository } from "../../repository/notificationRepository";
-import { getIO } from "../../utils/socket/socket";
-import { User } from "../../models/user/user";
-import { PlanningPaper } from "../../models/planning/planningPaper";
-
-const io = getIO();
 
 export const notificationService = {
   getMyNofitications: async (req: Request) => {
@@ -112,8 +110,11 @@ export const notificationService = {
       department?: string;
     };
   }) => {
+    const io = getIO();
+
     try {
-      // 1. Phát socket nghiệp vụ thông báo yêu cầu kiểm tra mới đến phòng QC
+      // Phát socket nghiệp vụ thông báo yêu cầu kiểm tra mới đến phòng QC
+
       io.to("department-qc").emit("NEW_INSPECTION_REQUEST", {
         inspectionId,
         planningId,
@@ -123,7 +124,7 @@ export const notificationService = {
         message: `Có yêu cầu kiểm tra mới từ ${requestedBy || "Sản xuất"} tại ${machine || "máy"} cho kế hoạch ${planningId}`,
       });
 
-      // 2. Lưu Notification vào Database & phát socket new-notification
+      // Lưu Notification vào Database & phát socket new-notification
       const qcUsers = await User.findAll({
         where: { department: "QC" },
         attributes: ["userId", "department"],

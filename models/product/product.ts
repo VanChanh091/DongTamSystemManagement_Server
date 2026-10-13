@@ -8,6 +8,9 @@ interface ProductAttributes {
   maKhuon?: string | null;
   productImage?: string | null;
   productSeq: number;
+  layerCount?: number | null;
+  wave?: string | null;
+
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -15,7 +18,7 @@ interface ProductAttributes {
 //cho phép bỏ qua id khi tạo
 export type ProductCreationAttributes = Optional<
   ProductAttributes,
-  "productName" | "maKhuon" | "productImage" | "createdAt" | "updatedAt"
+  "productName" | "maKhuon" | "productImage" | "layerCount" | "wave" | "createdAt" | "updatedAt"
 >;
 
 //định nghĩa kiểu OOP
@@ -29,6 +32,9 @@ export class Product
   declare maKhuon?: string | null;
   declare productImage?: string | null;
   declare productSeq: number;
+  declare layerCount?: number | null;
+  declare wave?: string | null;
+
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
 }
@@ -46,6 +52,8 @@ export function initProductModel(sequelize: Sequelize): typeof Product {
       maKhuon: { type: DataTypes.STRING },
       productImage: { type: DataTypes.STRING },
       productSeq: { type: DataTypes.INTEGER, allowNull: false },
+      layerCount: { type: DataTypes.INTEGER },
+      wave: { type: DataTypes.STRING },
     },
     {
       sequelize,

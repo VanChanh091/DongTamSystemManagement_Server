@@ -1,5 +1,6 @@
 const machineLabels = {
   "Máy 1350": "machine1350",
+  "Máy 1800": "machine1800",
   "Máy 1900": "machine1900",
   "Máy 2 Lớp": "machine2Layer",
   "Máy Quấn Cuồn": "MachineRollPaper",
@@ -24,6 +25,7 @@ const validPermissions = [
   "design",
   "production",
   "machine1350",
+  "machine1800",
   "machine1900",
   "machine2Layer",
   "MachineRollPaper",

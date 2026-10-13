@@ -13,8 +13,6 @@ import { PlanningPaper } from "../../models/planning/planningPaper";
 import { RequestType } from "../notification/requestType";
 import { notificationService } from "../notification/notificationService";
 
-const io = getIO();
-
 export const inspectionRequestService = {
   //Tạo yêu cầu kiểm tra mới từ sản xuất
   createInspectionRequest: async ({
@@ -170,6 +168,7 @@ export const inspectionRequestService = {
 
       // cập nhật socket trạng thái cho phòng QC
       try {
+        const io = getIO();
         io.to("department-qc").emit("INSPECTION_STATUS_CHANGED", {
           inspectionId: updatedRequest.inspectionId,
           planningId: updatedRequest.planningId,
@@ -229,6 +228,7 @@ export const inspectionRequestService = {
 
       // cập nhật socket kết quả kiểm tra cho phòng QC
       try {
+        const io = getIO();
         io.to("department-qc").emit("INSPECTION_COMPLETED", {
           inspectionId: updatedRequest.inspectionId,
           planningId: updatedRequest.planningId,

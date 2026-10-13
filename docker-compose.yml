@@ -37,6 +37,7 @@ services:
       - MEILI_MASTER_KEY=${MEILISEARCH_MASTER_KEY_PROD}
       - MEILI_ENV=production
     volumes:
+      #thay đổi đường dẫn này bằng đường dẫn trên máy chạy docker
       - I:/DB_ServerApp/meilisearch/meili_data:/meili_data
     profiles: ["prod"]
 

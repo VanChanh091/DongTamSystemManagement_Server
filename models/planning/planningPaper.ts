@@ -5,7 +5,7 @@ import { PlanningBox } from "./planningBox";
 import { InboundHistory } from "../warehouse/inboundHistory";
 import { InspectionRequest } from "../qualityControl/inspection/inspection_request";
 
-export type machinePaperType = "Máy 1350" | "Máy 1900" | "Máy 2 Lớp" | "Máy Quấn Cuồn";
+export type machinePaperType = "Máy 1350" | "Máy 1800" | "Máy 1900" | "Máy 2 Lớp" | "Máy Quấn Cuồn";
 export type planningPaperStatus =
   | "planning"
   | "lackQty"
@@ -246,7 +246,7 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
       note: { type: DataTypes.STRING },
 
       chooseMachine: {
-        type: DataTypes.ENUM("Máy 1350", "Máy 1900", "Máy 2 Lớp", "Máy Quấn Cuồn"),
+        type: DataTypes.ENUM("Máy 1350", "Máy 1800", "Máy 1900", "Máy 2 Lớp", "Máy Quấn Cuồn"),
         allowNull: false,
       },
       status: {
