@@ -9,6 +9,9 @@ var RequestType;
     RequestType["ORDER_REJECT"] = "ORDER_REJECT";
     RequestType["ORDER_CONFIRM"] = "ORDER_CONFIRM";
     RequestType["ORDER_UPDATE"] = "ORDER_UPDATE";
+    // inspection
+    RequestType["INSPECTION_REQUEST"] = "INSPECTION_REQUEST";
+    RequestType["INSPECTION_REMIND"] = "INSPECTION_REMIND";
     //FORM
     // ... add more request types as needed
 })(RequestType || (exports.RequestType = RequestType = {}));
@@ -33,6 +36,17 @@ exports.REQUEST_CONFIG = {
         titleCreate: () => "Xác nhận đơn hàng",
         titleApproved: "Xác nhận",
         titleRejected: "Từ chối",
+    },
+    //inspection
+    [RequestType.INSPECTION_REQUEST]: {
+        titleCreate: (orderId) => `Có yêu cầu kiểm tra mới từ cho đơn hàng ${orderId}`,
+        titleApproved: "Đã nhận thông báo kiểm tra",
+        titleRejected: "Từ chối yêu cầu kiểm tra",
+    },
+    [RequestType.INSPECTION_REMIND]: {
+        titleCreate: (payload) => `[Nhắc nhở] Kế hoạch ${payload?.planningId || ""} tại ${payload?.machine || "máy"} sắp hết thời gian tiếp nhận!`,
+        titleApproved: "Đã xem",
+        titleRejected: "Bỏ qua",
     },
 };
 //# sourceMappingURL=requestType.js.map

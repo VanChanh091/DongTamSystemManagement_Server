@@ -13,14 +13,13 @@ const database_connect_1 = require("./assets/configs/connect/database.connect");
 const authMiddleware_1 = __importDefault(require("./middlewares/authMiddleware"));
 //routes
 const index_1 = require("./routes/index");
-//create table
 require("./models/index");
 const socket_1 = require("./utils/socket/socket");
 const appError_1 = require("./utils/appError");
-const telegramSending_1 = require("./utils/telegram/telegramSending");
+const telegramSendAlert_1 = require("./utils/telegram/telegramSendAlert");
 //cron job
-require("./utils/cronJob/autoDeleteImage");
-require("./utils/cronJob/autoClosingDate");
+require("./utils/cronJob/cronjob");
+require("./assets/configs/queue/inspection.worker");
 const meilisearch_connect_1 = require("./assets/configs/connect/meilisearch.connect");
 const app = (0, express_1.default)();
 const server = http_1.default.createServer(app);
@@ -89,7 +88,7 @@ app.use((err, req, res, next) => {
     //message telegram
     const user = req.user;
     const userInfo = `*User:* ${user.email} (ID: ${user.userId})`;
-    const cleanedStack = (0, telegramSending_1.cleanStackTrace)(err.stack);
+    const cleanedStack = (0, telegramSendAlert_1.cleanStackTrace)(err.stack);
     const alertMessage = `
   🚨 *SERVER ERROR (500)* 🚨
   ---------------------------
@@ -98,7 +97,7 @@ app.use((err, req, res, next) => {
   *Message:* ${err.message}
   *Time:* ${new Date().toLocaleString("vi-VN")}
   *Stack Trace:*\`\`\`${cleanedStack}\`\`\``;
-    (0, telegramSending_1.sendTelegramAlert)(alertMessage).catch(console.error);
+    (0, telegramSendAlert_1.sendTelegramAlertError)(alertMessage).catch(console.error);
     // Lỗi server thật (bug, DB lỗi, runtime crash)
     console.error("🔥 SERVER ERROR:", {
         message: err.message,
@@ -114,7 +113,7 @@ server.listen({ port: Number(process.env.PORT) || 5000, host: "0.0.0.0" }, async
     if (err)
         console.log(err);
     await (0, database_connect_1.connectDB)();
-    //setup meilisearch
+    // meilisearch
     await (0, meilisearch_connect_1.connectMeilisearch)();
     // await setupMeilisearch();
 });

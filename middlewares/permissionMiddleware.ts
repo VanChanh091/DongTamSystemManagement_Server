@@ -24,7 +24,10 @@ export const authorizeAnyPermission = (permissions: string[] = []) => {
     const hasPermission = permissions.some((p) => userPermissions.includes(p));
 
     if (!hasPermission) {
-      return res.status(403).json({ message: "Access denied: Missing required permission(s)" });
+      return res.status(403).json({
+        message: "Access denied: Missing required permission(s)",
+        errorCode: "ACCESS_DENIED",
+      });
     }
 
     next();

@@ -8,7 +8,14 @@ exports.customerRepository = {
     //get all
     findAllCustomer: async () => {
         return await customer_1.Customer.findAll({
-            attributes: ["customerName", "phone"],
+            attributes: { exclude: ["updatedAt"] },
+            include: [
+                {
+                    model: customerPayment_1.CustomerPayment,
+                    as: "payment",
+                    attributes: { exclude: ["createdAt", "updatedAt"] },
+                },
+            ],
         });
     },
     //get by field

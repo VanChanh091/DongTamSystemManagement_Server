@@ -8,8 +8,9 @@ const redis_connect_1 = __importDefault(require("../../assets/configs/connect/re
 const criteriaBoxCheck_1 = require("../../models/admin/criteriaCheck/criteriaBoxCheck");
 const criteriaPaperCheck_1 = require("../../models/admin/criteriaCheck/criteriaPaperCheck");
 const planningPaper_1 = require("../../models/planning/planningPaper");
-const qcInspectionBox_1 = require("../../models/qualityControl/qcInspection/qcInspectionBox");
-const qcInspectionPaper_1 = require("../../models/qualityControl/qcInspection/qcInspectionPaper");
+const qcInspectionBox_1 = require("../../models/qualityControl/inspection/qcInspectionBox");
+const qcInspectionPaper_1 = require("../../models/qualityControl/inspection/qcInspectionPaper");
+const inspection_request_1 = require("../../models/qualityControl/inspection/inspection_request");
 const qcRepository_1 = require("../../repository/qcRepository");
 const appError_1 = require("../../utils/appError");
 const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
@@ -18,7 +19,8 @@ const transactionHelper_1 = require("../../utils/helper/transactionHelper");
 const planningBoxMachineTime_1 = require("../../models/planning/planningBoxMachineTime");
 const dayjs_config_1 = require("../../assets/configs/dayjs/dayjs.config");
 const sequelize_1 = require("sequelize");
-const { paper } = cacheKey_1.CacheKey.qcInspection;
+const meilisearch_connect_1 = require("../../assets/configs/connect/meilisearch.connect");
+const { paper, box } = cacheKey_1.CacheKey.qcInspection;
 const devEnvironment = process.env.NODE_ENV !== "production";
 exports.qcInspectionService = {
     //===============================INSPECTION PAPER===================================
@@ -57,6 +59,54 @@ exports.qcInspectionService = {
             throw appError_1.AppError.ServerError();
         }
     },
+    getInspectionPaperByField: async ({ page, pageSize, machine, field, keyword, }) => {
+        try {
+            const validFields = ["orderId", "customerName", "checkedBy"];
+            if (!validFields.includes(field)) {
+                throw appError_1.AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
+            }
+            const index = meilisearch_connect_1.meiliClient.index("inspection_papers");
+            const searchResult = await index.search(keyword, {
+                attributesToSearchOn: [field],
+                attributesToRetrieve: ["inspecPaperId"],
+                sort: ["inspecPaperId:desc"],
+                filter: `machine = "${machine}"`,
+                page: Number(page) || 1,
+                hitsPerPage: Number(pageSize) || 25, //pageSize
+            });
+            const inspecPaperIds = searchResult.hits.map((hit) => hit.inspecPaperId);
+            if (inspecPaperIds.length === 0) {
+                return {
+                    message: "No inspection papers found",
+                    data: [],
+                    totalInventory: 0,
+                    totalPages: 0,
+                    currentPage: page,
+                };
+            }
+            //query db
+            const options = qcRepository_1.qcRepository.buildInspectionPaperOptions({
+                whereCondition: { inspecPaperId: { [sequelize_1.Op.in]: inspecPaperIds } },
+                machine: machine,
+            });
+            const { rows } = await qcInspectionPaper_1.QcInspectionPaper.findAndCountAll(options);
+            // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
+            const finalData = inspecPaperIds
+                .map((id) => rows.find((inspec) => inspec.inspecPaperId === id))
+                .filter(Boolean);
+            return {
+                message: "Get InspectionPaper from Meilisearch & DB successfully",
+                data: finalData,
+                totalInventory: searchResult.totalHits,
+                totalPages: searchResult.totalPages,
+                currentPage: searchResult.page,
+            };
+        }
+        catch (error) {
+            console.error("Failed to get Qc Inspection Paper by field:", error);
+            throw appError_1.AppError.ServerError();
+        }
+    },
     getInspectionPaperErr: async (planningId) => {
         try {
             const inspectionPaper = await qcInspectionPaper_1.QcInspectionPaper.findOne({
@@ -71,14 +121,15 @@ exports.qcInspectionService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    checkingInspectionPaper: async ({ req, checking, errProgress, planningId, username, machine, userId, note, }) => {
+    checkingInspectionPaper: async ({ req, checking, errProgress, otherData, }) => {
+        const { planningId, machine, note, imgErr } = otherData;
         try {
             return (0, transactionHelper_1.runInTransaction)(async (transaction) => {
                 const dbData = {
                     planningId: planningId,
                     timeInspection: new Date(),
-                    checkedBy: username,
-                    userId: userId,
+                    checkedBy: req.user.fullName,
+                    userId: req.user.userId,
                     note: note || null,
                 };
                 if (checking) {
@@ -96,24 +147,40 @@ exports.qcInspectionService = {
                 if (missingCriteria.length > 0) {
                     throw appError_1.AppError.BadRequest(`Missing required criteria: ${missingCriteria.join(", ")}`, "MISSING_REQUIRED_CRITERIA");
                 }
-                dbData.checkList = errProgress;
-                await qcInspectionPaper_1.QcInspectionPaper.create(dbData, { transaction });
-                //lọc các tiêu chí bị lỗi
+                // Lọc tiêu chí lỗi & tính toán result
                 const failedCriteria = Object.entries(errProgress)
                     .filter(([_, value]) => value === false)
                     .map(([key]) => key);
+                // false nếu có ít nhất 1 tiêu chí false
+                const isPassed = failedCriteria.length === 0;
+                dbData.checkList = errProgress;
+                dbData.result = isPassed;
+                if (imgErr)
+                    dbData.imgError = imgErr;
+                await qcInspectionPaper_1.QcInspectionPaper.create(dbData, { transaction });
+                // Cập nhật trạng thái PlanningPaper dựa trên kết quả
                 const currentStatusCheck = failedCriteria.length > 0 ? "failed" : "passed";
                 await planningPaper_1.PlanningPaper.update({ statusCheck: currentStatusCheck }, { where: { planningId }, transaction });
+                // Cập nhật trạng thái cho InspectionRequest nếu đang chờ kiểm
+                const pendingOrInProgressReq = await inspection_request_1.InspectionRequest.findOne({
+                    where: { planningId, status: { [sequelize_1.Op.in]: ["pending", "in_progress"] } },
+                    order: [["createdAt", "DESC"]],
+                    transaction,
+                });
+                if (pendingOrInProgressReq) {
+                    await pendingOrInProgressReq.update({ status: currentStatusCheck, completedBy: req.user.fullName }, { transaction });
+                }
+                //socket
                 const planning = await planningPaper_1.PlanningPaper.findOne({
                     attributes: ["orderId"],
                     where: { planningId },
                     transaction,
                 });
-                //socket
                 if (currentStatusCheck === "failed") {
                     const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
                     const item = {
                         from: "QC",
+                        planningId: planningId,
                         message: `Đơn hàng: ${planning?.orderId} đang bị lỗi tại ${machine}`,
                     };
                     req.io?.to(roomName).emit("qc-inspection-paper", item);
@@ -203,23 +270,22 @@ exports.qcInspectionService = {
     //===============================INSPECTION BOX===================================
     getAllQcInspectionBox: async ({ page, pageSize, machine, }) => {
         try {
-            // const cacheKey = paper.page(machine, page);
-            // const { isChanged } = await CacheManager.check(
-            //   [{ model: QcInspectionPaper }],
-            //   "inspectionPaper",
-            // );
-            // if (isChanged) {
-            //   await CacheManager.clear("inspectionPaper");
-            // } else {
-            //   const cachedData = await redisCache.get(cacheKey);
-            //   if (cachedData) {
-            //     if (devEnvironment) console.log("✅ Data Inspection Box from Redis");
-            //     return {
-            //       ...JSON.parse(cachedData),
-            //       message: `get all Qc Inspection Box from cache successfully`,
-            //     };
-            //   }
-            // }
+            const cacheKey = box.page(machine, page);
+            const { isChanged } = await cacheManager_1.CacheManager.check([{ model: qcInspectionBox_1.QcInspectionBox }], "inspectionBox");
+            if (isChanged) {
+                await cacheManager_1.CacheManager.clear("inspectionBox");
+            }
+            else {
+                const cachedData = await redis_connect_1.default.get(cacheKey);
+                if (cachedData) {
+                    if (devEnvironment)
+                        console.log("✅ Data Inspection Box from Redis");
+                    return {
+                        ...JSON.parse(cachedData),
+                        message: `get all Qc Inspection Box from cache`,
+                    };
+                }
+            }
             const options = qcRepository_1.qcRepository.buildInspectionBoxOptions({ page, pageSize, machine });
             const { rows, count } = await qcInspectionBox_1.QcInspectionBox.findAndCountAll(options);
             const responseData = {
@@ -229,11 +295,59 @@ exports.qcInspectionService = {
                 totalPages: Math.ceil(count / pageSize),
                 currentPage: page,
             };
-            // await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 1800);
+            await redis_connect_1.default.set(cacheKey, JSON.stringify(responseData), "EX", 1800);
             return responseData;
         }
         catch (error) {
             console.error("get all Qc Inspection Box failed:", error);
+            throw appError_1.AppError.ServerError();
+        }
+    },
+    getInspectionBoxByField: async ({ page, pageSize, machine, field, keyword, }) => {
+        try {
+            const validFields = ["orderId", "customerName", "checkedBy"];
+            if (!validFields.includes(field)) {
+                throw appError_1.AppError.BadRequest(`Field '${field}' is not supported for search`, "INVALID_FIELD");
+            }
+            const index = meilisearch_connect_1.meiliClient.index("inspection_boxes");
+            const searchResult = await index.search(keyword, {
+                attributesToSearchOn: [field],
+                attributesToRetrieve: ["inspecBoxId"],
+                sort: ["inspecBoxId:desc"],
+                filter: `machine = "${machine}"`,
+                page: Number(page) || 1,
+                hitsPerPage: Number(pageSize) || 25, //pageSize
+            });
+            const inspecBoxIds = searchResult.hits.map((hit) => hit.inspecBoxId);
+            if (inspecBoxIds.length === 0) {
+                return {
+                    message: "No inspection boxes found",
+                    data: [],
+                    totalInventory: 0,
+                    totalPages: 0,
+                    currentPage: page,
+                };
+            }
+            //query db
+            const options = qcRepository_1.qcRepository.buildInspectionBoxOptions({
+                whereCondition: { inspecBoxId: { [sequelize_1.Op.in]: inspecBoxIds } },
+                machine: machine,
+            });
+            const { rows } = await qcInspectionBox_1.QcInspectionBox.findAndCountAll(options);
+            // Sắp xếp lại thứ tự của SQL theo đúng thứ tự của Meilisearch
+            const finalData = inspecBoxIds
+                .map((id) => rows.find((inspec) => inspec.inspecBoxId === id))
+                .filter(Boolean);
+            return {
+                message: "Get InspectionBox from Meilisearch & DB successfully",
+                data: finalData,
+                totalInventory: searchResult.totalHits,
+                totalPages: searchResult.totalPages,
+                currentPage: searchResult.page,
+            };
+        }
+        catch (error) {
+            console.error("Failed to get Qc Inspection Box by field:", error);
             throw appError_1.AppError.ServerError();
         }
     },
@@ -258,13 +372,14 @@ exports.qcInspectionService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    checkingInspectionBox: async ({ req, machine, planningBoxId, username, errProgress, userId, note, }) => {
+    checkingInspectionBox: async ({ req, errProgress, otherData, }) => {
+        const { planningBoxId, machine, note, imgErr } = otherData;
         try {
             return (0, transactionHelper_1.runInTransaction)(async (transaction) => {
                 const dbData = {
                     timeInspection: new Date(),
-                    checkedBy: username,
-                    userId: userId,
+                    checkedBy: req.user.fullName,
+                    userId: req.user.userId,
                     note: note || null,
                 };
                 const boxTime = await planningBoxMachineTime_1.PlanningBoxTime.findOne({
@@ -277,24 +392,30 @@ exports.qcInspectionService = {
                 }
                 const boxTimeId = boxTime.boxTimeId;
                 dbData.boxTimeId = boxTimeId;
-                //lay criteria check
+                //get criteria check
                 const requiredCriteria = await criteriaBoxCheck_1.CriteriaBoxCheck.findAll({
                     attributes: ["criteriaBoxCode"],
                     where: { machine },
                     transaction,
                 });
-                //so sánh với criteria check
+                //compare with criteria check
                 const requiredCriteriaCodes = requiredCriteria.map((c) => c.criteriaBoxCode);
                 const missingCriteria = requiredCriteriaCodes.filter((code) => !(code in errProgress));
                 if (missingCriteria.length > 0) {
                     throw appError_1.AppError.BadRequest(`Missing required criteria: ${missingCriteria.join(", ")}`, "MISSING_REQUIRED_CRITERIA");
                 }
-                dbData.checkList = errProgress;
-                await qcInspectionBox_1.QcInspectionBox.create(dbData, { transaction });
-                //lọc các tiêu chí bị lỗi
+                // Lọc tiêu chí lỗi & tính toán result
                 const failedCriteria = Object.entries(errProgress)
                     .filter(([_, value]) => value === false)
                     .map(([key]) => key);
+                // false nếu có ít nhất 1 cái false
+                const isPassed = failedCriteria.length === 0;
+                dbData.checkList = errProgress;
+                dbData.result = isPassed;
+                if (imgErr)
+                    dbData.imgError = imgErr;
+                await qcInspectionBox_1.QcInspectionBox.create(dbData, { transaction });
+                // Cập nhật trạng thái PlanningBoxTime
                 const currentStatusCheck = failedCriteria.length > 0 ? "failed" : "passed";
                 await planningBoxMachineTime_1.PlanningBoxTime.update({ statusCheck: currentStatusCheck }, { where: { boxTimeId }, transaction });
                 //socket
@@ -302,6 +423,8 @@ exports.qcInspectionService = {
                     const roomName = `machine_${machine.toLowerCase().replace(/\s+/g, "_")}`;
                     const item = {
                         from: "QC",
+                        planningBoxId: planningBoxId,
+                        machine: machine,
                         message: `Có đơn hàng sản xuất đang bị lỗi tại ${machine}`,
                     };
                     req.io?.to(roomName).emit("qc-inspection-box", item);

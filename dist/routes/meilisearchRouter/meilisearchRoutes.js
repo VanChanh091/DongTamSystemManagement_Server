@@ -23,20 +23,31 @@ const syncFunctions = {
     reportPapers: syncMeili_1.syncReportPaperToMeili,
     reportBoxes: syncMeili_1.syncReportBoxToMeili,
     deliveryRequest: syncMeili_1.syncDeliveryRequestToMeili,
+    inspectionPaper: syncMeili_1.syncInspectionPaperToMeili,
+    inspectionBox: syncMeili_1.syncInspectionBoxToMeili,
     dashboard: syncMeili_1.syncDashboardToMeili,
 };
 router.get("/:entity", authMiddleware_1.default, async (req, res, next) => {
     try {
         const { entity } = req.params;
-        const { isDeleteAll } = req.query;
-        const isDelete = isDeleteAll === "true";
+        const { isDeleteAll, isResync, mode } = req.query;
+        const shouldDeleteOnly = isDeleteAll === "true" || mode === "delete";
+        const shouldResync = isResync === "true" || mode === "resync";
         const syncFn = syncFunctions[entity];
         if (!syncFn) {
             throw appError_1.AppError.BadRequest(`Thực thể '${entity}' không được hỗ trợ đồng bộ`, "INVALID_SYNC_ENTITY");
         }
         // Thực hiện gọi hàm sync tương ứng
-        await syncFn(Boolean(isDelete));
-        return res.status(200).json({ message: `Sync ${entity} to Meilisearch successfully` });
+        await syncFn({
+            isDeleteAll: shouldDeleteOnly,
+            isResync: shouldResync,
+        });
+        const actionMessage = shouldDeleteOnly
+            ? `Delete all data of ${entity} from Meilisearch successfully`
+            : shouldResync
+                ? `Reset and re-sync ${entity} to Meilisearch successfully`
+                : `Sync ${entity} to Meilisearch successfully`;
+        return res.status(200).json({ message: actionMessage });
     }
     catch (error) {
         next(error);

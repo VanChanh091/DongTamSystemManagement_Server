@@ -1,9 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.submitQC = exports.updateResult = exports.createNewResult = exports.getAllQcResult = exports.updateSession = exports.createNewSession = exports.getQcSession = void 0;
+exports.endShift = exports.startShift = exports.getCurrentShiftActive = exports.submitQC = exports.updateResult = exports.createNewResult = exports.getAllQcResult = exports.updateSession = exports.createNewSession = exports.getQcSession = void 0;
 const qcSessionService_1 = require("../../../service/qualityControl/qcSessionService");
 const qcSampleService_1 = require("../../../service/qualityControl/qcSampleService");
 const orchestratorService_1 = require("../../../service/qualityControl/orchestratorService");
+const qcShiftService_1 = require("../../../service/qualityControl/qcShiftService");
 //===============================QC SESSION=================================
 //get qc session
 const getQcSession = async (req, res, next) => {
@@ -111,4 +112,35 @@ const submitQC = async (req, res, next) => {
     }
 };
 exports.submitQC = submitQC;
+//===============================QC SHIFT=================================
+const getCurrentShiftActive = async (req, res, next) => {
+    try {
+        const response = await qcShiftService_1.qcShiftService.getCurrentShiftActive(req.user.userId);
+        return res.status(200).json(response);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.getCurrentShiftActive = getCurrentShiftActive;
+const startShift = async (req, res, next) => {
+    try {
+        const response = await qcShiftService_1.qcShiftService.startShift(req.user);
+        return res.status(200).json(response);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.startShift = startShift;
+const endShift = async (req, res, next) => {
+    try {
+        const response = await qcShiftService_1.qcShiftService.endShift(req.user.userId);
+        return res.status(200).json(response);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.endShift = endShift;
 //# sourceMappingURL=qcController.js.map

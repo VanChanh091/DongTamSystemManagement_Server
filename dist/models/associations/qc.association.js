@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = qcAssociations;
 function qcAssociations(models) {
-    const { PlanningPaper, PlanningBox, PlanningBoxTime, QcSession, QcSampleResult, InboundHistory, QcInspectionPaper, QcInspectionBox, User, } = models;
+    const { PlanningPaper, PlanningBox, PlanningBoxTime, QcSession, QcShift, QcSampleResult, InspectionRequest, InboundHistory, QcInspectionPaper, QcInspectionBox, User, } = models;
     // QC SESSION
     PlanningPaper.hasMany(QcSession, { foreignKey: "planningId", onDelete: "CASCADE" });
     QcSession.belongsTo(PlanningPaper, { foreignKey: "planningId" });
@@ -20,6 +20,9 @@ function qcAssociations(models) {
         onDelete: "CASCADE",
     });
     InboundHistory.belongsTo(QcSession, { foreignKey: "qcSessionId" });
+    // QC SHIFT
+    User.hasMany(QcShift, { foreignKey: "userId", onDelete: "CASCADE" });
+    QcShift.belongsTo(User, { foreignKey: "userId" });
     // QC INSPECTION
     PlanningPaper.hasMany(QcInspectionPaper, {
         foreignKey: "planningId",
@@ -41,5 +44,12 @@ function qcAssociations(models) {
     QcInspectionPaper.belongsTo(User, { foreignKey: "userId" });
     User.hasMany(QcInspectionBox, { foreignKey: "userId", as: "inspecBox", onDelete: "set null" });
     QcInspectionBox.belongsTo(User, { foreignKey: "userId" });
+    // INSPECTION REQUEST
+    PlanningPaper.hasMany(InspectionRequest, {
+        foreignKey: "planningId",
+        as: "inspecRequests",
+        onDelete: "CASCADE",
+    });
+    InspectionRequest.belongsTo(PlanningPaper, { foreignKey: "planningId" });
 }
 //# sourceMappingURL=qc.association.js.map

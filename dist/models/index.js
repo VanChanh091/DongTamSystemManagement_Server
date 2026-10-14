@@ -37,8 +37,8 @@ const paperRequirements_1 = require("./planning/requirement/paperRequirements");
 const timeOverflowPlanning_1 = require("./planning/timeOverflowPlanning");
 const product_1 = require("./product/product");
 const qcCriteria_1 = require("./qualityControl/qcCriteria");
-const qcInspectionBox_1 = require("./qualityControl/qcInspection/qcInspectionBox");
-const qcInspectionPaper_1 = require("./qualityControl/qcInspection/qcInspectionPaper");
+const qcInspectionBox_1 = require("./qualityControl/inspection/qcInspectionBox");
+const qcInspectionPaper_1 = require("./qualityControl/inspection/qcInspectionPaper");
 const qcSampleResult_1 = require("./qualityControl/qcSampleResult");
 const qcSession_1 = require("./qualityControl/qcSession");
 const dailyReportPerformance_1 = require("./report/dailyReportPerformance");
@@ -54,6 +54,8 @@ const liquidationInventory_1 = require("./warehouse/inventory/liquidationInvento
 const outboundDetail_1 = require("./warehouse/outbound/outboundDetail");
 const outboundHistory_1 = require("./warehouse/outbound/outboundHistory");
 const paymentAllocation_1 = require("./warehouse/payment/paymentAllocation");
+const qcShift_1 = require("./qualityControl/qcShift");
+const inspection_request_1 = require("./qualityControl/inspection/inspection_request");
 //admin
 const MachinePaper = (0, machinePaper_1.initMachinePaperModel)(database_connect_1.sequelize);
 const MachineBox = (0, machineBox_1.initMachineBoxModel)(database_connect_1.sequelize);
@@ -103,6 +105,8 @@ const EmployeeCompanyInfo = (0, employeeCompanyInfo_1.initEmployeeCompanyInfoMod
 const QcSession = (0, qcSession_1.initQcSessionModel)(database_connect_1.sequelize);
 const QcCriteria = (0, qcCriteria_1.initQcCriteriaModel)(database_connect_1.sequelize);
 const QcSampleResult = (0, qcSampleResult_1.initQcSamepleResultModel)(database_connect_1.sequelize);
+const QcShift = (0, qcShift_1.initQcShiftModel)(database_connect_1.sequelize);
+const InspectionRequest = (0, inspection_request_1.initInspectionRequestModel)(database_connect_1.sequelize);
 //QC Inspection
 const QcInspectionPaper = (0, qcInspectionPaper_1.initQcInspectionPaperModel)(database_connect_1.sequelize);
 const QcInspectionBox = (0, qcInspectionBox_1.initQcInspectionBoxModel)(database_connect_1.sequelize);
@@ -172,6 +176,8 @@ const models = {
     QcCriteria,
     QcSession,
     QcSampleResult,
+    QcShift,
+    InspectionRequest,
     //QC Inspection
     QcInspectionPaper,
     QcInspectionBox,

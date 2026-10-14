@@ -48,6 +48,7 @@ const CACHE_CONFIG = {
     schedule: ["schedule:"],
     //qcInspection
     inspectionPaper: ["inspection:paper:"],
+    inspectionBox: ["inspection:box:"],
 };
 exports.CacheManager = {
     //Xóa cache theo prefix
@@ -127,6 +128,7 @@ exports.CacheManager = {
             schedule: cacheKey_1.CacheKey.delivery.schedule.lastUpdated,
             //qcInspection
             inspectionPaper: cacheKey_1.CacheKey.qcInspection.paper.lastUpdated,
+            inspectionBox: cacheKey_1.CacheKey.qcInspection.box.lastUpdated,
         };
         const key = map[module];
         if (!key)

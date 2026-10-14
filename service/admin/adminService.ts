@@ -402,12 +402,7 @@ export const adminService = {
   getAllUsers: async () => {
     try {
       const data = await adminRepository.getAllUser();
-
-      const sanitizedData = data
-        .map((user) => user.get({ plain: true }))
-        .filter((user) => user.role?.toLowerCase() !== "admin");
-
-      return { message: "Get all users successfully (excluding admin)", data: sanitizedData };
+      return { message: "Get all users successfully (excluding admin)", data: data };
     } catch (error) {
       console.error("Error fetching users:", error);
       throw AppError.ServerError();

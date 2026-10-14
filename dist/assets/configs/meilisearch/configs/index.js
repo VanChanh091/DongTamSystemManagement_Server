@@ -18,6 +18,8 @@ const setupMeilisearch = async () => {
         meilisearch_connect_1.meiliClient.index("reportPapers").updateSettings(meilisearch_config_1.reportPaperSettings),
         meilisearch_connect_1.meiliClient.index("reportBoxes").updateSettings(meilisearch_config_1.reportBoxSettings),
         meilisearch_connect_1.meiliClient.index("deliveryRequest").updateSettings(meilisearch_config_1.deliveryRequestSettings),
+        meilisearch_connect_1.meiliClient.index("inspection_papers").updateSettings(meilisearch_config_1.inspectionPaperSettings),
+        meilisearch_connect_1.meiliClient.index("inspection_boxes").updateSettings(meilisearch_config_1.inspectionBoxSettings),
         meilisearch_connect_1.meiliClient.index("dashboard").updateSettings(meilisearch_config_1.dashboardSettings),
     ]);
 };

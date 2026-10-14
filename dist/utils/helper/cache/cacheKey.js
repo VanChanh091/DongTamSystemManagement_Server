@@ -125,6 +125,10 @@ exports.CacheKey = {
             page: (machine, page) => `inspection:paper:${machine}:${page}`,
             lastUpdated: "qcInspectionPaper:lastUpdated",
         },
+        box: {
+            page: (machine, page) => `inspection:box:${machine}:${page}`,
+            lastUpdated: "qcInspectionBox:lastUpdated",
+        },
     },
 };
 //# sourceMappingURL=cacheKey.js.map

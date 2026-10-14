@@ -10,8 +10,8 @@ const permissionMiddleware_1 = require("../../middlewares/permissionMiddleware")
 const router = (0, express_1.Router)();
 //=========================PAPER=========================
 router.get("/paper", authMiddleware_1.default, manufactureController_1.getPlanningPaper);
-router.post("/paper", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["machine1350", "machine1900", "machine2Layer", "MachineRollPaper"]), manufactureController_1.addReportPaper);
-router.put("/paper", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["machine1350", "machine1900", "machine2Layer", "MachineRollPaper", "QC"]), manufactureController_1.updateReportPaper);
+router.post("/paper", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["machine1350", "machine1800", "machine1900", "machine2Layer", "MachineRollPaper"]), manufactureController_1.addReportPaper);
+router.put("/paper", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["machine1350", "machine1800", "machine1900", "machine2Layer", "MachineRollPaper", "QC"]), manufactureController_1.updateReportPaper);
 //=========================BOX=========================
 router.get("/box", authMiddleware_1.default, manufactureController_1.getPlanningBox);
 router.post("/box", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["step2Production"]), manufactureController_1.addReportBox);

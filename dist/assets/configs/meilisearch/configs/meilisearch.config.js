@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.dashboardSettings = exports.deliveryRequestSettings = exports.inventorySettings = exports.outboundSettings = exports.inboundSettings = exports.reportBoxSettings = exports.scrapReportSettings = exports.reportPaperSettings = exports.planningBoxSettings = exports.planningPaperSettings = exports.ordersSettings = exports.employeesSettings = exports.productsSettings = exports.customersSettings = void 0;
+exports.dashboardSettings = exports.inspectionBoxSettings = exports.inspectionPaperSettings = exports.deliveryRequestSettings = exports.inventorySettings = exports.outboundSettings = exports.inboundSettings = exports.reportBoxSettings = exports.scrapReportSettings = exports.reportPaperSettings = exports.planningBoxSettings = exports.planningPaperSettings = exports.ordersSettings = exports.employeesSettings = exports.productsSettings = exports.customersSettings = void 0;
 const rule = ["words", "typo", "proximity", "attribute", "sort", "exactness"];
 //customer
 exports.customersSettings = {
@@ -92,6 +92,19 @@ exports.inventorySettings = {
 exports.deliveryRequestSettings = {
     searchableAttributes: ["orderId", "customerName", "status", "fullName"],
     filterableAttributes: ["status"],
+    rankingRules: rule,
+};
+//inspection paper & box
+exports.inspectionPaperSettings = {
+    searchableAttributes: ["orderId", "customerName", "checkedBy"],
+    filterableAttributes: ["machine"],
+    sortableAttributes: ["inspecPaperId"],
+    rankingRules: rule,
+};
+exports.inspectionBoxSettings = {
+    searchableAttributes: ["orderId", "customerName", "checkedBy"],
+    filterableAttributes: ["machine"],
+    sortableAttributes: ["inspecBoxId"],
     rankingRules: rule,
 };
 //dashboard

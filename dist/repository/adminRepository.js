@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.adminRepository = void 0;
+const sequelize_1 = require("sequelize");
 const box_1 = require("../models/order/box");
 const user_1 = require("../models/user/user");
 const order_1 = require("../models/order/order");
@@ -20,7 +21,17 @@ exports.adminRepository = {
             where: { status: "pending" },
             attributes: { exclude: ["createdAt", "updatedAt"] },
             include: [
-                { model: customer_1.Customer, attributes: ["customerName", "companyName"] },
+                {
+                    model: customer_1.Customer,
+                    attributes: ["customerId", "customerName", "companyName"],
+                    include: [
+                        {
+                            model: customerPayment_1.CustomerPayment,
+                            as: "payment",
+                            attributes: ["cusPaymentId", "customerId", "debtLimit"],
+                        },
+                    ],
+                },
                 {
                     model: product_1.Product,
                     attributes: ["typeProduct", "productName", "maKhuon", "productImage"],
@@ -38,6 +49,7 @@ exports.adminRepository = {
             attributes: [
                 "orderId",
                 "totalPrice",
+                "totalPriceVAT",
                 "status",
                 "rejectReason",
                 "customerId",
@@ -51,7 +63,11 @@ exports.adminRepository = {
                     model: customer_1.Customer,
                     attributes: ["customerId"],
                     include: [
-                        { model: customerPayment_1.CustomerPayment, as: "payment", attributes: ["debtCurrent", "debtLimit"] },
+                        {
+                            model: customerPayment_1.CustomerPayment,
+                            as: "payment",
+                            attributes: ["cusPaymentId", "customerId", "debtLimit"],
+                        },
                     ],
                 },
                 {
@@ -64,12 +80,16 @@ exports.adminRepository = {
             transaction,
         });
     },
-    updateDebtCustomer: async (customer, newDebt) => {
-        return await customer.update({ debtCurrent: newDebt });
-    },
     //===============================ADMIN USER=====================================
     getAllUser: async () => {
-        return await user_1.User.findAll({ attributes: { exclude: ["password", "createdAt", "updatedAt"] } });
+        return await user_1.User.findAll({
+            where: { role: { [sequelize_1.Op.ne]: "admin" } },
+            attributes: { exclude: ["password", "createdAt", "updatedAt"] },
+            order: [
+                [sequelize_1.Sequelize.literal("CASE WHEN role = 'manager' THEN 0 ELSE 1 END"), "ASC"],
+                ["department", "ASC"],
+            ],
+        });
     },
     getUserByPk: async (userId, transaction) => {
         return await user_1.User.findByPk(userId, {

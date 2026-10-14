@@ -9,14 +9,13 @@ export type layerRoleType =
   | "MID_2"
   | "FLUTE_3"
   | "TOP";
-export type paperCodeType = "E" | "B" | "C";
 
 //định nghĩa trường trong bảng
 interface PaperRequirementLayersAttributes {
   layerId: number;
   layerIndex: number;
   layerRole: layerRoleType;
-  paperCode: paperCodeType;
+  paperCode: string;
   weightGsm: number;
   fluteType?: string;
 
@@ -45,7 +44,7 @@ export class PaperRequirementLayers
   declare layerId: number;
   declare layerIndex: number;
   declare layerRole: layerRoleType;
-  declare paperCode: paperCodeType;
+  declare paperCode: string;
   declare weightGsm: number;
   declare fluteType?: string;
   declare availableStock: number;
@@ -75,7 +74,7 @@ export function initPaperRequirementLayersModel(
       },
       paperCode: { type: DataTypes.STRING, allowNull: false },
       weightGsm: { type: DataTypes.INTEGER, allowNull: false, comment: "Định lượng giấy (g/m2)" },
-      fluteType: { type: DataTypes.ENUM("E", "B", "C"), comment: "Loại sóng" },
+      fluteType: { type: DataTypes.STRING, comment: "Loại sóng" },
       availableStock: {
         type: DataTypes.DOUBLE,
         allowNull: false,

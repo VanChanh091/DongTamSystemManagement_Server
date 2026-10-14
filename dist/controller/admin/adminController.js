@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteWaveCrest = exports.updateWaveCrest = exports.createWaveCrest = exports.getWaveCrestCoefficient = exports.deleteVehicle = exports.updateVehicle = exports.createNewVehicle = exports.getAllVehicle = exports.deleteUser = exports.updateInfoUser = exports.getUsersAdmin = exports.deleteFluteRatio = exports.updateFluteRatio = exports.createFluteRatio = exports.getAllFluteRatio = exports.deleteCriteria = exports.updateCriteria = exports.createNewCriteria = exports.getAllQcCriteria = exports.deleteCriteriaCheck = exports.updateCriteriaCheck = exports.createNewCriteriaCheck = exports.getAllCriteriaCheck = exports.updateStatusAdmin = exports.getOrderPending = void 0;
+exports.deleteWaveCrest = exports.updateWaveCrest = exports.createWaveCrest = exports.getWaveCrestCoefficient = exports.deleteVehicle = exports.updateVehicle = exports.createNewVehicle = exports.getAllVehicle = exports.deleteUser = exports.updateInfoUser = exports.getUsersExcludeAdmin = exports.deleteFluteRatio = exports.updateFluteRatio = exports.createFluteRatio = exports.getAllFluteRatio = exports.deleteCriteria = exports.updateCriteria = exports.createNewCriteria = exports.getAllQcCriteria = exports.deleteCriteriaCheck = exports.updateCriteriaCheck = exports.createNewCriteriaCheck = exports.getAllCriteriaCheck = exports.requestOtpCode = exports.updateStatusAdmin = exports.getOrderPending = void 0;
 const adminCriteriaCheckService_1 = require("../../service/admin/adminCriteriaCheckService");
 const adminService_1 = require("../../service/admin/adminService");
 const adminCriteriaService_1 = require("../../service/admin/adminCriteriaService");
@@ -21,15 +21,17 @@ const getOrderPending = async (req, res, next) => {
 exports.getOrderPending = getOrderPending;
 //accept or reject order
 const updateStatusAdmin = async (req, res, next) => {
-    const { id } = req.query;
-    const { newStatus, rejectReason } = req.body;
+    const { orderId } = req.query;
+    const { newStatus, rejectReason, confirmOverLimit, confirmationOTP } = req.body;
     try {
         const response = await adminService_1.adminService.updateStatusOrder({
             req,
-            orderId: id,
+            orderId,
             newStatus,
             rejectReason,
             senderId: req.user.userId,
+            confirmOverLimit,
+            confirmationOTP,
         });
         return res.status(200).json(response);
     }
@@ -38,6 +40,21 @@ const updateStatusAdmin = async (req, res, next) => {
     }
 };
 exports.updateStatusAdmin = updateStatusAdmin;
+//request OTP code for approve order over limit
+const requestOtpCode = async (req, res, next) => {
+    const { orderId } = req.query;
+    try {
+        const response = await adminService_1.adminService.requestApprovalOTP({
+            orderId,
+            requesterName: req.user.fullName,
+        });
+        return res.status(200).json(response);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.requestOtpCode = requestOtpCode;
 // ============================= CRITERIA CHECK PAPER/BOX =================================
 //get all criteria check
 const getAllCriteriaCheck = async (req, res, next) => {
@@ -139,6 +156,29 @@ exports.deleteCriteria = deleteCriteria;
 const getAllFluteRatio = async (req, res, next) => {
     try {
         const response = await adminService_1.adminService.getAllItems({ model: fluteRatio_1.FluteRatio });
+        const fluteOrder = { E: 1, B: 2, C: 3, A: 4 };
+        if (Array.isArray(response?.data)) {
+            response.data.sort((a, b) => {
+                const matchA = (a.fluteName || "").trim().match(/^(\d+)(.*)$/);
+                const matchB = (b.fluteName || "").trim().match(/^(\d+)(.*)$/);
+                const layerA = matchA ? parseInt(matchA[1], 10) : 0;
+                const layerB = matchB ? parseInt(matchB[1], 10) : 0;
+                // So sánh số lớp (1 -> 7)
+                if (layerA !== layerB)
+                    return layerA - layerB;
+                // So sánh ký tự sóng theo thứ tự E -> B -> C -> A
+                const flutesA = matchA ? matchA[2].toUpperCase() : "";
+                const flutesB = matchB ? matchB[2].toUpperCase() : "";
+                const minLen = Math.min(flutesA.length, flutesB.length);
+                for (let i = 0; i < minLen; i++) {
+                    const rankA = fluteOrder[flutesA[i]] ?? 99;
+                    const rankB = fluteOrder[flutesB[i]] ?? 99;
+                    if (rankA !== rankB)
+                        return rankA - rankB;
+                }
+                return flutesA.length - flutesB.length;
+            });
+        }
         return res.status(200).json(response);
     }
     catch (error) {
@@ -189,7 +229,7 @@ const deleteFluteRatio = async (req, res, next) => {
 };
 exports.deleteFluteRatio = deleteFluteRatio;
 // ============================= USER =================================
-const getUsersAdmin = async (req, res, next) => {
+const getUsersExcludeAdmin = async (req, res, next) => {
     try {
         const response = await adminService_1.adminService.getAllUsers();
         return res.status(200).json(response);
@@ -198,7 +238,7 @@ const getUsersAdmin = async (req, res, next) => {
         next(error);
     }
 };
-exports.getUsersAdmin = getUsersAdmin;
+exports.getUsersExcludeAdmin = getUsersExcludeAdmin;
 const updateInfoUser = async (req, res, next) => {
     const { userId, newRole } = req.query;
     const { permissions, userIds, newPassword, newDepartment } = req.body;

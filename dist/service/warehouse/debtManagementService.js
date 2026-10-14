@@ -46,6 +46,7 @@ const excelExporter_1 = require("../../utils/helper/excelExporter");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
 const paymentAllocation_1 = require("../../models/warehouse/payment/paymentAllocation");
 const debtCustomerRowAndColumn_1 = require("../../utils/mapping/warehouse/debtCustomerRowAndColumn");
+const normalizeVN_1 = require("../../utils/helper/normalizeVN");
 exports.debtManagementService = {
     //================================DEBT CLOSING=================================
     getCustomerDebtSummary: async ({ page, pageSize, userId, targetDate, search, }) => {
@@ -54,15 +55,27 @@ exports.debtManagementService = {
             const unpaidOutbounds = await debtRepository_1.debtRepository.findOutboundUnpaid({
                 userId,
                 targetDate,
-                search,
             });
             // Gom nhóm và tính toán Grand Total cho TOÀN BỘ hệ thống
             const { sortedCustomers, grandTotal } = processDebtAggregation(unpaidOutbounds, targetDate);
+            // Lọc khách hàng bằng hàm normalizeVN
+            let filteredCustomers = sortedCustomers;
+            if (search && search.trim()) {
+                const keyword = (0, normalizeVN_1.normalizeVN)(search);
+                filteredCustomers = sortedCustomers.filter((cust) => {
+                    const nameMatch = (0, normalizeVN_1.normalizeVN)(cust.customerName).includes(keyword);
+                    const companyMatch = (0, normalizeVN_1.normalizeVN)(cust.companyName).includes(keyword);
+                    const idMatch = cust.customerId
+                        ? cust.customerId.toString().toLowerCase().includes(keyword)
+                        : false;
+                    return nameMatch || companyMatch || idMatch;
+                });
+            }
             // Phân trang chỉ cho mảng dữ liệu hiển thị (data)
-            const totalCustomers = sortedCustomers.length;
+            const totalCustomers = filteredCustomers.length;
             const totalPages = Math.ceil(totalCustomers / pageSize) || 1;
             const startIndex = (page - 1) * pageSize;
-            const paginatedItems = sortedCustomers.slice(startIndex, startIndex + pageSize);
+            const paginatedItems = filteredCustomers.slice(startIndex, startIndex + pageSize);
             return {
                 message: "Lấy danh sách công nợ thành công",
                 targetDate: targetDate || new Date().toISOString(),

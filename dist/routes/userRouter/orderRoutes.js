@@ -21,6 +21,6 @@ router.get("/order-detail", authMiddleware_1.default, (0, permissionMiddleware_1
 //============================PAPER CODE FOR STRUCTURE=================================
 router.get("/paper-code", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["sale"]), orderController_1.getPaperCodeForStructure);
 //===============================CLOUDINARY IMAGE=====================================
-router.get("/get-signature", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["sale"]), orderController_1.getCloudinarySignature);
+router.get("/get-signature", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["sale", "QC"]), orderController_1.getCloudinarySignature);
 exports.default = router;
 //# sourceMappingURL=orderRoutes.js.map

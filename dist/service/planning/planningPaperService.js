@@ -30,6 +30,8 @@ const manufactureHelper_1 = require("../../utils/helper/modelHelper/manufactureH
 const paperRequirements_1 = require("../../models/planning/requirement/paperRequirements");
 const crud_helper_repository_1 = require("../../repository/helper/crud.helper.repository");
 const orderApproved_1 = require("../../models/order/orderApproved");
+const inspection_request_1 = require("../../models/qualityControl/inspection/inspection_request");
+const inspection_queue_1 = require("../../assets/configs/queue/inspection.queue");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper } = cacheKey_1.CacheKey.planning;
 const filterStatus = ["planning", "lackQty", "producing", "requested"];
@@ -157,7 +159,7 @@ exports.planningPaperService = {
             };
         }
         catch (error) {
-            console.error(`Failed to get customers by ${field}`, error);
+            console.error(`Failed to get planning paper by ${field}`, error);
             if (error instanceof appError_1.AppError)
                 throw error;
             throw appError_1.AppError.ServerError();
@@ -197,7 +199,7 @@ exports.planningPaperService = {
         }
     },
     completePlanningPaper: async (planningId, forceComplete = false) => {
-        return await (0, manufactureHelper_1.updateStatusPaper)({
+        const result = await (0, manufactureHelper_1.updateStatusPaper)({
             planningId,
             targetStatus: "complete",
             extraValidator: (papers) => {
@@ -219,6 +221,23 @@ exports.planningPaperService = {
                 }
             },
         });
+        // Kiểm tra xem QC có tới tiếp nhận kiểm tra chưa:
+        // Nếu có yêu cầu kiểm tra đang ở trạng thái "pending" (chưa tiếp nhận), đánh dấu result: false để ghi nhận lỗi cho QC
+        const ids = Array.isArray(planningId) ? planningId : [planningId];
+        const pendingInspections = await inspection_request_1.InspectionRequest.findAll({
+            where: {
+                planningId: { [sequelize_1.Op.in]: ids },
+                status: "pending",
+            },
+        });
+        if (pendingInspections.length > 0) {
+            const pendingIds = pendingInspections.map((ins) => ins.inspectionId);
+            await inspection_request_1.InspectionRequest.update({ result: false }, { where: { inspectionId: { [sequelize_1.Op.in]: pendingIds } } });
+            for (const ins of pendingInspections) {
+                await (0, inspection_queue_1.cancelInspectionTimers)(ins.inspectionId).catch((err) => console.error("Error cancelling inspection timer:", err));
+            }
+        }
+        return result;
     },
     pauseOrAcceptLackQtyPLanning: async ({ planningIds, newStatus, username, }) => {
         try {

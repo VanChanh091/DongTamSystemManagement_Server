@@ -82,6 +82,9 @@ export function initInspectionRequestModel(sequelize: Sequelize): typeof Inspect
         { fields: ["planningId"] },
         { fields: ["status"] },
         { fields: ["result"] },
+
+        //composite index
+        { fields: ["planningId", "status"] },
       ],
     },
   );

@@ -10,6 +10,7 @@ const bcrypt_1 = __importDefault(require("bcrypt"));
 const meiliService_1 = require("../system/meiliService");
 const appError_1 = require("../../utils/appError");
 const user_1 = require("../../models/user/user");
+const order_1 = require("../../models/order/order");
 const adminRepository_1 = require("../../repository/adminRepository");
 const inventory_1 = require("../../models/warehouse/inventory/inventory");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
@@ -22,7 +23,13 @@ const notification_1 = require("../../models/notification/notification");
 const requestType_1 = require("../notification/requestType");
 const userNotifications_1 = require("../../models/notification/userNotifications");
 const crud_helper_repository_1 = require("../../repository/helper/crud.helper.repository");
+const debtRepository_1 = require("../../repository/debtRepository");
+const customerPayment_1 = require("../../models/customer/customerPayment");
+const redis_connect_1 = __importDefault(require("../../assets/configs/connect/redis.connect"));
+const customer_1 = require("../../models/customer/customer");
+const telegramSendAlert_1 = require("../../utils/telegram/telegramSendAlert");
 const devEnvironment = process.env.NODE_ENV !== "production";
+const debtOtpThresholdPercent = Number(process.env.DEBT_OTP_THRESHOLD_PERCENT);
 exports.adminService = {
     //===============================ADMIN CRUD=====================================
     getAllItems: async ({ model, options }) => {
@@ -106,6 +113,16 @@ exports.adminService = {
     getOrderPending: async () => {
         try {
             const data = await adminRepository_1.adminRepository.findOrderPending();
+            const customerIds = Array.from(new Set(data.map((o) => o.customerId).filter(Boolean)));
+            if (customerIds.length > 0) {
+                const debtMap = await debtRepository_1.debtRepository.getCustomersCurrentDebt(customerIds);
+                for (const order of data) {
+                    if (order.Customer?.payment) {
+                        const currentDebt = debtMap.get(order.customerId) || 0;
+                        order.Customer.payment.setDataValue("debtCurrent", Math.round(currentDebt));
+                    }
+                }
+            }
             return { message: "get all order have status:pending", data };
         }
         catch (error) {
@@ -113,7 +130,7 @@ exports.adminService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    updateStatusOrder: async ({ req, orderId, newStatus, rejectReason, senderId, }) => {
+    updateStatusOrder: async ({ req, orderId, newStatus, rejectReason, senderId, confirmOverLimit, confirmationOTP, }) => {
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
                 if (!["accept", "reject"].includes(newStatus)) {
@@ -123,8 +140,6 @@ exports.adminService = {
                 if (!order) {
                     throw appError_1.AppError.NotFound("Order not found", "ORDER_NOT_FOUND");
                 }
-                // const customer = order.Customer;
-                // const newDebt = Number(customer.debtCurrent || 0) + Number(order.totalPrice || 0);
                 const ownerId = order.userId;
                 if (newStatus === "reject") {
                     order.set({ status: newStatus, rejectReason: rejectReason || "" });
@@ -160,13 +175,37 @@ exports.adminService = {
                     req.io?.to(`user-${ownerId}`).emit("new-notification", newNotif);
                 }
                 else {
-                    //calculate debt limit of customer
-                    // if (req.user.role !== "admin") {
-                    //   if (newDebt > customer.debtLimit!) {
-                    //     throw AppError.BadRequest("Debt limit exceeded", "DEBT_LIMIT_EXCEEDED");
-                    //   }
-                    // }
-                    // await customer.update({ debtCurrent: newDebt });
+                    //check role admin
+                    const isAdmin = req.user.role === "admin";
+                    // Logic kiểm tra và cập nhật hạn mức công nợ khách hàng
+                    const payment = order.Customer?.payment;
+                    const currentDebt = await debtRepository_1.debtRepository.getCustomerCurrentDebt(order.customerId, transaction);
+                    const debtLimit = Number(payment?.debtLimit || 0);
+                    const totalPrice = Number(order.totalPriceVAT || 0);
+                    // total debt after this order
+                    const newDebt = currentDebt + totalPrice;
+                    if (!isAdmin) {
+                        const thresholdPercent = Number(debtOtpThresholdPercent);
+                        const otpMultiplier = 1 + thresholdPercent / 100;
+                        //case > debtLimit * (1 + thresholdPercent%)
+                        if (newDebt > debtLimit * otpMultiplier) {
+                            if (!confirmationOTP) {
+                                throw appError_1.AppError.BadRequest(`Vượt quá hạn mức cho phép, cần nhập OTP để duyệt đơn này!`, "REQUIRE_OTP_CONFIRMATION");
+                            }
+                            const redisKey = `order_otp_code:${orderId}`;
+                            const savedCode = await redis_connect_1.default.get(redisKey);
+                            if (!savedCode || Number(savedCode) !== confirmationOTP) {
+                                throw appError_1.AppError.BadRequest("Mã OTP không hợp lệ hoặc đã hết hạn.", "INVALID_OTP");
+                            }
+                            await redis_connect_1.default.del(redisKey); // Xóa mã OTP sau khi dùng
+                        }
+                        //case > 100%
+                        else if (newDebt > debtLimit) {
+                            if (!confirmOverLimit) {
+                                throw appError_1.AppError.BadRequest(`Khách hàng vượt quá hạn mức cho phép!`, "DEBT_LIMIT_EXCEEDED");
+                            }
+                        }
+                    }
                     //check type product
                     const phiKhac = order.Product.typeProduct == "Phí Khác";
                     order.set({
@@ -174,8 +213,8 @@ exports.adminService = {
                         rejectReason: null,
                         dayApproved: new Date(),
                     });
-                    let success;
                     await orderApproved_1.OrderApproved.create({ orderId, approvedBy: req.user.fullName }, { transaction });
+                    let success;
                     if (phiKhac) {
                         success = await inventory_1.Inventory.create({
                             totalQtyInbound: order.quantityCustomer,
@@ -218,14 +257,70 @@ exports.adminService = {
             throw appError_1.AppError.ServerError();
         }
     },
+    requestApprovalOTP: async ({ orderId, requesterName, }) => {
+        try {
+            const order = await order_1.Order.findByPk(orderId, {
+                attributes: ["orderId", "totalPriceVAT"],
+                include: [
+                    {
+                        model: customer_1.Customer,
+                        attributes: ["customerId", "customerName"],
+                        include: [
+                            { model: customerPayment_1.CustomerPayment, as: "payment", attributes: ["debtCurrent", "debtLimit"] },
+                        ],
+                    },
+                ],
+            });
+            if (!order) {
+                throw appError_1.AppError.NotFound("Không tìm thấy đơn hàng", "ORDER_NOT_FOUND");
+            }
+            const payment = order.Customer?.payment;
+            const currentDebt = await debtRepository_1.debtRepository.getCustomerCurrentDebt(order.customerId);
+            const debtLimit = Number(payment?.debtLimit || 0);
+            const orderPrice = Number(order.totalPriceVAT || 0);
+            const debtToCheck = currentDebt + orderPrice;
+            // Tính % vượt hạn mức
+            const exceededAmount = debtToCheck - debtLimit;
+            const exceededPercent = debtLimit > 0 ? Math.round((exceededAmount / debtLimit) * 100) : 100;
+            // generate OTP code
+            const otp = Math.floor(1000 + Math.random() * 9000);
+            // save OTP code into Redis with 30 minutes expiration
+            const redisKey = `order_otp_code:${orderId}`;
+            await redis_connect_1.default.set(redisKey, otp, "EX", 1800);
+            const message = `
+        🚨 <b>YÊU CẦU OTP DUYỆT ĐƠN VƯỢT HẠN MỨC</b>
+
+        📦 <b>Mã đơn hàng:</b> <code>${orderId}</code>
+        👤 <b>Người yêu cầu:</b> ${requesterName}
+        🏢 <b>Khách hàng:</b> ${order.Customer?.customerName || order.customerId}
+
+        💰 <b>Giá trị đơn:</b> ${orderPrice.toLocaleString()} đ
+        📊 <b>Công nợ hiện tại:</b> ${currentDebt.toLocaleString()} đ
+        🎯 <b>Hạn mức cấp phép:</b> ${debtLimit.toLocaleString()} đ
+        ⚠️ <b>Nợ sau duyệt:</b> <b>${debtToCheck.toLocaleString()} đ</b> (Vượt ${exceededPercent}%)
+
+        ───────────────────────
+        🔑 <b>MÃ OTP XÁC NHẬN:</b> <code>${otp}</code>
+        <i>(Mã có hiệu lực trong 30 phút. Chạm vào số để copy)</i>
+        `.trim();
+            // send alert to Telegram
+            (0, telegramSendAlert_1.sendTelegramAlertOtp)(message);
+            return {
+                message: "Đã gửi mã OTP xác nhận tới Telegram. Mã có hiệu lực trong 30 phút!",
+            };
+        }
+        catch (error) {
+            console.error("Lỗi gửi OTP Telegram:", error);
+            if (error instanceof appError_1.AppError)
+                throw error;
+            throw appError_1.AppError.ServerError();
+        }
+    },
     //===============================ADMIN USER======================================
     getAllUsers: async () => {
         try {
             const data = await adminRepository_1.adminRepository.getAllUser();
-            const sanitizedData = data
-                .map((user) => user.get({ plain: true }))
-                .filter((user) => user.role?.toLowerCase() !== "admin");
-            return { message: "Get all users successfully (excluding admin)", data: sanitizedData };
+            return { message: "Get all users successfully (excluding admin)", data: data };
         }
         catch (error) {
             console.error("Error fetching users:", error);

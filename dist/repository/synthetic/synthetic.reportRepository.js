@@ -4,23 +4,21 @@ exports.syntheticReportRepository = void 0;
 const sequelize_1 = require("sequelize");
 const order_1 = require("../../models/order/order");
 const customer_1 = require("../../models/customer/customer");
-const orderApproved_1 = require("../../models/order/orderApproved");
-const inboundHistory_1 = require("../../models/warehouse/inboundHistory");
-const outboundDetail_1 = require("../../models/warehouse/outbound/outboundDetail");
-const outboundHistory_1 = require("../../models/warehouse/outbound/outboundHistory");
-const employeeBasicInfo_1 = require("../../models/employee/employeeBasicInfo");
-const qcInspectionPaper_1 = require("../../models/qualityControl/qcInspection/qcInspectionPaper");
 const planningPaper_1 = require("../../models/planning/planningPaper");
-const reportPlanningPaper_1 = require("../../models/report/reportPlanningPaper");
-const qcInspectionBox_1 = require("../../models/qualityControl/qcInspection/qcInspectionBox");
-const planningBoxMachineTime_1 = require("../../models/planning/planningBoxMachineTime");
+const inboundHistory_1 = require("../../models/warehouse/inboundHistory");
 const reportPlanningBox_1 = require("../../models/report/reportPlanningBox");
+const employeeBasicInfo_1 = require("../../models/employee/employeeBasicInfo");
+const reportPlanningPaper_1 = require("../../models/report/reportPlanningPaper");
+const planningBoxMachineTime_1 = require("../../models/planning/planningBoxMachineTime");
+const outboundHistory_1 = require("../../models/warehouse/outbound/outboundHistory");
 const paperRequirements_1 = require("../../models/planning/requirement/paperRequirements");
+const qcInspectionBox_1 = require("../../models/qualityControl/inspection/qcInspectionBox");
+const qcInspectionPaper_1 = require("../../models/qualityControl/inspection/qcInspectionPaper");
 exports.syntheticReportRepository = {
     //====================================REVENUE DAY========================================
     getRawOutboundByCustomer: async ({ startDate, endDate, userId, }) => {
         return outboundHistory_1.OutboundHistory.findAll({
-            attributes: ["customerId", "dateOutbound", "totalPricePayment"],
+            attributes: ["customerId", "dateOutbound", "totalPricePayment", "remainingAmount"],
             where: { dateOutbound: { [sequelize_1.Op.between]: [startDate, endDate] } },
             include: [
                 {
@@ -37,41 +35,57 @@ exports.syntheticReportRepository = {
     //====================================REVENUE MONTH======================================
     // gom nhóm theo ngày duyệt và lấy các đơn được duyệt mới nhất
     getDailyApprovedOrders: async ({ startDate, endDate, userId, }) => {
-        return orderApproved_1.OrderApproved.findAll({
-            attributes: ["orderId", "createdAt"],
+        return order_1.Order.findAll({
+            attributes: ["orderId", "totalPrice", "dayApproved"],
             where: {
-                action: "APPROVED",
-                createdAt: { [sequelize_1.Op.between]: [startDate, endDate] },
+                dayApproved: { [sequelize_1.Op.between]: [startDate, endDate] },
+                status: { [sequelize_1.Op.in]: ["accept", "planning", "completed"] },
+                ...(userId ? { userId } : {}),
             },
-            include: [
-                {
-                    model: order_1.Order,
-                    required: true,
-                    attributes: ["totalPrice"],
-                    where: {
-                        ...(userId ? { userId } : {}),
-                        status: { [sequelize_1.Op.in]: ["accept", "planning", "completed"] },
-                    },
-                },
-            ],
-            order: [["approverId", "DESC"]],
             raw: true,
-            nest: true,
         });
     },
-    //gom nhóm theo ngày nhập kho
-    getDailyProductionInbound: async ({ startDate, endDate, userId, }) => {
+    // lấy doanh số của giấy tấm
+    getDailyPaperProduction: async ({ startDate, endDate, userId, }) => {
+        return reportPlanningPaper_1.ReportPlanningPaper.findAll({
+            attributes: ["totalPrice", "dayReport"],
+            where: { dayReport: { [sequelize_1.Op.between]: [startDate, endDate] } },
+            include: [
+                {
+                    model: planningPaper_1.PlanningPaper,
+                    required: true,
+                    attributes: [],
+                    include: [
+                        {
+                            model: order_1.Order,
+                            required: true,
+                            attributes: [],
+                            where: {
+                                isBox: false,
+                                status: { [sequelize_1.Op.in]: ["accept", "planning", "completed"] },
+                                ...(userId ? { userId } : {}),
+                            },
+                        },
+                    ],
+                },
+            ],
+            raw: true,
+        });
+    },
+    //gom nhóm đơn làm thùng theo ngày nhập kho
+    getDailyBoxProductionInbound: async ({ startDate, endDate, userId, }) => {
         return inboundHistory_1.InboundHistory.findAll({
-            attributes: ["totalPrice", "createdAt"],
-            where: { createdAt: { [sequelize_1.Op.between]: [startDate, endDate] } },
+            attributes: ["totalPrice", "dateInbound"],
+            where: { dateInbound: { [sequelize_1.Op.between]: [startDate, endDate] } },
             include: [
                 {
                     model: order_1.Order,
                     required: true,
                     attributes: [],
                     where: {
-                        ...(userId ? { userId } : {}),
+                        isBox: true,
                         status: { [sequelize_1.Op.in]: ["accept", "planning", "completed"] },
+                        ...(userId ? { userId } : {}),
                     },
                 },
             ],
@@ -80,18 +94,15 @@ exports.syntheticReportRepository = {
     },
     //gom nhóm theo chi tiết xuất kho
     getDailyProductionOutbound: async ({ startDate, endDate, userId, }) => {
-        return outboundDetail_1.OutboundDetail.findAll({
-            attributes: ["totalPriceOutbound", "createdAt"],
-            where: { createdAt: { [sequelize_1.Op.between]: [startDate, endDate] } },
+        return outboundHistory_1.OutboundHistory.findAll({
+            attributes: ["totalPricePayment", "dateOutbound"],
+            where: { dateOutbound: { [sequelize_1.Op.between]: [startDate, endDate] } },
             include: [
                 {
-                    model: order_1.Order,
+                    model: customer_1.Customer,
                     required: true,
                     attributes: [],
-                    where: {
-                        ...(userId ? { userId } : {}),
-                        status: { [sequelize_1.Op.in]: ["accept", "planning", "completed"] },
-                    },
+                    where: userId ? { userId } : undefined,
                 },
             ],
             raw: true,
@@ -103,7 +114,7 @@ exports.syntheticReportRepository = {
             attributes: ["customerId", "dateOutbound", "totalPricePayment"],
             where: {
                 dateOutbound: { [sequelize_1.Op.between]: [startDate, endDate] },
-                totalPricePayment: { [sequelize_1.Op.gt]: 0 },
+                totalPricePayment: { [sequelize_1.Op.gt]: 0 }, // Lấy cả âm lẫn dương, chỉ loại bỏ đơn = 0
             },
             include: [
                 {
@@ -124,7 +135,7 @@ exports.syntheticReportRepository = {
             raw: true,
         });
     },
-    getQcInspectionPaper: async ({ paperWhere, startDate, endDate, hasErrorOnly = false, }) => {
+    getQcInspectionPaper: async ({ paperWhere, startDate, endDate, }) => {
         return await qcInspectionPaper_1.QcInspectionPaper.findAll({
             attributes: ["timeInspection", "checkList", "planningId"],
             where: {

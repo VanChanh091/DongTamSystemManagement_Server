@@ -1,7 +1,7 @@
 import { Op, Transaction } from "sequelize";
-import { Customer } from "../../../models/customer/customer";
-import { Product } from "../../../models/product/product";
 import { Order } from "../../../models/order/order";
+import { Product } from "../../../models/product/product";
+import { Customer } from "../../../models/customer/customer";
 import { orderRepository } from "../../../repository/orderRepository";
 
 export const validateCustomerAndProduct = async (
@@ -50,10 +50,10 @@ export const generateOrderId = async (prefix: string, transaction?: Transaction)
 };
 
 const calculateFlutePaper = (fields: any) => {
-  const { day, matE, matB, matC, matE2, songE, songB, songC, songE2 } = fields;
+  const { day, matE, matB, matC, matA, matE2, songE, songB, songC, songA, songE2 } = fields;
 
   // 1. Đếm tổng số lớp có dữ liệu
-  const allFields = [day, matE, matB, matC, matE2, songE, songB, songC, songE2];
+  const allFields = [day, matE, matB, matA, matC, matE2, songE, songB, songC, songA, songE2];
   const layersCount = allFields.filter((f) => f && f.trim().length > 0).length;
 
   // 2. Thu thập các loại sóng hiện có
@@ -61,10 +61,11 @@ const calculateFlutePaper = (fields: any) => {
   if (songE?.trim()) flutesRaw.push("E");
   if (songB?.trim()) flutesRaw.push("B");
   if (songC?.trim()) flutesRaw.push("C");
+  if (songA?.trim()) flutesRaw.push("A");
   if (songE2?.trim()) flutesRaw.push("E");
 
   // 3. Sắp xếp sóng theo thứ tự ưu tiên: E -> B -> C
-  const fluteOrder = ["E", "B", "C"];
+  const fluteOrder = ["E", "B", "C", "A"];
 
   const sortedFlutes: any[] = [];
   for (const f of fluteOrder) {
@@ -229,6 +230,8 @@ export function formatterStructureOrder(cell: Record<string, any>) {
     cell.matBReplace || cell.matB,
     cell.songCReplace || cell.songC,
     cell.matCReplace || cell.matC,
+    cell.songAReplace || cell.songA,
+    cell.matAReplace || cell.matA,
     cell.songE2Replace || cell.songE2,
   ];
 

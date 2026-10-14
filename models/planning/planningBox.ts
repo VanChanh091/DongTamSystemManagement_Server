@@ -16,10 +16,13 @@ interface PlanningBoxAttributes {
   matE?: string | null;
   matB?: string | null;
   matC?: string | null;
+  matA?: string | null;
   matE2?: string | null;
+
   songE?: string | null;
   songB?: string | null;
   songC?: string | null;
+  songA?: string | null;
   songE2?: string | null;
 
   length: number;
@@ -60,10 +63,12 @@ export type PlanningBoxCreationAttributes = Optional<
   | "matE"
   | "matB"
   | "matC"
+  | "matA"
   | "matE2"
   | "songE"
   | "songB"
   | "songC"
+  | "songA"
   | "songE2"
   | "hasIn"
   | "hasCanLan"
@@ -91,10 +96,13 @@ export class PlanningBox
   declare matE?: string | null;
   declare matB?: string | null;
   declare matC?: string | null;
+  declare matA?: string | null;
   declare matE2?: string | null;
+
   declare songE?: string | null;
   declare songB?: string | null;
   declare songC?: string | null;
+  declare songA?: string | null;
   declare songE2?: string | null;
 
   declare length: number;
@@ -143,11 +151,15 @@ export function initPlanningBoxModel(sequelize: Sequelize): typeof PlanningBox {
       matE: { type: DataTypes.STRING },
       matB: { type: DataTypes.STRING },
       matC: { type: DataTypes.STRING },
+      matA: { type: DataTypes.STRING },
       matE2: { type: DataTypes.STRING },
+
       songE: { type: DataTypes.STRING },
       songB: { type: DataTypes.STRING },
       songC: { type: DataTypes.STRING },
+      songA: { type: DataTypes.STRING },
       songE2: { type: DataTypes.STRING },
+
       length: { type: DataTypes.DOUBLE, allowNull: false },
       size: { type: DataTypes.DOUBLE, allowNull: false },
 

@@ -59,6 +59,7 @@ export const dbPlanningColumns: Partial<ExcelJS.Column>[] = [
   { header: "Sóng E2", key: "fluteE2" },
   { header: "Sóng B", key: "fluteB" },
   { header: "Sóng C", key: "fluteC" },
+  { header: "Sóng A", key: "fluteA" },
   { header: "Dao", key: "knife" },
   { header: "Tổng PL", key: "totalLoss" },
 
@@ -145,6 +146,7 @@ export const mappingDbPlanningRow = (item: any, index: number) => {
     fluteE2: item.fluteE2,
     fluteB: item.fluteB,
     fluteC: item.fluteC,
+    fluteA: item.fluteA,
     knife: item.knife,
     totalLoss: item.totalLoss,
 

@@ -1,4 +1,4 @@
-import { Transaction } from "sequelize";
+import { Op, Sequelize, Transaction } from "sequelize";
 import { Box } from "../models/order/box";
 import { User } from "../models/user/user";
 import { Order } from "../models/order/order";
@@ -84,7 +84,14 @@ export const adminRepository = {
   //===============================ADMIN USER=====================================
 
   getAllUser: async () => {
-    return await User.findAll({ attributes: { exclude: ["password", "createdAt", "updatedAt"] } });
+    return await User.findAll({
+      where: { role: { [Op.ne]: "admin" } },
+      attributes: { exclude: ["password", "createdAt", "updatedAt"] },
+      order: [
+        [Sequelize.literal("CASE WHEN role = 'manager' THEN 0 ELSE 1 END"), "ASC"],
+        ["department", "ASC"],
+      ],
+    });
   },
 
   getUserByPk: async (userId: number, transaction?: Transaction) => {

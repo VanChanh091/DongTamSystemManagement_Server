@@ -4,35 +4,29 @@ exports.checkingInspection = exports.getQcInspectionErr = exports.getQcInspectio
 const qcInspectionCheckService_1 = require("../../../service/qualityControl/qcInspectionCheckService");
 //====================================INSPECTION PAPER========================================
 const getQcInspection = async (req, res, next) => {
-    const { page, pageSize, machine, field, keyword, startDate, endDate, isPaper } = req.query;
+    const { isPaper, page, pageSize, machine, field, keyword } = req.query;
     try {
         const commonParams = {
             page: Number(page),
             pageSize: Number(pageSize),
-            machine: machine,
+            machine,
         };
-        // const hasSearch = !!(field && keyword);
+        const hasSearch = !!(field && keyword);
         const serviceMap = {
             paper: {
-                // search: () =>
-                //   qcInspectionService.getInspectionPaperByField({
-                //     ...commonParams,
-                //     field,
-                //     keyword,
-                //     startDate,
-                //     endDate,
-                //   } as any),
+                search: () => qcInspectionCheckService_1.qcInspectionService.getInspectionPaperByField({
+                    ...commonParams,
+                    field,
+                    keyword,
+                }),
                 all: () => qcInspectionCheckService_1.qcInspectionService.getAllQcInspectionPaper(commonParams),
             },
             box: {
-                // search: () =>
-                //   qcInspectionService.getInspectionBoxByField({
-                //     ...commonParams,
-                //     field,
-                //     keyword,
-                //     startDate,
-                //     endDate,
-                //   } as any),
+                search: () => qcInspectionCheckService_1.qcInspectionService.getInspectionBoxByField({
+                    ...commonParams,
+                    field,
+                    keyword,
+                }),
                 all: () => qcInspectionCheckService_1.qcInspectionService.getAllQcInspectionBox(commonParams),
             },
         };
@@ -40,8 +34,8 @@ const getQcInspection = async (req, res, next) => {
         if (!targetService) {
             return res.status(400).json({ message: "isPaper parameter must be 'paper' or 'box'" });
         }
-        // const response = hasSearch ? await targetService.search() : await targetService.all();
-        const response = await targetService.all();
+        const response = hasSearch ? await targetService.search() : await targetService.all();
+        // const response = await targetService.all();
         return res.status(200).json(response);
     }
     catch (error) {
@@ -69,30 +63,32 @@ exports.getQcInspectionErr = getQcInspectionErr;
 //create
 const checkingInspection = async (req, res, next) => {
     const { isPaper } = req.query;
-    const { checking, errProgress, planningId, planningBoxId, machine, note } = req.body;
+    const { planningId, planningBoxId, checking, errProgress, machine, note, imgErr } = req.body;
     try {
         let response;
         if (isPaper === "paper") {
             response = await qcInspectionCheckService_1.qcInspectionService.checkingInspectionPaper({
                 req,
-                machine,
                 checking: checking,
-                planningId: planningId,
                 errProgress: errProgress,
-                username: req.user.fullName,
-                userId: req.user.userId,
-                note: note,
+                otherData: {
+                    planningId: planningId,
+                    machine,
+                    note: note,
+                    imgErr: imgErr,
+                },
             });
         }
         else if (isPaper === "box") {
             response = await qcInspectionCheckService_1.qcInspectionService.checkingInspectionBox({
                 req,
-                machine,
-                planningBoxId: planningBoxId,
                 errProgress: errProgress,
-                username: req.user.fullName,
-                userId: req.user.userId,
-                note: note,
+                otherData: {
+                    planningBoxId: planningBoxId,
+                    machine,
+                    note: note,
+                    imgErr: imgErr,
+                },
             });
         }
         return res.status(200).json(response);

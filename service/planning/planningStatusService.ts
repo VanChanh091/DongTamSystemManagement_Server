@@ -145,7 +145,9 @@ export const planningStatusService = {
 
         // Parse cấu trúc giấy thành mảng lớp
         const layers = parsePaperStructure(planningData);
-        const waveTypes = (order.flute?.match(/[EBC]/gi) || []).map((s: string) => s.toUpperCase());
+        const waveTypes = (order.flute?.match(/[EBCA]/gi) || []).map((s: string) =>
+          s.toUpperCase(),
+        );
 
         // Tính toán phế liệu định mức
         const wasteResult = calculateWaste({
@@ -422,6 +424,8 @@ const parsePaperStructure = (planningData: any) => {
     planningData.matBReplace,
     planningData.songCReplace,
     planningData.matCReplace,
+    planningData.songAReplace,
+    planningData.matAReplace,
     planningData.songE2Replace,
     planningData.matE2Replace,
   ]
@@ -429,7 +433,7 @@ const parsePaperStructure = (planningData: any) => {
     .join("/");
 
   return structStr.split("/").map((seg: string) => {
-    if (/^[EBC]/.test(seg)) return { kind: "flute" as const, code: seg };
+    if (/^[EBCA]/.test(seg)) return { kind: "flute" as const, code: seg };
     const thicknessMatch = seg.match(/\d+$/);
 
     return {
@@ -457,7 +461,7 @@ const calculateWaste = ({
   waveTypes: string[];
 }) => {
   const gkTh = ghepKho / 100;
-  let flute = { E: 0, B: 0, C: 0, E2: 0 };
+  let flute = { E: 0, B: 0, C: 0, A: 0, E2: 0 };
   let softLiner = 0;
   let countE = 0;
 
@@ -507,7 +511,7 @@ const calculateWaste = ({
   }
 
   // Tính hao phí, dao, tổng hao hụt
-  const bottom = flute.E + flute.B + flute.C + softLiner;
+  const bottom = flute.E + flute.B + flute.C + flute.A + flute.E2 + softLiner;
   const totalLength = runningPlan / numberChild;
   const oneM2WaveCrestSoft = bottom / wasteNorm.waveCrestSoft;
 
@@ -519,13 +523,18 @@ const calculateWaste = ({
   const knife =
     wasteNorm.waveCrestSoft > 0 ? oneM2WaveCrestSoft * wasteNorm.lossInSheetingAndSlitting : 0;
 
-  const totalLoss = flute.E + flute.B + flute.C + flute.E2 + haoPhi + knife + bottom;
+  const totalLossFlute = flute.E + flute.B + flute.C + flute.A + flute.E2;
+  const totalLoss = totalLossFlute + haoPhi + knife + bottom;
+
   const roundSmart = (num: number) => Math.round(num * 100) / 100;
+
+  console.log(`fluteA: ${flute.A},  totalLoss: ${totalLoss}`);
 
   return {
     fluteE: roundSmart(flute.E),
     fluteB: roundSmart(flute.B),
     fluteC: roundSmart(flute.C),
+    fluteA: roundSmart(flute.A),
     fluteE2: roundSmart(flute.E2),
     bottom: roundSmart(bottom),
     haoPhi: roundSmart(haoPhi),
@@ -558,10 +567,13 @@ const handleCreateBoxPlanning = async ({
       matE: paperPlan.matEReplace,
       matB: paperPlan.matBReplace,
       matC: paperPlan.matCReplace,
+      matA: paperPlan.matAReplace,
       matE2: paperPlan.matE2Replace,
+
       songE: paperPlan.songEReplace,
       songB: paperPlan.songBReplace,
       songC: paperPlan.songCReplace,
+      songA: paperPlan.songAReplace,
       songE2: paperPlan.songE2Replace,
       length: paperPlan.lengthPaperPlanning,
       size: paperPlan.sizePaperPLaning,
@@ -661,6 +673,8 @@ const handlePaperRequirements = async ({
     { rawCode: planningData.matBReplace, isFlute: false },
     { rawCode: planningData.songCReplace, isFlute: true, fluteLetter: "C" },
     { rawCode: planningData.matCReplace, isFlute: false },
+    { rawCode: planningData.songAReplace, isFlute: true, fluteLetter: "A" },
+    { rawCode: planningData.matAReplace, isFlute: false },
     { rawCode: planningData.songE2Replace, isFlute: true, fluteLetter: "E2" },
     { rawCode: planningData.matE2Replace, isFlute: false },
   ].filter((item) => Boolean(item.rawCode));
@@ -703,6 +717,8 @@ const handlePaperRequirements = async ({
         fluteFactor = waveCoeff.fluteB;
       } else if (layer.fluteLetter === "C") {
         fluteFactor = waveCoeff.fluteC;
+      } else if (layer.fluteLetter === "A") {
+        fluteFactor = waveCoeff.fluteA || 1.0;
       }
     }
 

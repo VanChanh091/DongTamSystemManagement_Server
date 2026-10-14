@@ -27,8 +27,6 @@ export const getMachinePapers = async (req: Request, res: Response, next: NextFu
 };
 
 export const getRawMachinePapers = async (req: Request, res: Response, next: NextFunction) => {
-  console.log(`hi`);
-
   try {
     const response = await MachinePaper.findAll({
       attributes: ["machineId", "machineName"],

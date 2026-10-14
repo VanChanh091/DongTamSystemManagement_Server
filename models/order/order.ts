@@ -2,10 +2,10 @@ import { Box } from "./box.js";
 import { User } from "../user/user.js";
 import { Product } from "../product/product.js";
 import { Customer } from "../customer/customer.js";
-import { Inventory } from "../warehouse/inventory/inventory.js";
-import { OutboundHistory } from "../warehouse/outbound/outboundHistory.js";
-import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { OrderApproved } from "./orderApproved.js";
+import { Inventory } from "../warehouse/inventory/inventory.js";
+import { DataTypes, Model, Optional, Sequelize } from "sequelize";
+import { OutboundHistory } from "../warehouse/outbound/outboundHistory.js";
 
 export type OrderStatus = "pending" | "accept" | "reject" | "planning" | "stop" | "completed";
 
@@ -47,13 +47,17 @@ interface OrderAttributes {
   daoXa?: string | null;
 
   day?: string | null;
+
   matE?: string | null;
   matB?: string | null;
   matC?: string | null;
+  matA?: string | null;
   matE2?: string | null;
+
   songE?: string | null;
   songB?: string | null;
   songC?: string | null;
+  songA?: string | null;
   songE2?: string | null;
 
   discount?: number | null;
@@ -101,10 +105,12 @@ export type OrderCreationAttributes = Optional<
   | "matE"
   | "matB"
   | "matC"
+  | "matA"
   | "matE2"
   | "songE"
   | "songB"
   | "songC"
+  | "songA"
   | "songE2"
   | "discount"
   | "totalPrice"
@@ -173,13 +179,17 @@ export class Order
 
   //structure
   declare day?: string | null;
+
   declare matE?: string | null;
   declare matB?: string | null;
   declare matC?: string | null;
+  declare matA?: string | null;
   declare matE2?: string | null;
+
   declare songE?: string | null;
   declare songB?: string | null;
   declare songC?: string | null;
+  declare songA?: string | null;
   declare songE2?: string | null;
 
   declare discount?: number | null;
@@ -231,13 +241,17 @@ export function initOrderModel(sequelize: Sequelize): typeof Order {
       daoXa: { type: DataTypes.STRING },
 
       day: { type: DataTypes.STRING },
+
       matE: { type: DataTypes.STRING },
       matB: { type: DataTypes.STRING },
       matC: { type: DataTypes.STRING },
+      matA: { type: DataTypes.STRING },
       matE2: { type: DataTypes.STRING },
+
       songE: { type: DataTypes.STRING },
       songB: { type: DataTypes.STRING },
       songC: { type: DataTypes.STRING },
+      songA: { type: DataTypes.STRING },
       songE2: { type: DataTypes.STRING },
 
       lengthPaperCustomer: { type: DataTypes.DOUBLE, allowNull: false },

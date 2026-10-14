@@ -19,6 +19,8 @@ function initProductModel(sequelize) {
         maKhuon: { type: sequelize_1.DataTypes.STRING },
         productImage: { type: sequelize_1.DataTypes.STRING },
         productSeq: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
+        layerCount: { type: sequelize_1.DataTypes.INTEGER },
+        wave: { type: sequelize_1.DataTypes.STRING },
     }, {
         sequelize,
         tableName: "Products",

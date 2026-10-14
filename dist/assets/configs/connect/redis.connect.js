@@ -36,18 +36,19 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.subClient = exports.pubClient = void 0;
+exports.subClient = exports.pubClient = exports.redisConfig = void 0;
 const RedisImport = __importStar(require("ioredis"));
 const Redis = RedisImport.default || RedisImport;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const redisConfig = {
+exports.redisConfig = {
     host: process.env.REDIS_HOST,
     port: Number(process.env.REDIS_PORT) || 6379,
     db: Number(process.env.REDIS_DB) || 0,
+    maxRetriesPerRequest: null, // BẮT BUỘC đối với BullMQ
 };
-const redisCache = new Redis(redisConfig);
-const pubClient = new Redis(redisConfig);
+const redisCache = new Redis(exports.redisConfig);
+const pubClient = new Redis(exports.redisConfig);
 exports.pubClient = pubClient;
 const subClient = pubClient.duplicate();
 exports.subClient = subClient;

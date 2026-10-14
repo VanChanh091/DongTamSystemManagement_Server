@@ -28,13 +28,17 @@ interface PlanningPaperAttributes {
   timeRunning?: string | null;
 
   dayReplace?: string | null;
+
   matEReplace?: string | null;
   matBReplace?: string | null;
   matCReplace?: string | null;
+  matAReplace?: string | null;
   matE2Replace?: string | null;
+
   songEReplace?: string | null;
   songBReplace?: string | null;
   songCReplace?: string | null;
+  songAReplace?: string | null;
   songE2Replace?: string | null;
 
   lengthPaperPlanning: number;
@@ -51,6 +55,7 @@ interface PlanningPaperAttributes {
   fluteE?: number | null;
   fluteB?: number | null;
   fluteC?: number | null;
+  fluteA?: number | null;
   fluteE2?: number | null;
   knife?: number | null;
   totalLoss?: number | null;
@@ -89,10 +94,12 @@ export type PlanningPaperCreationAttributes = Optional<
   | "matEReplace"
   | "matBReplace"
   | "matCReplace"
+  | "matAReplace"
   | "matE2Replace"
   | "songEReplace"
   | "songBReplace"
   | "songCReplace"
+  | "songAReplace"
   | "songE2Replace"
   | "qtyProduced"
   | "totalPrice"
@@ -101,6 +108,7 @@ export type PlanningPaperCreationAttributes = Optional<
   | "fluteE"
   | "fluteB"
   | "fluteC"
+  | "fluteA"
   | "fluteE2"
   | "knife"
   | "totalLoss"
@@ -132,13 +140,17 @@ export class PlanningPaper
   declare timeRunning?: string | null;
 
   declare dayReplace?: string | null;
+
   declare matEReplace?: string | null;
   declare matBReplace?: string | null;
   declare matCReplace?: string | null;
+  declare matAReplace?: string | null;
   declare matE2Replace?: string | null;
+
   declare songEReplace?: string | null;
   declare songBReplace?: string | null;
   declare songCReplace?: string | null;
+  declare songAReplace?: string | null;
   declare songE2Replace?: string | null;
 
   declare lengthPaperPlanning: number;
@@ -155,6 +167,7 @@ export class PlanningPaper
   declare fluteE?: number | null;
   declare fluteB?: number | null;
   declare fluteC?: number | null;
+  declare fluteA?: number | null;
   declare fluteE2?: number | null;
   declare knife?: number | null;
   declare totalLoss?: number | null;
@@ -211,13 +224,17 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
 
       //structure replace
       dayReplace: { type: DataTypes.STRING },
+
       matEReplace: { type: DataTypes.STRING },
       matBReplace: { type: DataTypes.STRING },
       matCReplace: { type: DataTypes.STRING },
+      matAReplace: { type: DataTypes.STRING },
       matE2Replace: { type: DataTypes.STRING },
+
       songEReplace: { type: DataTypes.STRING },
       songBReplace: { type: DataTypes.STRING },
       songCReplace: { type: DataTypes.STRING },
+      songAReplace: { type: DataTypes.STRING },
       songE2Replace: { type: DataTypes.STRING },
 
       lengthPaperPlanning: { type: DataTypes.DOUBLE, allowNull: false },
@@ -235,6 +252,7 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
       fluteE: { type: DataTypes.DOUBLE },
       fluteB: { type: DataTypes.DOUBLE },
       fluteC: { type: DataTypes.DOUBLE },
+      fluteA: { type: DataTypes.DOUBLE },
       fluteE2: { type: DataTypes.DOUBLE },
       knife: { type: DataTypes.DOUBLE },
       totalLoss: { type: DataTypes.DOUBLE },

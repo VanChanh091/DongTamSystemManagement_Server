@@ -12,6 +12,8 @@ const appError_1 = require("../../utils/appError");
 const order_1 = require("../../models/order/order");
 const planningBox_1 = require("../../models/planning/planningBox");
 const planningPaper_1 = require("../../models/planning/planningPaper");
+const inspection_request_1 = require("../../models/qualityControl/inspection/inspection_request");
+const inspection_queue_1 = require("../../assets/configs/queue/inspection.queue");
 const reportRepository_1 = require("../../repository/reportRepository");
 const labelFields_1 = require("../../assets/labelFields");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
@@ -174,7 +176,7 @@ exports.manuPaperService = {
                         options: { where: { orderId: planning.orderId }, transaction },
                     });
                 }
-                //3. tạo report theo số lần báo cáo
+                // tạo report theo số lần báo cáo
                 const reportCreated = await (0, reportHelper_1.createReportPlanning)({
                     planning: planning.toJSON(),
                     model: reportPlanningPaper_1.ReportPlanningPaper,
@@ -185,6 +187,17 @@ exports.manuPaperService = {
                     otherData,
                     transaction,
                 });
+                // Kiểm tra nếu có InspectionRequest nào đang pending -> chuyển sang missing và result: false
+                const pendingRequests = await inspection_request_1.InspectionRequest.findAll({
+                    where: { planningId, status: "pending" },
+                    transaction,
+                });
+                if (pendingRequests.length > 0) {
+                    await inspection_request_1.InspectionRequest.update({ status: "missing", result: false }, { where: { planningId, status: "pending" }, transaction });
+                    for (const req of pendingRequests) {
+                        await (0, inspection_queue_1.cancelInspectionTimers)(req.inspectionId);
+                    }
+                }
                 //chuyển sang trang chờ kiểm
                 await planning.update({ statusRequest: "requested" }, { transaction });
                 //--------------------MEILISEARCH-----------------------

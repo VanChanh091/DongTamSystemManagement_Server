@@ -14,9 +14,10 @@ const router = (0, express_1.Router)();
 // Admin routes for managing orders
 //===============================ORDERS=====================================
 router.get("/orders", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeRole)(["admin", "manager"]), adminController_1.getOrderPending);
+router.post("/orders/send-otp", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeRole)(["admin", "manager"]), adminController_1.requestOtpCode);
 router.put("/orders", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeRole)(["admin", "manager"]), adminController_1.updateStatusAdmin);
 //===============================USERS=====================================
-router.get("/users", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeRole)(["admin"]), adminController_1.getUsersAdmin);
+router.get("/users", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeRole)(["admin"]), adminController_1.getUsersExcludeAdmin);
 router.put("/users", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeRole)(["admin"]), adminController_1.updateInfoUser);
 router.delete("/users", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeRole)(["admin"]), adminController_1.deleteUser);
 //===============================MACHINE PAPER=====================================
@@ -24,6 +25,8 @@ router.get("/machine-papers", authMiddleware_1.default, (0, permissionMiddleware
 router.post("/machine-papers", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeRole)(["admin"]), adminMachineController_1.createMachinePaper);
 router.put("/machine-papers", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeRole)(["admin"]), adminMachineController_1.updateMachinePaper);
 router.delete("/machine-papers", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeRole)(["admin"]), adminMachineController_1.deleteMachinePaper);
+//using to get machine for FE
+router.get("/machine-papers/machine-name", authMiddleware_1.default, adminMachineController_1.getRawMachinePapers);
 //===============================MACHINE BOX=====================================
 router.get("/machine-boxes", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeRole)(["admin"]), adminMachineController_1.getMachineBoxes);
 router.post("/machine-boxes", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeRole)(["admin"]), adminMachineController_1.createMachineBox);

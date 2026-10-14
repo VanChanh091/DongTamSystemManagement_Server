@@ -6,6 +6,7 @@ interface WaveCrestAttributes {
   fluteE_2?: number | null;
   fluteB?: number | null;
   fluteC?: number | null;
+  fluteA?: number | null;
   machineName?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
@@ -18,6 +19,7 @@ export type WaveCrestCreationAttributes = Optional<
   | "fluteE_2"
   | "fluteB"
   | "fluteC"
+  | "fluteA"
   | "machineName"
   | "createdAt"
   | "updatedAt"
@@ -32,6 +34,7 @@ export class WaveCrestCoefficient
   declare fluteE_2?: number | null;
   declare fluteB?: number | null;
   declare fluteC?: number | null;
+  declare fluteA?: number | null;
   declare machineName?: string | null;
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
@@ -49,6 +52,7 @@ export function initWaveCrestCoefficientModel(sequelize: Sequelize) {
       fluteE_2: { type: DataTypes.DOUBLE },
       fluteB: { type: DataTypes.DOUBLE },
       fluteC: { type: DataTypes.DOUBLE },
+      fluteA: { type: DataTypes.DOUBLE },
       machineName: { type: DataTypes.STRING },
     },
     { sequelize, tableName: "wave_crest_coefficients", timestamps: true },

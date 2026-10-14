@@ -3,9 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getOrderByStatus = exports.cachedStatus = exports.updateChildTable = exports.createDataTable = exports.calculateVolume = exports.calculateOrderMetrics = exports.generateOrderId = exports.validateCustomerAndProduct = void 0;
 exports.formatterStructureOrder = formatterStructureOrder;
 const sequelize_1 = require("sequelize");
-const customer_1 = require("../../../models/customer/customer");
-const product_1 = require("../../../models/product/product");
 const order_1 = require("../../../models/order/order");
+const product_1 = require("../../../models/product/product");
+const customer_1 = require("../../../models/customer/customer");
 const orderRepository_1 = require("../../../repository/orderRepository");
 const validateCustomerAndProduct = async (customerId, productId, transaction) => {
     const customer = await customer_1.Customer.findOne({ where: { customerId }, transaction });
@@ -43,9 +43,9 @@ const generateOrderId = async (prefix, transaction) => {
 };
 exports.generateOrderId = generateOrderId;
 const calculateFlutePaper = (fields) => {
-    const { day, matE, matB, matC, matE2, songE, songB, songC, songE2 } = fields;
+    const { day, matE, matB, matC, matA, matE2, songE, songB, songC, songA, songE2 } = fields;
     // 1. Đếm tổng số lớp có dữ liệu
-    const allFields = [day, matE, matB, matC, matE2, songE, songB, songC, songE2];
+    const allFields = [day, matE, matB, matA, matC, matE2, songE, songB, songC, songA, songE2];
     const layersCount = allFields.filter((f) => f && f.trim().length > 0).length;
     // 2. Thu thập các loại sóng hiện có
     const flutesRaw = [];
@@ -55,10 +55,12 @@ const calculateFlutePaper = (fields) => {
         flutesRaw.push("B");
     if (songC?.trim())
         flutesRaw.push("C");
+    if (songA?.trim())
+        flutesRaw.push("A");
     if (songE2?.trim())
         flutesRaw.push("E");
     // 3. Sắp xếp sóng theo thứ tự ưu tiên: E -> B -> C
-    const fluteOrder = ["E", "B", "C"];
+    const fluteOrder = ["E", "B", "C", "A"];
     const sortedFlutes = [];
     for (const f of fluteOrder) {
         flutesRaw.forEach((raw) => {
@@ -176,6 +178,8 @@ function formatterStructureOrder(cell) {
         cell.matBReplace || cell.matB,
         cell.songCReplace || cell.songC,
         cell.matCReplace || cell.matC,
+        cell.songAReplace || cell.songA,
+        cell.matAReplace || cell.matA,
         cell.songE2Replace || cell.songE2,
     ];
     const formattedParts = [];

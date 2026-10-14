@@ -29,9 +29,7 @@ exports.debtRepository = {
         };
         if (targetDate) {
             const endOfDayStr = (0, dayjs_config_1.dayjsUtc)(targetDate).endOf("day").format("YYYY-MM-DD HH:mm:ss");
-            whereCondition.dateOutbound = {
-                [sequelize_1.Op.lte]: endOfDayStr,
-            };
+            whereCondition.dateOutbound = { [sequelize_1.Op.lte]: endOfDayStr };
         }
         if (customerId) {
             whereCondition.customerId = Array.isArray(customerId) ? { [sequelize_1.Op.in]: customerId } : customerId;
@@ -96,6 +94,37 @@ exports.debtRepository = {
     },
     bulkCreatePaymentAllocation: async (allocationsToCreate, transaction) => {
         return await paymentAllocation_1.PaymentAllocation.bulkCreate(allocationsToCreate, { transaction });
+    },
+    getCustomerCurrentDebt: async (customerId, transaction) => {
+        const total = await outboundHistory_1.OutboundHistory.sum("remainingAmount", {
+            where: {
+                customerId,
+                status: { [sequelize_1.Op.in]: ["unpaid", "partial"] },
+                remainingAmount: { [sequelize_1.Op.gt]: 0 },
+            },
+            transaction,
+        });
+        return Number(total || 0);
+    },
+    getCustomersCurrentDebt: async (customerIds) => {
+        const records = await outboundHistory_1.OutboundHistory.findAll({
+            attributes: [
+                "customerId",
+                [sequelize_1.Sequelize.fn("SUM", sequelize_1.Sequelize.col("remainingAmount")), "totalDebt"],
+            ],
+            where: {
+                customerId: { [sequelize_1.Op.in]: customerIds },
+                status: { [sequelize_1.Op.in]: ["unpaid", "partial"] },
+                remainingAmount: { [sequelize_1.Op.gt]: 0 },
+            },
+            group: ["customerId"],
+            raw: true,
+        });
+        const map = new Map();
+        for (const record of records) {
+            map.set(record.customerId, Number(record.totalDebt || 0));
+        }
+        return map;
     },
 };
 //# sourceMappingURL=debtRepository.js.map

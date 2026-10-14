@@ -273,9 +273,9 @@ exports.outboundService = {
                     //calculate price
                     const isPromotion = !!item.isPromotion;
                     const price = isPromotion ? 0 : order.pricePaper;
-                    const totalPriceOutbound = price * item.outboundQty;
+                    const totalPriceOutbound = Math.round(price * item.outboundQty);
                     const vatRate = isPromotion ? 0 : (order?.vat ?? 0) / 100;
-                    const vatAmount = totalPriceOutbound * vatRate;
+                    const vatAmount = Math.round(totalPriceOutbound * vatRate);
                     const exportedQty = await warehouseRepository_1.warehouseRepository.sumOutboundQty(item.orderId, transaction);
                     totalPriceOrder += totalPriceOutbound;
                     totalPriceVAT += vatAmount;
@@ -318,8 +318,10 @@ exports.outboundService = {
                 }
                 // tạo slipCode với số thứ tự tăng dần và có 4 số
                 const slipCode = `${prefix}${number.toString().padStart(4, "0")}`; //XKBH26040001
-                //làm tròn 2 chữ số thập phân
-                const roundedTotalPrice = Math.round(totalPricePayment * 100) / 100;
+                // Làm tròn số tiền nguyên VNĐ
+                const roundedTotalPriceOrder = Math.round(totalPriceOrder);
+                const roundedTotalPriceVAT = Math.round(totalPriceVAT);
+                const roundedTotalPricePayment = Math.round(totalPricePayment);
                 // Tạo outbound
                 const outbound = await crud_helper_repository_1.CrudHelper.createData({
                     model: outboundHistory_1.OutboundHistory,
@@ -327,11 +329,11 @@ exports.outboundService = {
                         customerId,
                         dateOutbound: now,
                         outboundSlipCode: slipCode,
-                        totalPriceOrder,
-                        totalPriceVAT: Math.round(totalPriceVAT * 100) / 100, // làm tròn 2 chữ số thập phân
-                        totalPricePayment: roundedTotalPrice,
+                        totalPriceOrder: roundedTotalPriceOrder,
+                        totalPriceVAT: roundedTotalPriceVAT,
+                        totalPricePayment: roundedTotalPricePayment,
                         paidAmount: 0,
-                        remainingAmount: roundedTotalPrice,
+                        remainingAmount: roundedTotalPricePayment,
                         totalOutboundQty,
                         outboundBy,
                     },
@@ -390,7 +392,7 @@ exports.outboundService = {
                 });
                 //--------------------MEILISEARCH-----------------------
                 const orderIdMeili = preparedDetails.map((item) => item.orderId);
-                await exports.outboundService.syncDataOutbound(outbound.outboundId, orderIdMeili, transaction);
+                await syncDataOutbound(outbound.outboundId, orderIdMeili, transaction);
                 return outbound;
             });
         }
@@ -415,6 +417,8 @@ exports.outboundService = {
                 if (!outbound) {
                     throw appError_1.AppError.NotFound("Phiếu xuất kho không tồn tại", "OUTBOUND_NOT_FOUND");
                 }
+                // Lấy giá trị cũ của totalPricePayment trước khi cập nhật
+                const oldTotalPricePayment = Number(outbound.totalPricePayment || 0);
                 const logItems = [];
                 const oldDetails = outbound.detail ?? [];
                 const usedOldDetailIds = new Set();
@@ -451,7 +455,7 @@ exports.outboundService = {
                     // Logic giá & khuyến mãi
                     const isPromotion = !!item.isPromotion;
                     const currentPrice = isPromotion ? 0 : order.pricePaper;
-                    const currentTotalPrice = currentPrice * item.outboundQty;
+                    const currentTotalPrice = Math.round(currentPrice * item.outboundQty);
                     const oldQty = oldDetail ? oldDetail.outboundQty : 0;
                     // tính toán cập nhật tồn kho
                     const finalQty = inventory.qtyInventory + oldQty - item.outboundQty;
@@ -470,7 +474,7 @@ exports.outboundService = {
                         });
                     }
                     const vatRate = isPromotion ? 0 : (order.vat ?? 0) / 100;
-                    const vatAmount = currentTotalPrice * vatRate;
+                    const vatAmount = Math.round(currentTotalPrice * vatRate);
                     totalPriceOrder += currentTotalPrice;
                     totalPriceVAT += vatAmount;
                     totalPricePayment += currentTotalPrice + vatAmount;
@@ -534,14 +538,17 @@ exports.outboundService = {
                     }
                 }
                 // Tính toán lại tổng tiền thanh toán và số tiền còn lại
-                const roundedTotalPrice = Math.round(totalPricePayment * 100) / 100;
-                const paidAmount = Number(outbound.paidAmount ?? 0);
-                const remainingAmount = Math.round((roundedTotalPrice - paidAmount) * 100) / 100;
+                const roundedTotalPriceOrder = Math.round(totalPriceOrder);
+                const roundedTotalPriceVAT = Math.round(totalPriceVAT);
+                const roundedTotalPricePayment = Math.round(totalPricePayment);
+                const paidAmount = Math.round(Number(outbound.paidAmount ?? 0));
+                const remainingAmount = Math.round(roundedTotalPricePayment - paidAmount);
                 // Cập nhật outbound header
                 await outbound.update({
-                    totalPriceOrder,
-                    totalPriceVAT: Math.round(totalPriceVAT * 100) / 100, // làm tròn 2 chữ số thập phân
-                    totalPricePayment: roundedTotalPrice,
+                    customerId: customerId || outbound.customerId,
+                    totalPriceOrder: roundedTotalPriceOrder,
+                    totalPriceVAT: roundedTotalPriceVAT,
+                    totalPricePayment: roundedTotalPricePayment,
                     remainingAmount,
                     totalOutboundQty,
                     updatedBy,
@@ -560,7 +567,7 @@ exports.outboundService = {
                 const oldOrderIds = oldDetails.map((detail) => detail.orderId);
                 // Gộp mảng và sử dụng Set để loại bỏ các orderId trùng lặp
                 const affectedOrderIds = [...new Set([...currentOrderIds, ...oldOrderIds])];
-                await exports.outboundService.syncDataOutbound(outboundId, affectedOrderIds, transaction);
+                await syncDataOutbound(outboundId, affectedOrderIds, transaction);
                 return outbound;
             });
         }
@@ -568,56 +575,6 @@ exports.outboundService = {
             console.log("err to update outbound: ", error);
             if (error instanceof appError_1.AppError)
                 throw error;
-            throw appError_1.AppError.ServerError();
-        }
-    },
-    syncDataOutbound: async (outboundId, orderIds, transaction) => {
-        try {
-            const listOrderIds = Array.isArray(orderIds) ? orderIds : [orderIds];
-            const [outbound, inventories] = await Promise.all([
-                warehouseRepository_1.warehouseRepository.syncOutboundForMeili(outboundId, transaction),
-                inventoryRepository_1.inventoryRepository.syncAllInventoryToMeili(listOrderIds, transaction),
-            ]);
-            const flattenInventory = inventories.map(meiliTransformer_1.meiliTransformer.inventory);
-            if (outbound) {
-                const meiliFormatted = meiliTransformer_1.meiliTransformer.outbound(outbound);
-                await meiliService_1.meiliService.syncOrUpdateMeiliData({
-                    indexKey: labelFields_1.MEILI_INDEX.OUTBOUNDS,
-                    data: meiliFormatted,
-                    transaction,
-                });
-            }
-            // Phân loại: Khác 0 thì giữ/cập nhật, Bằng 0 thì xóa
-            const validInventories = [];
-            const deleteInventoryIds = [];
-            for (const inv of inventories) {
-                if (inv.qtyInventory !== 0) {
-                    validInventories.push(inv);
-                }
-                else {
-                    deleteInventoryIds.push(inv.inventoryId);
-                }
-            }
-            // Upsert các đơn còn tồn kho
-            if (validInventories.length > 0) {
-                const flattenInventory = validInventories.map(meiliTransformer_1.meiliTransformer.inventory);
-                await meiliService_1.meiliService.syncOrUpdateMeiliData({
-                    indexKey: labelFields_1.MEILI_INDEX.INVENTORIES,
-                    data: flattenInventory,
-                    transaction,
-                });
-            }
-            // Delete khỏi Meilisearch các đơn đã hết tồn kho
-            if (deleteInventoryIds.length > 0) {
-                await meiliService_1.meiliService.deleteMeiliData({
-                    indexKey: labelFields_1.MEILI_INDEX.INVENTORIES,
-                    idOrIds: deleteInventoryIds,
-                    transaction,
-                });
-            }
-        }
-        catch (error) {
-            console.log("err to sync data outbound: ", error);
             throw appError_1.AppError.ServerError();
         }
     },
@@ -802,5 +759,54 @@ exports.outboundService = {
             throw appError_1.AppError.ServerError();
         }
     },
+};
+const syncDataOutbound = async (outboundId, orderIds, transaction) => {
+    try {
+        const listOrderIds = Array.isArray(orderIds) ? orderIds : [orderIds];
+        const [outbound, inventories] = await Promise.all([
+            warehouseRepository_1.warehouseRepository.syncOutboundForMeili(outboundId, transaction),
+            inventoryRepository_1.inventoryRepository.syncAllInventoryToMeili(listOrderIds, transaction),
+        ]);
+        if (outbound) {
+            const meiliFormatted = meiliTransformer_1.meiliTransformer.outbound(outbound);
+            await meiliService_1.meiliService.syncOrUpdateMeiliData({
+                indexKey: labelFields_1.MEILI_INDEX.OUTBOUNDS,
+                data: meiliFormatted,
+                transaction,
+            });
+        }
+        // Phân loại: Khác 0 thì giữ/cập nhật, Bằng 0 thì xóa
+        const validInventories = [];
+        const deleteInventoryIds = [];
+        for (const inv of inventories) {
+            if (inv.qtyInventory !== 0) {
+                validInventories.push(inv);
+            }
+            else {
+                deleteInventoryIds.push(inv.inventoryId);
+            }
+        }
+        // Upsert các đơn còn tồn kho
+        if (validInventories.length > 0) {
+            const flattenInventory = validInventories.map(meiliTransformer_1.meiliTransformer.inventory);
+            await meiliService_1.meiliService.syncOrUpdateMeiliData({
+                indexKey: labelFields_1.MEILI_INDEX.INVENTORIES,
+                data: flattenInventory,
+                transaction,
+            });
+        }
+        // Delete khỏi Meilisearch các đơn đã hết tồn kho
+        if (deleteInventoryIds.length > 0) {
+            await meiliService_1.meiliService.deleteMeiliData({
+                indexKey: labelFields_1.MEILI_INDEX.INVENTORIES,
+                idOrIds: deleteInventoryIds,
+                transaction,
+            });
+        }
+    }
+    catch (error) {
+        console.log("err to sync data outbound: ", error);
+        throw appError_1.AppError.ServerError();
+    }
 };
 //# sourceMappingURL=outboundService.js.map

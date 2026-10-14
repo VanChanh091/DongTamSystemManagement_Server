@@ -25,6 +25,7 @@ const meiliTransformer_1 = require("../assets/configs/meilisearch/meiliTransform
 const customerRowAndColumn_1 = require("../utils/mapping/customerRowAndColumn");
 const orderHelpers_1 = require("../utils/helper/modelHelper/orderHelpers");
 const user_1 = require("../models/user/user");
+const debtRepository_1 = require("../repository/debtRepository");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { customer } = cacheKey_1.CacheKey;
 exports.customerService = {
@@ -56,6 +57,17 @@ exports.customerService = {
                 data = rows;
                 totalCustomers = count;
                 totalPages = Math.ceil(totalCustomers / pageSize);
+            }
+            // Gắn nợ động từ debtRepository
+            const customerIds = data.map((c) => c.customerId).filter(Boolean);
+            if (customerIds.length > 0) {
+                const debtMap = await debtRepository_1.debtRepository.getCustomersCurrentDebt(customerIds);
+                for (const cust of data) {
+                    if (cust.payment) {
+                        const currentDebt = debtMap.get(cust.customerId) || 0;
+                        cust.payment.setDataValue("debtCurrent", currentDebt);
+                    }
+                }
             }
             const responseData = {
                 message: "Get all customers successfully",
@@ -120,6 +132,17 @@ exports.customerService = {
             const finalData = customerIds
                 .map((id) => customers.find((customer) => customer.customerId === id))
                 .filter(Boolean);
+            // Gắn nợ động từ debtRepository
+            const validCustomerIds = finalData.map((c) => c.customerId).filter(Boolean);
+            if (validCustomerIds.length > 0) {
+                const debtMap = await debtRepository_1.debtRepository.getCustomersCurrentDebt(validCustomerIds);
+                for (const cust of finalData) {
+                    if (cust && cust.payment) {
+                        const currentDebt = debtMap.get(cust.customerId) || 0;
+                        cust.payment.setDataValue("debtCurrent", currentDebt);
+                    }
+                }
+            }
             return {
                 message: "Get customers from Meilisearch & DB successfully",
                 data: finalData,

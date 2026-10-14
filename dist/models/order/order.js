@@ -29,10 +29,12 @@ function initOrderModel(sequelize) {
         matE: { type: sequelize_1.DataTypes.STRING },
         matB: { type: sequelize_1.DataTypes.STRING },
         matC: { type: sequelize_1.DataTypes.STRING },
+        matA: { type: sequelize_1.DataTypes.STRING },
         matE2: { type: sequelize_1.DataTypes.STRING },
         songE: { type: sequelize_1.DataTypes.STRING },
         songB: { type: sequelize_1.DataTypes.STRING },
         songC: { type: sequelize_1.DataTypes.STRING },
+        songA: { type: sequelize_1.DataTypes.STRING },
         songE2: { type: sequelize_1.DataTypes.STRING },
         lengthPaperCustomer: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false },
         lengthPaperManufacture: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false },
@@ -100,6 +102,7 @@ function initOrderModel(sequelize) {
             //other field
             { fields: ["status"] },
             { fields: ["createdAt"] },
+            { fields: ["dayApproved"] },
             { fields: ["orderSortValue"] },
             //sort
             { fields: ["statusPriority", "orderSortValue"] },

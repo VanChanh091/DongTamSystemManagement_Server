@@ -71,6 +71,8 @@ export const parseOrderData = (buffer: any) => {
       matB: null,
       songC: null,
       matC: null,
+      songA: null,
+      matA: null,
       songE: null,
       matE: null,
       songE2: null, // Dự phòng nếu có 2 sóng E
@@ -89,6 +91,9 @@ export const parseOrderData = (buffer: any) => {
       } else if (fluteType === "C") {
         structure.songC = fluteInfo;
         structure.matC = nextLayer;
+      } else if (fluteType === "A") {
+        structure.songA = fluteInfo;
+        structure.matA = nextLayer;
       } else if (fluteType === "E") {
         // Nếu đã có sóng E rồi thì nhét vào E2, chưa có thì nhét vào E
         if (structure.songE) {
@@ -134,9 +139,11 @@ export const parseOrderData = (buffer: any) => {
       matB: structure.matB,
       matC: structure.matC,
       matE: structure.matE,
+      matA: structure.matA,
       songE: structure.songE,
       songB: structure.songB,
       songC: structure.songC,
+      songA: structure.songA,
       songE2: "",
 
       vat: vatValue,

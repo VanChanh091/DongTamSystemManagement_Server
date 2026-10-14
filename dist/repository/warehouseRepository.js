@@ -16,6 +16,7 @@ const outboundDetail_1 = require("../models/warehouse/outbound/outboundDetail");
 const outboundHistory_1 = require("../models/warehouse/outbound/outboundHistory");
 const planningBoxMachineTime_1 = require("../models/planning/planningBoxMachineTime");
 const timeOverflowPlanning_1 = require("../models/planning/timeOverflowPlanning");
+const customerPayment_1 = require("../models/customer/customerPayment");
 exports.warehouseRepository = {
     //====================================WAITING CHECK========================================
     //paper
@@ -169,10 +170,12 @@ exports.warehouseRepository = {
                         "matE",
                         "matB",
                         "matC",
+                        "matA",
                         "matE2",
                         "songE",
                         "songB",
                         "songC",
+                        "songA",
                         "songE2",
                         "dvt",
                         "dayReceiveOrder",
@@ -437,6 +440,14 @@ exports.warehouseRepository = {
     },
     syncAllOutboundsForMeili: async () => {
         return await outboundHistory_1.OutboundHistory.findAll(exports.warehouseRepository.buildMeiliOutboundOptions({}));
+    },
+    getCustomerPaymentById: async (customerId, transaction) => {
+        return await customerPayment_1.CustomerPayment.findOne({
+            where: { customerId },
+            attributes: ["cusPaymentId", "customerId", "debtLimit"],
+            transaction,
+            lock: transaction.LOCK.UPDATE,
+        });
     },
 };
 //# sourceMappingURL=warehouseRepository.js.map

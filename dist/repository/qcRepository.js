@@ -7,11 +7,11 @@ const qcSession_1 = require("../models/qualityControl/qcSession");
 const planningPaper_1 = require("../models/planning/planningPaper");
 const order_1 = require("../models/order/order");
 const customer_1 = require("../models/customer/customer");
-const qcInspectionBox_1 = require("../models/qualityControl/qcInspection/qcInspectionBox");
 const planningBoxMachineTime_1 = require("../models/planning/planningBoxMachineTime");
 const planningBox_1 = require("../models/planning/planningBox");
 const product_1 = require("../models/product/product");
-const qcInspectionPaper_1 = require("../models/qualityControl/qcInspection/qcInspectionPaper");
+const qcInspectionPaper_1 = require("../models/qualityControl/inspection/qcInspectionPaper");
+const qcInspectionBox_1 = require("../models/qualityControl/inspection/qcInspectionBox");
 exports.qcRepository = {
     //===============================CRITERIA=================================
     getAllQcCriteria: async (type) => {
@@ -68,15 +68,15 @@ exports.qcRepository = {
             transaction,
         });
     },
-    //=========================INSPECTION PAPER & BOX============================
-    buildInspectionPaperOptions: ({ page, pageSize, machine, whereCondition, }) => {
+    //========================INSPECTION PAPER============================
+    buildInspectionPaperOptions: ({ page, pageSize, machine, whereCondition, transaction, }) => {
         const queryOptions = {
             where: whereCondition,
             attributes: { exclude: ["createdAt", "updatedAt"] },
             include: [
                 {
                     model: planningPaper_1.PlanningPaper,
-                    where: { chooseMachine: machine },
+                    ...(machine ? { where: { chooseMachine: machine } } : {}),
                     attributes: [
                         "orderId",
                         "planningId",
@@ -86,10 +86,12 @@ exports.qcRepository = {
                         "matEReplace",
                         "matBReplace",
                         "matCReplace",
+                        "matAReplace",
                         "matE2Replace",
                         "songEReplace",
                         "songBReplace",
                         "songCReplace",
+                        "songAReplace",
                         "songE2Replace",
                         "chooseMachine",
                         "runningPlan",
@@ -107,6 +109,7 @@ exports.qcRepository = {
                     ],
                 },
             ],
+            transaction,
         };
         if (page && pageSize) {
             queryOptions.offset = (page - 1) * pageSize;
@@ -115,14 +118,37 @@ exports.qcRepository = {
         }
         return queryOptions;
     },
-    buildInspectionBoxOptions: ({ page, pageSize, machine, whereCondition, }) => {
+    syncInspecPaperForMeili: async (inspecPaperId, transaction) => {
+        return await qcInspectionPaper_1.QcInspectionPaper.findOne(exports.qcRepository.buildInspectionPaperOptions({
+            whereCondition: { inspecPaperId },
+            transaction,
+        }));
+    },
+    syncAllInspecPaperForMeili: async () => {
+        return await qcInspectionPaper_1.QcInspectionPaper.findAll(exports.qcRepository.buildInspectionPaperOptions({}));
+    },
+    getChecklistInspectionPaper: async ({ whereConditions, machine, }) => {
+        return await qcInspectionPaper_1.QcInspectionPaper.findAll({
+            attributes: ["checkList"],
+            where: whereConditions,
+            include: [
+                {
+                    model: planningPaper_1.PlanningPaper,
+                    attributes: ["planningId", "chooseMachine"],
+                    where: { chooseMachine: machine },
+                },
+            ],
+        });
+    },
+    //=========================INSPECTION BOX============================
+    buildInspectionBoxOptions: ({ page, pageSize, machine, whereCondition, transaction, }) => {
         const queryOptions = {
             where: whereCondition,
             attributes: { exclude: ["createdAt", "updatedAt"] },
             include: [
                 {
                     model: planningBoxMachineTime_1.PlanningBoxTime,
-                    where: { machine },
+                    ...(machine ? { where: { machine } } : {}),
                     attributes: ["dayStart", "runningPlan", "machine"],
                     include: [
                         {
@@ -136,10 +162,12 @@ exports.qcRepository = {
                                 "matE",
                                 "matB",
                                 "matC",
+                                "matA",
                                 "matE2",
                                 "songE",
                                 "songB",
                                 "songC",
+                                "songA",
                                 "songE2",
                             ],
                             include: [
@@ -156,6 +184,7 @@ exports.qcRepository = {
                     ],
                 },
             ],
+            transaction,
         };
         if (page && pageSize) {
             queryOptions.offset = (page - 1) * pageSize;
@@ -164,25 +193,18 @@ exports.qcRepository = {
         }
         return queryOptions;
     },
-    getChecklistInspectionPaper: async ({ whereConditions, machine, }) => {
-        return await qcInspectionPaper_1.QcInspectionPaper.findAll({
-            attributes: ["checkList"],
-            where: whereConditions,
-            include: [
-                {
-                    model: planningPaper_1.PlanningPaper,
-                    attributes: ["planningId", "chooseMachine"],
-                    where: { chooseMachine: machine },
-                },
-            ],
-        });
-    },
     getChecklistInspectionBox: async ({ whereConditions, machine, }) => {
         return await qcInspectionBox_1.QcInspectionBox.findAll({
             attributes: ["checkList"],
             where: whereConditions,
             include: [{ model: planningBoxMachineTime_1.PlanningBoxTime, where: { machine }, attributes: [] }],
         });
+    },
+    syncInspecBoxForMeili: async (inspecBoxId, transaction) => {
+        return await qcInspectionBox_1.QcInspectionBox.findAll(exports.qcRepository.buildInspectionBoxOptions({ whereCondition: { inspecBoxId }, transaction }));
+    },
+    syncAllInspecBoxForMeili: async () => {
+        return await qcInspectionBox_1.QcInspectionBox.findAll(exports.qcRepository.buildInspectionBoxOptions({}));
     },
 };
 //# sourceMappingURL=qcRepository.js.map

@@ -46,9 +46,9 @@ import {
   getOrderPending,
   updateStatusAdmin,
   deleteUser,
-  getUsersAdmin,
   updateInfoUser,
   requestOtpCode,
+  getUsersExcludeAdmin,
 } from "../../controller/admin/adminController";
 import {
   createBasisWeight,
@@ -77,7 +77,7 @@ router.post("/orders/send-otp", authenticate, authorizeRole(["admin", "manager"]
 router.put("/orders", authenticate, authorizeRole(["admin", "manager"]), updateStatusAdmin);
 
 //===============================USERS=====================================
-router.get("/users", authenticate, authorizeRole(["admin"]), getUsersAdmin);
+router.get("/users", authenticate, authorizeRole(["admin"]), getUsersExcludeAdmin);
 router.put("/users", authenticate, authorizeRole(["admin"]), updateInfoUser);
 router.delete("/users", authenticate, authorizeRole(["admin"]), deleteUser);
 

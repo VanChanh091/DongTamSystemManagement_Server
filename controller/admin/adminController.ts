@@ -183,6 +183,34 @@ export const deleteCriteria = async (req: Request, res: Response, next: NextFunc
 export const getAllFluteRatio = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const response = await adminService.getAllItems({ model: FluteRatio });
+    const fluteOrder: Record<string, number> = { E: 1, B: 2, C: 3, A: 4 };
+
+    if (Array.isArray(response?.data)) {
+      response.data.sort((a: any, b: any) => {
+        const matchA = (a.fluteName || "").trim().match(/^(\d+)(.*)$/);
+        const matchB = (b.fluteName || "").trim().match(/^(\d+)(.*)$/);
+
+        const layerA = matchA ? parseInt(matchA[1], 10) : 0;
+        const layerB = matchB ? parseInt(matchB[1], 10) : 0;
+
+        // So sánh số lớp (1 -> 7)
+        if (layerA !== layerB) return layerA - layerB;
+
+        // So sánh ký tự sóng theo thứ tự E -> B -> C -> A
+        const flutesA = matchA ? matchA[2].toUpperCase() : "";
+        const flutesB = matchB ? matchB[2].toUpperCase() : "";
+        const minLen = Math.min(flutesA.length, flutesB.length);
+
+        for (let i = 0; i < minLen; i++) {
+          const rankA = fluteOrder[flutesA[i]] ?? 99;
+          const rankB = fluteOrder[flutesB[i]] ?? 99;
+          if (rankA !== rankB) return rankA - rankB;
+        }
+
+        return flutesA.length - flutesB.length;
+      });
+    }
+
     return res.status(200).json(response);
   } catch (error) {
     next(error);
@@ -235,7 +263,7 @@ export const deleteFluteRatio = async (req: Request, res: Response, next: NextFu
 
 // ============================= USER =================================
 
-export const getUsersAdmin = async (req: Request, res: Response, next: NextFunction) => {
+export const getUsersExcludeAdmin = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const response = await adminService.getAllUsers();
     return res.status(200).json(response);

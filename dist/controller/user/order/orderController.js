@@ -33,6 +33,7 @@ const getOrderDetail = async (req, res, next) => {
 exports.getOrderDetail = getOrderDetail;
 //===============================CLOUDINARY IMAGE=====================================
 const getCloudinarySignature = async (req, res) => {
+    const { folder } = req.query;
     const { CLOUDINARY_API_SECRET, CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY } = process.env;
     // Kiểm tra xem các biến môi trường có tồn tại không
     if (!CLOUDINARY_API_SECRET || !CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY) {
@@ -40,8 +41,13 @@ const getCloudinarySignature = async (req, res) => {
             message: "Cloudinary configuration is missing in environment variables",
         });
     }
+    // orders | qcInspection
+    if (!folder) {
+        return res.status(400).json({
+            message: "Folder is required",
+        });
+    }
     const timestamp = Math.round(new Date().getTime() / 1000);
-    const folder = "orders";
     // Bây giờ TypeScript sẽ biết chắc chắn CLOUDINARY_API_SECRET là string
     const signature = cloudinary_connect_1.default.utils.api_sign_request({ timestamp, folder }, CLOUDINARY_API_SECRET);
     return res.json({

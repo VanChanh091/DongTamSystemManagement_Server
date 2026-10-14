@@ -10,6 +10,8 @@ const cacheKey_1 = require("../../../utils/helper/cache/cacheKey");
 const redis_connect_1 = __importDefault(require("../../../assets/configs/connect/redis.connect"));
 const debtRepository_1 = require("../../../repository/debtRepository");
 const normalizeVN_1 = require("../../../utils/helper/normalizeVN");
+const revenueHelper_1 = require("../../../utils/helper/modelHelper/revenueHelper");
+const dayjs_config_1 = require("../../../assets/configs/dayjs/dayjs.config");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { reports } = cacheKey_1.CacheKey.synthetic;
 const VN_TIMEZONE_OFFSET_MS = 25_200_000; // 7 tiếng
@@ -28,14 +30,7 @@ exports.statisticRevenueService = {
         const keyword = dto.keyword ? (0, normalizeVN_1.normalizeVN)(dto.keyword) : "";
         try {
             // Phân quyền
-            let effectiveUserId = dto.targetUserId ? Number(dto.targetUserId) : null;
-            const isManager = ["manager", "admin"].includes(dto.currentUser.role.toLowerCase());
-            if (dto.all) {
-                effectiveUserId = isManager && dto.targetUserId ? Number(dto.targetUserId) : null;
-            }
-            else if (!isManager) {
-                effectiveUserId = dto.currentUser.userId;
-            }
+            const effectiveUserId = (0, revenueHelper_1.reportEffectiveUserId)(dto.currentUser, dto.targetUserId, dto.all);
             // Kiểm tra xem tháng được chọn có phải là tháng cũ không
             const cacheKey = reports.revenue_daily(year, month, effectiveUserId ?? "all");
             const isPastMonth = year < currentYear || (year === currentYear && month < currentMonth);
@@ -79,9 +74,9 @@ exports.statisticRevenueService = {
                     if (Number.isNaN(timestamp))
                         continue;
                     const dayNumber = new Date(timestamp + VN_TIMEZONE_OFFSET_MS).getUTCDate();
-                    const amount = Number(record.totalPricePayment) || 0;
-                    const debt = Number(record.remainingAmount) || 0;
-                    if (amount === 0)
+                    const amount = (0, revenueHelper_1.roundInt)(record.totalPricePayment);
+                    const debt = (0, revenueHelper_1.roundInt)(record.remainingAmount);
+                    if (amount === 0 && debt === 0)
                         continue;
                     if (!customerMap.has(customer.customerId)) {
                         const initialDays = {};
@@ -101,27 +96,24 @@ exports.statisticRevenueService = {
                     customerRow.totalCustomerDebt += debt;
                     dailyTotals[dayNumber] += amount;
                 }
-                // Làm tròn từng khách hàng và ô ngày
                 const allDetails = Array.from(customerMap.values()).map((row) => {
-                    const roundedDaily = {};
-                    for (let d = 1; d <= daysInMonth; d++) {
-                        roundedDaily[d] = roundInt(row.dailyAmounts[d]);
-                    }
                     return {
                         customerId: row.customerId,
                         customerName: row.customerName,
-                        dailyAmounts: roundedDaily,
-                        totalCustomerSales: roundInt(row.totalCustomerSales),
-                        totalCustomerDebt: roundInt(row.totalCustomerDebt),
+                        dailyAmounts: row.dailyAmounts,
+                        totalCustomerSales: row.totalCustomerSales,
+                        totalCustomerDebt: row.totalCustomerDebt,
                     };
                 });
                 // Làm tròn footer và tính tổng từ allDetails
+                let totalMonthSales = 0;
                 for (let d = 1; d <= daysInMonth; d++) {
-                    dailyTotals[d] = roundInt(dailyTotals[d]);
+                    const daySum = allDetails.reduce((sum, r) => sum + r.dailyAmounts[d], 0);
+                    dailyTotals[d] = daySum;
+                    totalMonthSales += daySum;
                 }
-                const totalMonthSales = allDetails.reduce((sum, r) => sum + r.totalCustomerSales, 0);
                 const totalMonthDebt = allDetails.reduce((sum, r) => sum + r.totalCustomerDebt, 0);
-                // Sắp xếp khách có tổng doanh số lớn nhất lên đầu
+                // Sắp xếp khách theo tổng doanh số giảm dần
                 allDetails.sort((a, b) => b.totalCustomerSales - a.totalCustomerSales);
                 fullReportData = {
                     summary: { totalMonthSales, totalMonthDebt, dailyTotals },
@@ -139,11 +131,14 @@ exports.statisticRevenueService = {
                 filteredDetails = fullReportData.allDetails.filter((item) => (0, normalizeVN_1.normalizeVN)(item.customerName).includes(keyword));
                 // Tính lại dòng footer cho danh sách đã lọc
                 const filteredDailyTotals = {};
+                let filteredTotalMonthSales = 0;
                 for (let d = 1; d <= fullReportData.daysInMonth; d++) {
-                    filteredDailyTotals[d] = filteredDetails.reduce((sum, item) => sum + (item.dailyAmounts[d] || 0), 0);
+                    const daySum = filteredDetails.reduce((sum, item) => sum + (item.dailyAmounts[d] || 0), 0);
+                    filteredDailyTotals[d] = daySum;
+                    filteredTotalMonthSales += daySum;
                 }
                 responseSummary = {
-                    totalMonthSales: filteredDetails.reduce((sum, item) => sum + item.totalCustomerSales, 0),
+                    totalMonthSales: filteredTotalMonthSales,
                     totalMonthDebt: filteredDetails.reduce((sum, item) => sum + item.totalCustomerDebt, 0),
                     dailyTotals: filteredDailyTotals,
                 };
@@ -181,17 +176,9 @@ exports.statisticRevenueService = {
         const month = dto.month;
         try {
             // Phân quyền
-            let effectiveUserId = dto.targetUserId ? Number(dto.targetUserId) : null;
-            const isManager = ["manager", "admin"].includes(dto.currentUser.role.toLowerCase());
-            if (dto.all) {
-                effectiveUserId = isManager && dto.targetUserId ? Number(dto.targetUserId) : null;
-            }
-            else if (!isManager) {
-                effectiveUserId = dto.currentUser.userId;
-            }
+            const effectiveUserId = (0, revenueHelper_1.reportEffectiveUserId)(dto.currentUser, dto.targetUserId, dto.all);
             // Kiểm tra xem tháng được chọn có phải là tháng cũ không
             const cacheKey = reports.revenue_monthly(year, month, effectiveUserId ?? "all");
-            //check past month
             const isPastMonth = year < currentYear || (year === currentYear && month < currentMonth);
             if (isPastMonth) {
                 const cached = await redis_connect_1.default.get(cacheKey);
@@ -202,21 +189,34 @@ exports.statisticRevenueService = {
                     return { ...cachedData, message: "Data Revenue monthly from Redis" };
                 }
             }
-            // Xác định biên thời gian
+            // =============== Xác định biên thời gian ==============
             const paddedMonth = String(month).padStart(2, "0");
-            const startDate = `${year}-${paddedMonth}-01 00:00:00`;
-            const daysInMonth = new Date(year, month, 0).getDate();
-            const endDate = `${year}-${paddedMonth}-${daysInMonth} 23:59:59`;
+            const startOfMonth = (0, dayjs_config_1.dayjsUtc)(`${year}-${paddedMonth}-01`);
+            const daysInMonth = startOfMonth.daysInMonth(); // Đảm bảo luôn có biến cho vòng lặp phía dưới
+            // Biên thời gian thông thường: 00:00:00 ngày 01 -> 23:59:59 ngày cuối tháng
+            const startDate = startOfMonth.startOf("month").format("YYYY-MM-DD 00:00:00");
+            const endDate = startOfMonth.endOf("month").format("YYYY-MM-DD 23:59:59");
+            // Biên ca sản xuất giấy: 06:00:00 ngày 01 -> 05:59:59 ngày 01 tháng kế tiếp
+            const productionStartDate = `${year}-${paddedMonth}-01 06:00:00`;
+            const nextMonth = startOfMonth.add(1, "month");
+            const productionEndDate = `${nextMonth.format("YYYY-MM")}-01 05:59:59`;
             // Chạy 3 query gom nhóm song song
-            const [ordersData, inboundData, outboundData] = await Promise.all([
+            const [ordersData, paperProdData, boxProdData, outboundData] = await Promise.all([
                 synthetic_reportRepository_1.syntheticReportRepository.getDailyApprovedOrders({
                     startDate,
                     endDate,
                     userId: effectiveUserId ?? undefined,
                 }),
-                synthetic_reportRepository_1.syntheticReportRepository.getDailyProductionInbound({
-                    startDate,
-                    endDate,
+                // Sản xuất giấy tấm: lọc theo ca 6h
+                synthetic_reportRepository_1.syntheticReportRepository.getDailyPaperProduction({
+                    startDate: productionStartDate,
+                    endDate: productionEndDate,
+                    userId: effectiveUserId ?? undefined,
+                }),
+                // Sản xuất thùng carton: lọc theo ca 6h
+                synthetic_reportRepository_1.syntheticReportRepository.getDailyBoxProductionInbound({
+                    startDate: productionStartDate,
+                    endDate: productionEndDate,
                     userId: effectiveUserId ?? undefined,
                 }),
                 synthetic_reportRepository_1.syntheticReportRepository.getDailyProductionOutbound({
@@ -225,19 +225,44 @@ exports.statisticRevenueService = {
                     userId: effectiveUserId ?? undefined,
                 }),
             ]);
-            // Lọc bỏ đơn trùng lặp
+            // Lọc bỏ đơn trùng lặp cùng 1 orderId, chỉ lấy đơn được duyệt mới nhất
             const uniqueOrdersMap = new Map();
             for (const row of ordersData) {
                 if (!uniqueOrdersMap.has(row.orderId)) {
-                    uniqueOrdersMap.set(row.orderId, row); // Vì đã sort DESC nên bản ghi đầu tiên là mới nhất
+                    uniqueOrdersMap.set(row.orderId, row);
                 }
             }
-            const latestApprovedOrders = Array.from(uniqueOrdersMap.values());
-            // Gom nhóm thành Map
-            const orderMap = aggregateDailyAmounts(latestApprovedOrders, (item) => item.createdAt, (item) => item.Order.totalPrice);
-            const prodMap = aggregateDailyAmounts(inboundData, (item) => item.createdAt, (item) => item.totalPrice);
-            const salesMap = aggregateDailyAmounts(outboundData, (item) => item.createdAt, (item) => item.totalPriceOutbound);
-            // 5. Khởi tạo danh sách đủ các ngày trong tháng (từ ngày 1 đến 28/30/31)
+            const cleanOrdersData = Array.from(uniqueOrdersMap.values());
+            // === Gom nhóm thành Map ===
+            // Doanh số nhận đơn theo ngày duyệt dayApproved
+            const orderMap = (0, revenueHelper_1.aggregateDailyAmounts)({
+                records: cleanOrdersData,
+                getDateFn: (item) => item.dayApproved,
+                getAmountFn: (item) => item.totalPrice,
+                timezone: VN_TIMEZONE_OFFSET_MS,
+            });
+            // Doanh số sản xuất giấy tấm theo ngày chạy máy
+            const paperProdMap = (0, revenueHelper_1.aggregateDailyAmounts)({
+                records: paperProdData,
+                getDateFn: (item) => (0, dayjs_config_1.dayjsUtc)(item.dayReport).subtract(6, "hour").toDate(),
+                getAmountFn: (item) => item.totalPrice,
+                timezone: VN_TIMEZONE_OFFSET_MS,
+            });
+            // Doanh số sản xuất thùng theo ngày nhập kho
+            const boxProdMap = (0, revenueHelper_1.aggregateDailyAmounts)({
+                records: boxProdData,
+                getDateFn: (item) => (0, dayjs_config_1.dayjsUtc)(item.dateInbound).subtract(6, "hour").toDate(),
+                getAmountFn: (item) => item.totalPrice,
+                timezone: VN_TIMEZONE_OFFSET_MS,
+            });
+            // Doanh số bán hàng / xuất kho
+            const salesMap = (0, revenueHelper_1.aggregateDailyAmounts)({
+                records: outboundData,
+                getDateFn: (item) => item.dateOutbound,
+                getAmountFn: (item) => item.totalPricePayment,
+                timezone: VN_TIMEZONE_OFFSET_MS,
+            });
+            // Khởi tạo danh sách đủ các ngày trong tháng
             const details = [];
             const summary = {
                 totalOrderApproved: 0,
@@ -248,9 +273,12 @@ exports.statisticRevenueService = {
             for (let day = 1; day <= daysInMonth; day++) {
                 const paddedDay = String(day).padStart(2, "0");
                 const dateKey = `${year}-${paddedMonth}-${paddedDay}`;
-                const orderAmount = orderMap.get(dateKey) || 0;
-                const prodAmount = prodMap.get(dateKey) || 0;
-                const saleAmount = salesMap.get(dateKey) || 0;
+                const orderAmount = (0, revenueHelper_1.roundInt)(orderMap.get(dateKey) || 0);
+                // Doanh số sản xuất = Giấy tấm (Report) + Thùng carton (Inbound)
+                const paperAmount = (0, revenueHelper_1.roundInt)(paperProdMap.get(dateKey) || 0);
+                const boxAmount = (0, revenueHelper_1.roundInt)(boxProdMap.get(dateKey) || 0);
+                const prodAmount = paperAmount + boxAmount;
+                const saleAmount = (0, revenueHelper_1.roundInt)(salesMap.get(dateKey) || 0);
                 const returnAmount = 0;
                 details.push({
                     date: dateKey,
@@ -295,15 +323,9 @@ exports.statisticRevenueService = {
                 throw appError_1.AppError.BadRequest("Khoảng thời gian tra cứu tối đa là 3 năm");
             }
             // Phân quyền
-            let effectiveUserId = dto.targetUserId ? Number(dto.targetUserId) : null;
-            const isManager = ["manager", "admin"].includes(dto.currentUser.role.toLowerCase());
-            if (dto.all) {
-                effectiveUserId = isManager && dto.targetUserId ? Number(dto.targetUserId) : null;
-            }
-            else if (!isManager) {
-                effectiveUserId = dto.currentUser.userId;
-            }
+            const effectiveUserId = (0, revenueHelper_1.reportEffectiveUserId)(dto.currentUser, dto.targetUserId, dto.all);
             // Caching
+            const isPastYears = toYear < currentYear;
             const cacheKey = reports.revenue_yearly(fromYear, toYear, effectiveUserId ?? "all");
             let fullReportData = null;
             let isFromCache = false;
@@ -330,8 +352,8 @@ exports.statisticRevenueService = {
                 // Gom nhóm dư nợ theo từng customerId
                 const debtMap = new Map();
                 for (const pxk of unpaidOutbounds) {
-                    const custId = pxk.customerId;
-                    const remaining = Number(pxk.remainingAmount) || 0;
+                    const custId = String(pxk.customerId);
+                    const remaining = (0, revenueHelper_1.roundInt)(pxk.remainingAmount);
                     debtMap.set(custId, (debtMap.get(custId) || 0) + remaining);
                 }
                 // Danh sách các năm cần render: [fromYear, ..., toYear]
@@ -344,40 +366,40 @@ exports.statisticRevenueService = {
                     const customer = record.Customer;
                     if (!customer?.customerId)
                         continue;
-                    const vnDate = toVNDate(record.dateOutbound);
+                    const custId = String(customer.customerId);
+                    const vnDate = (0, revenueHelper_1.toVNDate)(record.dateOutbound, VN_TIMEZONE_OFFSET_MS);
                     if (!vnDate)
                         continue;
                     const reportYear = vnDate.getUTCFullYear();
-                    const reportMonth = vnDate.getUTCMonth() + 1; // 1 -> 12
-                    const amount = Number(record.totalPricePayment) || 0;
+                    const reportMonth = vnDate.getUTCMonth() + 1;
+                    const amount = (0, revenueHelper_1.roundInt)(record.totalPricePayment);
                     if (amount === 0)
                         continue;
                     if (!yearsList.includes(reportYear))
                         continue;
-                    if (!customerMap.has(customer.customerId)) {
+                    if (!customerMap.has(custId)) {
                         const initialYears = {};
                         for (const y of yearsList)
-                            initialYears[y] = createEmptyYear();
-                        customerMap.set(customer.customerId, {
-                            customerId: customer.customerId,
+                            initialYears[y] = (0, revenueHelper_1.createEmptyYear)();
+                        customerMap.set(custId, {
+                            customerId: custId,
                             customerName: customer.customerName,
                             currentDebt: 0,
                             years: initialYears,
                             grandTotal: 0,
                         });
                     }
-                    const customerRow = customerMap.get(customer.customerId);
+                    const customerRow = customerMap.get(custId);
                     customerRow.years[reportYear].months[reportMonth] += amount;
                 }
                 // Gán dư nợ, làm tròn từng tháng và tính tổng cho từng khách
                 const allDetails = Array.from(customerMap.values()).map((customer) => {
                     let customerGrandTotal = 0;
-                    // Gán dư nợ hiện tại từ debtMap
-                    customer.currentDebt = roundInt(debtMap.get(customer.customerId) || 0);
+                    customer.currentDebt = (0, revenueHelper_1.roundInt)(debtMap.get(customer.customerId) || 0);
                     for (const y of yearsList) {
                         let yearTotal = 0;
                         for (let m = 1; m <= 12; m++) {
-                            const roundedVal = roundInt(customer.years[y].months[m]);
+                            const roundedVal = (0, revenueHelper_1.roundInt)(customer.years[y].months[m]);
                             customer.years[y].months[m] = roundedVal;
                             yearTotal += roundedVal;
                         }
@@ -390,7 +412,7 @@ exports.statisticRevenueService = {
                 // Khởi tạo và tính toán Footer chân trang từ allDetails đã làm tròn
                 const summaryYears = {};
                 for (const y of yearsList)
-                    summaryYears[y] = createEmptyYear();
+                    summaryYears[y] = (0, revenueHelper_1.createEmptyYear)();
                 let summaryGrandTotal = 0;
                 for (const y of yearsList) {
                     let yearSum = 0;
@@ -404,25 +426,24 @@ exports.statisticRevenueService = {
                 }
                 // Tổng nợ của các khách hàng có phát sinh doanh số trong danh sách
                 const totalCurrentDebt = allDetails.reduce((sum, c) => sum + c.currentDebt, 0);
-                // Sắp xếp ưu tiên khách có tổng doanh số lớn nhất lên đầu
                 allDetails.sort((a, b) => b.grandTotal - a.grandTotal);
                 fullReportData = {
                     summary: { years: summaryYears, grandTotal: summaryGrandTotal, totalCurrentDebt },
                     allDetails,
                     yearsList,
                 };
-                await redis_connect_1.default.set(cacheKey, JSON.stringify(fullReportData), "EX", CACHETTL);
+                if (isPastYears) {
+                    await redis_connect_1.default.set(cacheKey, JSON.stringify(fullReportData), "EX", CACHETTL);
+                }
             }
             // Lọc theo tên khách hàng & Tính lại Summary tương ứng
             let filteredDetails = fullReportData.allDetails;
             let responseSummary = fullReportData.summary;
             if (keyword) {
                 filteredDetails = fullReportData.allDetails.filter((item) => (0, normalizeVN_1.normalizeVN)(item.customerName).includes(keyword));
-                // Tính lại footer của ma trận nhiều năm theo tập khách đã lọc
                 const filteredSummaryYears = {};
-                for (const y of fullReportData.yearsList) {
-                    filteredSummaryYears[y] = createEmptyYear();
-                }
+                for (const y of fullReportData.yearsList)
+                    filteredSummaryYears[y] = (0, revenueHelper_1.createEmptyYear)();
                 let filteredGrandTotal = 0;
                 for (const y of fullReportData.yearsList) {
                     let yearSum = 0;
@@ -434,11 +455,10 @@ exports.statisticRevenueService = {
                     filteredSummaryYears[y].yearTotal = yearSum;
                     filteredGrandTotal += yearSum;
                 }
-                const filteredTotalDebt = filteredDetails.reduce((sum, c) => sum + c.currentDebt, 0);
                 responseSummary = {
                     years: filteredSummaryYears,
                     grandTotal: filteredGrandTotal,
-                    totalCurrentDebt: filteredTotalDebt,
+                    totalCurrentDebt: filteredDetails.reduce((sum, c) => sum + c.currentDebt, 0),
                 };
             }
             // pagination
@@ -468,39 +488,4 @@ exports.statisticRevenueService = {
         }
     },
 };
-// ===============================HELPER FUNCTIONS========================================
-const aggregateDailyAmounts = (records, getDateFn, getAmountFn) => {
-    const map = new Map();
-    for (const item of records) {
-        const rawDate = getDateFn(item);
-        if (!rawDate)
-            continue;
-        // 1. Lấy epoch time (tránh khởi tạo Date mới nếu Sequelize đã trả về sẵn Date object)
-        const timestamp = rawDate instanceof Date ? rawDate.getTime() : new Date(rawDate).getTime();
-        if (Number.isNaN(timestamp))
-            continue;
-        // 2. Dịch sang UTC+7 và cắt chuỗi 'YYYY-MM-DD'
-        const dateKey = new Date(timestamp + VN_TIMEZONE_OFFSET_MS).toISOString().slice(0, 10);
-        // 3. Gom dồn số tiền
-        const amount = Number(getAmountFn(item)) || 0;
-        map.set(dateKey, (map.get(dateKey) || 0) + amount);
-    }
-    return map;
-};
-const toVNDate = (rawDate) => {
-    if (!rawDate)
-        return null;
-    const timestamp = rawDate instanceof Date ? rawDate.getTime() : new Date(rawDate).getTime();
-    if (Number.isNaN(timestamp))
-        return null;
-    return new Date(timestamp + VN_TIMEZONE_OFFSET_MS);
-};
-// Helper tạo khung 12 tháng trắng
-const createEmptyYear = () => {
-    const months = {};
-    for (let m = 1; m <= 12; m++)
-        months[m] = 0;
-    return { months, yearTotal: 0 };
-};
-const roundInt = (val) => Math.round(Number(val) || 0);
 //# sourceMappingURL=revenueService.js.map

@@ -74,6 +74,8 @@ export interface PlanningOrderInput {
   matBReplace?: string;
   songCReplace?: string;
   matCReplace?: string;
+  songAReplace?: string;
+  matAReplace?: string;
   songE2Replace?: string;
   matE2Replace?: string;
 }

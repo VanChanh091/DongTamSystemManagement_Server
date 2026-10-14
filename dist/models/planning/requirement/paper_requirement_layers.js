@@ -19,7 +19,7 @@ function initPaperRequirementLayersModel(sequelize) {
         },
         paperCode: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         weightGsm: { type: sequelize_1.DataTypes.INTEGER, allowNull: false, comment: "Định lượng giấy (g/m2)" },
-        fluteType: { type: sequelize_1.DataTypes.ENUM("E", "B", "C"), comment: "Loại sóng" },
+        fluteType: { type: sequelize_1.DataTypes.STRING, comment: "Loại sóng" },
         availableStock: {
             type: sequelize_1.DataTypes.DOUBLE,
             allowNull: false,
