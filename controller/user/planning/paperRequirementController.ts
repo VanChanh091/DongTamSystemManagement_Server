@@ -33,3 +33,27 @@ export const getPaperRequirements = async (req: Request, res: Response, next: Ne
     next(error);
   }
 };
+
+export const calculateSummaryByGhepKho = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { ghepKho, machine, dayStart } = req.query as {
+    ghepKho: string;
+    machine: string;
+    dayStart: string | Date;
+  };
+
+  try {
+    const response = await paperRequirementService.calculateSummaryByGhepKho({
+      ghepKho: Number(ghepKho),
+      machine,
+      dayStart,
+    });
+
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};

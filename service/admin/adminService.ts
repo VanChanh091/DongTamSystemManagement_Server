@@ -219,53 +219,53 @@ export const adminService = {
           req.io?.to(`user-${ownerId}`).emit("new-notification", newNotif);
         } else {
           //check role admin
-          const isAdmin = req.user.role === "admin";
+          // const isAdmin = req.user.role === "admin";
 
           // Logic kiểm tra và cập nhật hạn mức công nợ khách hàng
-          const payment = order.Customer?.payment;
+          // const payment = order.Customer?.payment;
 
-          const currentDebt = await debtRepository.getCustomerCurrentDebt(
-            order.customerId,
-            transaction,
-          );
-          const debtLimit = Number(payment?.debtLimit || 0);
-          const totalPrice = Number(order.totalPriceVAT || 0);
+          // const currentDebt = await debtRepository.getCustomerCurrentDebt(
+          //   order.customerId,
+          //   transaction,
+          // );
+          // const debtLimit = Number(payment?.debtLimit || 0);
+          // const totalPrice = Number(order.totalPriceVAT || 0);
 
-          // total debt after this order
-          const newDebt = currentDebt + totalPrice;
+          // // total debt after this order
+          // const newDebt = currentDebt + totalPrice;
 
-          if (!isAdmin) {
-            const thresholdPercent = Number(debtOtpThresholdPercent);
-            const otpMultiplier = 1 + thresholdPercent / 100;
+          // if (!isAdmin) {
+          //   const thresholdPercent = Number(debtOtpThresholdPercent);
+          //   const otpMultiplier = 1 + thresholdPercent / 100;
 
-            //case > debtLimit * (1 + thresholdPercent%)
-            if (newDebt > debtLimit * otpMultiplier) {
-              if (!confirmationOTP) {
-                throw AppError.BadRequest(
-                  `Vượt quá hạn mức cho phép, cần nhập OTP để duyệt đơn này!`,
-                  "REQUIRE_OTP_CONFIRMATION",
-                );
-              }
+          //   //case > debtLimit * (1 + thresholdPercent%)
+          //   if (newDebt > debtLimit * otpMultiplier) {
+          //     if (!confirmationOTP) {
+          //       throw AppError.BadRequest(
+          //         `Vượt quá hạn mức cho phép, cần nhập OTP để duyệt đơn này!`,
+          //         "REQUIRE_OTP_CONFIRMATION",
+          //       );
+          //     }
 
-              const redisKey = `order_otp_code:${orderId}`;
-              const savedCode = await redisCache.get(redisKey);
+          //     const redisKey = `order_otp_code:${orderId}`;
+          //     const savedCode = await redisCache.get(redisKey);
 
-              if (!savedCode || Number(savedCode) !== confirmationOTP) {
-                throw AppError.BadRequest("Mã OTP không hợp lệ hoặc đã hết hạn.", "INVALID_OTP");
-              }
+          //     if (!savedCode || Number(savedCode) !== confirmationOTP) {
+          //       throw AppError.BadRequest("Mã OTP không hợp lệ hoặc đã hết hạn.", "INVALID_OTP");
+          //     }
 
-              await redisCache.del(redisKey); // Xóa mã OTP sau khi dùng
-            }
-            //case > 100%
-            else if (newDebt > debtLimit) {
-              if (!confirmOverLimit) {
-                throw AppError.BadRequest(
-                  `Khách hàng vượt quá hạn mức cho phép!`,
-                  "DEBT_LIMIT_EXCEEDED",
-                );
-              }
-            }
-          }
+          //     await redisCache.del(redisKey); // Xóa mã OTP sau khi dùng
+          //   }
+          //   //case > 100%
+          //   else if (newDebt > debtLimit) {
+          //     if (!confirmOverLimit) {
+          //       throw AppError.BadRequest(
+          //         `Khách hàng vượt quá hạn mức cho phép!`,
+          //         "DEBT_LIMIT_EXCEEDED",
+          //       );
+          //     }
+          //   }
+          // }
 
           //check type product
           const phiKhac = order.Product.typeProduct == "Phí Khác";

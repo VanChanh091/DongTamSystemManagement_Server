@@ -20,7 +20,10 @@ import {
   cancelOrContinuePlannning,
   backOrderToReject,
 } from "../../controller/user/planning/planningStatusController";
-import { getPaperRequirements } from "../../controller/user/planning/paperRequirementController";
+import {
+  calculateSummaryByGhepKho,
+  getPaperRequirements,
+} from "../../controller/user/planning/paperRequirementController";
 
 const router = Router();
 
@@ -67,6 +70,7 @@ router.put("/planning-boxes", authenticate, authorizeAnyPermission(["plan"]), up
 
 //=========================PAPER REQUIREMENTS=========================
 router.get("/paper-requirements", authenticate, getPaperRequirements);
+router.get("/paper-requirements/summary", authenticate, calculateSummaryByGhepKho);
 
 //socket
 router.post(

@@ -36,7 +36,7 @@ exports.meiliClient = meiliClient;
 const connectMeilisearch = async () => {
     try {
         await meiliClient.health();
-        console.log("✅ Kết nối Meilisearch thành công!");
+        console.log("✅ Meilisearch connected!");
     }
     catch (error) {
         console.error("❌ Lỗi kết nối Meilisearch:", error);

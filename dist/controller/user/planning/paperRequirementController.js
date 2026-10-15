@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getPaperRequirements = void 0;
+exports.calculateSummaryByGhepKho = exports.getPaperRequirements = void 0;
 const paperRequirementService_1 = require("../../../service/planning/paperRequirementService");
 const getPaperRequirements = async (req, res, next) => {
     const { machine, requirementId, field, keyword } = req.query;
@@ -30,4 +30,19 @@ const getPaperRequirements = async (req, res, next) => {
     }
 };
 exports.getPaperRequirements = getPaperRequirements;
+const calculateSummaryByGhepKho = async (req, res, next) => {
+    const { ghepKho, machine, dayStart } = req.query;
+    try {
+        const response = await paperRequirementService_1.paperRequirementService.calculateSummaryByGhepKho({
+            ghepKho: Number(ghepKho),
+            machine,
+            dayStart,
+        });
+        return res.status(200).json(response);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.calculateSummaryByGhepKho = calculateSummaryByGhepKho;
 //# sourceMappingURL=paperRequirementController.js.map

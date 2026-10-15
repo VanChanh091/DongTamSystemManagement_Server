@@ -136,6 +136,37 @@ export const paperRequirementService = {
       throw AppError.ServerError();
     }
   },
+
+  // calculate summary by ghepKho
+  calculateSummaryByGhepKho: async ({
+    ghepKho,
+    machine,
+    dayStart,
+  }: {
+    ghepKho: number;
+    machine: string;
+    dayStart: string | Date;
+  }) => {
+    try {
+      console.log(`ghepKho: ${ghepKho}, machine: ${machine}, dayStart: ${dayStart}`);
+
+      const result = await paperRequirementRepo.sumTotalRequiredRequirement({
+        ghepKho,
+        machine,
+        dayStart,
+      });
+
+      console.log(`result: ${JSON.stringify(result)}`);
+
+      return {
+        message: "Calculate summary by ghepKho successfully",
+        data: Number((result as any)?.totalQty || 0),
+      };
+    } catch (error) {
+      console.error("❌ calculate summary by ghepKho failed:", error);
+      throw AppError.ServerError();
+    }
+  },
 };
 
 // Helper: Sắp xếp PaperRequirements theo đúng thứ tự Planning (sortPlanning ASC -> ghepKho DESC)
@@ -161,7 +192,7 @@ const applyPaperRequirementSort = (data: any[]) => {
 };
 
 //calculate summary by ghepKho
-export interface GhepKhoSummary {
+interface GhepKhoSummary {
   ghepKho: number | string;
   totalQty: number;
   totalPrice: number;

@@ -18,6 +18,10 @@ export const getRevenueReport = async (req: Request, res: Response, next: NextFu
       all?: string;
     };
 
+  console.log(
+    `Daily Revenue: type: ${type}, month: ${month}, year: ${year}, targetUserId: ${targetUserId}, all: ${all}`,
+  );
+
   try {
     let response;
     const isAll = all === "true";

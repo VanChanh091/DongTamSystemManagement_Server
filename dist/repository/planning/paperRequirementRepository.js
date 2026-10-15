@@ -6,6 +6,7 @@ const order_1 = require("../../models/order/order");
 const customer_1 = require("../../models/customer/customer");
 const planningPaper_1 = require("../../models/planning/planningPaper");
 const paper_requirement_layers_1 = require("../../models/planning/requirement/paper_requirement_layers");
+const paperRequirements_1 = require("../../models/planning/requirement/paperRequirements");
 const statusList = ["planning", "lackQty", "producing", "requested"];
 exports.paperRequirementRepo = {
     buildPaperRequirementsOptions: ({ machine, whereCondition, }) => {
@@ -57,6 +58,23 @@ exports.paperRequirementRepo = {
         return await paper_requirement_layers_1.PaperRequirementLayers.findAll({
             where: { requirementId },
             attributes: { exclude: ["createdAt", "updatedAt"] },
+        });
+    },
+    sumTotalRequiredRequirement: async ({ ghepKho, machine, dayStart, }) => {
+        return await paperRequirements_1.PaperRequirements.findOne({
+            attributes: [
+                [(0, sequelize_1.fn)("COALESCE", (0, sequelize_1.fn)("SUM", (0, sequelize_1.col)("PaperRequirements.totalRequiredQty")), 0), "totalQty"],
+            ],
+            where: { paperRollWidth: ghepKho, status: "PLANNING" },
+            include: [
+                {
+                    model: planningPaper_1.PlanningPaper,
+                    where: { chooseMachine: machine, dayStart: new Date(dayStart) },
+                    attributes: [],
+                    required: true,
+                },
+            ],
+            raw: true,
         });
     },
 };

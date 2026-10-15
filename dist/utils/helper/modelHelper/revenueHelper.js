@@ -46,7 +46,9 @@ const reportEffectiveUserId = (currentUser, targetUserId, all) => {
     const isManager = ["admin", "manager"].includes(role);
     const isSales = currentUser.permissions?.includes("sale") ?? false;
     if (isManager) {
-        return !all && targetUserId ? Number(targetUserId) : null;
+        // Nếu admin/manager chọn 1 user cụ thể thì lấy theo user đó
+        // Nếu không chọn (hoặc chọn 'Tất cả') thì trả về null để lấy toàn bộ
+        return targetUserId ? Number(targetUserId) : null;
     }
     else if (isSales) {
         return currentUser.userId;

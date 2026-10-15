@@ -7,6 +7,15 @@ const debtManagementService_1 = require("../../../service/warehouse/debtManageme
 const getCustomerDebtSummary = async (req, res, next) => {
     const { userId, page = 1, pageSize = 30, targetDate, search, } = req.query;
     try {
+        // const isAdminOrManager = req.user.role === "admin" || req.user.role === "manager";
+        // const isSale = req.user.permissions?.includes("sale");
+        // // Luồng 1: Sale thông thường chỉ được xem công nợ của chính mình
+        // // Luồng 2: Admin/Manager được xem tất cả (userId = undefined) hoặc lọc theo từng user cụ thể
+        // const rawUserId = !isAdminOrManager && isSale ? req.user.userId : userId;
+        // const targetUserId =
+        //   rawUserId !== undefined && rawUserId !== "" && rawUserId !== "null"
+        //     ? Number(rawUserId)
+        //     : undefined;
         const isSale = req.user.permissions.includes("sale");
         const rawUserId = isSale ? req.user.userId : userId;
         const targetUserId = rawUserId !== undefined && rawUserId !== "" ? Number(rawUserId) : undefined;

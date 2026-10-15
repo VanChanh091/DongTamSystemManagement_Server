@@ -431,7 +431,6 @@ const calculateWaste = ({ layers, ghepKho, wasteNorm, waveCoeff, runningPlan, nu
     const totalLossFlute = flute.E + flute.B + flute.C + flute.A + flute.E2;
     const totalLoss = totalLossFlute + haoPhi + knife + bottom;
     const roundSmart = (num) => Math.round(num * 100) / 100;
-    console.log(`fluteA: ${flute.A},  totalLoss: ${totalLoss}`);
     return {
         fluteE: roundSmart(flute.E),
         fluteB: roundSmart(flute.B),

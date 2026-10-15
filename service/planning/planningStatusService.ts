@@ -528,8 +528,6 @@ const calculateWaste = ({
 
   const roundSmart = (num: number) => Math.round(num * 100) / 100;
 
-  console.log(`fluteA: ${flute.A},  totalLoss: ${totalLoss}`);
-
   return {
     fluteE: roundSmart(flute.E),
     fluteB: roundSmart(flute.B),

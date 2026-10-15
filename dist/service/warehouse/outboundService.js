@@ -228,7 +228,6 @@ exports.outboundService = {
                 let customerId = null;
                 let totalPriceOrder = 0;
                 let totalPriceVAT = 0;
-                let totalPricePayment = 0;
                 let totalOutboundQty = 0;
                 const preparedDetails = [];
                 for (const item of outboundDetails) {
@@ -279,7 +278,6 @@ exports.outboundService = {
                     const exportedQty = await warehouseRepository_1.warehouseRepository.sumOutboundQty(item.orderId, transaction);
                     totalPriceOrder += totalPriceOutbound;
                     totalPriceVAT += vatAmount;
-                    totalPricePayment += totalPriceOutbound + vatAmount;
                     totalOutboundQty += item.outboundQty;
                     preparedDetails.push({
                         orderId: item.orderId,
@@ -321,7 +319,7 @@ exports.outboundService = {
                 // Làm tròn số tiền nguyên VNĐ
                 const roundedTotalPriceOrder = Math.round(totalPriceOrder);
                 const roundedTotalPriceVAT = Math.round(totalPriceVAT);
-                const roundedTotalPricePayment = Math.round(totalPricePayment);
+                const roundedTotalPricePayment = roundedTotalPriceOrder + roundedTotalPriceVAT;
                 // Tạo outbound
                 const outbound = await crud_helper_repository_1.CrudHelper.createData({
                     model: outboundHistory_1.OutboundHistory,
@@ -363,15 +361,12 @@ exports.outboundService = {
                     });
                     // Cập nhật tồn kho
                     const finalQty = item.currentQtyInventory - item.outboundQty;
-                    const finalValue = finalQty < 0 ? 0 : finalQty * item.price;
+                    const finalValue = finalQty < 0 ? 0 : Math.round(finalQty * item.price);
                     await inventory_1.Inventory.update({
                         totalQtyOutbound: item.currentTotalQtyOutbound + item.outboundQty,
                         qtyInventory: finalQty,
                         valueInventory: finalValue,
-                    }, {
-                        where: { orderId: item.orderId },
-                        transaction,
-                    });
+                    }, { where: { orderId: item.orderId }, transaction });
                     // Cập nhật trạng thái lịch giao hàng nếu có
                     if (item.deliveryItemId) {
                         await deliveryItem_1.DeliveryItem.update({ status: "outbound" }, { where: { deliveryItemId: item.deliveryItemId }, transaction });
@@ -417,8 +412,6 @@ exports.outboundService = {
                 if (!outbound) {
                     throw appError_1.AppError.NotFound("Phiếu xuất kho không tồn tại", "OUTBOUND_NOT_FOUND");
                 }
-                // Lấy giá trị cũ của totalPricePayment trước khi cập nhật
-                const oldTotalPricePayment = Number(outbound.totalPricePayment || 0);
                 const logItems = [];
                 const oldDetails = outbound.detail ?? [];
                 const usedOldDetailIds = new Set();
@@ -459,7 +452,7 @@ exports.outboundService = {
                     const oldQty = oldDetail ? oldDetail.outboundQty : 0;
                     // tính toán cập nhật tồn kho
                     const finalQty = inventory.qtyInventory + oldQty - item.outboundQty;
-                    const finalValue = finalQty < 0 ? 0 : finalQty * currentPrice;
+                    const finalValue = finalQty < 0 ? 0 : Math.round(finalQty * currentPrice);
                     await inventory_1.Inventory.update({
                         totalQtyOutbound: inventory.totalQtyOutbound - oldQty + item.outboundQty,
                         qtyInventory: finalQty,
@@ -468,16 +461,12 @@ exports.outboundService = {
                     //inventory logs
                     const netChangeQty = oldQty - item.outboundQty;
                     if (netChangeQty !== 0) {
-                        logItems.push({
-                            inventoryId: inventory.inventoryId,
-                            changeQty: netChangeQty,
-                        });
+                        logItems.push({ inventoryId: inventory.inventoryId, changeQty: netChangeQty });
                     }
                     const vatRate = isPromotion ? 0 : (order.vat ?? 0) / 100;
                     const vatAmount = Math.round(currentTotalPrice * vatRate);
                     totalPriceOrder += currentTotalPrice;
                     totalPriceVAT += vatAmount;
-                    totalPricePayment += currentTotalPrice + vatAmount;
                     totalOutboundQty += item.outboundQty;
                     if (oldDetail) {
                         // Đánh dấu dòng cũ này ĐƯỢC GIỮ LẠI
@@ -522,7 +511,7 @@ exports.outboundService = {
                         // hoàn kho
                         if (inv) {
                             const finalQty = inv.qtyInventory + oldDetail.outboundQty;
-                            const finalValue = finalQty < 0 ? 0 : finalQty * oldDetail.price;
+                            const finalValue = finalQty < 0 ? 0 : Math.round(finalQty * oldDetail.price);
                             await inventory_1.Inventory.update({
                                 totalQtyOutbound: inv.totalQtyOutbound - oldDetail.outboundQty,
                                 qtyInventory: finalQty,
@@ -537,12 +526,13 @@ exports.outboundService = {
                         await oldDetail.destroy({ transaction });
                     }
                 }
-                // Tính toán lại tổng tiền thanh toán và số tiền còn lại
+                // Tính toán lại: Tổng thanh toán = Tổng tiền hàng + Tiền VAT
                 const roundedTotalPriceOrder = Math.round(totalPriceOrder);
                 const roundedTotalPriceVAT = Math.round(totalPriceVAT);
-                const roundedTotalPricePayment = Math.round(totalPricePayment);
+                const roundedTotalPricePayment = roundedTotalPriceOrder + roundedTotalPriceVAT;
+                // Làm tròn số tiền đã trả và công nợ còn lại
                 const paidAmount = Math.round(Number(outbound.paidAmount ?? 0));
-                const remainingAmount = Math.round(roundedTotalPricePayment - paidAmount);
+                const remainingAmount = roundedTotalPricePayment - paidAmount;
                 // Cập nhật outbound header
                 await outbound.update({
                     customerId: customerId || outbound.customerId,

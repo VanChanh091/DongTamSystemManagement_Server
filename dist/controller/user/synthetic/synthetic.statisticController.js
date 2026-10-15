@@ -6,6 +6,7 @@ const errProductionService_1 = require("../../../service/synthetic/statistic/err
 //===========================REVENUE REPORT================================
 const getRevenueReport = async (req, res, next) => {
     const { type, month, year, fromYear, toYear, targetUserId, page, pageSize, keyword, all } = req.query;
+    console.log(`Daily Revenue: type: ${type}, month: ${month}, year: ${year}, targetUserId: ${targetUserId}, all: ${all}`);
     try {
         let response;
         const isAll = all === "true";

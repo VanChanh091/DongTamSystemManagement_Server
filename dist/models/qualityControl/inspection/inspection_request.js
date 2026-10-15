@@ -31,6 +31,8 @@ function initInspectionRequestModel(sequelize) {
             { fields: ["planningId"] },
             { fields: ["status"] },
             { fields: ["result"] },
+            //composite index
+            { fields: ["planningId", "status"] },
         ],
     });
     return InspectionRequest;

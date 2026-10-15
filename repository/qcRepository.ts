@@ -120,7 +120,7 @@ export const qcRepository = {
           include: [
             {
               model: Order,
-              attributes: ["flute", "dayReceiveOrder", "isFSC"],
+              attributes: ["flute", "canLan", "dayReceiveOrder", "isFSC"],
               include: [
                 { model: Customer, attributes: ["customerName"] },
                 { model: Product, attributes: ["productName"] },
@@ -219,7 +219,7 @@ export const qcRepository = {
               include: [
                 {
                   model: Order,
-                  attributes: ["QC_box", "dayReceiveOrder", "isFSC"],
+                  attributes: ["QC_box", "canLan", "dayReceiveOrder", "isFSC"],
                   include: [
                     { model: Customer, attributes: ["customerName"] },
                     { model: Product, attributes: ["productName"] },

@@ -30,6 +30,7 @@ router.post("/planning-boxes", authMiddleware_1.default, (0, permissionMiddlewar
 router.put("/planning-boxes", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningBoxController_1.updatePlanningBoxes);
 //=========================PAPER REQUIREMENTS=========================
 router.get("/paper-requirements", authMiddleware_1.default, paperRequirementController_1.getPaperRequirements);
+router.get("/paper-requirements/summary", authMiddleware_1.default, paperRequirementController_1.calculateSummaryByGhepKho);
 //socket
 router.post("/notify-planning", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), planningPaperController_1.notifyUpdatePlanning);
 exports.default = router;
