@@ -24,8 +24,10 @@ interface PlanningPaperAttributes {
 
   dayStart?: Date | null;
   dayCompleted?: Date | null;
+
   timeStart?: string | null;
   timeRunning?: string | null;
+  plannedDuration?: number | null;
 
   dayReplace?: string | null;
 
@@ -90,6 +92,7 @@ export type PlanningPaperCreationAttributes = Optional<
   | "dayCompleted"
   | "timeStart"
   | "timeRunning"
+  | "plannedDuration"
   | "dayReplace"
   | "matEReplace"
   | "matBReplace"
@@ -136,11 +139,12 @@ export class PlanningPaper
 
   declare dayStart?: Date | null;
   declare dayCompleted?: Date | null;
+
   declare timeStart?: string | null;
   declare timeRunning?: string | null;
+  declare plannedDuration?: number | null;
 
   declare dayReplace?: string | null;
-
   declare matEReplace?: string | null;
   declare matBReplace?: string | null;
   declare matCReplace?: string | null;
@@ -221,6 +225,7 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
       },
       timeStart: { type: DataTypes.TIME },
       timeRunning: { type: DataTypes.TIME },
+      plannedDuration: { type: DataTypes.INTEGER }, //planned duration in minutes
 
       //structure replace
       dayReplace: { type: DataTypes.STRING },

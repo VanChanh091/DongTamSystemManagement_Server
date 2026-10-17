@@ -110,11 +110,9 @@ export const notificationService = {
       department?: string;
     };
   }) => {
-    const io = getIO();
-
     try {
+      const io = getIO();
       // Phát socket nghiệp vụ thông báo yêu cầu kiểm tra mới đến phòng QC
-
       io.to("department-qc").emit("NEW_INSPECTION_REQUEST", {
         inspectionId,
         planningId,

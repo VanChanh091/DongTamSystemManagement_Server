@@ -10,6 +10,9 @@ import { PlanningBox } from "../../models/planning/planningBox";
 import { PlanningPaper } from "../../models/planning/planningPaper";
 import { InspectionRequest } from "../../models/qualityControl/inspection/inspection_request";
 import { cancelInspectionTimers } from "../../assets/configs/queue/inspection.queue";
+import { NotificationModel } from "../../models/notification/notification";
+import { UserNotifications } from "../../models/notification/userNotifications";
+import { RequestType } from "../notification/requestType";
 import { reportRepository } from "../../repository/reportRepository";
 import { machineLabels, MEILI_INDEX } from "../../assets/labelFields";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
@@ -258,6 +261,7 @@ export const manuPaperService = {
         });
 
         if (pendingRequests.length > 0) {
+          const pendingIds = pendingRequests.map((r) => r.inspectionId);
           await InspectionRequest.update(
             { status: "missing", result: false },
             { where: { planningId, status: "pending" }, transaction },
@@ -265,6 +269,27 @@ export const manuPaperService = {
 
           for (const req of pendingRequests) {
             await cancelInspectionTimers(req.inspectionId);
+          }
+
+          // Dọn dẹp toàn bộ thông báo của các yêu cầu này thành isRead: true cho tất cả QC
+          try {
+            const relatedNotifs = await NotificationModel.findAll({
+              where: {
+                type: { [Op.in]: [RequestType.INSPECTION_REQUEST, RequestType.INSPECTION_REMIND] },
+                payload: { inspectionId: { [Op.in]: pendingIds } },
+              },
+              attributes: ["notificationId"],
+              transaction,
+            });
+            if (relatedNotifs.length > 0) {
+              const notifIds = relatedNotifs.map((n) => n.notificationId);
+              await UserNotifications.update(
+                { isRead: true },
+                { where: { notificationId: { [Op.in]: notifIds } }, transaction },
+              );
+            }
+          } catch (notifErr) {
+            console.error("Lỗi cập nhật isRead thông báo khi báo cáo số lượng:", notifErr);
           }
         }
 

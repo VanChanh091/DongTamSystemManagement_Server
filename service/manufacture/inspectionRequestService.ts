@@ -136,31 +136,28 @@ export const inspectionRequestService = {
         return request;
       });
 
-      // Đánh dấu đã đọc tất cả thông báo liên quan đến inspection này cho user QC tiếp nhận
-      if (userId) {
-        try {
-          const relatedNotifs = await NotificationModel.findAll({
-            where: {
-              type: { [Op.in]: [RequestType.INSPECTION_REQUEST, RequestType.INSPECTION_REMIND] },
-              payload: { inspectionId },
-            },
-            attributes: ["notificationId"],
-          });
-          if (relatedNotifs.length > 0) {
-            const notifIds = relatedNotifs.map((n) => n.notificationId);
-            await UserNotifications.update(
-              { isRead: true },
-              {
-                where: {
-                  notificationId: { [Op.in]: notifIds },
-                  receiverId: userId,
-                },
+      // Đánh dấu đã đọc tất cả thông báo liên quan đến inspection này cho TẤT CẢ nhân sự QC
+      try {
+        const relatedNotifs = await NotificationModel.findAll({
+          where: {
+            type: { [Op.in]: [RequestType.INSPECTION_REQUEST, RequestType.INSPECTION_REMIND] },
+            payload: { inspectionId },
+          },
+          attributes: ["notificationId"],
+        });
+        if (relatedNotifs.length > 0) {
+          const notifIds = relatedNotifs.map((n) => n.notificationId);
+          await UserNotifications.update(
+            { isRead: true },
+            {
+              where: {
+                notificationId: { [Op.in]: notifIds },
               },
-            );
-          }
-        } catch (notifErr) {
-          console.error("Lỗi khi cập nhật isRead thông báo QC:", notifErr);
+            },
+          );
         }
+      } catch (notifErr) {
+        console.error("Lỗi khi cập nhật isRead thông báo QC:", notifErr);
       }
 
       // hủy BullMQ timer

@@ -69,6 +69,7 @@ export const inspectionWorker = new Worker<InspectionJobData>(
               inspectionId: request.inspectionId,
               machine,
               action: "REMIND",
+              status: "pending",
               remainingSeconds: 120,
             },
           });
