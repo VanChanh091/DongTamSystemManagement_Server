@@ -108,6 +108,9 @@ export function initScrapReportModel(sequelize: Sequelize): typeof ScrapReport {
         //composite index
         { fields: ["status", "scrapId"] },
         { fields: ["machine", "status"] },
+
+        //using for statistic report production
+        { fields: ["dayCompleted", "status"] },
       ],
     },
   );

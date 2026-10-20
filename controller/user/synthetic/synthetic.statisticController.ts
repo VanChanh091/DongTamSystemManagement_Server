@@ -1,6 +1,8 @@
 import { NextFunction, Request, Response } from "express";
 import { statisticRevenueService } from "../../../service/synthetic/statistic/revenueService";
 import { statisticErrProductionService } from "../../../service/synthetic/statistic/errProductionService";
+import { AppError } from "../../../utils/appError";
+import { productionReportService } from "../../../service/synthetic/statistic/productionReportService";
 
 //===========================REVENUE REPORT================================
 export const getRevenueReport = async (req: Request, res: Response, next: NextFunction) => {
@@ -17,10 +19,6 @@ export const getRevenueReport = async (req: Request, res: Response, next: NextFu
       keyword?: string;
       all?: string;
     };
-
-  console.log(
-    `Daily Revenue: type: ${type}, month: ${month}, year: ${year}, targetUserId: ${targetUserId}, all: ${all}`,
-  );
 
   try {
     let response;
@@ -107,6 +105,31 @@ export const getErrorProductionReport = async (req: Request, res: Response, next
     }
 
     return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+//===========================REPORT PRODUCTION================================
+export const getReportProduction = async (req: Request, res: Response, next: NextFunction) => {
+  const { startDate, endDate, type } = req.query as {
+    startDate?: string;
+    endDate?: string;
+    type: "machine" | "worker";
+  };
+
+  try {
+    if (!startDate) {
+      throw AppError.BadRequest("startDate là bắt buộc (YYYY-MM-DD)");
+    }
+
+    const result = await productionReportService.getReportProduction({
+      startDate: String(startDate),
+      endDate: endDate ? String(endDate) : undefined,
+      type,
+    });
+
+    return res.status(200).json(result);
   } catch (error) {
     next(error);
   }

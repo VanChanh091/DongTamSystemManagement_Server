@@ -12,6 +12,7 @@ import {
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 import {
   getErrorProductionReport,
+  getReportProduction,
   getRevenueReport,
 } from "../../controller/user/synthetic/synthetic.statisticController";
 
@@ -34,5 +35,8 @@ router.post("/planning/export", authenticate, exportExcelSyntheticPlanning);
 //=========================STATISTIC REPORT=========================
 router.get("/report-revenue", authenticate, getRevenueReport);
 router.get("/report-err-production", authenticate, getErrorProductionReport);
+
+//==================PRODUCTION STAGE 1 REPORT====================
+router.get("/report-production", authenticate, getReportProduction);
 
 export default router;

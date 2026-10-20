@@ -25,7 +25,7 @@ export const scrapReportRepository = {
       options.offset = (page - 1) * pageSize;
       options.limit = pageSize;
 
-      options.order = [["scrapId", "DESC"]];
+      options.order = optionsField?.order || [["scrapId", "DESC"]];
     }
 
     if (isExport) {

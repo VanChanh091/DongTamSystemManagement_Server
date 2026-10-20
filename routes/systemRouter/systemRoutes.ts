@@ -1,22 +1,19 @@
 import Router from "express";
-import upload from "../../utils/image/uploadImage";
 import authenticate from "../../middlewares/authMiddleware";
-import {
-  bulkImportCustomers,
-  bulkImportOrdersController,
-  bulkImportProducts,
-} from "../../controller/system/processingDataController";
 import { authorizeRole } from "../../middlewares/permissionMiddleware";
 import { cleanAllForeignKeysDb } from "../../controller/system/systemController";
+import {
+  clearCacheController,
+  getCacheStatsController,
+} from "../../controller/system/cacheController";
 
 const router = Router();
 
-//processing data
-router.post("/order", authenticate, upload.single("order"), bulkImportOrdersController);
-router.post("/customer", authenticate, upload.single("customer"), bulkImportCustomers);
-router.post("/product", authenticate, upload.single("product"), bulkImportProducts);
-
 //clear foreign key
 router.post("/clear-fk", authenticate, authorizeRole(["admin"]), cleanAllForeignKeysDb);
+
+//redis cache management
+router.get("/redis/stats", authenticate, authorizeRole(["admin"]), getCacheStatsController);
+router.post("/redis/clear-cache", authenticate, authorizeRole(["admin"]), clearCacheController);
 
 export default router;
