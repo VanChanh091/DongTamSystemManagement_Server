@@ -27,6 +27,7 @@ function initPlanningPaperModel(sequelize) {
         },
         timeStart: { type: sequelize_1.DataTypes.TIME },
         timeRunning: { type: sequelize_1.DataTypes.TIME },
+        plannedDuration: { type: sequelize_1.DataTypes.INTEGER }, //planned duration in minutes
         //structure replace
         dayReplace: { type: sequelize_1.DataTypes.STRING },
         matEReplace: { type: sequelize_1.DataTypes.STRING },

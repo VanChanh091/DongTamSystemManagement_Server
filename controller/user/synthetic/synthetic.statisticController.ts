@@ -112,10 +112,9 @@ export const getErrorProductionReport = async (req: Request, res: Response, next
 
 //===========================REPORT PRODUCTION================================
 export const getReportProduction = async (req: Request, res: Response, next: NextFunction) => {
-  const { startDate, endDate, type } = req.query as {
+  const { startDate, endDate } = req.query as {
     startDate?: string;
     endDate?: string;
-    type: "machine" | "worker";
   };
 
   try {
@@ -126,7 +125,6 @@ export const getReportProduction = async (req: Request, res: Response, next: Nex
     const result = await productionReportService.getReportProduction({
       startDate: String(startDate),
       endDate: endDate ? String(endDate) : undefined,
-      type,
     });
 
     return res.status(200).json(result);

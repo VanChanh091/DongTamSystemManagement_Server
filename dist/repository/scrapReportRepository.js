@@ -12,7 +12,7 @@ exports.scrapReportRepository = {
         if (page && pageSize) {
             options.offset = (page - 1) * pageSize;
             options.limit = pageSize;
-            options.order = [["scrapId", "DESC"]];
+            options.order = optionsField?.order || [["scrapId", "DESC"]];
         }
         if (isExport) {
             options.raw = true;

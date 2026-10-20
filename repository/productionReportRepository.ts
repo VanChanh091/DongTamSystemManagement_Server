@@ -30,6 +30,7 @@ export const productionReportRepository = {
         "shiftProduction",
         "shiftManagement",
         "reportedBy",
+        "dayReport",
       ],
       include: [
         {
@@ -70,13 +71,13 @@ export const productionReportRepository = {
     });
   },
 
-  // Lấy danh sách kiểm tra QC không đạt
+  // Lấy danh sách kiểm tra QC không đạt kèm thời điểm timeInspection
   getQcErrorsByPlanningIds: async (planningIds: number[]) => {
     if (planningIds.length === 0) return [];
 
     return await QcInspectionPaper.findAll({
       where: { planningId: { [Op.in]: planningIds }, result: false },
-      attributes: ["planningId", "inspecPaperId"],
+      attributes: ["planningId", "inspecPaperId", "timeInspection"],
       raw: true,
     });
   },

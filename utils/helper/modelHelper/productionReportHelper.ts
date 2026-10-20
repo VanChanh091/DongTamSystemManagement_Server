@@ -126,10 +126,10 @@ export const finalizeReportRow = (
   const averageSpeed =
     acc.speedCount > 0 ? Math.round((acc.sumSpeed / acc.speedCount) * 100) / 100 : 0;
 
-  // Bẫy chia 0: Tỷ lệ lỗi / Tấn giấy
+  // Bẫy chia 0: % Lỗi / Tấn giấy (nhân 100 để ra tỷ lệ %)
   const totalQcErrors = Math.round(acc.totalQcErrors);
   const qcErrorPerTon =
-    totalPaperTon > 0 ? Math.round((totalQcErrors / totalPaperTon) * 100) / 100 : 0;
+    totalPaperTon > 0 ? Math.round(((totalQcErrors / totalPaperTon) * 100) * 100) / 100 : 0;
 
   // % Đạt kế hoạch
   const adherence = calculateAdherenceMetrics({

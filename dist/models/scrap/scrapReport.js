@@ -46,6 +46,8 @@ function initScrapReportModel(sequelize) {
             //composite index
             { fields: ["status", "scrapId"] },
             { fields: ["machine", "status"] },
+            //using for statistic report production
+            { fields: ["dayCompleted", "status"] },
         ],
     });
     return ScrapReport;

@@ -1,12 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getErrorProductionReport = exports.getRevenueReport = void 0;
+exports.getReportProduction = exports.getErrorProductionReport = exports.getRevenueReport = void 0;
 const revenueService_1 = require("../../../service/synthetic/statistic/revenueService");
 const errProductionService_1 = require("../../../service/synthetic/statistic/errProductionService");
+const appError_1 = require("../../../utils/appError");
+const productionReportService_1 = require("../../../service/synthetic/statistic/productionReportService");
 //===========================REVENUE REPORT================================
 const getRevenueReport = async (req, res, next) => {
     const { type, month, year, fromYear, toYear, targetUserId, page, pageSize, keyword, all } = req.query;
-    console.log(`Daily Revenue: type: ${type}, month: ${month}, year: ${year}, targetUserId: ${targetUserId}, all: ${all}`);
     try {
         let response;
         const isAll = all === "true";
@@ -86,4 +87,22 @@ const getErrorProductionReport = async (req, res, next) => {
     }
 };
 exports.getErrorProductionReport = getErrorProductionReport;
+//===========================REPORT PRODUCTION================================
+const getReportProduction = async (req, res, next) => {
+    const { startDate, endDate } = req.query;
+    try {
+        if (!startDate) {
+            throw appError_1.AppError.BadRequest("startDate là bắt buộc (YYYY-MM-DD)");
+        }
+        const result = await productionReportService_1.productionReportService.getReportProduction({
+            startDate: String(startDate),
+            endDate: endDate ? String(endDate) : undefined,
+        });
+        return res.status(200).json(result);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.getReportProduction = getReportProduction;
 //# sourceMappingURL=synthetic.statisticController.js.map

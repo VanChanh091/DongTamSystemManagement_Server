@@ -60,6 +60,7 @@ exports.debtManagementService = {
             const { sortedCustomers, grandTotal } = processDebtAggregation(unpaidOutbounds, targetDate);
             // Lọc khách hàng bằng hàm normalizeVN
             let filteredCustomers = sortedCustomers;
+            let finalGrandTotal = grandTotal;
             if (search && search.trim()) {
                 const keyword = (0, normalizeVN_1.normalizeVN)(search);
                 filteredCustomers = sortedCustomers.filter((cust) => {
@@ -70,6 +71,7 @@ exports.debtManagementService = {
                         : false;
                     return nameMatch || companyMatch || idMatch;
                 });
+                finalGrandTotal = calculateGrandTotalFromCustomers(filteredCustomers);
             }
             // Phân trang chỉ cho mảng dữ liệu hiển thị (data)
             const totalCustomers = filteredCustomers.length;
@@ -80,7 +82,7 @@ exports.debtManagementService = {
                 message: "Lấy danh sách công nợ thành công",
                 targetDate: targetDate || new Date().toISOString(),
                 data: paginatedItems.map(mapToDebtItemDTO),
-                grandTotal: mapToDebtItemDTO(grandTotal),
+                grandTotal: mapToDebtItemDTO(finalGrandTotal),
                 totalCustomers,
                 totalPages,
                 currentPage: page,
@@ -436,6 +438,41 @@ const mapToDebtItemDTO = (rawItem) => {
             overdueOver120: roundInt(aging?.overdueOver120),
         },
     };
+};
+// Helper tính tổng công nợ từ danh sách khách hàng đã lọc
+const calculateGrandTotalFromCustomers = (customers) => {
+    return customers.reduce((acc, cust) => {
+        acc.totalDebt += cust.totalDebt;
+        acc.closedDebt += cust.closedDebt;
+        acc.currentPeriodDebt += cust.currentPeriodDebt;
+        acc.dueDebt += cust.dueDebt;
+        acc.notDueDebt += cust.notDueDebt;
+        acc.unpaidOutboundCount += cust.unpaidOutboundCount;
+        acc.aging.dueIn1_3 += cust.aging?.dueIn1_3 || 0;
+        acc.aging.overdue1_30 += cust.aging?.overdue1_30 || 0;
+        acc.aging.overdue31_60 += cust.aging?.overdue31_60 || 0;
+        acc.aging.overdue61_90 += cust.aging?.overdue61_90 || 0;
+        acc.aging.overdue91_120 += cust.aging?.overdue91_120 || 0;
+        acc.aging.overdueOver120 += cust.aging?.overdueOver120 || 0;
+        return acc;
+    }, {
+        customerId: "",
+        customerName: "TỔNG CỘNG",
+        totalDebt: 0,
+        closedDebt: 0,
+        currentPeriodDebt: 0,
+        dueDebt: 0,
+        notDueDebt: 0,
+        unpaidOutboundCount: 0,
+        aging: {
+            dueIn1_3: 0,
+            overdue1_30: 0,
+            overdue31_60: 0,
+            overdue61_90: 0,
+            overdue91_120: 0,
+            overdueOver120: 0,
+        },
+    });
 };
 // Helper tính toán công nợ và gom nhóm từ danh sách PXK
 const processDebtAggregation = (unpaidOutbounds, targetDate) => {

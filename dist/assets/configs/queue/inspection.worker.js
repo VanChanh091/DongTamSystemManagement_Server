@@ -60,6 +60,7 @@ exports.inspectionWorker = new bullmq_1.Worker("INSPECTION_TIMER_QUEUE", async (
                         inspectionId: request.inspectionId,
                         machine,
                         action: "REMIND",
+                        status: "pending",
                         remainingSeconds: 120,
                     },
                 });

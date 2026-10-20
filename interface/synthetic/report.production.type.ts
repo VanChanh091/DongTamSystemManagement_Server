@@ -20,6 +20,11 @@ export interface ProductionReportItem {
   qcErrorPerTon: number; // --. % Lỗi / Tấn giấy
 }
 
+export interface ProductionCombinedReportResult {
+  machines: ProductionReportItem[];
+  workers: ProductionReportItem[];
+}
+
 export interface ReportAccumulator {
   dimensionKey: string;
   totalPaperKg: number;

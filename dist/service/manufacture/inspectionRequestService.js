@@ -89,29 +89,26 @@ exports.inspectionRequestService = {
                 }, { transaction });
                 return request;
             });
-            // Đánh dấu đã đọc tất cả thông báo liên quan đến inspection này cho user QC tiếp nhận
-            if (userId) {
-                try {
-                    const relatedNotifs = await notification_1.NotificationModel.findAll({
+            // Đánh dấu đã đọc tất cả thông báo liên quan đến inspection này cho TẤT CẢ nhân sự QC
+            try {
+                const relatedNotifs = await notification_1.NotificationModel.findAll({
+                    where: {
+                        type: { [sequelize_1.Op.in]: [requestType_1.RequestType.INSPECTION_REQUEST, requestType_1.RequestType.INSPECTION_REMIND] },
+                        payload: { inspectionId },
+                    },
+                    attributes: ["notificationId"],
+                });
+                if (relatedNotifs.length > 0) {
+                    const notifIds = relatedNotifs.map((n) => n.notificationId);
+                    await userNotifications_1.UserNotifications.update({ isRead: true }, {
                         where: {
-                            type: { [sequelize_1.Op.in]: [requestType_1.RequestType.INSPECTION_REQUEST, requestType_1.RequestType.INSPECTION_REMIND] },
-                            payload: { inspectionId },
+                            notificationId: { [sequelize_1.Op.in]: notifIds },
                         },
-                        attributes: ["notificationId"],
                     });
-                    if (relatedNotifs.length > 0) {
-                        const notifIds = relatedNotifs.map((n) => n.notificationId);
-                        await userNotifications_1.UserNotifications.update({ isRead: true }, {
-                            where: {
-                                notificationId: { [sequelize_1.Op.in]: notifIds },
-                                receiverId: userId,
-                            },
-                        });
-                    }
                 }
-                catch (notifErr) {
-                    console.error("Lỗi khi cập nhật isRead thông báo QC:", notifErr);
-                }
+            }
+            catch (notifErr) {
+                console.error("Lỗi khi cập nhật isRead thông báo QC:", notifErr);
             }
             // hủy BullMQ timer
             await (0, inspection_queue_1.cancelInspectionTimers)(inspectionId);

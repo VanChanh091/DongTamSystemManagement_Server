@@ -194,6 +194,7 @@ const calculateTimeForOnePlanning = async ({ planning, machine, machineMap, curr
                 dayStart: new Date(result.dayStart), // result.dayStart đã an toàn khỏi lỗi Timezone
                 timeRunning: result.timeRunning,
                 timeStart: timeStart,
+                plannedDuration: productionMinutes,
                 hasOverFlow,
             },
             options: { where: { planningId }, transaction },

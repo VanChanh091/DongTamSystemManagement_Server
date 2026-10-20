@@ -134,8 +134,8 @@ export const CacheKey = {
       error_yearly: (year: number, type: string) => `report:error_yearly:${year}_type:${type}`,
 
       //production report
-      report_production: (type: string, startDate: string, endDate: string) =>
-        `report:production:${type}:${startDate}-${endDate}`,
+      report_production: (startDate: string, endDate: string) =>
+        `report:production:${startDate}-${endDate}`,
     },
   },
 

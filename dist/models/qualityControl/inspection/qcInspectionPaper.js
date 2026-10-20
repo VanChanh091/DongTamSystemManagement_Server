@@ -44,6 +44,8 @@ function initQcInspectionPaperModel(sequelize) {
             { fields: ["userId"] },
             //composite index
             { fields: ["timeInspection", "planningId"] },
+            //using for statistic report production
+            { fields: ["planningId", "result"] },
         ],
     });
     return QcInspectionPaper;

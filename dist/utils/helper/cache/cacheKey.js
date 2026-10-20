@@ -118,6 +118,8 @@ exports.CacheKey = {
             //error production
             error_monthly: (year, month, type) => `report:error_monthly:${year}-${month}_type:${type}`,
             error_yearly: (year, type) => `report:error_yearly:${year}_type:${type}`,
+            //production report
+            report_production: (startDate, endDate) => `report:production:${startDate}-${endDate}`,
         },
     },
     qcInspection: {

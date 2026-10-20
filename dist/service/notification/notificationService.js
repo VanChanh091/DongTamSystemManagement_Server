@@ -71,8 +71,8 @@ exports.notificationService = {
     },
     // Gửi thông báo đến phòng QC khi có yêu cầu kiểm tra mới
     notiffyQcDepartment: async ({ orderId, planningId, inspectionId, machine, requestedBy, requestedAt, user, }) => {
-        const io = (0, socket_1.getIO)();
         try {
+            const io = (0, socket_1.getIO)();
             // Phát socket nghiệp vụ thông báo yêu cầu kiểm tra mới đến phòng QC
             io.to("department-qc").emit("NEW_INSPECTION_REQUEST", {
                 inspectionId,

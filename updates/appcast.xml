@@ -3,14 +3,13 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.8.5</title>
-            <sparkle:version>4.8.5</sparkle:version> 
+            <title>Version 4.8.6</title>
+            <sparkle:version>4.8.6</sparkle:version> 
             <description>
-                Thêm chức năng vào/ra ca cho QC
-                Thêm chức năng yêu cầu kiểm đầu hàng cho sản xuất
-                Thêm phần thông báo đến QC và đánh lỗi khi QC không kiểm đầu hàng
+                Thêm phần tính khối lượng định mức theo khổ trong ngày
                 Cải tiến phần nhập kết cấu giấy dựa vào sản phẩm
-                Thêm máy mới và loại sóng mới
+                Cải tiến lại form chọn khoảng ngày tháng
+                Thêm chức năng báo cáo sản xuất
             </description>
             <pubDate>Wed, 14 Octorber 2026</pubDate>
             <enclosure url="dongtam.exe" 

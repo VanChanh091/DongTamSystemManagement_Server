@@ -8,6 +8,7 @@ import {
   getProductionDayBounds,
 } from "../../../utils/helper/modelHelper/productionReportHelper";
 import {
+  ProductionCombinedReportResult,
   ProductionReportItem,
   ReportAccumulator,
 } from "../../../interface/synthetic/report.production.type";
@@ -26,25 +27,23 @@ export const productionReportService = {
   getReportProduction: async ({
     startDate,
     endDate,
-    type,
   }: {
     startDate: string;
     endDate?: string;
-    type: "machine" | "worker";
   }) => {
     try {
       const finalEndDate = endDate || startDate;
       const { startDateTime } = getProductionDayBounds(startDate);
       const { endDateTime } = getProductionDayBounds(finalEndDate);
 
-      const cacheKey = reports.report_production(type, startDate, finalEndDate);
+      const cacheKey = reports.report_production(startDate, finalEndDate);
       const cached = await redisCache.get(cacheKey);
       if (cached) {
         if (devEnvironment) console.log("✅ Data Report Paper Production from Redis");
 
         return {
-          message: `get report paper production by ${type} from cache`,
-          data: JSON.parse(cached),
+          message: "Lấy báo cáo sản xuất từ cache",
+          data: JSON.parse(cached) as ProductionCombinedReportResult,
         };
       }
 
@@ -55,9 +54,13 @@ export const productionReportService = {
       });
 
       if (!reportPapers || reportPapers.length === 0) {
+        const emptyData: ProductionCombinedReportResult = {
+          machines: [],
+          workers: [],
+        };
         return {
           message: "Không có dữ liệu trong khoảng thời gian đã chọn",
-          data: [],
+          data: emptyData,
         };
       }
 
@@ -69,61 +72,78 @@ export const productionReportService = {
         productionReportRepository.getPaperRequirementsByPlanningIds(planningIds),
         productionReportRepository.getScrapReportsByDateRange({ startDateTime, endDateTime }),
         productionReportRepository.getQcErrorsByPlanningIds(planningIds),
-        type === "machine"
-          ? productionReportRepository.getMachinePlannedDurations({
-              startDate,
-              endDate: finalEndDate,
-            })
-          : Promise.resolve([]),
+        productionReportRepository.getMachinePlannedDurations({
+          startDate,
+          endDate: finalEndDate,
+        }),
       ]);
 
-      // Mapping tra cứu nhanh
+      // Mapping tra cứu định mức giấy
       const paperReqMap = new Map<number, number>();
       paperReqs.forEach((item) => {
         const cur = paperReqMap.get(item.planningId) || 0;
         paperReqMap.set(item.planningId, cur + Number(item.totalRequiredQty || 0));
       });
 
-      const qcErrorMap = new Map<number, number>();
-      qcErrors.forEach((item) => {
-        qcErrorMap.set(item.planningId, (qcErrorMap.get(item.planningId) || 0) + 1);
-      });
+      // Phân bổ lỗi QC chính xác cho từng reportPaper
+      // Mỗi lỗi QC chỉ thuộc về duy nhất 1 reportPaper (tránh gán trùng khi planning có nhiều thợ/ca)
+      const reportQcMap = new Map<number, number>();
+      for (const qc of qcErrors) {
+        const candidateReports = reportPapers.filter((r) => r.planningId === qc.planningId);
+        if (candidateReports.length === 1) {
+          const repId = candidateReports[0].reportPaperId;
+          reportQcMap.set(repId, (reportQcMap.get(repId) || 0) + 1);
+        } else if (candidateReports.length > 1) {
+          const qcTime = new Date((qc as any).timeInspection).getTime();
+          let bestReport = candidateReports[0];
+          let minDiff = Math.abs(new Date(bestReport.dayReport).getTime() - qcTime);
 
-      const scrapMap = new Map<string, number>();
+          for (let i = 1; i < candidateReports.length; i++) {
+            const diff = Math.abs(new Date(candidateReports[i].dayReport).getTime() - qcTime);
+            if (diff < minDiff) {
+              minDiff = diff;
+              bestReport = candidateReports[i];
+            }
+          }
+          reportQcMap.set(bestReport.reportPaperId, (reportQcMap.get(bestReport.reportPaperId) || 0) + 1);
+        }
+      }
+
+      const machineScrapMap = new Map<string, number>();
+      const workerScrapMap = new Map<string, number>();
       scrapData.forEach((s) => {
         const qty = Number(s.totalQtyScrap || 0);
-        const key = type === "machine" ? s.machine : s.reportedBy;
-        if (key) scrapMap.set(key, (scrapMap.get(key) || 0) + qty);
+        if (s.machine) {
+          machineScrapMap.set(s.machine, (machineScrapMap.get(s.machine) || 0) + qty);
+        }
+        if (s.reportedBy) {
+          workerScrapMap.set(s.reportedBy, (workerScrapMap.get(s.reportedBy) || 0) + qty);
+        }
       });
 
       const machinePlannedMinutesMap = new Map<string, number>();
-      if (type === "machine") {
-        dayPlannings.forEach((p) => {
-          const m = p.chooseMachine;
-          machinePlannedMinutesMap.set(
-            m,
-            (machinePlannedMinutesMap.get(m) || 0) + (Number(p.plannedDuration) || 0),
-          );
-        });
-      }
+      dayPlannings.forEach((p) => {
+        const m = p.chooseMachine;
+        machinePlannedMinutesMap.set(
+          m,
+          (machinePlannedMinutesMap.get(m) || 0) + (Number(p.plannedDuration) || 0),
+        );
+      });
 
-      // Gom nhóm dữ liệu theo Máy hoặc Thợ
-      const groupMap = new Map<string, ReportAccumulator>();
-      const processedPlanningQc = new Set<string>();
+      // Gom nhóm dữ liệu đồng thời cho Máy và Thợ
+      const machineGroupMap = new Map<string, ReportAccumulator>();
+      const workerGroupMap = new Map<string, ReportAccumulator>();
+      let totalAllPaperKg = 0;
 
       for (const report of reportPapers) {
         const planning = report.PlanningPaper;
-        const groupKey =
-          type === "machine"
-            ? planning?.chooseMachine || "Chưa xác định"
-            : report.shiftManagement || "Chưa xác định";
-
         const runningPlan = Number(planning?.runningPlan || 0);
         const reportQty = Number(report.qtyProduced || 0);
         const proRataRatio = runningPlan > 0 ? reportQty / runningPlan : 0;
 
         const totalReqKg = paperReqMap.get(report.planningId) || 0;
         const usedKg = totalReqKg * proRataRatio;
+        totalAllPaperKg += usedKg;
 
         const earnedMinutes = calculateEarnedMinutes({
           reportQty,
@@ -133,45 +153,79 @@ export const productionReportService = {
           fallbackSpeed: Number(report.averageSpeed || 0),
         });
 
-        // Tính toán số lỗi QC cho báo cáo này
-        const planQcKey = `${groupKey}_${report.planningId}`;
-        let errorsForThisReport = 0;
-        if (!processedPlanningQc.has(planQcKey)) {
-          processedPlanningQc.add(planQcKey);
-          errorsForThisReport = qcErrorMap.get(report.planningId) || 0;
-        }
+        const reportQcErrors = reportQcMap.get(report.reportPaperId) || 0;
 
-        const reportPayload = {
+        // 1. Gom theo Máy
+        const machineKey = planning?.chooseMachine || "Chưa xác định";
+        if (!machineGroupMap.has(machineKey)) {
+          machineGroupMap.set(machineKey, createReportAccumulator(machineKey));
+        }
+        accumulateReportData(machineGroupMap.get(machineKey)!, {
           paperKg: usedKg,
           length: Number(report.totalLength || 0),
           price: Number(report.totalPrice || 0),
           duration: Number(report.durations || 0),
           earnedMinutes,
           speed: Number(report.averageSpeed || 0),
-          qcErrors: errorsForThisReport,
-        };
+          qcErrors: reportQcErrors,
+        });
 
-        if (!groupMap.has(groupKey)) {
-          groupMap.set(groupKey, createReportAccumulator(groupKey));
+        // 2. Gom theo Thợ
+        const workerKey = report.shiftManagement || "Chưa xác định";
+        if (!workerGroupMap.has(workerKey)) {
+          workerGroupMap.set(workerKey, createReportAccumulator(workerKey));
         }
-        accumulateReportData(groupMap.get(groupKey)!, reportPayload);
+        accumulateReportData(workerGroupMap.get(workerKey)!, {
+          paperKg: usedKg,
+          length: Number(report.totalLength || 0),
+          price: Number(report.totalPrice || 0),
+          duration: Number(report.durations || 0),
+          earnedMinutes,
+          speed: Number(report.averageSpeed || 0),
+          qcErrors: reportQcErrors,
+        });
       }
 
-      // Tạo danh sách báo cáo cuối cùng
-      const reportRows: ProductionReportItem[] = [];
-      for (const [key, data] of groupMap.entries()) {
-        const scrap = scrapMap.get(key) || 0;
-        const plannedMin = type === "machine" ? machinePlannedMinutesMap.get(key) || 0 : undefined;
-        reportRows.push(finalizeReportRow(data, scrap, plannedMin));
+      // Tạo danh sách báo cáo Máy
+      const machineRows: ProductionReportItem[] = [];
+      for (const [key, data] of machineGroupMap.entries()) {
+        const scrap = machineScrapMap.get(key) || 0;
+        const plannedMin = machinePlannedMinutesMap.get(key) || 0;
+        machineRows.push(finalizeReportRow(data, scrap, plannedMin));
       }
+
+      // Tạo danh sách báo cáo Thợ
+      const workerRows: ProductionReportItem[] = [];
+      for (const [key, data] of workerGroupMap.entries()) {
+        const scrap = workerScrapMap.get(key) || 0;
+        workerRows.push(finalizeReportRow(data, scrap, undefined));
+      }
+
+      // Cân bằng làm tròn tổng tấn giấy (tránh lệch 0.01 do rounding giữa 2 bảng)
+      const totalTargetPaperTon = Math.round((totalAllPaperKg / 1000) * 100) / 100;
+      const reconcileTon = (rows: ProductionReportItem[]) => {
+        const currentSum = Math.round(rows.reduce((s, r) => s + r.totalPaperTon, 0) * 100) / 100;
+        const diff = Math.round((totalTargetPaperTon - currentSum) * 100) / 100;
+        if (diff !== 0 && rows.length > 0) {
+          const maxRow = rows.reduce((max, r) => (r.totalPaperTon > max.totalPaperTon ? r : max), rows[0]);
+          maxRow.totalPaperTon = Math.round((maxRow.totalPaperTon + diff) * 100) / 100;
+        }
+      };
+      reconcileTon(machineRows);
+      reconcileTon(workerRows);
+
+      const resultData: ProductionCombinedReportResult = {
+        machines: machineRows,
+        workers: workerRows,
+      };
 
       // Lưu vào cache
       const ttl = getReportCacheTTL(finalEndDate);
-      await redisCache.set(cacheKey, JSON.stringify(reportRows), "EX", ttl);
+      await redisCache.set(cacheKey, JSON.stringify(resultData), "EX", ttl);
 
       return {
-        message: `Lấy báo cáo sản xuất theo ${type === "machine" ? "máy" : "thợ"} thành công`,
-        data: reportRows,
+        message: "Lấy báo cáo sản xuất công đoạn 1 thành công",
+        data: resultData,
       };
     } catch (error) {
       console.error("❌ Lỗi tính báo cáo sản xuất công đoạn 1:", error);

@@ -14,6 +14,9 @@ const planningBox_1 = require("../../models/planning/planningBox");
 const planningPaper_1 = require("../../models/planning/planningPaper");
 const inspection_request_1 = require("../../models/qualityControl/inspection/inspection_request");
 const inspection_queue_1 = require("../../assets/configs/queue/inspection.queue");
+const notification_1 = require("../../models/notification/notification");
+const userNotifications_1 = require("../../models/notification/userNotifications");
+const requestType_1 = require("../notification/requestType");
 const reportRepository_1 = require("../../repository/reportRepository");
 const labelFields_1 = require("../../assets/labelFields");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
@@ -193,9 +196,28 @@ exports.manuPaperService = {
                     transaction,
                 });
                 if (pendingRequests.length > 0) {
+                    const pendingIds = pendingRequests.map((r) => r.inspectionId);
                     await inspection_request_1.InspectionRequest.update({ status: "missing", result: false }, { where: { planningId, status: "pending" }, transaction });
                     for (const req of pendingRequests) {
                         await (0, inspection_queue_1.cancelInspectionTimers)(req.inspectionId);
+                    }
+                    // Dọn dẹp toàn bộ thông báo của các yêu cầu này thành isRead: true cho tất cả QC
+                    try {
+                        const relatedNotifs = await notification_1.NotificationModel.findAll({
+                            where: {
+                                type: { [sequelize_1.Op.in]: [requestType_1.RequestType.INSPECTION_REQUEST, requestType_1.RequestType.INSPECTION_REMIND] },
+                                payload: { inspectionId: { [sequelize_1.Op.in]: pendingIds } },
+                            },
+                            attributes: ["notificationId"],
+                            transaction,
+                        });
+                        if (relatedNotifs.length > 0) {
+                            const notifIds = relatedNotifs.map((n) => n.notificationId);
+                            await userNotifications_1.UserNotifications.update({ isRead: true }, { where: { notificationId: { [sequelize_1.Op.in]: notifIds } }, transaction });
+                        }
+                    }
+                    catch (notifErr) {
+                        console.error("Lỗi cập nhật isRead thông báo khi báo cáo số lượng:", notifErr);
                     }
                 }
                 //chuyển sang trang chờ kiểm
