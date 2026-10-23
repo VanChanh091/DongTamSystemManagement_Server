@@ -1,6 +1,6 @@
 import { Request } from "express";
 import { User } from "../../models/user/user";
-import { REQUEST_CONFIG } from "./requestType";
+import { REQUEST_CONFIG, RequestAction } from "./requestType";
 import { AppError } from "../../utils/appError";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { notificationRepository } from "../../repository/notificationRepository";
@@ -17,10 +17,6 @@ export const OrderServiceNotification = {
     receiverId: number;
   }) => {
     const { orderId, requestType, newDeliveryDate, reason } = req.body;
-
-    // console.log(
-    //   `body: ${JSON.stringify(req.body)}, senderId: ${senderId}, receiverId: ${receiverId}`,
-    // );
 
     const config = REQUEST_CONFIG[requestType];
     if (!config) {
@@ -41,7 +37,7 @@ export const OrderServiceNotification = {
     const payload: Record<string, any> = {
       orderId,
       reason,
-      action: "REQUEST",
+      action: RequestAction.REQUEST,
     };
 
     if (requestType === "ORDER_CHANGE_DATE") {

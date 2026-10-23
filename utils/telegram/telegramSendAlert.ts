@@ -9,6 +9,8 @@ const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 const TELEGRAM_OTP_TOKEN = process.env.TELEGRAM_OTP_TOKEN;
 const TELEGRAM_GROUP_CHAT_ID = process.env.TELEGRAM_GROUP_CHAT_ID;
 
+const devEnvironment = process.env.NODE_ENV !== "production";
+
 export const cleanStackTrace = (stack: string | undefined) => {
   if (!stack) return "No stack trace available";
 
@@ -43,9 +45,16 @@ export const sendTelegramAlertOtp = async (message: string) => {
       throw AppError.BadRequest("Missing TELEGRAM_OTP_TOKEN or TELEGRAM_GROUP_CHAT_ID in .env");
     }
 
+    let chatId;
+    if (devEnvironment) {
+      chatId = CHAT_ID; // Gửi đến cá nhân trong môi trường dev
+    } else {
+      chatId = TELEGRAM_GROUP_CHAT_ID; // Gửi đến nhóm trong môi trường production
+    }
+
     const url = `https://api.telegram.org/bot${TELEGRAM_OTP_TOKEN}/sendMessage`;
     await axios.post(url, {
-      chat_id: TELEGRAM_GROUP_CHAT_ID,
+      chat_id: chatId,
       text: message,
       parse_mode: "HTML", // Để tin nhắn trông đẹp hơn
     });

@@ -1,6 +1,6 @@
-import { AppError } from "../../../utils/appError";
+import { AppError } from "../../../../utils/appError";
 import { NextFunction, Request, Response } from "express";
-import { debtManagementService } from "../../../service/warehouse/debtManagementService";
+import { debtManagementService } from "../../../../service/warehouse/debtManagementService";
 
 //=================================CLOSING DEBT=======================================
 export const getCustomerDebtSummary = async (req: Request, res: Response, next: NextFunction) => {

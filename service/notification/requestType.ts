@@ -10,8 +10,18 @@ export enum RequestType {
   INSPECTION_REQUEST = "INSPECTION_REQUEST",
   INSPECTION_REMIND = "INSPECTION_REMIND",
 
-  //FORM
-  // ... add more request types as needed
+  // debt deduction
+  DEBT_DEDUCTION_REQUEST = "DEBT_DEDUCTION_REQUEST",
+  DEBT_DEDUCTION_RESUBMITTED = "DEBT_DEDUCTION_RESUBMITTED",
+  DEBT_DEDUCTION_REJECTED = "DEBT_DEDUCTION_REJECTED",
+  DEBT_DEDUCTION_APPROVED = "DEBT_DEDUCTION_APPROVED",
+}
+
+export enum RequestAction {
+  REQUEST = "REQUEST",
+  REJECTED = "REJECTED",
+  RESPONSE = "RESPONSE",
+  REMIND = "REMIND",
 }
 
 export const REQUEST_CONFIG: Record<
@@ -55,5 +65,17 @@ export const REQUEST_CONFIG: Record<
       `[Nhắc nhở] Kế hoạch ${payload?.planningId || ""} tại ${payload?.machine || "máy"} sắp hết thời gian tiếp nhận!`,
     titleApproved: "Đã xem",
     titleRejected: "Bỏ qua",
+  },
+
+  //debt deduction
+  [RequestType.DEBT_DEDUCTION_REQUEST]: {
+    titleCreate: () => "Yêu cầu cấn trừ công nợ",
+    titleApproved: "Yêu cầu cấn trừ công nợ đã được duyệt",
+    titleRejected: "Yêu cầu cấn trừ công nợ đã bị từ chối",
+  },
+  [RequestType.DEBT_DEDUCTION_RESUBMITTED]: {
+    titleCreate: () => "Yêu cầu cấn trừ công nợ đã được gửi lại",
+    titleApproved: "Yêu cầu cấn trừ công nợ đã được duyệt",
+    titleRejected: "Yêu cầu cấn trừ công nợ đã bị từ chối",
   },
 };

@@ -728,7 +728,7 @@ const checkIsClosingDay = ({
 };
 
 //helper payment debt
-const coreCustomerPayment = ({
+export const coreCustomerPayment = ({
   amount,
   paymentMethod,
   outboundSlipCodes,

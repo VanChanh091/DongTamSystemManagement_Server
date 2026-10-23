@@ -28,6 +28,95 @@ import { deliveryColumns, mappingDeliveryRow } from "../../utils/mapping/deliver
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { schedule } = CacheKey.delivery;
 
+/**
+ * Tách thông tin số tấn và số thứ tự phụ từ tên xe
+ * Ví dụ: "Xe D 1.9 Tấn 1" -> tonnage: 1.9, subNumber: 1
+ *        "Xe D 5 Tấn 2"   -> tonnage: 5,   subNumber: 2
+ */
+const parseVehicleName = (name?: string | null) => {
+  if (!name || typeof name !== "string") {
+    return { hasMatch: false, tonnage: Infinity, subNumber: Infinity, raw: "" };
+  }
+
+  // Hỗ trợ cả số thập phân dấu chấm (.) hoặc phẩy (,) và không phân biệt hoa thường
+  const match = name.match(/(\d+(?:[.,]\d+)?)\s*t[ấa]n(?:\s*(\d+))?/i);
+  if (match) {
+    return {
+      hasMatch: true,
+      tonnage: parseFloat(match[1].replace(",", ".")),
+      subNumber: match[2] ? parseInt(match[2], 10) : 0,
+      raw: name,
+    };
+  }
+
+  return {
+    hasMatch: false,
+    tonnage: Infinity,
+    subNumber: Infinity,
+    raw: name,
+  };
+};
+
+/**
+ * So sánh 2 tên xe theo quy tắc:
+ * 1. Tăng dần theo số tấn
+ * 2. Nếu bằng nhau về số tấn -> xét tiếp con số sau chữ tấn
+ */
+const compareVehicleNames = (aName?: string | null, bName?: string | null) => {
+  const a = parseVehicleName(aName);
+  const b = parseVehicleName(bName);
+
+  if (a.hasMatch && b.hasMatch) {
+    if (a.tonnage !== b.tonnage) {
+      return a.tonnage - b.tonnage;
+    }
+    if (a.subNumber !== b.subNumber) {
+      return a.subNumber - b.subNumber;
+    }
+    return a.raw.localeCompare(b.raw, "vi");
+  }
+
+  if (a.hasMatch && !b.hasMatch) return -1;
+  if (!a.hasMatch && b.hasMatch) return 1;
+
+  return (aName || "").localeCompare(bName || "", "vi");
+};
+
+/**
+ * Sắp xếp DeliveryItems trong từng DeliveryPlan:
+ * 1. sequence (chuyến 1, 2, 3...)
+ * 2. vehicleName (tăng dần số tấn, sau đó số sau chữ tấn)
+ * 3. idxOrder (thứ tự giao trong chuyến)
+ */
+const sortDeliveryPlanItems = (plans: any[]) => {
+  if (!Array.isArray(plans)) return plans;
+
+  for (const plan of plans) {
+    const items = plan.DeliveryItems || plan.dataValues?.DeliveryItems;
+    if (Array.isArray(items)) {
+      items.sort((a: any, b: any) => {
+        const seqA = (a.sequence ?? "").toString();
+        const seqB = (b.sequence ?? "").toString();
+        const seqCompare = seqA.localeCompare(seqB, "vi", { numeric: true });
+        if (seqCompare !== 0) return seqCompare;
+
+        const vehicleNameA =
+          a.Vehicle?.vehicleName ?? a.vehicle?.vehicleName ?? a.dataValues?.Vehicle?.vehicleName;
+        const vehicleNameB =
+          b.Vehicle?.vehicleName ?? b.vehicle?.vehicleName ?? b.dataValues?.Vehicle?.vehicleName;
+        const vehicleCompare = compareVehicleNames(vehicleNameA, vehicleNameB);
+        if (vehicleCompare !== 0) return vehicleCompare;
+
+        const idxA = Number(a.idxOrder ?? 0);
+        const idxB = Number(b.idxOrder ?? 0);
+        return idxA - idxB;
+      });
+    }
+  }
+
+  return plans;
+};
+
 export const deliveryScheduleService = {
   //=================================SCHEDULE DELIVERY=====================================
   getAllScheduleDelivery: async (deliveryDate: Date) => {
@@ -48,7 +137,9 @@ export const deliveryScheduleService = {
         const cachedData = await redisCache.get(cacheKey);
         if (cachedData) {
           if (devEnvironment) console.log("✅ get schedule delivery from cache");
-          return { message: "get all schedule delivery from cache", data: JSON.parse(cachedData) };
+          const parsedData = JSON.parse(cachedData);
+          sortDeliveryPlanItems(parsedData);
+          return { message: "get all schedule delivery from cache", data: parsedData };
         }
       }
 
@@ -56,6 +147,8 @@ export const deliveryScheduleService = {
         deliveryDate,
         status: ["planned", "completed"],
       });
+
+      sortDeliveryPlanItems(finalData);
 
       //save
       await redisCache.set(cacheKey, JSON.stringify(finalData), "EX", 3600);
@@ -308,6 +401,7 @@ export const deliveryScheduleService = {
   exportScheduleDelivery: async (res: Response, deliveryDate: Date) => {
     try {
       const data = await deliveryRepository.getAllDeliveryPlanByDate({ deliveryDate });
+      sortDeliveryPlanItems(data);
 
       await exportDeliveryExcelResponse(res, {
         data: data,
@@ -330,6 +424,8 @@ export const deliveryScheduleService = {
         deliveryDate,
         itemStatus: ["requested", "prepared"],
       });
+
+      sortDeliveryPlanItems(finalData);
 
       return { message: "get schedule delivery successfully", data: finalData };
     } catch (error) {

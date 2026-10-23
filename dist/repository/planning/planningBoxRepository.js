@@ -74,6 +74,7 @@ exports.planningBoxRepository = {
                         "QC_box",
                         "totalPrice",
                         "numberChild",
+                        "instructSpecial",
                         "dateRequestShipping",
                         "customerId",
                         "productId",

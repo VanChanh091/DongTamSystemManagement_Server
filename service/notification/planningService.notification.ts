@@ -3,7 +3,7 @@ import { User } from "../../models/user/user";
 import { AppError } from "../../utils/appError";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { NotificationModel } from "../../models/notification/notification";
-import { REQUEST_CONFIG, RequestType } from "./requestType";
+import { REQUEST_CONFIG, RequestAction, RequestType } from "./requestType";
 import { UserNotifications } from "../../models/notification/userNotifications";
 import { notificationRepository } from "../../repository/notificationRepository";
 import { Order } from "../../models/order/order";
@@ -86,7 +86,7 @@ export const planningServiceNotification = {
           payload: {
             notificationId: rootNotificationId,
             orderId: payload.orderId,
-            action: "RESPONSE",
+            action: RequestAction.RESPONSE,
           },
           transaction,
         });
@@ -122,7 +122,7 @@ export const planningServiceNotification = {
                 orderId: payload.orderId,
                 newDeliveryDate: payload.newDeliveryDate,
                 reason: payload.reason,
-                action: "RESPONSE",
+                action: RequestAction.RESPONSE,
               },
               transaction,
             });

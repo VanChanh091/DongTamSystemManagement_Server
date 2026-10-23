@@ -16,7 +16,7 @@ import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransfor
 import { inventoryService } from "../inventory/inventoryService";
 import { OrderApproved } from "../../models/order/orderApproved";
 import { NotificationModel } from "../../models/notification/notification";
-import { REQUEST_CONFIG } from "../notification/requestType";
+import { REQUEST_CONFIG, RequestAction, RequestType } from "../notification/requestType";
 import { UserNotifications } from "../../models/notification/userNotifications";
 import { CrudHelper } from "../../repository/helper/crud.helper.repository";
 import { debtRepository } from "../../repository/debtRepository";
@@ -183,7 +183,8 @@ export const adminService = {
         if (newStatus === "reject") {
           order.set({ status: newStatus, rejectReason: rejectReason || "" });
 
-          const config = REQUEST_CONFIG["ORDER_REJECT"];
+          const type = RequestType.ORDER_REJECT;
+          const config = REQUEST_CONFIG[type];
           if (!config) {
             throw AppError.BadRequest("Invalid request type", "INVALID_REQUEST_TYPE");
           }
@@ -195,16 +196,16 @@ export const adminService = {
 
           const newNotif = await NotificationModel.create({
             title: config.titleCreate(),
-            type: "ORDER_REJECT",
+            type: type,
             targetType: "user",
             senderId,
             senderName: user.fullName,
             senderDept: user.department,
             payload: {
               orderId,
-              reason: rejectReason,
-              action: "RESPONSE",
               status: "pending",
+              reason: rejectReason,
+              action: RequestAction.RESPONSE,
             },
           });
 

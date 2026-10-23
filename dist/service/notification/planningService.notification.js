@@ -61,7 +61,7 @@ exports.planningServiceNotification = {
                     payload: {
                         notificationId: rootNotificationId,
                         orderId: payload.orderId,
-                        action: "RESPONSE",
+                        action: requestType_1.RequestAction.RESPONSE,
                     },
                     transaction,
                 });
@@ -93,7 +93,7 @@ exports.planningServiceNotification = {
                                 orderId: payload.orderId,
                                 newDeliveryDate: payload.newDeliveryDate,
                                 reason: payload.reason,
-                                action: "RESPONSE",
+                                action: requestType_1.RequestAction.RESPONSE,
                             },
                             transaction,
                         });

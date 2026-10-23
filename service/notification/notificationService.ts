@@ -2,7 +2,7 @@ import { Request } from "express";
 import { User } from "../../models/user/user";
 import { AppError } from "../../utils/appError";
 import { getIO } from "../../utils/socket/socket";
-import { REQUEST_CONFIG, RequestType } from "./requestType";
+import { REQUEST_CONFIG, RequestAction, RequestType } from "./requestType";
 import { PlanningPaper } from "../../models/planning/planningPaper";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { NotificationModel } from "../../models/notification/notification";
@@ -62,7 +62,8 @@ export const notificationService = {
           return { message: "Đã xác nhận thông báo kiểm tra" };
         }
 
-        const config = REQUEST_CONFIG["ORDER_CONFIRM"];
+        const typeConfirm = RequestType.ORDER_CONFIRM;
+        const config = REQUEST_CONFIG[typeConfirm];
         if (!config) {
           throw AppError.BadRequest("Invalid request type", "INVALID_REQUEST_TYPE");
         }
@@ -70,7 +71,7 @@ export const notificationService = {
         const updatedPayload = {
           ...notification.payload,
           status: "confirmed",
-          requestType: RequestType.ORDER_CONFIRM,
+          requestType: typeConfirm,
         };
         await notification.update({ payload: updatedPayload }, { transaction });
 
@@ -141,9 +142,8 @@ export const notificationService = {
       // Tìm orderId từ planningId nếu chưa có
       let targetOrderId = orderId || "";
       if (!targetOrderId && planningId) {
-        const planning = await PlanningPaper.findByPk(planningId, {
-          attributes: ["orderId"],
-        });
+        const planning = await PlanningPaper.findByPk(planningId, { attributes: ["orderId"] });
+
         if (planning?.orderId) {
           targetOrderId = planning.orderId;
         }
@@ -179,7 +179,7 @@ export const notificationService = {
           inspectionId,
           machine,
           reason: `Yêu cầu kiểm tra sản phẩm tại ${machine}`,
-          action: "REQUEST",
+          action: RequestAction.REQUEST,
           status: "pending",
         },
       });

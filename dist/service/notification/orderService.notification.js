@@ -10,9 +10,6 @@ exports.OrderServiceNotification = {
     //notification
     requestChangeInfoOrder: async ({ req, senderId, receiverId, }) => {
         const { orderId, requestType, newDeliveryDate, reason } = req.body;
-        // console.log(
-        //   `body: ${JSON.stringify(req.body)}, senderId: ${senderId}, receiverId: ${receiverId}`,
-        // );
         const config = requestType_1.REQUEST_CONFIG[requestType];
         if (!config) {
             throw appError_1.AppError.BadRequest("Loại yêu cầu không hợp lệ", "INVALID_REQUEST_TYPE");
@@ -26,7 +23,7 @@ exports.OrderServiceNotification = {
         const payload = {
             orderId,
             reason,
-            action: "REQUEST",
+            action: requestType_1.RequestAction.REQUEST,
         };
         if (requestType === "ORDER_CHANGE_DATE") {
             payload.newDeliveryDate = newDeliveryDate;

@@ -11,7 +11,7 @@ export interface ProductionReportItem {
   totalPaperTon: number; // 1. Số tấn giấy SD (đã phân bổ pro-rata)
   totalLength: number; // 2. Số mét chạy được
   totalScrapKg: number; // 3. Số kg phế
-  scrapRate: number; // --. % Phế (Kg phế / Tấn giấy SD)
+  scrapRate: number; // --. % Phế liệu ((Kg phế / (Tấn giấy * 1000)) * 100)
   averageSpeed: number; // --. Tốc độ máy TB (m/phút)
   totalRevenue: number; // --. Tổng doanh số (VNĐ)
   fulfillmentRate?: number; // --. % Đạt KH Khối lượng (chỉ Bảng Máy)

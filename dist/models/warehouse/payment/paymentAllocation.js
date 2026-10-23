@@ -16,11 +16,12 @@ function initPaymentAllocationModel(sequelize) {
         paymentMethod: { type: sequelize_1.DataTypes.STRING, allowNull: false, defaultValue: "MANUAL" },
         //FK
         outboundId: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
+        requestId: { type: sequelize_1.DataTypes.INTEGER },
     }, {
         sequelize,
         tableName: "payment_allocations",
         timestamps: true,
-        indexes: [{ fields: ["outboundId"] }],
+        indexes: [{ fields: ["outboundId"] }, { fields: ["requestId"] }],
     });
     return PaymentAllocation;
 }

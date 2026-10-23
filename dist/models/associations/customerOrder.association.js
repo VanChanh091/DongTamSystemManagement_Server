@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = customerOrderAssociations;
 function customerOrderAssociations(models) {
-    const { Customer, CustomerPayment, Order, OutboundHistory, Product, Box, OrderImage, OrderApproved, User, PaymentAllocation, } = models;
+    const { Customer, CustomerPayment, Order, OutboundHistory, Product, Box, OrderImage, OrderApproved, User, PaymentAllocation, DebtDeductionRequest, } = models;
     // CUSTOMER & PAYMENT
     Customer.hasOne(CustomerPayment, {
         foreignKey: "customerId",
@@ -36,5 +36,27 @@ function customerOrderAssociations(models) {
         onDelete: "CASCADE",
     });
     PaymentAllocation.belongsTo(OutboundHistory, { foreignKey: "outboundId", as: "outbound" });
+    // DEBT DEDUCTION REQUEST
+    Customer.hasMany(DebtDeductionRequest, {
+        foreignKey: "customerId",
+        as: "debtDeduction",
+        onDelete: "CASCADE",
+    });
+    DebtDeductionRequest.belongsTo(Customer, { foreignKey: "customerId" });
+    User.hasMany(DebtDeductionRequest, {
+        foreignKey: "userId",
+        as: "debtDeduction",
+        onDelete: "CASCADE",
+    });
+    DebtDeductionRequest.belongsTo(User, { foreignKey: "userId" });
+    DebtDeductionRequest.hasMany(PaymentAllocation, {
+        foreignKey: "requestId",
+        as: "allocations",
+        onDelete: "CASCADE",
+    });
+    PaymentAllocation.belongsTo(DebtDeductionRequest, {
+        foreignKey: "requestId",
+        as: "debtDeduction",
+    });
 }
 //# sourceMappingURL=customerOrder.association.js.map

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.REQUEST_CONFIG = exports.RequestType = void 0;
+exports.REQUEST_CONFIG = exports.RequestAction = exports.RequestType = void 0;
 var RequestType;
 (function (RequestType) {
     // order
@@ -12,9 +12,19 @@ var RequestType;
     // inspection
     RequestType["INSPECTION_REQUEST"] = "INSPECTION_REQUEST";
     RequestType["INSPECTION_REMIND"] = "INSPECTION_REMIND";
+    // debt deduction
+    RequestType["DEBT_DEDUCTION_REQUEST"] = "DEBT_DEDUCTION_REQUEST";
+    RequestType["DEBT_DEDUCTION_RESUBMITTED"] = "DEBT_DEDUCTION_RESUBMITTED";
     //FORM
     // ... add more request types as needed
 })(RequestType || (exports.RequestType = RequestType = {}));
+var RequestAction;
+(function (RequestAction) {
+    RequestAction["REQUEST"] = "REQUEST";
+    RequestAction["REJECTED"] = "REJECTED";
+    RequestAction["RESPONSE"] = "RESPONSE";
+    RequestAction["REMIND"] = "REMIND";
+})(RequestAction || (exports.RequestAction = RequestAction = {}));
 exports.REQUEST_CONFIG = {
     //order
     [RequestType.ORDER_CHANGE_DATE]: {
@@ -47,6 +57,17 @@ exports.REQUEST_CONFIG = {
         titleCreate: (payload) => `[Nhắc nhở] Kế hoạch ${payload?.planningId || ""} tại ${payload?.machine || "máy"} sắp hết thời gian tiếp nhận!`,
         titleApproved: "Đã xem",
         titleRejected: "Bỏ qua",
+    },
+    //debt deduction
+    [RequestType.DEBT_DEDUCTION_REQUEST || RequestType.DEBT_DEDUCTION_RESUBMITTED]: {
+        titleCreate: () => "Yêu cầu cấn trừ công nợ",
+        titleApproved: "Đã duyệt yêu cầu cấn trừ công nợ",
+        titleRejected: "Từ chối yêu cầu cấn trừ công nợ",
+    },
+    [RequestType.DEBT_DEDUCTION_RESUBMITTED]: {
+        titleCreate: () => "Yêu cầu cấn trừ công nợ đã được gửi lại",
+        titleApproved: "Đã duyệt yêu cầu cấn trừ công nợ",
+        titleRejected: "Từ chối yêu cầu cấn trừ công nợ",
     },
 };
 //# sourceMappingURL=requestType.js.map

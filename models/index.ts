@@ -54,6 +54,7 @@ import { initOutboundHistoryModel } from "./warehouse/outbound/outboundHistory";
 import { initPaymentAllocationModel } from "./warehouse/payment/paymentAllocation";
 import { initQcShiftModel } from "./qualityControl/qcShift";
 import { initInspectionRequestModel } from "./qualityControl/inspection/inspection_request";
+import { initdebtDeductionRequestModel } from "./debt/debtDeductionRequest";
 
 //admin
 const MachinePaper = initMachinePaperModel(sequelize);
@@ -142,6 +143,9 @@ const DeliveryItem = initDeliveryItemModel(sequelize);
 //notification
 const NotificationModel = initNotificationModel(sequelize);
 const UserNotifications = initUserNotificationsModel(sequelize);
+
+//debt
+const DebtDeductionRequest = initdebtDeductionRequestModel(sequelize);
 
 const models = {
   //admin
@@ -232,6 +236,9 @@ const models = {
   //notification
   NotificationModel,
   UserNotifications,
+
+  //debt
+  DebtDeductionRequest,
 };
 
 // Setup relationships

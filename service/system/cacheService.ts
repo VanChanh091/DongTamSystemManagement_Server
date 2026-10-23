@@ -41,7 +41,7 @@ export const clearCacheByKeys = async (keys: string[]): Promise<number> => {
  */
 export const clearCacheByPattern = async (
   pattern: string,
-  preserveQueues: boolean = true
+  preserveQueues: boolean = true,
 ): Promise<number> => {
   return new Promise((resolve, reject) => {
     let totalDeleted = 0;
@@ -110,9 +110,7 @@ export const flushAllCacheAsync = async (): Promise<void> => {
 /**
  * Service tổng hợp xử lý yêu cầu xóa cache
  */
-export const clearCacheService = async (
-  options: ClearCacheOptions
-): Promise<ClearCacheResult> => {
+export const clearCacheService = async (options: ClearCacheOptions): Promise<ClearCacheResult> => {
   const startTime = Date.now();
   const preserveQueues = options.preserveQueues !== false;
 
@@ -164,9 +162,19 @@ export const getRedisCacheStats = async () => {
   const memoryUsedMatch = memoryInfoRaw.match(/used_memory_human:(.*?)\r\n/);
   const memoryPeakMatch = memoryInfoRaw.match(/used_memory_peak_human:(.*?)\r\n/);
 
+  // lấy tất cả keys đang được cache
+  const keys: string[] = [];
+  let cursor = "0";
+  do {
+    const reply = await redisCache.scan(cursor, "MATCH", "*", "COUNT", "100");
+    cursor = reply[0];
+    keys.push(...reply[1]);
+  } while (cursor !== "0");
+
   return {
     totalKeys,
     usedMemory: memoryUsedMatch ? memoryUsedMatch[1].trim() : "N/A",
     peakMemory: memoryPeakMatch ? memoryPeakMatch[1].trim() : "N/A",
+    keys,
   };
 };

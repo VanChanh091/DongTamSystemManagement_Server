@@ -56,6 +56,7 @@ const outboundHistory_1 = require("./warehouse/outbound/outboundHistory");
 const paymentAllocation_1 = require("./warehouse/payment/paymentAllocation");
 const qcShift_1 = require("./qualityControl/qcShift");
 const inspection_request_1 = require("./qualityControl/inspection/inspection_request");
+const debtDeductionRequest_1 = require("./debt/debtDeductionRequest");
 //admin
 const MachinePaper = (0, machinePaper_1.initMachinePaperModel)(database_connect_1.sequelize);
 const MachineBox = (0, machineBox_1.initMachineBoxModel)(database_connect_1.sequelize);
@@ -127,6 +128,8 @@ const DeliveryItem = (0, deliveryItem_1.initDeliveryItemModel)(database_connect_
 //notification
 const NotificationModel = (0, notification_1.initNotificationModel)(database_connect_1.sequelize);
 const UserNotifications = (0, userNotifications_1.initUserNotificationsModel)(database_connect_1.sequelize);
+//debt
+const DebtDeductionRequest = (0, debtDeductionRequest_1.initdebtDeductionRequestModel)(database_connect_1.sequelize);
 const models = {
     //admin
     MachinePaper,
@@ -199,6 +202,8 @@ const models = {
     //notification
     NotificationModel,
     UserNotifications,
+    //debt
+    DebtDeductionRequest,
 };
 // Setup relationships
 (0, associations_1.setupAssociations)(models);

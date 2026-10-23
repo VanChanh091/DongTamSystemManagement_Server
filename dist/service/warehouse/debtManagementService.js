@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.debtManagementService = void 0;
+exports.coreCustomerPayment = exports.debtManagementService = void 0;
 const xlsx = __importStar(require("xlsx"));
 const exceljs_1 = __importDefault(require("exceljs"));
 const appError_1 = require("../../utils/appError");
@@ -285,7 +285,7 @@ exports.debtManagementService = {
                 const updatedOutboundMap = new Map();
                 const allocationsToCreate = [];
                 // gọi core engine để xử lý cấn trừ công nợ
-                const excessAmount = coreCustomerPayment({
+                const excessAmount = (0, exports.coreCustomerPayment)({
                     amount,
                     paymentMethod,
                     outboundSlipCodes,
@@ -349,7 +349,7 @@ exports.debtManagementService = {
                 let totalAllocated = 0;
                 for (const row of parsedRows) {
                     const customerOutbounds = customerOutboundsMap.get(row.customerId) || [];
-                    const excess = coreCustomerPayment({
+                    const excess = (0, exports.coreCustomerPayment)({
                         amount: row.amount,
                         paymentMethod: row.paymentMethod,
                         outboundSlipCodes: undefined,
@@ -694,6 +694,7 @@ const coreCustomerPayment = ({ amount, paymentMethod, outboundSlipCodes, custome
     }
     return remainingPaymentPool;
 };
+exports.coreCustomerPayment = coreCustomerPayment;
 const parseExcelRows = (rawData) => {
     return rawData.map((row, index) => {
         const rowNumber = index + 2; // Dòng 1 là tiêu đề, dữ liệu bắt đầu từ dòng 2

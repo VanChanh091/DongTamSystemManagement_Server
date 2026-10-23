@@ -1,5 +1,6 @@
 import { DataTypes, Model, Optional, Sequelize } from "sequelize";
 import { OutboundHistory } from "../outbound/outboundHistory";
+import { DebtDeductionRequest } from "../../debt/debtDeductionRequest";
 
 export type PaymentMethodType = "IMPORT" | "MANUAL";
 
@@ -11,6 +12,7 @@ interface PaymentAllocationAttributes {
 
   //FK
   outboundId: number;
+  requestId?: number;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -19,7 +21,7 @@ interface PaymentAllocationAttributes {
 //cho phép bỏ qua id khi tạo
 export type PaymentAllocationCreationAttributes = Optional<
   PaymentAllocationAttributes,
-  "allocationId" | "outboundId" | "paymentMethod" | "createdAt" | "updatedAt"
+  "allocationId" | "outboundId" | "requestId" | "paymentMethod" | "createdAt" | "updatedAt"
 >;
 
 //định nghĩa kiểu OOP
@@ -35,6 +37,9 @@ export class PaymentAllocation //Phiếu phân bổ thanh toán của khách hà
   declare outboundId: number;
   declare outbound: OutboundHistory;
 
+  declare requestId?: number;
+  declare debtDeduction?: DebtDeductionRequest[];
+
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
 }
@@ -48,12 +53,13 @@ export function initPaymentAllocationModel(sequelize: Sequelize): typeof Payment
 
       //FK
       outboundId: { type: DataTypes.INTEGER, allowNull: false },
+      requestId: { type: DataTypes.INTEGER },
     },
     {
       sequelize,
       tableName: "payment_allocations",
       timestamps: true,
-      indexes: [{ fields: ["outboundId"] }],
+      indexes: [{ fields: ["outboundId"] }, { fields: ["requestId"] }],
     },
   );
 

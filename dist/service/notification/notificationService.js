@@ -48,14 +48,15 @@ exports.notificationService = {
                     await userNotifications_1.UserNotifications.update({ isRead: true }, { where: { notificationId, receiverId: userId }, transaction });
                     return { message: "Đã xác nhận thông báo kiểm tra" };
                 }
-                const config = requestType_1.REQUEST_CONFIG["ORDER_CONFIRM"];
+                const typeConfirm = requestType_1.RequestType.ORDER_CONFIRM;
+                const config = requestType_1.REQUEST_CONFIG[typeConfirm];
                 if (!config) {
                     throw appError_1.AppError.BadRequest("Invalid request type", "INVALID_REQUEST_TYPE");
                 }
                 const updatedPayload = {
                     ...notification.payload,
                     status: "confirmed",
-                    requestType: requestType_1.RequestType.ORDER_CONFIRM,
+                    requestType: typeConfirm,
                 };
                 await notification.update({ payload: updatedPayload }, { transaction });
                 await userNotifications_1.UserNotifications.update({ isRead: true }, { where: { notificationId, receiverId: userId }, transaction });
@@ -98,9 +99,7 @@ exports.notificationService = {
             // Tìm orderId từ planningId nếu chưa có
             let targetOrderId = orderId || "";
             if (!targetOrderId && planningId) {
-                const planning = await planningPaper_1.PlanningPaper.findByPk(planningId, {
-                    attributes: ["orderId"],
-                });
+                const planning = await planningPaper_1.PlanningPaper.findByPk(planningId, { attributes: ["orderId"] });
                 if (planning?.orderId) {
                     targetOrderId = planning.orderId;
                 }
@@ -133,7 +132,7 @@ exports.notificationService = {
                     inspectionId,
                     machine,
                     reason: `Yêu cầu kiểm tra sản phẩm tại ${machine}`,
-                    action: "REQUEST",
+                    action: requestType_1.RequestAction.REQUEST,
                     status: "pending",
                 },
             });

@@ -72,10 +72,14 @@ exports.accumulateReportData = accumulateReportData;
 const finalizeReportRow = (acc, scrapKg, plannedMinutes) => {
     const totalPaperTon = Math.round((acc.totalPaperKg / 1000) * 100) / 100;
     const totalScrapKg = Math.round(scrapKg * 100) / 100;
-    // Bẫy chia 0: Suất phế Kg / Tấn giấy SD
-    const scrapRate = totalPaperTon > 0 ? Math.round((totalScrapKg / totalPaperTon) * 100) / 100 : 0;
-    // Tốc độ bình quân
-    const averageSpeed = acc.speedCount > 0 ? Math.round((acc.sumSpeed / acc.speedCount) * 100) / 100 : 0;
+    // % Phế liệu = (Kg phế / (Tấn giấy SD * 1000)) * 100 = Kg phế / (Tấn giấy SD * 10)
+    const scrapRate = totalPaperTon > 0 ? Math.round((totalScrapKg / (totalPaperTon * 10)) * 1000) / 1000 : 0;
+    // Tốc độ bình quân thực tế (mét/phút) = Tổng mét chạy / Tổng thời gian máy chạy
+    const averageSpeed = acc.totalDurations > 0
+        ? Math.round((acc.totalLength / acc.totalDurations) * 100) / 100
+        : acc.speedCount > 0
+            ? Math.round((acc.sumSpeed / acc.speedCount) * 100) / 100
+            : 0;
     // Bẫy chia 0: % Lỗi / Tấn giấy (nhân 100 để ra tỷ lệ %)
     const totalQcErrors = Math.round(acc.totalQcErrors);
     const qcErrorPerTon = totalPaperTon > 0 ? Math.round(((totalQcErrors / totalPaperTon) * 100) * 100) / 100 : 0;

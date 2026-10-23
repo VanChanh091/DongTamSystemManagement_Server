@@ -10,6 +10,7 @@ export default function customerOrderAssociations(models: any) {
     OrderApproved,
     User,
     PaymentAllocation,
+    DebtDeductionRequest,
   } = models;
 
   // CUSTOMER & PAYMENT
@@ -54,4 +55,29 @@ export default function customerOrderAssociations(models: any) {
     onDelete: "CASCADE",
   });
   PaymentAllocation.belongsTo(OutboundHistory, { foreignKey: "outboundId", as: "outbound" });
+
+  // DEBT DEDUCTION REQUEST
+  Customer.hasMany(DebtDeductionRequest, {
+    foreignKey: "customerId",
+    as: "debtDeduction",
+    onDelete: "CASCADE",
+  });
+  DebtDeductionRequest.belongsTo(Customer, { foreignKey: "customerId" });
+
+  User.hasMany(DebtDeductionRequest, {
+    foreignKey: "userId",
+    as: "debtDeduction",
+    onDelete: "CASCADE",
+  });
+  DebtDeductionRequest.belongsTo(User, { foreignKey: "userId" });
+
+  DebtDeductionRequest.hasMany(PaymentAllocation, {
+    foreignKey: "requestId",
+    as: "allocations",
+    onDelete: "CASCADE",
+  });
+  PaymentAllocation.belongsTo(DebtDeductionRequest, {
+    foreignKey: "requestId",
+    as: "debtDeduction",
+  });
 }

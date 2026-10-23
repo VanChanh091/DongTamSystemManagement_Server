@@ -143,7 +143,8 @@ exports.adminService = {
                 const ownerId = order.userId;
                 if (newStatus === "reject") {
                     order.set({ status: newStatus, rejectReason: rejectReason || "" });
-                    const config = requestType_1.REQUEST_CONFIG["ORDER_REJECT"];
+                    const type = requestType_1.RequestType.ORDER_REJECT;
+                    const config = requestType_1.REQUEST_CONFIG[type];
                     if (!config) {
                         throw appError_1.AppError.BadRequest("Invalid request type", "INVALID_REQUEST_TYPE");
                     }
@@ -153,16 +154,16 @@ exports.adminService = {
                     }
                     const newNotif = await notification_1.NotificationModel.create({
                         title: config.titleCreate(),
-                        type: "ORDER_REJECT",
+                        type: type,
                         targetType: "user",
                         senderId,
                         senderName: user.fullName,
                         senderDept: user.department,
                         payload: {
                             orderId,
-                            reason: rejectReason,
-                            action: "RESPONSE",
                             status: "pending",
+                            reason: rejectReason,
+                            action: requestType_1.RequestAction.RESPONSE,
                         },
                     });
                     await userNotifications_1.UserNotifications.create({

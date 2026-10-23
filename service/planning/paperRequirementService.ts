@@ -148,15 +148,11 @@ export const paperRequirementService = {
     dayStart: string | Date;
   }) => {
     try {
-      console.log(`ghepKho: ${ghepKho}, machine: ${machine}, dayStart: ${dayStart}`);
-
       const result = await paperRequirementRepo.sumTotalRequiredRequirement({
         ghepKho,
         machine,
         dayStart,
       });
-
-      console.log(`result: ${JSON.stringify(result)}`);
 
       return {
         message: "Calculate summary by ghepKho successfully",
