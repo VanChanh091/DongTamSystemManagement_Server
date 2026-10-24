@@ -47,8 +47,8 @@ node_cron_1.default.schedule("59 23 * * *",
 //   "*/10 * * * * *",
 async () => {
     const startTime = new Date().toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
-    console.log(`\n======================================================`);
-    console.log(`[CRONJOB] [${startTime}] --- BẮT ĐẦU CHỐT CÔNG NỢ TỰ ĐỘNG ---`);
+    // console.log(`\n======================================================`);
+    // console.log(`[CRONJOB] [${startTime}] --- BẮT ĐẦU CHỐT CÔNG NỢ TỰ ĐỘNG ---`);
     try {
         const result = await debtManagementService_1.debtManagementService.processAutoDebtClosing();
         console.log(`[CRONJOB SUCCESS] ${result.message}`);

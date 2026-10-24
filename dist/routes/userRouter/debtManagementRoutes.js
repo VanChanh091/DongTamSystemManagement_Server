@@ -21,7 +21,7 @@ router.put("/payment", authMiddleware_1.default, (0, permissionMiddleware_1.auth
 //=================================DEDUCTION REQUESTS===========================
 router.get("/deduction-requests", authMiddleware_1.default, debtDeductionController_1.getDebtDeductionRequests);
 router.post("/deduction-requests", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["sale"]), debtDeductionController_1.createDebtDeduction);
-router.put("/deduction-requests", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["admin", "manager"]), debtDeductionController_1.updateDebtDeduction);
+router.put("/deduction-requests", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["sale"]), debtDeductionController_1.updateDebtDeduction);
 router.delete("/deduction-requests", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["sale"]), debtDeductionController_1.deleteDebtDeduction);
 // Gửi OTP khẩn cấp về Telegram
 router.post("/deduction-requests/otp", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["sale"]), debtDeductionController_1.requestOrVerifyUrgentOtp);

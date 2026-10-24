@@ -15,8 +15,8 @@ var RequestType;
     // debt deduction
     RequestType["DEBT_DEDUCTION_REQUEST"] = "DEBT_DEDUCTION_REQUEST";
     RequestType["DEBT_DEDUCTION_RESUBMITTED"] = "DEBT_DEDUCTION_RESUBMITTED";
-    //FORM
-    // ... add more request types as needed
+    RequestType["DEBT_DEDUCTION_REJECTED"] = "DEBT_DEDUCTION_REJECTED";
+    RequestType["DEBT_DEDUCTION_APPROVED"] = "DEBT_DEDUCTION_APPROVED";
 })(RequestType || (exports.RequestType = RequestType = {}));
 var RequestAction;
 (function (RequestAction) {
@@ -59,15 +59,15 @@ exports.REQUEST_CONFIG = {
         titleRejected: "Bỏ qua",
     },
     //debt deduction
-    [RequestType.DEBT_DEDUCTION_REQUEST || RequestType.DEBT_DEDUCTION_RESUBMITTED]: {
+    [RequestType.DEBT_DEDUCTION_REQUEST]: {
         titleCreate: () => "Yêu cầu cấn trừ công nợ",
-        titleApproved: "Đã duyệt yêu cầu cấn trừ công nợ",
-        titleRejected: "Từ chối yêu cầu cấn trừ công nợ",
+        titleApproved: "Yêu cầu cấn trừ công nợ đã được duyệt",
+        titleRejected: "Yêu cầu cấn trừ công nợ đã bị từ chối",
     },
     [RequestType.DEBT_DEDUCTION_RESUBMITTED]: {
         titleCreate: () => "Yêu cầu cấn trừ công nợ đã được gửi lại",
-        titleApproved: "Đã duyệt yêu cầu cấn trừ công nợ",
-        titleRejected: "Từ chối yêu cầu cấn trừ công nợ",
+        titleApproved: "Yêu cầu cấn trừ công nợ đã được duyệt",
+        titleRejected: "Yêu cầu cấn trừ công nợ đã bị từ chối",
     },
 };
 //# sourceMappingURL=requestType.js.map

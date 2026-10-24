@@ -54,8 +54,8 @@ cron.schedule(
   async () => {
     const startTime = new Date().toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
 
-    console.log(`\n======================================================`);
-    console.log(`[CRONJOB] [${startTime}] --- BẮT ĐẦU CHỐT CÔNG NỢ TỰ ĐỘNG ---`);
+    // console.log(`\n======================================================`);
+    // console.log(`[CRONJOB] [${startTime}] --- BẮT ĐẦU CHỐT CÔNG NỢ TỰ ĐỘNG ---`);
 
     try {
       const result = await debtManagementService.processAutoDebtClosing();

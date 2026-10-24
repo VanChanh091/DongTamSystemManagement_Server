@@ -12,19 +12,19 @@ function initdebtDeductionRequestModel(sequelize) {
         requestId: { type: sequelize_1.DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
         amountRequested: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false },
         paymentMethod: { type: sequelize_1.DataTypes.STRING, allowNull: false },
-        status: {
-            type: sequelize_1.DataTypes.ENUM("pending", "approved", "rejected"),
-            allowNull: false,
-            defaultValue: "pending",
-        },
         requestedBy: { type: sequelize_1.DataTypes.STRING, allowNull: false },
-        approvedBy: { type: sequelize_1.DataTypes.STRING, allowNull: true },
+        approvedBy: { type: sequelize_1.DataTypes.STRING },
         rejectReason: { type: sequelize_1.DataTypes.STRING },
         isUrgent: {
             type: sequelize_1.DataTypes.BOOLEAN,
             allowNull: false,
             defaultValue: false,
             comment: "đánh dấu yêu cầu khẩn cấp duyệt qua OTP",
+        },
+        status: {
+            type: sequelize_1.DataTypes.ENUM("pending", "approved", "rejected"),
+            allowNull: false,
+            defaultValue: "pending",
         },
         //FK
         customerId: { type: sequelize_1.DataTypes.STRING, allowNull: false },

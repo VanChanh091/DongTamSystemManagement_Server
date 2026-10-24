@@ -137,10 +137,19 @@ const getRedisCacheStats = async () => {
     // Parse thông tin memory
     const memoryUsedMatch = memoryInfoRaw.match(/used_memory_human:(.*?)\r\n/);
     const memoryPeakMatch = memoryInfoRaw.match(/used_memory_peak_human:(.*?)\r\n/);
+    // lấy tất cả keys đang được cache
+    const keys = [];
+    let cursor = "0";
+    do {
+        const reply = await redis_connect_1.default.scan(cursor, "MATCH", "*", "COUNT", "100");
+        cursor = reply[0];
+        keys.push(...reply[1]);
+    } while (cursor !== "0");
     return {
         totalKeys,
         usedMemory: memoryUsedMatch ? memoryUsedMatch[1].trim() : "N/A",
         peakMemory: memoryPeakMatch ? memoryPeakMatch[1].trim() : "N/A",
+        keys,
     };
 };
 exports.getRedisCacheStats = getRedisCacheStats;

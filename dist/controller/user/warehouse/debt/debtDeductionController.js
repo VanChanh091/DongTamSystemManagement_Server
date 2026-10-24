@@ -1,14 +1,20 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.requestOrVerifyUrgentOtp = exports.updateDebtDeductionStatus = exports.deleteDebtDeduction = exports.updateDebtDeduction = exports.createDebtDeduction = exports.getDebtDeductionRequests = void 0;
+exports.updateDebtDeductionStatus = exports.requestOrVerifyUrgentOtp = exports.deleteDebtDeduction = exports.updateDebtDeduction = exports.createDebtDeduction = exports.getDebtDeductionRequests = void 0;
 const debtDeductionService_1 = require("../../../../service/warehouse/debtDeductionService");
 const getDebtDeductionRequests = async (req, res, next) => {
     const { page, pageSize, status, customerId, userId } = req.query;
     try {
+        if (!page || !pageSize) {
+            return res
+                .status(400)
+                .json({ message: "Missing required query parameters: page and pageSize" });
+        }
+        const arrayStatus = Array.isArray(status) ? status : status ? [status] : [];
         const result = await debtDeductionService_1.debtDeductionService.getDebtDeductionRequests({
-            page: page ? Number(page) : 1,
-            pageSize: pageSize ? Number(pageSize) : 20,
-            status,
+            page: Number(page),
+            pageSize: Number(pageSize),
+            status: arrayStatus,
             currentUser: req.user,
             targetUserId: userId ? Number(userId) : undefined,
             customerId: customerId ? customerId : undefined,
@@ -43,7 +49,7 @@ const updateDebtDeduction = async (req, res, next) => {
         const result = await debtDeductionService_1.debtDeductionService.updateRequest({
             currentUser: req.user,
             requestId: Number(requestId),
-            amountRequested: amountRequested !== undefined ? Number(amountRequested) : undefined,
+            amountRequested,
             paymentMethod,
         });
         return res.status(200).json(result);
@@ -57,7 +63,7 @@ const deleteDebtDeduction = async (req, res, next) => {
     const { requestId } = req.query;
     try {
         const result = await debtDeductionService_1.debtDeductionService.deleteRequest({
-            req,
+            currentUser: req.user,
             requestId: Number(requestId),
         });
         return res.status(200).json(result);
@@ -67,13 +73,36 @@ const deleteDebtDeduction = async (req, res, next) => {
     }
 };
 exports.deleteDebtDeduction = deleteDebtDeduction;
+const requestOrVerifyUrgentOtp = async (req, res, next) => {
+    const { requestId, otp } = req.query;
+    try {
+        let result;
+        if (otp) {
+            result = await debtDeductionService_1.debtDeductionService.verifyUrgentOtp({
+                username: req.user.fullName,
+                requestId: Number(requestId),
+                otp: Number(otp),
+            });
+        }
+        else {
+            result = await debtDeductionService_1.debtDeductionService.requestUrgentOtp({
+                requestId: Number(requestId),
+            });
+        }
+        return res.status(200).json(result);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.requestOrVerifyUrgentOtp = requestOrVerifyUrgentOtp;
 // approve or reject debt deduction request (for admin/manager)
 const updateDebtDeductionStatus = async (req, res, next) => {
     const { requestId } = req.query;
     const { status, rejectReason } = req.body;
     try {
         const result = await debtDeductionService_1.debtDeductionService.updateRequestStatus({
-            req,
+            currentUser: req.user,
             requestId: Number(requestId),
             newStatus: status,
             rejectReason,
@@ -85,28 +114,4 @@ const updateDebtDeductionStatus = async (req, res, next) => {
     }
 };
 exports.updateDebtDeductionStatus = updateDebtDeductionStatus;
-const requestOrVerifyUrgentOtp = async (req, res, next) => {
-    const { requestId, otp } = req.query;
-    try {
-        let result;
-        if (otp) {
-            result = await debtDeductionService_1.debtDeductionService.verifyUrgentOtp({
-                req,
-                requestId: Number(requestId),
-                otp: Number(otp),
-            });
-        }
-        else {
-            result = await debtDeductionService_1.debtDeductionService.requestUrgentOtp({
-                req,
-                requestId: Number(requestId),
-            });
-        }
-        return res.status(200).json(result);
-    }
-    catch (error) {
-        next(error);
-    }
-};
-exports.requestOrVerifyUrgentOtp = requestOrVerifyUrgentOtp;
 //# sourceMappingURL=debtDeductionController.js.map

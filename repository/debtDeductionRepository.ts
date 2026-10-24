@@ -26,7 +26,7 @@ export const debtDeductionRepository = {
     const queryOptions: FindOptions = {
       where: debtCondition,
       attributes: { exclude: ["updatedAt"] },
-      include: [{ model: Customer, attributes: ["customerId", "customerName", "companyName"] }],
+      include: [{ model: Customer, attributes: ["customerId", "customerName"] }],
     };
 
     if (!isExport && page && pageSize) {

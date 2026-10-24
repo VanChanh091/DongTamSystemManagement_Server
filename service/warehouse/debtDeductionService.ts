@@ -75,9 +75,33 @@ export const debtDeductionService = {
         };
       }
 
+      // Lấy danh sách customerId duy nhất trong trang hiện tại
+      const customerIds = [...new Set(rows.map((r) => r.customerId))];
+
+      const debtMap = new Map<string, number>();
+      if (customerIds.length > 0) {
+        const unpaidOutbounds = await debtRepository.findOutboundUnpaid({
+          customerId: customerIds,
+          includeCustomer: false,
+        });
+
+        unpaidOutbounds.forEach((ob: any) => {
+          const current = debtMap.get(ob.customerId) || 0;
+          debtMap.set(ob.customerId, current + (Number(ob.remainingAmount) || 0));
+        });
+      }
+
+      const dataWithDebt = rows.map((item) => {
+        const plainItem = item.get ? item.get({ plain: true }) : item;
+        return {
+          ...plainItem,
+          currentDebt: Math.round(debtMap.get(item.customerId) || 0),
+        };
+      });
+
       const responseData = {
         message: "Lấy danh sách yêu cầu cấn trừ nợ thành công",
-        data: rows,
+        data: dataWithDebt,
         totalDebt: count,
         totalPages,
         currentPage: page,
@@ -636,7 +660,7 @@ const sendApprovalNotification = async ({
     const io = getIO();
     io.to(`user-${receiverId}`).emit("new-notification", notif);
   } catch (error) {
-    console.error("[Notification Error] Không thể gửi thông báo duyệt/từ chối:", error);
+    console.error("Không thể gửi thông báo duyệt/từ chối:", error);
   }
 };
 
