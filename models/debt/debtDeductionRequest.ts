@@ -74,6 +74,16 @@ export function initdebtDeductionRequestModel(sequelize: Sequelize): typeof Debt
         allowNull: false,
         defaultValue: "pending",
       },
+      createdAt: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW,
+        get() {
+          const rawValue = this.getDataValue("createdAt");
+          if (!rawValue) return null;
+          return new Date(rawValue.getTime() - rawValue.getTimezoneOffset() * 60000).toISOString();
+        },
+      },
 
       //FK
       customerId: { type: DataTypes.STRING, allowNull: false },
@@ -90,6 +100,9 @@ export function initdebtDeductionRequestModel(sequelize: Sequelize): typeof Debt
 
         //index
         { fields: ["status"] },
+
+        //composite index
+        { fields: ["status", "createdAt"] },
       ],
     },
   );

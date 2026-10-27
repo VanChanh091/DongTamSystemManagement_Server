@@ -1,9 +1,8 @@
-import { Transaction } from "sequelize";
+import { Op, Transaction } from "sequelize";
 import { User } from "../../models/user/user";
 import { AppError } from "../../utils/appError";
 import { getIO } from "../../utils/socket/socket";
 import { Customer } from "../../models/customer/customer";
-import { coreCustomerPayment } from "./debtManagementService";
 import { debtRepository } from "../../repository/debtRepository";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
@@ -14,6 +13,14 @@ import { DebtDeductionRequest } from "../../models/debt/debtDeductionRequest";
 import { UserNotifications } from "../../models/notification/userNotifications";
 import { debtDeductionRepository } from "../../repository/debtDeductionRepository";
 import { REQUEST_CONFIG, RequestAction, RequestType } from "../notification/requestType";
+import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
+import {
+  mapReportDebtDeductionRow,
+  reportDebtDeductionColumns,
+} from "../../utils/mapping/report/reportDebtRowAndColumn";
+import { Response } from "express";
+import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
+import { coreCustomerPayment } from "../../utils/helper/core_debt_helper";
 
 export const debtDeductionService = {
   getDebtDeductionRequests: async ({
@@ -378,7 +385,7 @@ export const debtDeductionService = {
                 type: RequestType.DEBT_DEDUCTION_REJECTED,
                 payload: {
                   requestId: request.requestId,
-                  customerId: request.customerId,
+                  customerName: request?.Customer?.customerName || "",
                   rejectReason: request.rejectReason,
                   action: RequestAction.RESPONSE,
                 },
@@ -564,6 +571,49 @@ export const debtDeductionService = {
       });
     } catch (error) {
       console.error("Error in verifyUrgentOtpAndApprove:", error);
+      if (error instanceof AppError) throw error;
+      throw AppError.ServerError();
+    }
+  },
+
+  exportExcelReportDebt: async ({
+    res,
+    fromDate,
+    toDate,
+    username,
+  }: {
+    res: Response;
+    fromDate: string | Date;
+    toDate: string | Date;
+    username: string;
+  }) => {
+    try {
+      const baseQuery = debtDeductionRepository.buildDebtDeductionOptions({
+        isExport: true,
+        status: ["approved"],
+      });
+
+      if (fromDate && toDate) {
+        const startTimestamp = dayjsUtc(fromDate).startOf("day").toDate();
+        const endTimestamp = dayjsUtc(toDate).endOf("day").toDate();
+
+        baseQuery.where = {
+          ...baseQuery.where,
+          createdAt: { [Op.between]: [startTimestamp, endTimestamp] },
+        };
+      }
+
+      await exportExcelStreamResponse(res, {
+        baseQuery: baseQuery,
+        model: DebtDeductionRequest,
+        sheetName: "Lịch sử yêu cầu cấn trừ công nợ",
+        fileName: "debt_deduction_report",
+        columns: reportDebtDeductionColumns,
+        rows: mapReportDebtDeductionRow,
+        userName: username,
+      });
+    } catch (error) {
+      console.error("Export Excel error:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }

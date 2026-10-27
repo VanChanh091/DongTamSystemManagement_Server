@@ -11,8 +11,8 @@ export const debtDeductionRepository = {
     filterUserId,
     customerId,
   }: {
-    page: number;
-    pageSize: number;
+    page?: number;
+    pageSize?: number;
     isExport?: boolean;
     status?: string[];
     filterUserId?: number;
@@ -26,7 +26,7 @@ export const debtDeductionRepository = {
     const queryOptions: FindOptions = {
       where: debtCondition,
       attributes: { exclude: ["updatedAt"] },
-      include: [{ model: Customer, attributes: ["customerId", "customerName"] }],
+      include: [{ model: Customer, attributes: ["customerId", "customerName", "companyName"] }],
     };
 
     if (!isExport && page && pageSize) {

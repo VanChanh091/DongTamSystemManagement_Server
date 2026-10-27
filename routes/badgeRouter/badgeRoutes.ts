@@ -2,6 +2,7 @@ import Router from "express";
 import authenticate from "../../middlewares/authMiddleware";
 import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 import {
+  countDebtDeduction,
   countDeliveryRequest,
   countOrderPending,
   countOrderPendingPlanning,
@@ -13,7 +14,12 @@ import {
 const router = Router();
 
 //pending order
-router.get("/count-pending", authenticate, authorizeAnyPermission(["admin"]), countOrderPending);
+router.get(
+  "/count-pending",
+  authenticate,
+  authorizeAnyPermission(["admin", "manager"]),
+  countOrderPending,
+);
 
 //order pending planning
 router.get(
@@ -48,6 +54,14 @@ router.get(
   authenticate,
   authorizeAnyPermission(["delivery"]),
   countRequestPrepareGoods,
+);
+
+//debt deduction
+router.get(
+  "/count-debt-deduction",
+  authenticate,
+  authorizeAnyPermission(["admin", "manager"]),
+  countDebtDeduction,
 );
 
 export default router;

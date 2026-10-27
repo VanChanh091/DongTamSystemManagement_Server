@@ -3,13 +3,14 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.8.6</title>
-            <sparkle:version>4.8.6</sparkle:version> 
+            <title>Version 4.8.7</title>
+            <sparkle:version>4.8.7</sparkle:version> 
             <description>
-                Thêm phần tính khối lượng định mức theo khổ trong ngày
-                Cải tiến phần nhập kết cấu giấy dựa vào sản phẩm
-                Cải tiến lại form chọn khoảng ngày tháng
-                Thêm chức năng báo cáo sản xuất
+                Thêm chức năng yêu cầu cấn trừ và duyệt công nợ
+                Thêm chức năng xem chi tiết lịch sử cấn trừ công nợ theo từng PXK
+                Thêm phần hỗ trợ xem PXK mà không cần tải file về máy
+                Cho phép in PXK trực tiếp từ ứng dụng
+                Cải thiện hiệu suất khi tải và hiển thị PDF
             </description>
             <pubDate>Wed, 14 Octorber 2026</pubDate>
             <enclosure url="dongtam.exe" 

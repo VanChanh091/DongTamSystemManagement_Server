@@ -17,9 +17,28 @@ import {
   createDebtDeduction,
   updateDebtDeductionStatus,
   requestOrVerifyUrgentOtp,
+  exportExcelReportDebt,
 } from "../../controller/user/warehouse/debt/debtDeductionController";
+import {
+  getPaymentAlocationHistory,
+  exportExcelPaymentAllocations,
+} from "../../controller/user/warehouse/debt/paymentAllocationController";
 
 const router = Router();
+
+//=============================PAYMENT ALLOCATION===================================
+router.get(
+  "/allocations/outbound",
+  authenticate,
+  authorizeAnyPermission(["accountant", "sale"]),
+  getPaymentAlocationHistory,
+);
+router.post(
+  "/allocations/export",
+  authenticate,
+  authorizeAnyPermission(["accountant"]),
+  exportExcelPaymentAllocations,
+);
 
 //=================================CLOSING DEBT=======================================
 router.get("/closing-debt", authenticate, getCustomerDebtSummary);
@@ -88,5 +107,7 @@ router.put(
   authorizeAnyPermission(["admin", "manager"]),
   updateDebtDeductionStatus,
 );
+
+router.post("/deduction-requests/export", authenticate, exportExcelReportDebt);
 
 export default router;

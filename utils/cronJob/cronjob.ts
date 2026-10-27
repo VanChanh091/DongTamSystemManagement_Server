@@ -5,7 +5,7 @@ import cron from "node-cron";
 import { Op } from "sequelize";
 import { OrderImage } from "../../models/order/orderImage";
 import cloudinary from "../../assets/configs/connect/cloudinary.connect";
-import { debtManagementService } from "../../service/warehouse/debtManagementService";
+import { debtManagementService } from "../../service/debt/debtManagementService";
 import { QcShift } from "../../models/qualityControl/qcShift";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
@@ -54,8 +54,8 @@ cron.schedule(
   async () => {
     const startTime = new Date().toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
 
-    // console.log(`\n======================================================`);
-    // console.log(`[CRONJOB] [${startTime}] --- BẮT ĐẦU CHỐT CÔNG NỢ TỰ ĐỘNG ---`);
+    console.log(`\n======================================================`);
+    console.log(`[CRONJOB] [${startTime}] --- BẮT ĐẦU CHỐT CÔNG NỢ TỰ ĐỘNG ---`);
 
     try {
       const result = await debtManagementService.processAutoDebtClosing();
@@ -77,8 +77,8 @@ cron.schedule(
     try {
       const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000); // 12 giờ trước
 
-      console.log(`\n=========================CRONJOB=============================`);
-      console.log(`----- KIỂM TRA VÀ KẾT THÚC CA LÀM VIỆC QC -----`);
+      // console.log(`\n=========================CRONJOB=============================`);
+      // console.log(`----- KIỂM TRA VÀ KẾT THÚC CA LÀM VIỆC QC -----`);
 
       const [affectedRows] = await QcShift.update(
         { isActive: false, endedAt: new Date() },

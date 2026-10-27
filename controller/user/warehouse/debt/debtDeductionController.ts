@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { debtDeductionService } from "../../../../service/warehouse/debtDeductionService";
+import { debtDeductionService } from "../../../../service/debt/debtDeductionService";
 
 export const getDebtDeductionRequests = async (req: Request, res: Response, next: NextFunction) => {
   const { page, pageSize, status, customerId, userId } = req.query as {
@@ -135,6 +135,25 @@ export const updateDebtDeductionStatus = async (
     });
 
     return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const exportExcelReportDebt = async (req: Request, res: Response, next: NextFunction) => {
+  const { fromDate, toDate } = req.body as {
+    fromDate: string | Date;
+    toDate: string | Date;
+  };
+
+  try {
+    const response = await debtDeductionService.exportExcelReportDebt({
+      res,
+      fromDate,
+      toDate,
+      username: req.user.fullName,
+    });
+    return res.status(200).json(response);
   } catch (error) {
     next(error);
   }

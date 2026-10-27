@@ -38,6 +38,7 @@ export interface DeductionInput {
     outboundId: number;
     amountAllocation: number;
     paymentMethod: PaymentMethodType;
+    customerId?: string;
   }[];
 }
 

@@ -13,6 +13,7 @@ interface PaymentAllocationAttributes {
   //FK
   outboundId: number;
   requestId?: number;
+  customerId?: string;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -21,7 +22,13 @@ interface PaymentAllocationAttributes {
 //cho phép bỏ qua id khi tạo
 export type PaymentAllocationCreationAttributes = Optional<
   PaymentAllocationAttributes,
-  "allocationId" | "outboundId" | "requestId" | "paymentMethod" | "createdAt" | "updatedAt"
+  | "allocationId"
+  | "outboundId"
+  | "requestId"
+  | "customerId"
+  | "paymentMethod"
+  | "createdAt"
+  | "updatedAt"
 >;
 
 //định nghĩa kiểu OOP
@@ -40,6 +47,8 @@ export class PaymentAllocation //Phiếu phân bổ thanh toán của khách hà
   declare requestId?: number;
   declare debtDeduction?: DebtDeductionRequest[];
 
+  declare customerId?: string;
+
   declare readonly createdAt?: Date;
   declare readonly updatedAt?: Date;
 }
@@ -54,6 +63,7 @@ export function initPaymentAllocationModel(sequelize: Sequelize): typeof Payment
       //FK
       outboundId: { type: DataTypes.INTEGER, allowNull: false },
       requestId: { type: DataTypes.INTEGER },
+      customerId: { type: DataTypes.STRING },
     },
     {
       sequelize,
