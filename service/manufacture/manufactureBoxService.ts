@@ -3,8 +3,8 @@ dotenv.config();
 
 import { Request } from "express";
 import { Op, Transaction } from "sequelize";
-import { meiliService } from "../system/meiliService";
 import { AppError } from "../../utils/appError";
+import { meiliService } from "../system/meiliService";
 import { MEILI_INDEX } from "../../assets/labelFields";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { planningBoxService } from "../planning/planningBoxService";
@@ -13,14 +13,14 @@ import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { planningPaperService } from "../planning/planningPaperService";
 import { manufactureRepo } from "../../repository/manufactureRepository";
 import { ReportPlanningBox } from "../../models/report/reportPlanningBox";
+import { CrudHelper } from "../../repository/helper/crud.helper.repository";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
-import { mergeShiftField } from "../../utils/helper/modelHelper/planning.timeRunning.helper";
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
 import { createReportPlanning } from "../../utils/helper/modelHelper/reportHelper";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
 import { planningBoxRepository } from "../../repository/planning/planningBoxRepository";
 import { aggregateReportFields } from "../../utils/helper/modelHelper/manufactureHelper";
-import { CrudHelper } from "../../repository/helper/crud.helper.repository";
+import { mergeShiftField } from "../../utils/helper/modelHelper/planning.timeRunning.helper";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { box } = CacheKey.manufacture;

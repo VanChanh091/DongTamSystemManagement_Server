@@ -47,21 +47,20 @@ export interface DailyReportRow {
   date: string;
   orderApprovedAmount: number; // DS nhận đơn
   productionAmount: number; // DS sản xuất
-  salesAmount: number; // DS bán hàng
+  totalBeforeVat: number; // Tổng tiền (trước VAT)
+  totalVat: number; // Tổng tiền VAT
+  salesAmount: number; // Tổng tiền (sau VAT) / DS bán hàng
   returnAmount: number; // DS trả về
 }
 
 export interface MonthlyRevenueReportResponse {
   message: string;
-  filter: {
-    month: number;
-    year: number;
-    userId: number | null;
-  };
   summary: {
     totalOrderApproved: number;
     totalProduction: number;
-    totalSales: number;
+    totalBeforeVat: number; // Tổng tiền trước VAT
+    totalVat: number; // Tổng tiền VAT
+    totalSales: number; // Tổng tiền sau VAT / DS bán hàng
     totalReturn: number;
   };
   data: DailyReportRow[];

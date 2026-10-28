@@ -1,6 +1,8 @@
 import { dayjsUtc } from "../../../assets/configs/dayjs/dayjs.config";
 import { YearSalesData } from "../../../interface/synthetic/revenue.type";
 
+const VN_TIMEZONE_OFFSET_MS = 25_200_000; // 7 tiếng
+
 export const roundInt = (val: number | string | undefined | null): number =>
   Math.round(Number(val) || 0);
 
@@ -8,12 +10,10 @@ export const aggregateDailyAmounts = <T>({
   records,
   getDateFn,
   getAmountFn,
-  timezone,
 }: {
   records: T[];
   getDateFn: (item: T) => Date | string | undefined | null;
   getAmountFn: (item: T) => number | string | undefined | null;
-  timezone: number;
 }): Map<string, number> => {
   const map = new Map<string, number>();
 
@@ -26,7 +26,7 @@ export const aggregateDailyAmounts = <T>({
     if (Number.isNaN(timestamp)) continue;
 
     // 2. Dịch sang UTC+7 và cắt chuỗi 'YYYY-MM-DD'
-    const dateKey = new Date(timestamp + timezone).toISOString().slice(0, 10);
+    const dateKey = new Date(timestamp + VN_TIMEZONE_OFFSET_MS).toISOString().slice(0, 10);
 
     // 3. Gom dồn số tiền (làm tròn số tiền của từng bản ghi)
     const amount = roundInt(getAmountFn(item));

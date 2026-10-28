@@ -9,7 +9,7 @@ const permissionMiddleware_1 = require("../../middlewares/permissionMiddleware")
 const badgeController_1 = require("../../controller/badge/badgeController");
 const router = (0, express_1.default)();
 //pending order
-router.get("/count-pending", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["admin"]), badgeController_1.countOrderPending);
+router.get("/count-pending", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["admin", "manager"]), badgeController_1.countOrderPending);
 //order pending planning
 router.get("/count-pending-planning", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), badgeController_1.countOrderPendingPlanning);
 //planning stop
@@ -20,5 +20,7 @@ router.get("/count-waiting-check", authMiddleware_1.default, (0, permissionMiddl
 router.get("/count-delivery-request", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), badgeController_1.countDeliveryRequest);
 //prepare goods
 router.get("/count-prepare-goods", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["delivery"]), badgeController_1.countRequestPrepareGoods);
+//debt deduction
+router.get("/count-debt-deduction", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["admin", "manager"]), badgeController_1.countDebtDeduction);
 exports.default = router;
 //# sourceMappingURL=badgeRoutes.js.map

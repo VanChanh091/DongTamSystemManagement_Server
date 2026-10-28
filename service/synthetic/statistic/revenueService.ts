@@ -307,7 +307,6 @@ export const statisticRevenueService = {
         records: cleanOrdersData,
         getDateFn: (item) => item.dayApproved,
         getAmountFn: (item) => item.totalPrice,
-        timezone: VN_TIMEZONE_OFFSET_MS,
       });
 
       // Doanh số sản xuất giấy tấm theo ngày chạy máy
@@ -315,7 +314,6 @@ export const statisticRevenueService = {
         records: paperProdData,
         getDateFn: (item) => dayjsUtc(item.dayReport).subtract(6, "hour").toDate(),
         getAmountFn: (item) => item.totalPrice,
-        timezone: VN_TIMEZONE_OFFSET_MS,
       });
 
       // Doanh số sản xuất thùng theo ngày nhập kho
@@ -323,15 +321,25 @@ export const statisticRevenueService = {
         records: boxProdData,
         getDateFn: (item) => dayjsUtc(item.dateInbound).subtract(6, "hour").toDate(),
         getAmountFn: (item) => item.totalPrice,
-        timezone: VN_TIMEZONE_OFFSET_MS,
       });
 
       // Doanh số bán hàng / xuất kho
+      const salesBeforeVatMap = aggregateDailyAmounts({
+        records: outboundData,
+        getDateFn: (item) => item.dateOutbound,
+        getAmountFn: (item) => item.totalPriceOrder,
+      });
+
+      const salesVatMap = aggregateDailyAmounts({
+        records: outboundData,
+        getDateFn: (item) => item.dateOutbound,
+        getAmountFn: (item) => item.totalPriceVAT,
+      });
+
       const salesMap = aggregateDailyAmounts({
         records: outboundData,
         getDateFn: (item) => item.dateOutbound,
         getAmountFn: (item) => item.totalPricePayment,
-        timezone: VN_TIMEZONE_OFFSET_MS,
       });
 
       // Khởi tạo danh sách đủ các ngày trong tháng
@@ -339,6 +347,8 @@ export const statisticRevenueService = {
       const summary = {
         totalOrderApproved: 0,
         totalProduction: 0,
+        totalBeforeVat: 0,
+        totalVat: 0,
         totalSales: 0,
         totalReturn: 0,
       };
@@ -354,6 +364,8 @@ export const statisticRevenueService = {
         const boxAmount = roundInt(boxProdMap.get(dateKey) || 0);
         const prodAmount = paperAmount + boxAmount;
 
+        const totalBeforeVat = roundInt(salesBeforeVatMap.get(dateKey) || 0);
+        const totalVat = roundInt(salesVatMap.get(dateKey) || 0);
         const saleAmount = roundInt(salesMap.get(dateKey) || 0);
         const returnAmount = 0;
 
@@ -361,18 +373,21 @@ export const statisticRevenueService = {
           date: dateKey,
           orderApprovedAmount: orderAmount,
           productionAmount: prodAmount,
+          totalBeforeVat,
+          totalVat,
           salesAmount: saleAmount,
           returnAmount,
         });
 
         summary.totalOrderApproved += orderAmount;
         summary.totalProduction += prodAmount;
+        summary.totalBeforeVat += totalBeforeVat;
+        summary.totalVat += totalVat;
         summary.totalSales += saleAmount;
       }
 
       const reportData: MonthlyRevenueReportResponse = {
         message: "Data Revenue monthly generated successfully",
-        filter: { month, year, userId: effectiveUserId },
         summary,
         data: details,
       };

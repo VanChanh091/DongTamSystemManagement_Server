@@ -95,7 +95,12 @@ exports.syntheticReportRepository = {
     //gom nhóm theo chi tiết xuất kho
     getDailyProductionOutbound: async ({ startDate, endDate, userId, }) => {
         return outboundHistory_1.OutboundHistory.findAll({
-            attributes: ["totalPricePayment", "dateOutbound"],
+            attributes: [
+                "totalPriceOrder",
+                "totalPriceVAT",
+                "totalPricePayment",
+                "dateOutbound",
+            ],
             where: { dateOutbound: { [sequelize_1.Op.between]: [startDate, endDate] } },
             include: [
                 {

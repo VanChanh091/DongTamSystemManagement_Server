@@ -2,9 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getPaperShiftDate = exports.reportEffectiveUserId = exports.createEmptyYear = exports.toVNDate = exports.aggregateDailyAmounts = exports.roundInt = void 0;
 const dayjs_config_1 = require("../../../assets/configs/dayjs/dayjs.config");
+const VN_TIMEZONE_OFFSET_MS = 25_200_000; // 7 tiếng
 const roundInt = (val) => Math.round(Number(val) || 0);
 exports.roundInt = roundInt;
-const aggregateDailyAmounts = ({ records, getDateFn, getAmountFn, timezone, }) => {
+const aggregateDailyAmounts = ({ records, getDateFn, getAmountFn, }) => {
     const map = new Map();
     for (const item of records) {
         const rawDate = getDateFn(item);
@@ -15,7 +16,7 @@ const aggregateDailyAmounts = ({ records, getDateFn, getAmountFn, timezone, }) =
         if (Number.isNaN(timestamp))
             continue;
         // 2. Dịch sang UTC+7 và cắt chuỗi 'YYYY-MM-DD'
-        const dateKey = new Date(timestamp + timezone).toISOString().slice(0, 10);
+        const dateKey = new Date(timestamp + VN_TIMEZONE_OFFSET_MS).toISOString().slice(0, 10);
         // 3. Gom dồn số tiền (làm tròn số tiền của từng bản ghi)
         const amount = (0, exports.roundInt)(getAmountFn(item));
         map.set(dateKey, (map.get(dateKey) || 0) + amount);

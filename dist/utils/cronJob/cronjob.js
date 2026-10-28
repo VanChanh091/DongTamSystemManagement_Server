@@ -9,7 +9,7 @@ const node_cron_1 = __importDefault(require("node-cron"));
 const sequelize_1 = require("sequelize");
 const orderImage_1 = require("../../models/order/orderImage");
 const cloudinary_connect_1 = __importDefault(require("../../assets/configs/connect/cloudinary.connect"));
-const debtManagementService_1 = require("../../service/warehouse/debtManagementService");
+const debtManagementService_1 = require("../../service/debt/debtManagementService");
 const qcShift_1 = require("../../models/qualityControl/qcShift");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const TIMEZONE = "Asia/Ho_Chi_Minh";
@@ -47,8 +47,8 @@ node_cron_1.default.schedule("59 23 * * *",
 //   "*/10 * * * * *",
 async () => {
     const startTime = new Date().toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
-    // console.log(`\n======================================================`);
-    // console.log(`[CRONJOB] [${startTime}] --- BẮT ĐẦU CHỐT CÔNG NỢ TỰ ĐỘNG ---`);
+    console.log(`\n======================================================`);
+    console.log(`[CRONJOB] [${startTime}] --- BẮT ĐẦU CHỐT CÔNG NỢ TỰ ĐỘNG ---`);
     try {
         const result = await debtManagementService_1.debtManagementService.processAutoDebtClosing();
         console.log(`[CRONJOB SUCCESS] ${result.message}`);
@@ -64,8 +64,8 @@ node_cron_1.default.schedule("0 * * * *",
 async () => {
     try {
         const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000); // 12 giờ trước
-        console.log(`\n=========================CRONJOB=============================`);
-        console.log(`----- KIỂM TRA VÀ KẾT THÚC CA LÀM VIỆC QC -----`);
+        // console.log(`\n=========================CRONJOB=============================`);
+        // console.log(`----- KIỂM TRA VÀ KẾT THÚC CA LÀM VIỆC QC -----`);
         const [affectedRows] = await qcShift_1.QcShift.update({ isActive: false, endedAt: new Date() }, { where: { isActive: true, startedAt: { [sequelize_1.Op.lte]: twelveHoursAgo } } });
         if (affectedRows > 0) {
             console.log(`✅ Đã tự động kết thúc ${affectedRows} ca làm việc QC đã hoạt động quá 12 giờ.`);

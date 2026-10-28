@@ -36,6 +36,12 @@ function customerOrderAssociations(models) {
         onDelete: "CASCADE",
     });
     PaymentAllocation.belongsTo(OutboundHistory, { foreignKey: "outboundId", as: "outbound" });
+    Customer.hasMany(PaymentAllocation, {
+        foreignKey: "customerId",
+        as: "allocations",
+        onDelete: "CASCADE",
+    });
+    PaymentAllocation.belongsTo(Customer, { foreignKey: "customerId" });
     // DEBT DEDUCTION REQUEST
     Customer.hasMany(DebtDeductionRequest, {
         foreignKey: "customerId",

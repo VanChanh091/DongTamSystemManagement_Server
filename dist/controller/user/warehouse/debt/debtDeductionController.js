@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateDebtDeductionStatus = exports.requestOrVerifyUrgentOtp = exports.deleteDebtDeduction = exports.updateDebtDeduction = exports.createDebtDeduction = exports.getDebtDeductionRequests = void 0;
-const debtDeductionService_1 = require("../../../../service/warehouse/debtDeductionService");
+exports.exportExcelReportDebt = exports.updateDebtDeductionStatus = exports.requestOrVerifyUrgentOtp = exports.deleteDebtDeduction = exports.updateDebtDeduction = exports.createDebtDeduction = exports.getDebtDeductionRequests = void 0;
+const debtDeductionService_1 = require("../../../../service/debt/debtDeductionService");
 const getDebtDeductionRequests = async (req, res, next) => {
     const { page, pageSize, status, customerId, userId } = req.query;
     try {
@@ -114,4 +114,20 @@ const updateDebtDeductionStatus = async (req, res, next) => {
     }
 };
 exports.updateDebtDeductionStatus = updateDebtDeductionStatus;
+const exportExcelReportDebt = async (req, res, next) => {
+    const { fromDate, toDate } = req.body;
+    try {
+        const response = await debtDeductionService_1.debtDeductionService.exportExcelReportDebt({
+            res,
+            fromDate,
+            toDate,
+            username: req.user.fullName,
+        });
+        return res.status(200).json(response);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.exportExcelReportDebt = exportExcelReportDebt;
 //# sourceMappingURL=debtDeductionController.js.map

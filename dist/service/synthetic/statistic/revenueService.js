@@ -239,34 +239,42 @@ exports.statisticRevenueService = {
                 records: cleanOrdersData,
                 getDateFn: (item) => item.dayApproved,
                 getAmountFn: (item) => item.totalPrice,
-                timezone: VN_TIMEZONE_OFFSET_MS,
             });
             // Doanh số sản xuất giấy tấm theo ngày chạy máy
             const paperProdMap = (0, revenueHelper_1.aggregateDailyAmounts)({
                 records: paperProdData,
                 getDateFn: (item) => (0, dayjs_config_1.dayjsUtc)(item.dayReport).subtract(6, "hour").toDate(),
                 getAmountFn: (item) => item.totalPrice,
-                timezone: VN_TIMEZONE_OFFSET_MS,
             });
             // Doanh số sản xuất thùng theo ngày nhập kho
             const boxProdMap = (0, revenueHelper_1.aggregateDailyAmounts)({
                 records: boxProdData,
                 getDateFn: (item) => (0, dayjs_config_1.dayjsUtc)(item.dateInbound).subtract(6, "hour").toDate(),
                 getAmountFn: (item) => item.totalPrice,
-                timezone: VN_TIMEZONE_OFFSET_MS,
             });
             // Doanh số bán hàng / xuất kho
+            const salesBeforeVatMap = (0, revenueHelper_1.aggregateDailyAmounts)({
+                records: outboundData,
+                getDateFn: (item) => item.dateOutbound,
+                getAmountFn: (item) => item.totalPriceOrder,
+            });
+            const salesVatMap = (0, revenueHelper_1.aggregateDailyAmounts)({
+                records: outboundData,
+                getDateFn: (item) => item.dateOutbound,
+                getAmountFn: (item) => item.totalPriceVAT,
+            });
             const salesMap = (0, revenueHelper_1.aggregateDailyAmounts)({
                 records: outboundData,
                 getDateFn: (item) => item.dateOutbound,
                 getAmountFn: (item) => item.totalPricePayment,
-                timezone: VN_TIMEZONE_OFFSET_MS,
             });
             // Khởi tạo danh sách đủ các ngày trong tháng
             const details = [];
             const summary = {
                 totalOrderApproved: 0,
                 totalProduction: 0,
+                totalBeforeVat: 0,
+                totalVat: 0,
                 totalSales: 0,
                 totalReturn: 0,
             };
@@ -278,17 +286,23 @@ exports.statisticRevenueService = {
                 const paperAmount = (0, revenueHelper_1.roundInt)(paperProdMap.get(dateKey) || 0);
                 const boxAmount = (0, revenueHelper_1.roundInt)(boxProdMap.get(dateKey) || 0);
                 const prodAmount = paperAmount + boxAmount;
+                const totalBeforeVat = (0, revenueHelper_1.roundInt)(salesBeforeVatMap.get(dateKey) || 0);
+                const totalVat = (0, revenueHelper_1.roundInt)(salesVatMap.get(dateKey) || 0);
                 const saleAmount = (0, revenueHelper_1.roundInt)(salesMap.get(dateKey) || 0);
                 const returnAmount = 0;
                 details.push({
                     date: dateKey,
                     orderApprovedAmount: orderAmount,
                     productionAmount: prodAmount,
+                    totalBeforeVat,
+                    totalVat,
                     salesAmount: saleAmount,
                     returnAmount,
                 });
                 summary.totalOrderApproved += orderAmount;
                 summary.totalProduction += prodAmount;
+                summary.totalBeforeVat += totalBeforeVat;
+                summary.totalVat += totalVat;
                 summary.totalSales += saleAmount;
             }
             const reportData = {

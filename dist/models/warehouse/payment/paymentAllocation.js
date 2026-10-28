@@ -17,6 +17,7 @@ function initPaymentAllocationModel(sequelize) {
         //FK
         outboundId: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
         requestId: { type: sequelize_1.DataTypes.INTEGER },
+        customerId: { type: sequelize_1.DataTypes.STRING },
     }, {
         sequelize,
         tableName: "payment_allocations",

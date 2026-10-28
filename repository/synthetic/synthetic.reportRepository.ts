@@ -138,7 +138,12 @@ export const syntheticReportRepository = {
     userId?: number;
   }) => {
     return OutboundHistory.findAll({
-      attributes: ["totalPricePayment", "dateOutbound"],
+      attributes: [
+        "totalPriceOrder",
+        "totalPriceVAT",
+        "totalPricePayment",
+        "dateOutbound",
+      ],
       where: { dateOutbound: { [Op.between]: [startDate, endDate] } },
       include: [
         {

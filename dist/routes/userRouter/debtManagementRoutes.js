@@ -9,7 +9,11 @@ const permissionMiddleware_1 = require("../../middlewares/permissionMiddleware")
 const debtManagementController_1 = require("../../controller/user/warehouse/debt/debtManagementController");
 const uploadImage_1 = __importDefault(require("../../utils/image/uploadImage"));
 const debtDeductionController_1 = require("../../controller/user/warehouse/debt/debtDeductionController");
+const paymentAllocationController_1 = require("../../controller/user/warehouse/debt/paymentAllocationController");
 const router = (0, express_1.default)();
+//=============================PAYMENT ALLOCATION===================================
+router.get("/allocations/outbound", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["accountant", "sale"]), paymentAllocationController_1.getPaymentAlocationHistory);
+router.post("/allocations/export", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["accountant"]), paymentAllocationController_1.exportExcelPaymentAllocations);
 //=================================CLOSING DEBT=======================================
 router.get("/closing-debt", authMiddleware_1.default, debtManagementController_1.getCustomerDebtSummary);
 router.post("/closing-debt", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["accountant"]), debtManagementController_1.handleClosingDebt);
@@ -27,5 +31,6 @@ router.delete("/deduction-requests", authMiddleware_1.default, (0, permissionMid
 router.post("/deduction-requests/otp", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["sale"]), debtDeductionController_1.requestOrVerifyUrgentOtp);
 // approve or reject debt deduction request
 router.put("/deduction-requests/status", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["admin", "manager"]), debtDeductionController_1.updateDebtDeductionStatus);
+router.post("/deduction-requests/export", authMiddleware_1.default, debtDeductionController_1.exportExcelReportDebt);
 exports.default = router;
 //# sourceMappingURL=debtManagementRoutes.js.map

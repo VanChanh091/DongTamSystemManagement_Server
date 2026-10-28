@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.writeOffDebt = exports.importAmountPayment = exports.paymentDebtByCustomerId = exports.exportDebtCustomer = exports.handleClosingDebt = exports.getCustomerDebtSummary = void 0;
 const appError_1 = require("../../../../utils/appError");
-const debtManagementService_1 = require("../../../../service/warehouse/debtManagementService");
+const debtManagementService_1 = require("../../../../service/debt/debtManagementService");
 //=================================CLOSING DEBT=======================================
 const getCustomerDebtSummary = async (req, res, next) => {
     const { userId, page = 1, pageSize = 30, targetDate, search, } = req.query;
