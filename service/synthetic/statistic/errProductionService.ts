@@ -27,7 +27,7 @@ export const statisticErrProductionService = {
   getMonthlyErrorReport: async (
     dto: MonthlyErrorReportInput,
   ): Promise<MonthlyErrorReportResponse> => {
-    const { month, year, machine, employeeId, type } = dto;
+    const { month, year, machine, employeeId, type, currentUser } = dto;
 
     const nowVN = dayjsUtc().tz(VN_TZ);
     const currentYear = nowVN.year();
@@ -47,9 +47,14 @@ export const statisticErrProductionService = {
     const daysInMonth = startOfMonth.daysInMonth();
 
     try {
+      const role = currentUser?.role?.toLowerCase();
+      const dept = (currentUser?.department ?? "").toLowerCase();
+      const isProductionOrQcManager =
+        role === "admin" || (role === "manager" && ["production", "qc"].includes(dept));
+
       // lấy thông tin nhân viên cần lọc
       let targetEmployeeName: string | null = null;
-      if (employeeId && employeeId !== "all") {
+      if (isProductionOrQcManager && employeeId && employeeId !== "all") {
         const emp = await syntheticReportRepository.getEmployeeErrorProduction(employeeId);
         if (!emp) {
           return {
@@ -227,14 +232,20 @@ export const statisticErrProductionService = {
   },
 
   getYearlyErrorReport: async (dto: YearlyErrorReportInput): Promise<YearlyErrorReportResponse> => {
-    const { year, machine, employeeId, type } = dto;
+    const { year, machine, employeeId, type, currentUser } = dto;
+
+    const role = currentUser?.role?.toLowerCase();
+    const dept = (currentUser?.department ?? "").toLowerCase();
+    const isProductionOrQcManager =
+      role === "admin" || (role === "manager" && ["production", "qc"].includes(dept));
+    const effectiveEmployeeId = isProductionOrQcManager ? employeeId : undefined;
 
     // 1. Phân định cache key theo điều kiện filter
     const isFiltered = Boolean(
-      (machine && machine !== "all") || (employeeId && employeeId !== "all"),
+      (machine && machine !== "all") || (effectiveEmployeeId && effectiveEmployeeId !== "all"),
     );
     const cacheKey = isFiltered
-      ? `${reports.error_yearly(year, type)}:m_${machine || "all"}:e_${employeeId || "all"}`
+      ? `${reports.error_yearly(year, type)}:m_${machine || "all"}:e_${effectiveEmployeeId || "all"}`
       : reports.error_yearly(year, type);
 
     // 2. CHECK REDIS TRƯỚC TIÊN - Cache hit trả về ngay lập tức
@@ -274,8 +285,8 @@ export const statisticErrProductionService = {
           raw: true,
         }) as unknown as Promise<{ code: string; name: string }[]>,
 
-        employeeId && employeeId !== "all"
-          ? syntheticReportRepository.getEmployeeErrorProduction(Number(employeeId))
+        effectiveEmployeeId && effectiveEmployeeId !== "all"
+          ? syntheticReportRepository.getEmployeeErrorProduction(Number(effectiveEmployeeId))
           : Promise.resolve(null),
 
         syntheticReportRepository.getQcInspectionPaper({ paperWhere, startDate, endDate }),

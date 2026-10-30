@@ -1,6 +1,6 @@
 import Router from "express";
 import authenticate from "../../middlewares/authMiddleware";
-import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
+import { authorizeAccess, authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 import {
   createEmployee,
   deleteEmployee,
@@ -9,16 +9,28 @@ import {
   getEmployees,
   updateEmployee,
 } from "../../controller/user/employee/employeeController";
+import { AuthorizeAccessParams } from "../../interface/types";
 
 const router = Router();
 
-router.get("/", authenticate, getEmployees);
-router.get("/position", authenticate, getEmployeeByPosition);
+const authorizeEmployeeAccess = ({
+  departments = [],
+  permissions = [],
+  requireDept = true,
+}: AuthorizeAccessParams = {}) =>
+  authorizeAccess({
+    departments: [...new Set(["HR", ...departments])],
+    permissions: [...new Set(["HR", ...permissions])],
+    requireDept,
+  });
 
-router.post("/", authenticate, authorizeAnyPermission(["HR"]), createEmployee);
-router.put("/", authenticate, authorizeAnyPermission(["HR"]), updateEmployee);
-router.delete("/", authenticate, authorizeAnyPermission(["HR"]), deleteEmployee);
+router.get("/", authenticate, authorizeEmployeeAccess(), getEmployees);
+router.get("/position", authenticate, getEmployeeByPosition); // using for report production
 
-router.post("/export", authenticate, authorizeAnyPermission(["HR"]), exportExcelEmployee);
+router.post("/", authenticate, authorizeEmployeeAccess(), createEmployee);
+router.put("/", authenticate, authorizeEmployeeAccess(), updateEmployee);
+router.delete("/", authenticate, authorizeEmployeeAccess(), deleteEmployee);
+
+router.post("/export", authenticate, authorizeEmployeeAccess(), exportExcelEmployee);
 
 export default router;

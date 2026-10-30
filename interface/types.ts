@@ -79,3 +79,9 @@ export interface PlanningOrderInput {
   songE2Replace?: string;
   matE2Replace?: string;
 }
+
+export type AuthorizeAccessParams = {
+  departments?: string[];
+  permissions?: string[];
+  requireDept?: boolean;
+};

@@ -26,14 +26,10 @@ const core_debt_helper_1 = require("../../utils/helper/core_debt_helper");
 exports.debtDeductionService = {
     getDebtDeductionRequests: async ({ page, pageSize, status, currentUser, targetUserId, customerId, }) => {
         try {
-            const isAdminOrManager = ["admin", "manager"].includes(currentUser.role);
-            let filterUserId;
-            if (isAdminOrManager) {
-                filterUserId = targetUserId;
-            }
-            else {
-                filterUserId = currentUser.userId;
-            }
+            const dept = (currentUser.department ?? "").toLowerCase();
+            const isAuthorizedManager = currentUser.role === "admin" ||
+                (currentUser.role === "manager" && ["accountant", "sale"].includes(dept));
+            const filterUserId = isAuthorizedManager ? targetUserId : currentUser.userId;
             // const cacheKey = paper.all(machine, page);
             // const { isChanged } = await CacheManager.check(ReportPlanningPaper, "reportPaper");
             // if (isChanged) {

@@ -8,32 +8,59 @@ import {
   updateReportPaper,
   updateReportBox,
 } from "../../controller/user/manufacture/manufactureController";
-import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
+import { authorizeAccess } from "../../middlewares/permissionMiddleware";
+import { AuthorizeAccessParams } from "../../interface/types";
 
 const router = Router();
 
+const authorizePaperAccess = ({
+  departments = [],
+  permissions = [],
+  requireDept = true,
+}: AuthorizeAccessParams = {}) =>
+  authorizeAccess({
+    departments: [...new Set(["Production", ...departments])],
+    permissions: [
+      ...new Set([
+        "machine1350",
+        "machine1800",
+        "machine1900",
+        "machine2Layer",
+        "MachineRollPaper",
+        ...permissions,
+      ]),
+    ],
+    requireDept,
+  });
+
+const authorizeBoxAccess = ({
+  departments = [],
+  permissions = [],
+  requireDept = true,
+}: AuthorizeAccessParams = {}) =>
+  authorizeAccess({
+    departments: [...new Set(["Production", ...departments])],
+    permissions: [...new Set(["step2Production", ...permissions])],
+    requireDept,
+  });
+
 //=========================PAPER=========================
 router.get("/paper", authenticate, getPlanningPaper);
-router.post(
-  "/paper",
-  authenticate,
-  authorizeAnyPermission(["machine1350", "machine1800", "machine1900", "machine2Layer", "MachineRollPaper"]),
-  addReportPaper,
-);
+router.post("/paper", authenticate, authorizePaperAccess(), addReportPaper);
 router.put(
   "/paper",
   authenticate,
-  authorizeAnyPermission(["machine1350", "machine1800", "machine1900", "machine2Layer", "MachineRollPaper", "QC"]),
+  authorizePaperAccess({ permissions: ["QC"], requireDept: false }),
   updateReportPaper,
 );
 
 //=========================BOX=========================
 router.get("/box", authenticate, getPlanningBox);
-router.post("/box", authenticate, authorizeAnyPermission(["step2Production"]), addReportBox);
+router.post("/box", authenticate, authorizeBoxAccess(), addReportBox);
 router.put(
   "/box",
   authenticate,
-  authorizeAnyPermission(["step2Production", "QC"]),
+  authorizeBoxAccess({ permissions: ["QC"], requireDept: false }),
   updateReportBox,
 );
 

@@ -1,6 +1,6 @@
 import Router from "express";
 import authenticate from "../../middlewares/authMiddleware";
-import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
+import { authorizeAccess, authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 import {
   cancelOrCompleteDeliveryPlan,
   handlePostDeliveryRequest,
@@ -18,21 +18,39 @@ import {
 
 const router = Router();
 
-//===============================PLANNING ESTIMATE TIME==================================
+type DeliveryScope = "estimate" | "request" | "schedule" | "prepare";
 
-router.get(
-  "/estimate",
-  authenticate,
-  authorizeAnyPermission(["plan", "sale"]),
-  getPlanningEstimateTime,
-);
-router.put("/estimate", authenticate, authorizeAnyPermission(["plan", "sale"]), handlePutDelivery);
+const DELIVERY_POLICIES: Record<DeliveryScope, { departments: string[]; permissions: string[] }> = {
+  estimate: { departments: ["Operation", "Sale"], permissions: ["plan", "sale"] },
+  request: { departments: ["Operation"], permissions: ["plan"] },
+  schedule: { departments: ["Operation", "Delivery"], permissions: ["plan", "delivery"] },
+  prepare: { departments: ["Delivery"], permissions: ["delivery"] },
+};
+
+export const authorizeDeliveryAccess = (scope: DeliveryScope) => {
+  const policy = DELIVERY_POLICIES[scope];
+
+  return authorizeAccess({
+    departments: policy.departments,
+    permissions: policy.permissions,
+    requireDept: true,
+  });
+};
+
+//===============================PLANNING ESTIMATE TIME==================================
+router.get("/estimate", authenticate, authorizeDeliveryAccess("estimate"), getPlanningEstimateTime);
+router.put("/estimate", authenticate, authorizeDeliveryAccess("estimate"), handlePutDelivery);
 
 //=================================DELIVERY REQUEST=====================================
 
 router.get("/planning", authenticate, getPlanningRequest);
-router.post("/planning", authenticate, authorizeAnyPermission(["plan"]), handlePostDeliveryRequest);
-router.put("/planning", authenticate, authorizeAnyPermission(["plan"]), implementDeliveryPlan);
+router.post(
+  "/planning",
+  authenticate,
+  authorizeDeliveryAccess("request"),
+  handlePostDeliveryRequest,
+);
+router.put("/planning", authenticate, authorizeDeliveryAccess("request"), implementDeliveryPlan);
 
 //=================================SCHEDULE DELIVERY=====================================
 router.get("/schedule", authenticate, getAllScheduleDelivery);
@@ -40,30 +58,25 @@ router.get("/schedule/get-search", authenticate, getDeliveryItemsByOrderId);
 router.put(
   "/schedule",
   authenticate,
-  authorizeAnyPermission(["plan", "delivery"]),
+  authorizeDeliveryAccess("schedule"),
   cancelOrCompleteDeliveryPlan,
 );
 router.post(
   "/schedule/export",
   authenticate,
-  authorizeAnyPermission(["plan", "delivery"]),
+  authorizeDeliveryAccess("schedule"),
   exportScheduleDelivery,
 );
 
 //=================================PREPARE GOODS=====================================
 router.get("/prepare", authenticate, getRequestPrepareGoods);
-router.put(
-  "/prepare",
-  authenticate,
-  authorizeAnyPermission(["delivery"]),
-  handleUpdatePreparedGoods,
-);
+router.put("/prepare", authenticate, authorizeDeliveryAccess("prepare"), handleUpdatePreparedGoods);
 
 //socket
 router.post(
   "/notify-delivery",
   authenticate,
-  authorizeAnyPermission(["delivery"]),
+  authorizeDeliveryAccess("prepare"),
   notifyPrepareGoods,
 );
 

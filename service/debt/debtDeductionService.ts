@@ -39,14 +39,12 @@ export const debtDeductionService = {
     customerId?: string;
   }) => {
     try {
-      const isAdminOrManager = ["admin", "manager"].includes(currentUser.role);
+      const dept = (currentUser.department ?? "").toLowerCase();
+      const isAuthorizedManager =
+        currentUser.role === "admin" ||
+        (currentUser.role === "manager" && ["accountant", "sale"].includes(dept));
 
-      let filterUserId: number | undefined;
-      if (isAdminOrManager) {
-        filterUserId = targetUserId;
-      } else {
-        filterUserId = currentUser.userId;
-      }
+      const filterUserId = isAuthorizedManager ? targetUserId : currentUser.userId;
 
       // const cacheKey = paper.all(machine, page);
       // const { isChanged } = await CacheManager.check(ReportPlanningPaper, "reportPaper");

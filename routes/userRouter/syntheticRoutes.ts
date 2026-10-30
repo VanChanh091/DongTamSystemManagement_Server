@@ -9,7 +9,7 @@ import {
   exportExcelOrders,
   getAllSyntheticOrders,
 } from "../../controller/user/synthetic/synthetic.orderController";
-import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
+import { authorizeAccess } from "../../middlewares/permissionMiddleware";
 import {
   getErrorProductionReport,
   getReportProduction,
@@ -23,7 +23,7 @@ router.get("/orders", authenticate, getAllSyntheticOrders);
 router.post(
   "/orders/export",
   authenticate,
-  authorizeAnyPermission(["accountant"]),
+  authorizeAccess({ departments: ["Accountant"], permissions: ["accountant"], requireDept: true }),
   exportExcelOrders,
 );
 router.put("/orders", authenticate, completeOrder);
@@ -34,6 +34,7 @@ router.post("/planning/export", authenticate, exportExcelSyntheticPlanning);
 
 //=========================STATISTIC REPORT=========================
 router.get("/report-revenue", authenticate, getRevenueReport);
+
 router.get("/report-err-production", authenticate, getErrorProductionReport);
 
 //==================PRODUCTION STAGE 1 REPORT====================

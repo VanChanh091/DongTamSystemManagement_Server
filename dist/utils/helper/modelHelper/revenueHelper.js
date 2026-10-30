@@ -44,14 +44,19 @@ exports.createEmptyYear = createEmptyYear;
 // helper phân quyền
 const reportEffectiveUserId = (currentUser, targetUserId, all) => {
     const role = currentUser.role?.toLowerCase();
-    const isManager = ["admin", "manager"].includes(role);
+    const dept = (currentUser.department ?? "").toLowerCase();
+    const isSaleManager = role === "admin" || (role === "manager" && dept === "sale");
     const isSales = currentUser.permissions?.includes("sale") ?? false;
-    if (isManager) {
+    if (isSaleManager) {
         // Nếu admin/manager chọn 1 user cụ thể thì lấy theo user đó
         // Nếu không chọn (hoặc chọn 'Tất cả') thì trả về null để lấy toàn bộ
         return targetUserId ? Number(targetUserId) : null;
     }
-    else if (isSales) {
+    else if (role === "manager") {
+        // Manager phòng ban khác xem chéo: xem tổng thể công ty, không cho soi từng nhân viên
+        return null;
+    }
+    else if (isSales || dept === "sale") {
         return currentUser.userId;
     }
     // chỉ xem tổng quát

@@ -1,6 +1,6 @@
 import Router from "express";
 import authenticate from "../../middlewares/authMiddleware";
-import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
+import { authorizeAccess } from "../../middlewares/permissionMiddleware";
 import {
   countDebtDeduction,
   countDeliveryRequest,
@@ -13,11 +13,14 @@ import {
 
 const router = Router();
 
+const authorizePlanningAccess = () =>
+  authorizeAccess({ departments: ["Operation"], permissions: ["plan"], requireDept: true });
+
 //pending order
 router.get(
   "/count-pending",
   authenticate,
-  authorizeAnyPermission(["admin", "manager"]),
+  authorizeAccess({ departments: ["Sale"], permissions: ["manager"], requireDept: true }),
   countOrderPending,
 );
 
@@ -25,26 +28,26 @@ router.get(
 router.get(
   "/count-pending-planning",
   authenticate,
-  authorizeAnyPermission(["plan"]),
+  authorizePlanningAccess(),
   countOrderPendingPlanning,
 );
 
 //planning stop
-router.get(
-  "/count-planning-stop",
-  authenticate,
-  authorizeAnyPermission(["plan"]),
-  countPlanningStop,
-);
+router.get("/count-planning-stop", authenticate, authorizePlanningAccess(), countPlanningStop);
 
 //waiting check paper & box
-router.get("/count-waiting-check", authenticate, authorizeAnyPermission(["QC"]), countWaitingCheck);
+router.get(
+  "/count-waiting-check",
+  authenticate,
+  authorizeAccess({ departments: ["QC"], permissions: ["QC"], requireDept: true }),
+  countWaitingCheck,
+);
 
 //delivery request
 router.get(
   "/count-delivery-request",
   authenticate,
-  authorizeAnyPermission(["plan"]),
+  authorizePlanningAccess(),
   countDeliveryRequest,
 );
 
@@ -52,7 +55,7 @@ router.get(
 router.get(
   "/count-prepare-goods",
   authenticate,
-  authorizeAnyPermission(["delivery"]),
+  authorizeAccess({ departments: ["Delivery"], permissions: ["delivery"], requireDept: true }),
   countRequestPrepareGoods,
 );
 
@@ -60,7 +63,7 @@ router.get(
 router.get(
   "/count-debt-deduction",
   authenticate,
-  authorizeAnyPermission(["admin", "manager"]),
+  authorizeAccess({ departments: ["Accountant"], permissions: ["accountant"], requireDept: true }),
   countDebtDeduction,
 );
 

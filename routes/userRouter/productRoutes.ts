@@ -8,29 +8,16 @@ import {
   updateProduct,
 } from "../../controller/user/product/productController";
 import upload from "../../utils/image/uploadImage";
-import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
+import { authorizeSaleAccess } from "./orderRoutes";
 
 const router = Router();
 
 router.get("/", authenticate, getProducts);
 
-router.post("/export", authenticate, exportExcelProduct);
-router.post(
-  "/",
-  authenticate,
-  upload.single("productImage"),
-  authorizeAnyPermission(["sale"]),
-  addProduct,
-);
+router.post("/", authenticate, upload.single("productImage"), authorizeSaleAccess(), addProduct);
+router.put("/", authenticate, upload.single("productImage"), authorizeSaleAccess(), updateProduct);
+router.delete("/", authenticate, authorizeSaleAccess(), deleteProduct);
 
-router.put(
-  "/",
-  authenticate,
-  upload.single("productImage"),
-  authorizeAnyPermission(["sale"]),
-  updateProduct,
-);
-
-router.delete("/", authenticate, authorizeAnyPermission(["sale"]), deleteProduct);
+router.post("/export", authenticate, authorizeSaleAccess(), exportExcelProduct);
 
 export default router;

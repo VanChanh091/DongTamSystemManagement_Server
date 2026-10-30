@@ -69,6 +69,7 @@ const getErrorProductionReport = async (req, res, next) => {
                     machine: machine ? String(machine).trim() : undefined,
                     employeeId: employeeId ? Number(employeeId) : undefined,
                     type: type,
+                    currentUser: req.user,
                 });
                 break;
             case "yearly":
@@ -77,6 +78,7 @@ const getErrorProductionReport = async (req, res, next) => {
                     machine: machine ? String(machine).trim() : undefined,
                     employeeId: employeeId ? Number(employeeId) : undefined,
                     type: type,
+                    currentUser: req.user,
                 });
                 break;
         }

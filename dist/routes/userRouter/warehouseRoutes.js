@@ -10,6 +10,11 @@ const outboundHistoryController_1 = require("../../controller/user/warehouse/out
 const inventoryController_1 = require("../../controller/user/warehouse/inventoryController");
 const permissionMiddleware_1 = require("../../middlewares/permissionMiddleware");
 const router = (0, express_1.Router)();
+const authorizeWarehouse = ({ departments = [], permissions = [], requireDept = true, } = {}) => (0, permissionMiddleware_1.authorizeAccess)({
+    departments: [...new Set(["Accountant", ...departments])],
+    permissions: [...new Set(["accountant", ...permissions])],
+    requireDept,
+});
 //=====================CHECK AND INBOUND QTY========================
 router.get("/waiting-check", authMiddleware_1.default, inboundHistoryController_1.getPlanningWaitingCheck);
 //========================INBOUND HISTORY===========================
@@ -18,20 +23,20 @@ router.post("/inbound/export", authMiddleware_1.default, inboundHistoryControlle
 //========================OUTBOUND HISTORY===========================
 router.get("/outbound", authMiddleware_1.default, outboundHistoryController_1.getOutboundHistory);
 router.get("/outbound/detail", authMiddleware_1.default, outboundHistoryController_1.getOutboundDetail);
-router.post("/outbound", (0, permissionMiddleware_1.authorizeAnyPermission)(["delivery", "accountant"]), authMiddleware_1.default, outboundHistoryController_1.handleAddOrUpdateOutbound);
-router.put("/outbound", (0, permissionMiddleware_1.authorizeAnyPermission)(["delivery", "accountant"]), authMiddleware_1.default, outboundHistoryController_1.handleAddOrUpdateOutbound);
-router.delete("/outbound", (0, permissionMiddleware_1.authorizeAnyPermission)(["delivery", "accountant"]), authMiddleware_1.default, outboundHistoryController_1.deleteOutbound);
+router.post("/outbound", authMiddleware_1.default, authorizeWarehouse({ departments: ["Delivery"], permissions: ["delivery"] }), outboundHistoryController_1.handleAddOrUpdateOutbound);
+router.put("/outbound", authMiddleware_1.default, authorizeWarehouse({ departments: ["Delivery"], permissions: ["delivery"] }), outboundHistoryController_1.handleAddOrUpdateOutbound);
+router.delete("/outbound", authMiddleware_1.default, authorizeWarehouse({ departments: ["Delivery"], permissions: ["delivery"] }), outboundHistoryController_1.deleteOutbound);
 //auto complete dialog
 router.get("/outbound/get-search", authMiddleware_1.default, outboundHistoryController_1.outboundAutoComplete);
 //export file
 router.post("/outbound/export", authMiddleware_1.default, outboundHistoryController_1.exportFilePDFOutbound);
-router.post("/outbound/export-detail", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["accountant"]), outboundHistoryController_1.exportOutboundDetail);
+router.post("/outbound/export-detail", authMiddleware_1.default, authorizeWarehouse(), outboundHistoryController_1.exportOutboundDetail);
 //=====================INVENTORY & LOGS=========================
 router.get("/inventory", authMiddleware_1.default, inventoryController_1.getAllInventory);
 router.post("/inventory", authMiddleware_1.default, inventoryController_1.createNewInventory);
 //inventory logs
 router.post("/inventory-logs/migrate", authMiddleware_1.default, inventoryController_1.migrateInitialInventoryLogs);
-router.post("/inventory-logs/export", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), inventoryController_1.exportInventoryByDate);
+router.post("/inventory-logs/export", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAccess)({ departments: ["Operation"], permissions: ["plan"], requireDept: true }), inventoryController_1.exportInventoryByDate);
 //========================LIQUIDATION===========================
 router.get("/liquidation", authMiddleware_1.default, inventoryController_1.getAllLiquidationInventory);
 //========================TEST CRASH===========================

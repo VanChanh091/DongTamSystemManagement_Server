@@ -8,11 +8,16 @@ const authMiddleware_1 = __importDefault(require("../../middlewares/authMiddlewa
 const permissionMiddleware_1 = require("../../middlewares/permissionMiddleware");
 const employeeController_1 = require("../../controller/user/employee/employeeController");
 const router = (0, express_1.default)();
-router.get("/", authMiddleware_1.default, employeeController_1.getEmployees);
-router.get("/position", authMiddleware_1.default, employeeController_1.getEmployeeByPosition);
-router.post("/", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["HR"]), employeeController_1.createEmployee);
-router.put("/", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["HR"]), employeeController_1.updateEmployee);
-router.delete("/", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["HR"]), employeeController_1.deleteEmployee);
-router.post("/export", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["HR"]), employeeController_1.exportExcelEmployee);
+const authorizeEmployeeAccess = ({ departments = [], permissions = [], requireDept = true, } = {}) => (0, permissionMiddleware_1.authorizeAccess)({
+    departments: [...new Set(["HR", ...departments])],
+    permissions: [...new Set(["HR", ...permissions])],
+    requireDept,
+});
+router.get("/", authMiddleware_1.default, authorizeEmployeeAccess(), employeeController_1.getEmployees);
+router.get("/position", authMiddleware_1.default, employeeController_1.getEmployeeByPosition); // using for report production
+router.post("/", authMiddleware_1.default, authorizeEmployeeAccess(), employeeController_1.createEmployee);
+router.put("/", authMiddleware_1.default, authorizeEmployeeAccess(), employeeController_1.updateEmployee);
+router.delete("/", authMiddleware_1.default, authorizeEmployeeAccess(), employeeController_1.deleteEmployee);
+router.post("/export", authMiddleware_1.default, authorizeEmployeeAccess(), employeeController_1.exportExcelEmployee);
 exports.default = router;
 //# sourceMappingURL=employeeRoutes.js.map

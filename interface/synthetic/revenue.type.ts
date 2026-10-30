@@ -38,6 +38,7 @@ export interface RevenueReportFilterInput {
   currentUser: {
     userId: number;
     role: "manager" | "admin" | "user" | string;
+    department?: string;
     permissions?: string[]; // Thêm trường permission để kiểm tra quyền của người dùng
   };
   all?: boolean;
@@ -74,6 +75,7 @@ export interface YearlyReportFilterInput {
   currentUser: {
     userId: number;
     role: "manager" | "admin" | "user" | string;
+    department?: string;
   };
   page?: number;
   pageSize?: number;

@@ -307,7 +307,6 @@ exports.statisticRevenueService = {
             }
             const reportData = {
                 message: "Data Revenue monthly generated successfully",
-                filter: { month, year, userId: effectiveUserId },
                 summary,
                 data: details,
             };

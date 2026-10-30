@@ -11,31 +11,36 @@ const scrapReportController_1 = require("../../controller/user/scrap/scrapReport
 const qcInspectionController_1 = require("../../controller/user/QC/qcInspectionController");
 const inspectionRequestController_1 = require("../../controller/user/QC/inspectionRequestController");
 const router = (0, express_1.Router)();
+const authorizeQcAccess = ({ departments = [], permissions = [], requireDept = true, } = {}) => (0, permissionMiddleware_1.authorizeAccess)({
+    departments: [...new Set(["QC", ...departments])],
+    permissions: [...new Set(["QC", ...permissions])],
+    requireDept,
+});
 //==================QC SESSION======================
 router.get("/session", authMiddleware_1.default, qcController_1.getQcSession);
-router.post("/session", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["QC"]), qcController_1.createNewSession);
-router.put("/session", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["QC"]), qcController_1.updateSession);
+router.post("/session", authMiddleware_1.default, authorizeQcAccess(), qcController_1.createNewSession);
+router.put("/session", authMiddleware_1.default, authorizeQcAccess(), qcController_1.updateSession);
 //==================QC RESULT=======================
 router.get("/result", authMiddleware_1.default, qcController_1.getAllQcResult);
-router.post("/result", (0, permissionMiddleware_1.authorizeAnyPermission)(["QC"]), authMiddleware_1.default, qcController_1.createNewResult);
-router.put("/result", (0, permissionMiddleware_1.authorizeAnyPermission)(["QC"]), authMiddleware_1.default, qcController_1.updateResult);
+router.post("/result", authMiddleware_1.default, authorizeQcAccess(), qcController_1.createNewResult);
+router.put("/result", authMiddleware_1.default, authorizeQcAccess(), qcController_1.updateResult);
 //==================ORCHESTRATOR=======================
-router.post("/submit", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["QC"]), qcController_1.submitQC);
+router.post("/submit", authMiddleware_1.default, authorizeQcAccess(), qcController_1.submitQC);
 //====================QC SHIFT======================
 router.get("/shift", authMiddleware_1.default, qcController_1.getCurrentShiftActive);
-router.post("/shift/start", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["QC"]), qcController_1.startShift);
-router.put("/shift/end", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["QC"]), qcController_1.endShift);
+router.post("/shift/start", authMiddleware_1.default, authorizeQcAccess(), qcController_1.startShift);
+router.put("/shift/end", authMiddleware_1.default, authorizeQcAccess(), qcController_1.endShift);
 //==================INSPECTION REQUEST====================
 router.get("/inspection-request/pending", authMiddleware_1.default, inspectionRequestController_1.getPendingInspectionRequests);
 router.get("/inspection-request/planning", authMiddleware_1.default, inspectionRequestController_1.getInspectionRequest);
 router.post("/inspection-request", authMiddleware_1.default, inspectionRequestController_1.createInspectionRequest);
-router.put("/inspection-request/receive", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["QC"]), inspectionRequestController_1.qcReceivedRequest);
-router.put("/inspection-request", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["QC"]), inspectionRequestController_1.updateInspectionRequest);
+router.put("/inspection-request/receive", authMiddleware_1.default, authorizeQcAccess(), inspectionRequestController_1.qcReceivedRequest);
+router.put("/inspection-request", authMiddleware_1.default, authorizeQcAccess(), inspectionRequestController_1.updateInspectionRequest);
 //==================INSPECTION CHECK====================
-router.post("/inspection", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["QC"]), qcInspectionController_1.checkingInspection);
+router.post("/inspection", authMiddleware_1.default, authorizeQcAccess(), qcInspectionController_1.checkingInspection);
 //using to check for producing
 router.get("/inspection/check", authMiddleware_1.default, qcInspectionController_1.getQcInspectionErr);
 //====================SCRAP REPORT======================
-router.put("/scrap-report", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["QC"]), scrapReportController_1.handleUpdateScrapReport);
+router.put("/scrap-report", authMiddleware_1.default, authorizeQcAccess(), scrapReportController_1.handleUpdateScrapReport);
 exports.default = router;
 //# sourceMappingURL=qualityControlRoutes.js.map

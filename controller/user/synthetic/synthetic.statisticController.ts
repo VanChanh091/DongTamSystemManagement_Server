@@ -92,6 +92,7 @@ export const getErrorProductionReport = async (req: Request, res: Response, next
           machine: machine ? String(machine).trim() : undefined,
           employeeId: employeeId ? Number(employeeId) : undefined,
           type: type,
+          currentUser: req.user,
         });
         break;
       case "yearly":
@@ -100,6 +101,7 @@ export const getErrorProductionReport = async (req: Request, res: Response, next
           machine: machine ? String(machine).trim() : undefined,
           employeeId: employeeId ? Number(employeeId) : undefined,
           type: type,
+          currentUser: req.user,
         });
         break;
     }

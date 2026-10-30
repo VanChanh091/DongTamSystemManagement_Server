@@ -9,10 +9,11 @@ const permissionMiddleware_1 = require("../../middlewares/permissionMiddleware")
 const systemController_1 = require("../../controller/system/systemController");
 const cacheController_1 = require("../../controller/system/cacheController");
 const router = (0, express_1.default)();
+const authorizeAdmin = () => (0, permissionMiddleware_1.authorizeAccess)({});
 //clear foreign key
-router.post("/clear-fk", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeRole)(["admin"]), systemController_1.cleanAllForeignKeysDb);
+router.post("/clear-fk", authMiddleware_1.default, authorizeAdmin(), systemController_1.cleanAllForeignKeysDb);
 //redis cache management
-router.get("/redis/stats", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeRole)(["admin"]), cacheController_1.getCacheStatsController);
-router.post("/redis/clear-cache", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeRole)(["admin"]), cacheController_1.clearCacheController);
+router.get("/redis/stats", authMiddleware_1.default, authorizeAdmin(), cacheController_1.getCacheStatsController);
+router.post("/redis/clear-cache", authMiddleware_1.default, authorizeAdmin(), cacheController_1.clearCacheController);
 exports.default = router;
 //# sourceMappingURL=systemRoutes.js.map

@@ -1,6 +1,10 @@
 import { Router } from "express";
 import authenticate from "../../middlewares/authMiddleware";
-import { authorizeAnyPermission, authorizeRole } from "../../middlewares/permissionMiddleware";
+import {
+  authorizeAccess,
+  authorizeAnyPermission,
+  authorizeRole,
+} from "../../middlewares/permissionMiddleware";
 import {
   createMachineBox,
   createMachinePaper,
@@ -67,131 +71,108 @@ import {
   updatePaperType,
   updateSupplierPaperCode,
 } from "../../controller/admin/adminPaperCodeController";
-
 const router = Router();
 
-// Admin routes for managing orders
+const authorizeAdmin = () => authorizeAccess({});
+const authorizeManagerSale = () => authorizeAccess({ departments: ["Sale"], requireDept: true });
+
+// Admin routes for managing orders authorizeAdmin(),
 //===============================ORDERS=====================================
-router.get("/orders", authenticate, authorizeRole(["admin", "manager"]), getOrderPending);
-router.post("/orders/send-otp", authenticate, authorizeRole(["admin", "manager"]), requestOtpCode);
-router.put("/orders", authenticate, authorizeRole(["admin", "manager"]), updateStatusAdmin);
+router.get("/orders", authenticate, authorizeManagerSale(), getOrderPending);
+router.post("/orders/send-otp", authenticate, authorizeManagerSale(), requestOtpCode);
+router.put("/orders", authenticate, authorizeManagerSale(), updateStatusAdmin);
 
 //===============================USERS=====================================
-router.get("/users", authenticate, authorizeRole(["admin"]), getUsersExcludeAdmin);
-router.put("/users", authenticate, authorizeRole(["admin"]), updateInfoUser);
-router.delete("/users", authenticate, authorizeRole(["admin"]), deleteUser);
+router.get("/users", authenticate, authorizeAdmin(), getUsersExcludeAdmin);
+router.put("/users", authenticate, authorizeAdmin(), updateInfoUser);
+router.delete("/users", authenticate, authorizeAdmin(), deleteUser);
 
 //===============================MACHINE PAPER=====================================
 
-router.get("/machine-papers", authenticate, authorizeRole(["admin"]), getMachinePapers);
-router.post("/machine-papers", authenticate, authorizeRole(["admin"]), createMachinePaper);
-router.put("/machine-papers", authenticate, authorizeRole(["admin"]), updateMachinePaper);
-router.delete("/machine-papers", authenticate, authorizeRole(["admin"]), deleteMachinePaper);
+router.get("/machine-papers", authenticate, authorizeAdmin(), getMachinePapers);
+router.post("/machine-papers", authenticate, authorizeAdmin(), createMachinePaper);
+router.put("/machine-papers", authenticate, authorizeAdmin(), updateMachinePaper);
+router.delete("/machine-papers", authenticate, authorizeAdmin(), deleteMachinePaper);
 
 //using to get machine for FE
 router.get("/machine-papers/machine-name", authenticate, getRawMachinePapers);
 
 //===============================MACHINE BOX=====================================
-router.get("/machine-boxes", authenticate, authorizeRole(["admin"]), getMachineBoxes);
-router.post("/machine-boxes", authenticate, authorizeRole(["admin"]), createMachineBox);
-router.put("/machine-boxes", authenticate, authorizeRole(["admin"]), updateMachineBox);
-router.delete("/machine-boxes", authenticate, authorizeRole(["admin"]), deleteMachineBox);
+router.get("/machine-boxes", authenticate, authorizeAdmin(), getMachineBoxes);
+router.post("/machine-boxes", authenticate, authorizeAdmin(), createMachineBox);
+router.put("/machine-boxes", authenticate, authorizeAdmin(), updateMachineBox);
+router.delete("/machine-boxes", authenticate, authorizeAdmin(), deleteMachineBox);
 
 //===============================WASTE NORM PAPER=====================================
-router.get("/waste-norms/papers", authenticate, authorizeRole(["admin"]), getWastePapers);
-router.post("/waste-norms/papers", authenticate, authorizeRole(["admin"]), createWastePaper);
-router.put("/waste-norms/papers", authenticate, authorizeRole(["admin"]), updateWastePaper);
-router.delete("/waste-norms/papers", authenticate, authorizeRole(["admin"]), deleteWastePaper);
+router.get("/waste-norms/papers", authenticate, authorizeAdmin(), getWastePapers);
+router.post("/waste-norms/papers", authenticate, authorizeAdmin(), createWastePaper);
+router.put("/waste-norms/papers", authenticate, authorizeAdmin(), updateWastePaper);
+router.delete("/waste-norms/papers", authenticate, authorizeAdmin(), deleteWastePaper);
 
 //===============================WASTE NORM BOX=====================================
-router.get("/waste-norms/boxes", authenticate, authorizeRole(["admin"]), getWasteBoxes);
-router.post("/waste-norms/boxes", authenticate, authorizeRole(["admin"]), createWasteBox);
-router.put("/waste-norms/boxes", authenticate, authorizeRole(["admin"]), updateWasteBox);
-router.delete("/waste-norms/boxes", authenticate, authorizeRole(["admin"]), deleteWasteBox);
+router.get("/waste-norms/boxes", authenticate, authorizeAdmin(), getWasteBoxes);
+router.post("/waste-norms/boxes", authenticate, authorizeAdmin(), createWasteBox);
+router.put("/waste-norms/boxes", authenticate, authorizeAdmin(), updateWasteBox);
+router.delete("/waste-norms/boxes", authenticate, authorizeAdmin(), deleteWasteBox);
 
 //===============================WAVE CREST COEFFICIENT=====================================
-router.get("/wave-crest-coeff", authenticate, authorizeRole(["admin"]), getWaveCrestCoefficient);
-router.post("/wave-crest-coeff", authenticate, authorizeRole(["admin"]), createWaveCrest);
-router.put("/wave-crest-coeff", authenticate, authorizeRole(["admin"]), updateWaveCrest);
-router.delete("/wave-crest-coeff", authenticate, authorizeRole(["admin"]), deleteWaveCrest);
+router.get("/wave-crest-coeff", authenticate, authorizeAdmin(), getWaveCrestCoefficient);
+router.post("/wave-crest-coeff", authenticate, authorizeAdmin(), createWaveCrest);
+router.put("/wave-crest-coeff", authenticate, authorizeAdmin(), updateWaveCrest);
+router.delete("/wave-crest-coeff", authenticate, authorizeAdmin(), deleteWaveCrest);
 
 //===============================CRITERIA=====================================
-router.get("/criterias", authenticate, authorizeAnyPermission(["QC"]), getAllQcCriteria);
-router.post("/criterias", authenticate, authorizeRole(["admin"]), createNewCriteria);
-router.put("/criterias", authenticate, authorizeRole(["admin"]), updateCriteria);
-router.delete("/criterias", authenticate, authorizeRole(["admin"]), deleteCriteria);
+router.get(
+  "/criterias",
+  authenticate,
+  authorizeAccess({ departments: ["QC"], permissions: ["QC"], requireDept: true }),
+  getAllQcCriteria,
+);
+router.post("/criterias", authenticate, authorizeAdmin(), createNewCriteria);
+router.put("/criterias", authenticate, authorizeAdmin(), updateCriteria);
+router.delete("/criterias", authenticate, authorizeAdmin(), deleteCriteria);
 
 //===============================CRITERIA CHECK=====================================
 router.get("/criteria-check", authenticate, getAllCriteriaCheck);
-router.post("/criteria-check", authenticate, authorizeRole(["admin"]), createNewCriteriaCheck);
-router.put("/criteria-check", authenticate, authorizeRole(["admin"]), updateCriteriaCheck);
-router.delete("/criteria-check", authenticate, authorizeRole(["admin"]), deleteCriteriaCheck);
+router.post("/criteria-check", authenticate, authorizeAdmin(), createNewCriteriaCheck);
+router.put("/criteria-check", authenticate, authorizeAdmin(), updateCriteriaCheck);
+router.delete("/criteria-check", authenticate, authorizeAdmin(), deleteCriteriaCheck);
 
 //===============================FLUTE RATIO=====================================
-router.get("/flute-ratios", authenticate, authorizeRole(["admin"]), getAllFluteRatio);
-router.post("/flute-ratios", authenticate, authorizeRole(["admin"]), createFluteRatio);
-router.put("/flute-ratios", authenticate, authorizeRole(["admin"]), updateFluteRatio);
-router.delete("/flute-ratios", authenticate, authorizeRole(["admin"]), deleteFluteRatio);
+router.get("/flute-ratios", authenticate, authorizeAdmin(), getAllFluteRatio);
+router.post("/flute-ratios", authenticate, authorizeAdmin(), createFluteRatio);
+router.put("/flute-ratios", authenticate, authorizeAdmin(), updateFluteRatio);
+router.delete("/flute-ratios", authenticate, authorizeAdmin(), deleteFluteRatio);
 
 //===============================VEHICLE=====================================
 router.get("/vehicles", authenticate, getAllVehicle);
-router.post("/vehicles", authenticate, authorizeRole(["admin", "manager"]), createNewVehicle);
-router.put("/vehicles", authenticate, authorizeRole(["admin", "manager"]), updateVehicle);
-router.delete("/vehicles", authenticate, authorizeRole(["admin", "manager"]), deleteVehicle);
+router.post("/vehicles", authenticate, authorizeAdmin(), createNewVehicle);
+router.put("/vehicles", authenticate, authorizeAdmin(), updateVehicle);
+router.delete("/vehicles", authenticate, authorizeAdmin(), deleteVehicle);
 
 // =========================== SUPPLIERS =================================
 router.get("/suppliers", authenticate, getAllSuppliers);
-router.post("/suppliers", authenticate, authorizeRole(["admin"]), createSupplier);
-router.put("/suppliers", authenticate, authorizeRole(["admin"]), handleUpdateSupplier);
+router.post("/suppliers", authenticate, authorizeAdmin(), createSupplier);
+router.put("/suppliers", authenticate, authorizeAdmin(), handleUpdateSupplier);
 
 // ========================== PAPER TYPES ================================
 router.get("/paper-types", authenticate, getAllPaperTypes);
-router.post("/paper-types", authenticate, authorizeRole(["admin"]), createPaperType);
-router.put("/paper-types", authenticate, authorizeRole(["admin"]), updatePaperType);
+router.post("/paper-types", authenticate, authorizeAdmin(), createPaperType);
+router.put("/paper-types", authenticate, authorizeAdmin(), updatePaperType);
 
 // ====================== PAPER BASIS WEIGHTS ============================
 router.get("/paper-basis-weights", authenticate, getAllBasisWeights);
-router.post("/paper-basis-weights", authenticate, authorizeRole(["admin"]), createBasisWeight);
-router.put("/paper-basis-weights", authenticate, authorizeRole(["admin"]), updateBasisWeight);
+router.post("/paper-basis-weights", authenticate, authorizeAdmin(), createBasisWeight);
+router.put("/paper-basis-weights", authenticate, authorizeAdmin(), updateBasisWeight);
 
 // ====================== SUPPLIER PAPER CODES ===========================
-router.get(
-  "/supplier-paper-codes",
-  authenticate,
-  authorizeRole(["admin"]),
-  getAllSupplierPaperCodes,
-);
-router.post(
-  "/supplier-paper-codes",
-  authenticate,
-  authorizeRole(["admin"]),
-  createSupplierPaperCode,
-);
-router.put(
-  "/supplier-paper-codes",
-  authenticate,
-  authorizeRole(["admin"]),
-  updateSupplierPaperCode,
-);
+router.get("/supplier-paper-codes", authenticate, authorizeAdmin(), getAllSupplierPaperCodes);
+router.post("/supplier-paper-codes", authenticate, authorizeAdmin(), createSupplierPaperCode);
+router.put("/supplier-paper-codes", authenticate, authorizeAdmin(), updateSupplierPaperCode);
 
 // ====================== PAPER CLASSIFICATIONS ==========================
-router.get(
-  "/paper-classifications",
-  authenticate,
-  authorizeRole(["admin"]),
-  getAllPaperClassifications,
-);
-router.post(
-  "/paper-classifications",
-  authenticate,
-  authorizeRole(["admin"]),
-  createPaperClassification,
-);
-router.put(
-  "/paper-classifications",
-  authenticate,
-  authorizeRole(["admin"]),
-  updatePaperClassification,
-);
+router.get("/paper-classifications", authenticate, authorizeAdmin(), getAllPaperClassifications);
+router.post("/paper-classifications", authenticate, authorizeAdmin(), createPaperClassification);
+router.put("/paper-classifications", authenticate, authorizeAdmin(), updatePaperClassification);
 
 export default router;

@@ -6,6 +6,13 @@ export interface MonthlyErrorReportInput {
   machine?: string;
   employeeId?: number | "all";
   type: "paper" | "box";
+  currentUser?: {
+    userId: number;
+    role: string;
+    fullName: string;
+    department?: string;
+    permissions?: string[];
+  };
 }
 
 export interface MonthlyErrorReportRow {
@@ -31,6 +38,13 @@ export interface YearlyErrorReportInput {
   machine?: string;
   employeeId?: number | "all";
   type: "paper" | "box";
+  currentUser?: {
+    userId: number;
+    role: string;
+    fullName: string;
+    department?: string;
+    permissions?: string[];
+  };
 }
 
 export interface ErrorStatMetric {

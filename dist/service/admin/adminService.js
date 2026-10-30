@@ -353,7 +353,9 @@ exports.adminService = {
                     user.permissions = ["all"];
                 }
                 else if (newRole === "manager") {
-                    user.permissions = ["manager"];
+                    if (!user.permissions || user.permissions.length === 0) {
+                        user.permissions = ["read"];
+                    }
                 }
                 else {
                     user.permissions = ["read"];

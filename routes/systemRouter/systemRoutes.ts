@@ -1,6 +1,6 @@
 import Router from "express";
 import authenticate from "../../middlewares/authMiddleware";
-import { authorizeRole } from "../../middlewares/permissionMiddleware";
+import { authorizeAccess } from "../../middlewares/permissionMiddleware";
 import { cleanAllForeignKeysDb } from "../../controller/system/systemController";
 import {
   clearCacheController,
@@ -9,11 +9,13 @@ import {
 
 const router = Router();
 
+const authorizeAdmin = () => authorizeAccess({});
+
 //clear foreign key
-router.post("/clear-fk", authenticate, authorizeRole(["admin"]), cleanAllForeignKeysDb);
+router.post("/clear-fk", authenticate, authorizeAdmin(), cleanAllForeignKeysDb);
 
 //redis cache management
-router.get("/redis/stats", authenticate, authorizeRole(["admin"]), getCacheStatsController);
-router.post("/redis/clear-cache", authenticate, authorizeRole(["admin"]), clearCacheController);
+router.get("/redis/stats", authenticate, authorizeAdmin(), getCacheStatsController);
+router.post("/redis/clear-cache", authenticate, authorizeAdmin(), clearCacheController);
 
 export default router;

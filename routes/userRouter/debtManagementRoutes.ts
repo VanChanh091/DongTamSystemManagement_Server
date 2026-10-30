@@ -1,6 +1,6 @@
 import Router from "express";
 import authenticate from "../../middlewares/authMiddleware";
-import { authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
+import { authorizeAccess, authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
 import {
   exportDebtCustomer,
   getCustomerDebtSummary,
@@ -23,80 +23,68 @@ import {
   getPaymentAlocationHistory,
   exportExcelPaymentAllocations,
 } from "../../controller/user/warehouse/debt/paymentAllocationController";
+import { AuthorizeAccessParams } from "../../interface/types";
+import { authorizeSaleAccess } from "./orderRoutes";
 
 const router = Router();
+
+const authorizeDebtAccess = ({
+  departments = [],
+  permissions = [],
+  requireDept = true,
+}: AuthorizeAccessParams = {}) =>
+  authorizeAccess({
+    departments: [...new Set(["Accountant", ...departments])],
+    permissions: [...new Set(["accountant", ...permissions])],
+    requireDept,
+  });
 
 //=============================PAYMENT ALLOCATION===================================
 router.get(
   "/allocations/outbound",
   authenticate,
-  authorizeAnyPermission(["accountant", "sale"]),
+  authorizeDebtAccess({ departments: ["Sale"], permissions: ["sale"] }),
   getPaymentAlocationHistory,
 );
 router.post(
   "/allocations/export",
   authenticate,
-  authorizeAnyPermission(["accountant"]),
+  authorizeDebtAccess(),
   exportExcelPaymentAllocations,
 );
 
 //=================================CLOSING DEBT=======================================
 router.get("/closing-debt", authenticate, getCustomerDebtSummary);
-router.post(
-  "/closing-debt",
-  authenticate,
-  authorizeAnyPermission(["accountant"]),
-  handleClosingDebt,
-);
-router.post(
-  "/closing-debt/export",
-  authenticate,
-  authorizeAnyPermission(["accountant"]),
-  exportDebtCustomer,
-);
+router.post("/closing-debt", authenticate, authorizeDebtAccess(), handleClosingDebt);
+router.post("/closing-debt/export", authenticate, authorizeDebtAccess(), exportDebtCustomer);
 
 //=================================PAYMENT=======================================
-router.post(
-  "/payment",
-  authenticate,
-  authorizeAnyPermission(["accountant"]),
-  paymentDebtByCustomerId,
-);
+router.post("/payment", authenticate, authorizeDebtAccess(), paymentDebtByCustomerId);
 router.post(
   "/payment/import",
   authenticate,
   upload.single("file"),
-  authorizeAnyPermission(["accountant"]),
+  authorizeDebtAccess(),
   importAmountPayment,
 );
-router.put("/payment", authenticate, authorizeAnyPermission(["accountant"]), writeOffDebt);
+router.put("/payment", authenticate, authorizeDebtAccess(), writeOffDebt);
 
 //=================================DEDUCTION REQUESTS===========================
-router.get("/deduction-requests", authenticate, getDebtDeductionRequests);
-router.post(
+router.get(
   "/deduction-requests",
   authenticate,
-  authorizeAnyPermission(["sale"]),
-  createDebtDeduction,
+  authorizeAccess({ departments: ["Accountant", "Sale"], permissions: ["accountant", "sale"] }),
+  getDebtDeductionRequests,
 );
-router.put(
-  "/deduction-requests",
-  authenticate,
-  authorizeAnyPermission(["sale"]),
-  updateDebtDeduction,
-);
-router.delete(
-  "/deduction-requests",
-  authenticate,
-  authorizeAnyPermission(["sale"]),
-  deleteDebtDeduction,
-);
+router.post("/deduction-requests", authenticate, authorizeSaleAccess(), createDebtDeduction);
+router.put("/deduction-requests", authenticate, authorizeSaleAccess(), updateDebtDeduction);
+router.delete("/deduction-requests", authenticate, authorizeSaleAccess(), deleteDebtDeduction);
 
 // Gửi OTP khẩn cấp về Telegram
 router.post(
   "/deduction-requests/otp",
   authenticate,
-  authorizeAnyPermission(["sale"]),
+  authorizeSaleAccess(),
   requestOrVerifyUrgentOtp,
 );
 
@@ -104,7 +92,7 @@ router.post(
 router.put(
   "/deduction-requests/status",
   authenticate,
-  authorizeAnyPermission(["admin", "manager"]),
+  authorizeAccess({ departments: ["Accountant"], permissions: [], requireDept: true }),
   updateDebtDeductionStatus,
 );
 

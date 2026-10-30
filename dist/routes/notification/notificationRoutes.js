@@ -7,13 +7,14 @@ const express_1 = __importDefault(require("express"));
 const authMiddleware_1 = __importDefault(require("../../middlewares/authMiddleware"));
 const notificationController_1 = require("../../controller/notification/notificationController");
 const permissionMiddleware_1 = require("../../middlewares/permissionMiddleware");
+const orderRoutes_1 = require("../userRouter/orderRoutes");
 const router = (0, express_1.default)();
 //=======================NOTIFICATION=======================
 router.get("/", authMiddleware_1.default, notificationController_1.getMyNofitications);
 router.put("/", authMiddleware_1.default, notificationController_1.confirmRequestChanging);
 //=======================EVENT=======================
-router.post("/order", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["sale"]), notificationController_1.requestChangeInfoOrder);
-router.post("/planning", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAnyPermission)(["plan"]), notificationController_1.handleRequestChanging);
+router.post("/order", authMiddleware_1.default, (0, orderRoutes_1.authorizeSaleAccess)(), notificationController_1.requestChangeInfoOrder);
+router.post("/planning", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAccess)({ departments: ["Operation"], permissions: ["plan"], requireDept: true }), notificationController_1.handleRequestChanging);
 // Ném đoạn này vào file route hoặc app.ts của Node.js
 router.get("/test-push", (req, res) => {
     // Vì log trước báo sếp đang login User 1 (Admin), ta ép bắn thẳng vào room 'user-1'
