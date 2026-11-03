@@ -16,10 +16,10 @@ const router = Router();
 const authorizePaperAccess = ({
   departments = [],
   permissions = [],
-  requireDept = true,
+  requireDept = false,
 }: AuthorizeAccessParams = {}) =>
   authorizeAccess({
-    departments: [...new Set(["Production", ...departments])],
+    departments: [...new Set(["Production", "Operation", ...departments])],
     permissions: [
       ...new Set([
         "machine1350",
@@ -27,6 +27,7 @@ const authorizePaperAccess = ({
         "machine1900",
         "machine2Layer",
         "MachineRollPaper",
+        "plan",
         ...permissions,
       ]),
     ],
@@ -36,11 +37,11 @@ const authorizePaperAccess = ({
 const authorizeBoxAccess = ({
   departments = [],
   permissions = [],
-  requireDept = true,
+  requireDept = false,
 }: AuthorizeAccessParams = {}) =>
   authorizeAccess({
-    departments: [...new Set(["Production", ...departments])],
-    permissions: [...new Set(["step2Production", ...permissions])],
+    departments: [...new Set(["Production", "Operation", ...departments])],
+    permissions: [...new Set(["step2Production", "plan", ...permissions])],
     requireDept,
   });
 

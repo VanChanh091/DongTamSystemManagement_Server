@@ -20,7 +20,7 @@ const authorizePlanningAccess = () =>
 router.get(
   "/count-pending",
   authenticate,
-  authorizeAccess({ departments: ["Sale"], permissions: ["manager"], requireDept: true }),
+  authorizeAccess({ departments: ["Sale"], roles: ["manager"], requireDept: true }),
   countOrderPending,
 );
 
@@ -63,7 +63,7 @@ router.get(
 router.get(
   "/count-debt-deduction",
   authenticate,
-  authorizeAccess({ departments: ["Accountant"], permissions: ["accountant"], requireDept: true }),
+  authorizeAccess({ departments: ["Accountant"], roles: ["manager"], requireDept: true }),
   countDebtDeduction,
 );
 

@@ -3,26 +3,26 @@ dotenv.config();
 
 import { Request } from "express";
 import { Op, Transaction } from "sequelize";
-import { meiliService } from "../system/meiliService";
 import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
+import { meiliService } from "../system/meiliService";
+import { RequestType } from "../notification/requestType";
 import { PlanningBox } from "../../models/planning/planningBox";
 import { PlanningPaper } from "../../models/planning/planningPaper";
-import { InspectionRequest } from "../../models/qualityControl/inspection/inspection_request";
-import { cancelInspectionTimers } from "../../assets/configs/queue/inspection.queue";
-import { NotificationModel } from "../../models/notification/notification";
-import { UserNotifications } from "../../models/notification/userNotifications";
-import { RequestType } from "../notification/requestType";
 import { reportRepository } from "../../repository/reportRepository";
 import { machineLabels, MEILI_INDEX } from "../../assets/labelFields";
-import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { planningPaperService } from "../planning/planningPaperService";
+import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { manufactureRepo } from "../../repository/manufactureRepository";
+import { NotificationModel } from "../../models/notification/notification";
 import { ReportPlanningPaper } from "../../models/report/reportPlanningPaper";
-import { mergeShiftField } from "../../utils/helper/modelHelper/planning.timeRunning.helper";
+import { UserNotifications } from "../../models/notification/userNotifications";
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
 import { createReportPlanning } from "../../utils/helper/modelHelper/reportHelper";
 import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
+import { cancelInspectionTimers } from "../../assets/configs/queue/inspection.queue";
+import { mergeShiftField } from "../../utils/helper/modelHelper/planning.timeRunning.helper";
+import { InspectionRequest } from "../../models/qualityControl/inspection/inspection_request";
 import {
   aggregateReportFields,
   updateStatusPaper,
@@ -125,8 +125,8 @@ export const manuPaperService = {
     data: any;
     user: any;
   }) => {
-    const { role, permissions: userPermissions } = user;
-    const { qtyProduced, dayCompleted, reportedBy, ...otherData } = data;
+    const { role, department, permissions: userPermissions = [] } = user;
+    const { qtyProduced, dayCompleted, reportedBy, isPlanningReport, ...otherData } = data;
 
     try {
       return await runInTransaction(async (transaction) => {
@@ -138,6 +138,11 @@ export const manuPaperService = {
         if (!employee) {
           throw AppError.NotFound("employee not found", "EMPLOYEE_NOT_FOUND");
         }
+
+        // Kiểm tra user Kế hoạch (Operation)
+        const isOperationPlanning =
+          Boolean(isPlanningReport) &&
+          (role === "admin" || department?.toLowerCase() === "operation" || userPermissions.includes("plan"));
 
         // 1. Tìm kế hoạch hiện tại
         const planning = await manufactureRepo.getPapersById(planningId, transaction);
@@ -151,8 +156,8 @@ export const manuPaperService = {
           throw AppError.BadRequest(`Invalid machine: ${machine}`, "INVALID_MACHINE");
         }
 
-        //check permission for machine
-        if (role !== "admin" && role !== "manager") {
+        //check permission for machine (bỏ qua nếu là kế hoạch báo cáo)
+        if (role !== "admin" && role !== "manager" && !isOperationPlanning) {
           if (!userPermissions.includes(machineLabel)) {
             throw AppError.Unauthorized(
               `Access denied: You don't have permission to report for machine ${machine}`,
@@ -196,9 +201,14 @@ export const manuPaperService = {
           otherData.shiftProduction,
         );
 
+        // Kế hoạch báo cáo: lấy trực tiếp tên nhân viên kế hoạch gán vào shiftManagement
+        const shiftManagementToApply = isOperationPlanning
+          ? employee.fullName
+          : otherData.shiftManagement;
+
         let updatedShiftManagement = mergeShiftField(
           planning.shiftManagement || "",
-          otherData.shiftManagement,
+          shiftManagementToApply,
         );
 
         await CrudHelper.updateData({
@@ -243,6 +253,10 @@ export const manuPaperService = {
         }
 
         // tạo report theo số lần báo cáo
+        if (isOperationPlanning) {
+          otherData.shiftManagement = employee.fullName;
+        }
+
         const reportCreated = await createReportPlanning({
           planning: planning.toJSON(),
           model: ReportPlanningPaper,
@@ -326,8 +340,8 @@ export const manuPaperService = {
     updateData: any;
     user: any;
   }) => {
-    const { role, permissions: userPermissions } = user;
-    const { qtyProduced: newQty, reportedBy, ...otherData } = updateData;
+    const { role, department, permissions: userPermissions = [] } = user;
+    const { qtyProduced: newQty, reportedBy, isPlanningReport, ...otherData } = updateData;
 
     try {
       return await runInTransaction(async (transaction) => {
@@ -340,6 +354,10 @@ export const manuPaperService = {
           throw AppError.NotFound("employee not found", "EMPLOYEE_NOT_FOUND");
         }
 
+        const isOperationPlanning =
+          Boolean(isPlanningReport) &&
+          (role === "admin" || department?.toLowerCase() === "operation" || userPermissions.includes("plan"));
+
         //check report existed
         const oldReport = await manufactureRepo.getReportPaperByPlanningId(planningId, transaction);
         if (!oldReport) {
@@ -351,9 +369,9 @@ export const manuPaperService = {
           throw AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
         }
 
-        //check permission for machine
+        //check permission for machine (bỏ qua nếu là kế hoạch báo cáo)
         const machineLabel = machineLabels[planning.chooseMachine];
-        if (role !== "admin" && role !== "manager") {
+        if (role !== "admin" && role !== "manager" && !isOperationPlanning) {
           if (!userPermissions.includes(machineLabel)) {
             throw AppError.Unauthorized("Access denied for this machine", "ACCESS_DENIED");
           }
@@ -390,6 +408,10 @@ export const manuPaperService = {
           durationMinutes > 0 ? Math.round((parseTotalLength / durationMinutes) * 100) / 100 : 0;
 
         //update report paper
+        if (isOperationPlanning) {
+          otherData.shiftManagement = employee.fullName;
+        }
+
         const reportUpdated = await oldReport.update(
           {
             qtyProduced: newQty,

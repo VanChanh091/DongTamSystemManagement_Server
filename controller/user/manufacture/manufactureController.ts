@@ -128,7 +128,7 @@ export const addReportBox = async (req: Request, res: Response, next: NextFuncti
   const { planningBoxId, machine } = req.query as { planningBoxId: string; machine: string };
 
   try {
-    const response = await manuBoxService.addReportBox(Number(planningBoxId), machine, req.body);
+    const response = await manuBoxService.addReportBox(Number(planningBoxId), machine, req.body, req.user);
     return res.status(201).json(response);
   } catch (error) {
     next(error);
@@ -159,7 +159,7 @@ export const updateReportBox = async (req: Request, res: Response, next: NextFun
 
     switch (action) {
       case "EDIT_REPORT":
-        response = await manuBoxService.updateReportBox(idArray[0], machine, req.body);
+        response = await manuBoxService.updateReportBox(idArray[0], machine, req.body, req.user);
         break;
       case "REQUEST_COMPLETE":
         response = await manuBoxService.requestCompletePlanningBox(idArray, machine);

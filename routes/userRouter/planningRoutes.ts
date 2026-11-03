@@ -35,7 +35,6 @@ const authorizePlanAccess = authorizeAccess({
 
 // ========================= PLANNING STATUS =========================
 router.get("/planning-orders", authenticate, authorizePlanAccess, getOrderAccept);
-
 router.post("/planning-orders", authenticate, authorizePlanAccess, planningOrder);
 router.put("/planning-orders", authenticate, authorizePlanAccess, backOrderToReject);
 
@@ -46,12 +45,11 @@ router.put("/planning-stops", authenticate, authorizePlanAccess, cancelOrContinu
 // ========================= PLANNING PAPER =========================
 router.get("/planning-papers", authenticate, getPlanningPapers);
 router.post("/planning-papers", authenticate, authorizePlanAccess, updateIndex_TimeRunning);
-router.post("/export", authenticate, authorizePlanAccess, exportExcelPlanningPaper);
 router.put("/planning-papers", authenticate, authorizePlanAccess, handleUpdatePlanningPapers);
+router.post("/export", authenticate, authorizePlanAccess, exportExcelPlanningPaper);
 
 // ========================= PLANNING BOX =========================
 router.get("/planning-boxes", authenticate, getPlanningBoxes);
-
 router.post("/planning-boxes", authenticate, authorizePlanAccess, updateIndex_TimeRunningBox);
 router.put("/planning-boxes", authenticate, authorizePlanAccess, updatePlanningBoxes);
 
@@ -59,13 +57,13 @@ router.put("/planning-boxes", authenticate, authorizePlanAccess, updatePlanningB
 router.get(
   "/paper-requirements",
   authenticate,
-  authorizeAccess({ departments: ["Operation"], permissions: ["plan", "manager"] }),
+  authorizeAccess({ departments: ["Operation"], requireDept: true }),
   getPaperRequirements,
 );
 router.get(
   "/paper-requirements/summary",
   authenticate,
-  authorizeAccess({ departments: ["Operation"], permissions: ["plan", "manager"] }),
+  authorizeAccess({ departments: ["Operation"] }),
   calculateSummaryByGhepKho,
 );
 

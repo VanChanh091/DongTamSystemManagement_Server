@@ -1,10 +1,6 @@
 import { Router } from "express";
 import authenticate from "../../middlewares/authMiddleware";
-import {
-  authorizeAccess,
-  authorizeAnyPermission,
-  authorizeRole,
-} from "../../middlewares/permissionMiddleware";
+import { authorizeAccess } from "../../middlewares/permissionMiddleware";
 import {
   createMachineBox,
   createMachinePaper,
@@ -74,7 +70,8 @@ import {
 const router = Router();
 
 const authorizeAdmin = () => authorizeAccess({});
-const authorizeManagerSale = () => authorizeAccess({ departments: ["Sale"], requireDept: true });
+const authorizeManagerSale = () =>
+  authorizeAccess({ departments: ["Sale"], roles: ["manager"], requireDept: true });
 
 // Admin routes for managing orders authorizeAdmin(),
 //===============================ORDERS=====================================

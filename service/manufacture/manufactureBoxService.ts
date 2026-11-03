@@ -98,8 +98,8 @@ export const manuBoxService = {
     }
   },
 
-  addReportBox: async (planningBoxId: number, machine: string, data: any) => {
-    const { qtyProduced, dayCompleted, rpWasteLoss, shiftManagement, reportedBy } = data;
+  addReportBox: async (planningBoxId: number, machine: string, data: any, user?: any) => {
+    const { qtyProduced, dayCompleted, rpWasteLoss, shiftManagement, reportedBy, isPlanningReport } = data;
 
     try {
       return await runInTransaction(async (transaction) => {
@@ -112,6 +112,13 @@ export const manuBoxService = {
           throw AppError.NotFound("employee not found", "EMPLOYEE_NOT_FOUND");
         }
 
+        // Kiểm tra user Kế hoạch (Operation)
+        const isOperationPlanning =
+          Boolean(isPlanningReport) &&
+          (user?.role === "admin" ||
+            user?.department?.toLowerCase() === "operation" ||
+            user?.permissions?.includes("plan"));
+
         // 1. Tìm kế hoạch hiện tại
         const planning = await manufactureRepo.getBoxById(planningBoxId, machine, transaction);
         if (!planning) {
@@ -122,7 +129,9 @@ export const manuBoxService = {
         const newQtyProduced = Number(planning.qtyProduced || 0) + Number(qtyProduced || 0);
         const newQtyWasteNorm = Number(planning.rpWasteLoss || 0) + Number(rpWasteLoss || 0);
 
-        const mergedShift = mergeShiftField(planning.shiftManagement ?? "", shiftManagement);
+        // Kế hoạch báo cáo: lấy trực tiếp tên nhân viên kế hoạch gán vào shiftManagement
+        const shiftManagementToApply = isOperationPlanning ? employee.fullName : shiftManagement;
+        const mergedShift = mergeShiftField(planning.shiftManagement ?? "", shiftManagementToApply);
         const isCompletedOrder = newQtyProduced >= (planning.runningPlan || 0);
 
         const overflow = await CrudHelper.findOne({
@@ -184,7 +193,7 @@ export const manuBoxService = {
           qtyProduced: qtyProduced,
           qtyWasteNorm: rpWasteLoss,
           dayReportValue: new Date(dayReportValue ?? ""),
-          shiftManagementBox: shiftManagement,
+          shiftManagementBox: shiftManagementToApply,
           machine: planning.machine,
           reportedBy: employee.fullName,
           totalPrice: Number(qtyProduced) * planning.PlanningBox.Order.pricePaper,
@@ -243,8 +252,8 @@ export const manuBoxService = {
     }
   },
 
-  updateReportBox: async (planningBoxId: number, machine: string, updateData: any) => {
-    const { qtyProduced: newQty, rpWasteLoss: newWaste, shiftManagement, reportedBy } = updateData;
+  updateReportBox: async (planningBoxId: number, machine: string, updateData: any, user?: any) => {
+    const { qtyProduced: newQty, rpWasteLoss: newWaste, shiftManagement, reportedBy, isPlanningReport } = updateData;
 
     try {
       return await runInTransaction(async (transaction) => {
@@ -256,6 +265,14 @@ export const manuBoxService = {
         if (!employee) {
           throw AppError.NotFound("employee not found", "EMPLOYEE_NOT_FOUND");
         }
+
+        const isOperationPlanning =
+          Boolean(isPlanningReport) &&
+          (user?.role === "admin" ||
+            user?.department?.toLowerCase() === "operation" ||
+            user?.permissions?.includes("plan"));
+
+        const shiftManagementToApply = isOperationPlanning ? employee.fullName : shiftManagement;
 
         //check report existed
         const oldReport = await manufactureRepo.getReportBoxByPlanningBoxId(
@@ -292,7 +309,7 @@ export const manuBoxService = {
             qtyProduced: newQty,
             wasteLoss: newWaste,
             lackOfQty: newLackOfQty,
-            shiftManagement: shiftManagement,
+            shiftManagement: shiftManagementToApply,
             reportedBy: employee.fullName,
           },
           { transaction },
