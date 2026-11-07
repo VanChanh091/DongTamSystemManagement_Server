@@ -9,6 +9,7 @@ const sequelize_1 = require("sequelize");
 const inventory_1 = require("../models/warehouse/inventory/inventory");
 const liquidationInventory_1 = require("../models/warehouse/inventory/liquidationInventory");
 const inventoryTransfers_1 = require("../models/warehouse/inventory/inventoryTransfers");
+const planningPaper_1 = require("../models/planning/planningPaper");
 exports.inventoryRepository = {
     //====================================INVENTORY========================================
     buildInventoryOptions: ({ page, pageSize, filter, //gt or lt
@@ -168,6 +169,52 @@ exports.inventoryRepository = {
     },
     syncAllInventoryForMeili: async (whereCondition) => {
         return await inventory_1.Inventory.findAll(exports.inventoryRepository.buildMeiliInventoryOptions({ whereCondition }));
+    },
+    //====================================INVENTORY WIP SHEET========================================
+    buildWipSheetOptions: ({ page, pageSize, whereCondition, isExport = false, }) => {
+        const queryOptions = {
+            where: whereCondition,
+            attributes: { exclude: ["updatedAt"] },
+            include: [
+                {
+                    model: planningPaper_1.PlanningPaper,
+                    attributes: [
+                        "planningId",
+                        "dayReplace",
+                        "matEReplace",
+                        "matBReplace",
+                        "matCReplace",
+                        "matAReplace",
+                        "matE2Replace",
+                        "songEReplace",
+                        "songBReplace",
+                        "songCReplace",
+                        "songAReplace",
+                        "songE2Replace",
+                        "lengthPaperPlanning",
+                        "sizePaperPLaning",
+                    ],
+                },
+                {
+                    model: order_1.Order,
+                    attributes: ["orderId", "dvt", "isBox", "flute", "QC_box", "canLan"],
+                    include: [
+                        { model: customer_1.Customer, attributes: ["customerName"] },
+                        { model: product_1.Product, attributes: ["productName"] },
+                    ],
+                },
+            ],
+        };
+        if (page && pageSize) {
+            queryOptions.offset = (page - 1) * pageSize;
+            queryOptions.limit = pageSize;
+            queryOptions.order = [["createdAt", "DESC"]];
+        }
+        if (isExport) {
+            queryOptions.raw = true;
+            queryOptions.nest = true;
+        }
+        return queryOptions;
     },
     //====================================LIQUIDATION INVENTORY========================================
     getLiquidationInvByPage: async ({ page, pageSize, searching, }) => {

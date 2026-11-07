@@ -270,7 +270,7 @@ exports.adminService = {
     requestApprovalOTP: async ({ orderId, requesterName, }) => {
         try {
             const order = await order_1.Order.findByPk(orderId, {
-                attributes: ["orderId", "totalPriceVAT"],
+                attributes: ["orderId", "totalPriceVAT", "customerId"],
                 include: [
                     {
                         model: customer_1.Customer,

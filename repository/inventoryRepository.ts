@@ -6,6 +6,7 @@ import { FindOptions, Op, Sequelize, Transaction } from "sequelize";
 import { Inventory } from "../models/warehouse/inventory/inventory";
 import { LiquidationInventory } from "../models/warehouse/inventory/liquidationInventory";
 import { InventoryTransfers } from "../models/warehouse/inventory/inventoryTransfers";
+import { PlanningPaper } from "../models/planning/planningPaper";
 
 export const inventoryRepository = {
   //====================================INVENTORY========================================
@@ -223,6 +224,66 @@ export const inventoryRepository = {
     return await Inventory.findAll(
       inventoryRepository.buildMeiliInventoryOptions({ whereCondition }),
     );
+  },
+
+  //====================================INVENTORY WIP SHEET========================================
+  buildWipSheetOptions: ({
+    page,
+    pageSize,
+    whereCondition,
+    isExport = false,
+  }: {
+    page?: number;
+    pageSize?: number;
+    whereCondition?: any;
+    isExport?: boolean;
+  }): FindOptions => {
+    const queryOptions: FindOptions = {
+      where: whereCondition,
+      attributes: { exclude: ["updatedAt"] },
+      include: [
+        {
+          model: PlanningPaper,
+          attributes: [
+            "planningId",
+            "dayReplace",
+            "matEReplace",
+            "matBReplace",
+            "matCReplace",
+            "matAReplace",
+            "matE2Replace",
+            "songEReplace",
+            "songBReplace",
+            "songCReplace",
+            "songAReplace",
+            "songE2Replace",
+            "lengthPaperPlanning",
+            "sizePaperPLaning",
+          ],
+        },
+        {
+          model: Order,
+          attributes: ["orderId", "dvt", "isBox", "flute", "QC_box", "canLan"],
+          include: [
+            { model: Customer, attributes: ["customerName"] },
+            { model: Product, attributes: ["productName"] },
+          ],
+        },
+      ],
+    };
+
+    if (page && pageSize) {
+      queryOptions.offset = (page - 1) * pageSize;
+      queryOptions.limit = pageSize;
+      queryOptions.order = [["createdAt", "DESC"]];
+    }
+
+    if (isExport) {
+      queryOptions.raw = true;
+      queryOptions.nest = true;
+    }
+
+    return queryOptions;
   },
 
   //====================================LIQUIDATION INVENTORY========================================

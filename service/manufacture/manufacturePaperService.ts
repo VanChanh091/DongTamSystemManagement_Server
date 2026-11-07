@@ -28,6 +28,7 @@ import {
   updateStatusPaper,
 } from "../../utils/helper/modelHelper/manufactureHelper";
 import { CrudHelper } from "../../repository/helper/crud.helper.repository";
+import { InventoryWipSheets } from "../../models/warehouse/inventory/inventory_wip_sheets";
 
 export const manuPaperService = {
   getPlanningPaper: async ({
@@ -142,9 +143,11 @@ export const manuPaperService = {
         // Kiểm tra user Kế hoạch (Operation)
         const isOperationPlanning =
           Boolean(isPlanningReport) &&
-          (role === "admin" || department?.toLowerCase() === "operation" || userPermissions.includes("plan"));
+          (role === "admin" ||
+            department?.toLowerCase() === "operation" ||
+            userPermissions.includes("plan"));
 
-        // 1. Tìm kế hoạch hiện tại
+        // Tìm kế hoạch hiện tại
         const planning = await manufactureRepo.getPapersById(planningId, transaction);
         if (!planning) {
           throw AppError.NotFound("planning not found", "PLANNING_NOT_FOUND");
@@ -166,7 +169,7 @@ export const manuPaperService = {
           }
         }
 
-        // 2. Cộng dồn số lượng mới vào số đã có
+        // Cộng dồn số lượng mới vào số đã có
         const newQtyProduced = Number(planning.qtyProduced || 0) + Number(qtyProduced || 0);
         const isCompleted = newQtyProduced >= planning.runningPlan;
 
@@ -310,6 +313,43 @@ export const manuPaperService = {
         //chuyển sang trang chờ kiểm
         await planning.update({ statusRequest: "requested" }, { transaction });
 
+        //update inventory wip sheet
+        const unitPrice = Number(planning.Order?.pricePaper || 0);
+        const producedThisTurn = Number(qtyProduced || 0);
+
+        const invWipSheet = await manufactureRepo.getInvWipSheetByPlanningId(
+          planning.planningId,
+          transaction,
+        );
+
+        if (invWipSheet) {
+          //TH: QC chưa nhập kho -> Cộng dồn số lượng
+          const updatedProduced = Number(invWipSheet.qtyProduced || 0) + producedThisTurn;
+          const updatedRemaining = Number(invWipSheet.qtyRemaining || 0) + producedThisTurn;
+
+          await invWipSheet.update(
+            {
+              qtyProduced: updatedProduced,
+              qtyRemaining: updatedRemaining,
+              totalPrice: updatedProduced * unitPrice,
+            },
+            { transaction },
+          );
+        } else {
+          //TH: QC đã nhập kho -> Tạo bản ghi mới để giữ nguyên lịch sử
+          await InventoryWipSheets.create(
+            {
+              planningId: planning.planningId,
+              orderId: planning.orderId,
+              qtyProduced: producedThisTurn,
+              qtyRemaining: producedThisTurn,
+              unitPrice,
+              totalPrice: producedThisTurn * unitPrice,
+            },
+            { transaction },
+          );
+        }
+
         //--------------------MEILISEARCH-----------------------
         const reportId = reportCreated.report.reportPaperId;
         await manuPaperService.syncPaperForMeili({ reportId, planningData: planning, transaction });
@@ -356,13 +396,18 @@ export const manuPaperService = {
 
         const isOperationPlanning =
           Boolean(isPlanningReport) &&
-          (role === "admin" || department?.toLowerCase() === "operation" || userPermissions.includes("plan"));
+          (role === "admin" ||
+            department?.toLowerCase() === "operation" ||
+            userPermissions.includes("plan"));
 
         //check report existed
         const oldReport = await manufactureRepo.getReportPaperByPlanningId(planningId, transaction);
         if (!oldReport) {
           throw AppError.NotFound("Report not found", "REPORT_NOT_FOUND");
         }
+
+        const oldQty = Number(oldReport.qtyProduced || 0);
+        const deltaQty = Number(newQty) - oldQty;
 
         const planning = await manufactureRepo.getOldPlanningPaper(planningId, transaction);
         if (!planning) {
@@ -455,6 +500,61 @@ export const manuPaperService = {
 
           if (planningBox) {
             await planningBox.update({ qtyPaper: totalQtyProduced }, { transaction });
+          }
+        }
+
+        // update inventory wip sheet
+
+        if (deltaQty !== 0) {
+          const invWipSheet = await manufactureRepo.getInvWipSheetByPlanningId(
+            planning.planningId,
+            transaction,
+          );
+
+          if (invWipSheet) {
+            const qtyAlreadyInbounded =
+              Number(invWipSheet.qtyProduced || 0) - Number(invWipSheet.qtyRemaining || 0);
+            const targetProduced = totalQtyProduced;
+            const updatedRemaining = targetProduced - qtyAlreadyInbounded;
+
+            if (updatedRemaining < 0) {
+              throw AppError.BadRequest(
+                `Không thể giảm số lượng, số lượng tồn không đủ`,
+                "INSUFFICIENT_INVENTORY",
+              );
+            }
+
+            const updatedProduced = Number(invWipSheet.qtyProduced || 0) + deltaQty;
+
+            await invWipSheet.update(
+              {
+                qtyProduced: updatedProduced,
+                qtyRemaining: updatedRemaining,
+                totalPrice: updatedProduced * invWipSheet.unitPrice,
+              },
+              { transaction },
+            );
+          } else {
+            if (deltaQty > 0) {
+              const unitPrice = Number(planning.Order?.pricePaper || 0);
+
+              await InventoryWipSheets.create(
+                {
+                  planningId: planning.planningId,
+                  orderId: planning.orderId,
+                  qtyProduced: deltaQty,
+                  qtyRemaining: deltaQty,
+                  unitPrice,
+                  totalPrice: deltaQty * unitPrice,
+                },
+                { transaction },
+              );
+            } else {
+              throw AppError.BadRequest(
+                "Không thể giảm sản lượng! Tất cả các đợt BTP của kế hoạch này đã được QC nghiệm thu nhập kho thành phẩm.",
+                "WIP_ALREADY_COMPLETED",
+              );
+            }
           }
         }
 

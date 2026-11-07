@@ -309,6 +309,7 @@ exports.adminPaperCodeService = {
                         updateData.weightCategory =
                             `${supplierPaper.paperTypeCode}${formattedBasisWeight}`.toUpperCase();
                     }
+                    console.log(`isActive: ${item.isActive}`);
                     return paperClassifications_1.PaperClassifications.update(updateData, {
                         where: { classificationId: item.classificationId },
                         transaction,

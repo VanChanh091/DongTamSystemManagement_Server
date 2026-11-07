@@ -7,28 +7,29 @@ exports.manuPaperService = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const sequelize_1 = require("sequelize");
-const meiliService_1 = require("../system/meiliService");
 const appError_1 = require("../../utils/appError");
 const order_1 = require("../../models/order/order");
+const meiliService_1 = require("../system/meiliService");
+const requestType_1 = require("../notification/requestType");
 const planningBox_1 = require("../../models/planning/planningBox");
 const planningPaper_1 = require("../../models/planning/planningPaper");
-const inspection_request_1 = require("../../models/qualityControl/inspection/inspection_request");
-const inspection_queue_1 = require("../../assets/configs/queue/inspection.queue");
-const notification_1 = require("../../models/notification/notification");
-const userNotifications_1 = require("../../models/notification/userNotifications");
-const requestType_1 = require("../notification/requestType");
 const reportRepository_1 = require("../../repository/reportRepository");
 const labelFields_1 = require("../../assets/labelFields");
-const transactionHelper_1 = require("../../utils/helper/transactionHelper");
 const planningPaperService_1 = require("../planning/planningPaperService");
+const transactionHelper_1 = require("../../utils/helper/transactionHelper");
 const manufactureRepository_1 = require("../../repository/manufactureRepository");
+const notification_1 = require("../../models/notification/notification");
 const reportPlanningPaper_1 = require("../../models/report/reportPlanningPaper");
-const planning_timeRunning_helper_1 = require("../../utils/helper/modelHelper/planning.timeRunning.helper");
+const userNotifications_1 = require("../../models/notification/userNotifications");
 const timeOverflowPlanning_1 = require("../../models/planning/timeOverflowPlanning");
 const reportHelper_1 = require("../../utils/helper/modelHelper/reportHelper");
 const meiliTransformer_1 = require("../../assets/configs/meilisearch/meiliTransformer");
+const inspection_queue_1 = require("../../assets/configs/queue/inspection.queue");
+const planning_timeRunning_helper_1 = require("../../utils/helper/modelHelper/planning.timeRunning.helper");
+const inspection_request_1 = require("../../models/qualityControl/inspection/inspection_request");
 const manufactureHelper_1 = require("../../utils/helper/modelHelper/manufactureHelper");
 const crud_helper_repository_1 = require("../../repository/helper/crud.helper.repository");
+const inventory_wip_sheets_1 = require("../../models/warehouse/inventory/inventory_wip_sheets");
 exports.manuPaperService = {
     getPlanningPaper: async ({ machine, filterType = "all", }) => {
         try {
@@ -92,8 +93,8 @@ exports.manuPaperService = {
         }
     },
     addReportPaper: async ({ planningId, data, user, }) => {
-        const { role, permissions: userPermissions } = user;
-        const { qtyProduced, dayCompleted, reportedBy, ...otherData } = data;
+        const { role, department, permissions: userPermissions = [] } = user;
+        const { qtyProduced, dayCompleted, reportedBy, isPlanningReport, ...otherData } = data;
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
                 if (!planningId || !qtyProduced || !dayCompleted) {
@@ -103,7 +104,12 @@ exports.manuPaperService = {
                 if (!employee) {
                     throw appError_1.AppError.NotFound("employee not found", "EMPLOYEE_NOT_FOUND");
                 }
-                // 1. Tìm kế hoạch hiện tại
+                // Kiểm tra user Kế hoạch (Operation)
+                const isOperationPlanning = Boolean(isPlanningReport) &&
+                    (role === "admin" ||
+                        department?.toLowerCase() === "operation" ||
+                        userPermissions.includes("plan"));
+                // Tìm kế hoạch hiện tại
                 const planning = await manufactureRepository_1.manufactureRepo.getPapersById(planningId, transaction);
                 if (!planning) {
                     throw appError_1.AppError.NotFound("planning not found", "PLANNING_NOT_FOUND");
@@ -113,13 +119,13 @@ exports.manuPaperService = {
                 if (!machineLabel) {
                     throw appError_1.AppError.BadRequest(`Invalid machine: ${machine}`, "INVALID_MACHINE");
                 }
-                //check permission for machine
-                if (role !== "admin" && role !== "manager") {
+                //check permission for machine (bỏ qua nếu là kế hoạch báo cáo)
+                if (role !== "admin" && role !== "manager" && !isOperationPlanning) {
                     if (!userPermissions.includes(machineLabel)) {
                         throw appError_1.AppError.Unauthorized(`Access denied: You don't have permission to report for machine ${machine}`, "ACCESS_DENIED");
                     }
                 }
-                // 2. Cộng dồn số lượng mới vào số đã có
+                // Cộng dồn số lượng mới vào số đã có
                 const newQtyProduced = Number(planning.qtyProduced || 0) + Number(qtyProduced || 0);
                 const isCompleted = newQtyProduced >= planning.runningPlan;
                 // Logic Overflow
@@ -143,7 +149,11 @@ exports.manuPaperService = {
                 }
                 // Merge shift fields
                 let updatedShiftProduction = (0, planning_timeRunning_helper_1.mergeShiftField)(planning.shiftProduction || "", otherData.shiftProduction);
-                let updatedShiftManagement = (0, planning_timeRunning_helper_1.mergeShiftField)(planning.shiftManagement || "", otherData.shiftManagement);
+                // Kế hoạch báo cáo: lấy trực tiếp tên nhân viên kế hoạch gán vào shiftManagement
+                const shiftManagementToApply = isOperationPlanning
+                    ? employee.fullName
+                    : otherData.shiftManagement;
+                let updatedShiftManagement = (0, planning_timeRunning_helper_1.mergeShiftField)(planning.shiftManagement || "", shiftManagementToApply);
                 await crud_helper_repository_1.CrudHelper.updateData({
                     model: planning,
                     data: {
@@ -180,6 +190,9 @@ exports.manuPaperService = {
                     });
                 }
                 // tạo report theo số lần báo cáo
+                if (isOperationPlanning) {
+                    otherData.shiftManagement = employee.fullName;
+                }
                 const reportCreated = await (0, reportHelper_1.createReportPlanning)({
                     planning: planning.toJSON(),
                     model: reportPlanningPaper_1.ReportPlanningPaper,
@@ -222,6 +235,31 @@ exports.manuPaperService = {
                 }
                 //chuyển sang trang chờ kiểm
                 await planning.update({ statusRequest: "requested" }, { transaction });
+                //update inventory wip sheet
+                const unitPrice = Number(planning.Order?.pricePaper || 0);
+                const producedThisTurn = Number(qtyProduced || 0);
+                const invWipSheet = await manufactureRepository_1.manufactureRepo.getInvWipSheetByPlanningId(planning.planningId, transaction);
+                if (invWipSheet) {
+                    //TH: QC chưa nhập kho -> Cộng dồn số lượng
+                    const updatedProduced = Number(invWipSheet.qtyProduced || 0) + producedThisTurn;
+                    const updatedRemaining = Number(invWipSheet.qtyRemaining || 0) + producedThisTurn;
+                    await invWipSheet.update({
+                        qtyProduced: updatedProduced,
+                        qtyRemaining: updatedRemaining,
+                        totalPrice: updatedProduced * unitPrice,
+                    }, { transaction });
+                }
+                else {
+                    //TH: QC đã nhập kho -> Tạo bản ghi mới để giữ nguyên lịch sử
+                    await inventory_wip_sheets_1.InventoryWipSheets.create({
+                        planningId: planning.planningId,
+                        orderId: planning.orderId,
+                        qtyProduced: producedThisTurn,
+                        qtyRemaining: producedThisTurn,
+                        unitPrice,
+                        totalPrice: producedThisTurn * unitPrice,
+                    }, { transaction });
+                }
                 //--------------------MEILISEARCH-----------------------
                 const reportId = reportCreated.report.reportPaperId;
                 await exports.manuPaperService.syncPaperForMeili({ reportId, planningData: planning, transaction });
@@ -244,8 +282,8 @@ exports.manuPaperService = {
         }
     },
     updateReportPaper: async ({ planningId, updateData, user, }) => {
-        const { role, permissions: userPermissions } = user;
-        const { qtyProduced: newQty, reportedBy, ...otherData } = updateData;
+        const { role, department, permissions: userPermissions = [] } = user;
+        const { qtyProduced: newQty, reportedBy, isPlanningReport, ...otherData } = updateData;
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
                 if (!reportedBy) {
@@ -255,18 +293,24 @@ exports.manuPaperService = {
                 if (!employee) {
                     throw appError_1.AppError.NotFound("employee not found", "EMPLOYEE_NOT_FOUND");
                 }
+                const isOperationPlanning = Boolean(isPlanningReport) &&
+                    (role === "admin" ||
+                        department?.toLowerCase() === "operation" ||
+                        userPermissions.includes("plan"));
                 //check report existed
                 const oldReport = await manufactureRepository_1.manufactureRepo.getReportPaperByPlanningId(planningId, transaction);
                 if (!oldReport) {
                     throw appError_1.AppError.NotFound("Report not found", "REPORT_NOT_FOUND");
                 }
+                const oldQty = Number(oldReport.qtyProduced || 0);
+                const deltaQty = Number(newQty) - oldQty;
                 const planning = await manufactureRepository_1.manufactureRepo.getOldPlanningPaper(planningId, transaction);
                 if (!planning) {
                     throw appError_1.AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
                 }
-                //check permission for machine
+                //check permission for machine (bỏ qua nếu là kế hoạch báo cáo)
                 const machineLabel = labelFields_1.machineLabels[planning.chooseMachine];
-                if (role !== "admin" && role !== "manager") {
+                if (role !== "admin" && role !== "manager" && !isOperationPlanning) {
                     if (!userPermissions.includes(machineLabel)) {
                         throw appError_1.AppError.Unauthorized("Access denied for this machine", "ACCESS_DENIED");
                     }
@@ -294,6 +338,9 @@ exports.manuPaperService = {
                 // Tính lại tốc độ bình quân mới cho lượt báo cáo này
                 const newSpeed = durationMinutes > 0 ? Math.round((parseTotalLength / durationMinutes) * 100) / 100 : 0;
                 //update report paper
+                if (isOperationPlanning) {
+                    otherData.shiftManagement = employee.fullName;
+                }
                 const reportUpdated = await oldReport.update({
                     qtyProduced: newQty,
                     lackOfQty: newLackOfQty,
@@ -325,6 +372,40 @@ exports.manuPaperService = {
                     });
                     if (planningBox) {
                         await planningBox.update({ qtyPaper: totalQtyProduced }, { transaction });
+                    }
+                }
+                // update inventory wip sheet
+                if (deltaQty !== 0) {
+                    const invWipSheet = await manufactureRepository_1.manufactureRepo.getInvWipSheetByPlanningId(planning.planningId, transaction);
+                    if (invWipSheet) {
+                        const qtyAlreadyInbounded = Number(invWipSheet.qtyProduced || 0) - Number(invWipSheet.qtyRemaining || 0);
+                        const targetProduced = totalQtyProduced;
+                        const updatedRemaining = targetProduced - qtyAlreadyInbounded;
+                        if (updatedRemaining < 0) {
+                            throw appError_1.AppError.BadRequest(`Không thể giảm số lượng, số lượng tồn không đủ`, "INSUFFICIENT_INVENTORY");
+                        }
+                        const updatedProduced = Number(invWipSheet.qtyProduced || 0) + deltaQty;
+                        await invWipSheet.update({
+                            qtyProduced: updatedProduced,
+                            qtyRemaining: updatedRemaining,
+                            totalPrice: updatedProduced * invWipSheet.unitPrice,
+                        }, { transaction });
+                    }
+                    else {
+                        if (deltaQty > 0) {
+                            const unitPrice = Number(planning.Order?.pricePaper || 0);
+                            await inventory_wip_sheets_1.InventoryWipSheets.create({
+                                planningId: planning.planningId,
+                                orderId: planning.orderId,
+                                qtyProduced: deltaQty,
+                                qtyRemaining: deltaQty,
+                                unitPrice,
+                                totalPrice: deltaQty * unitPrice,
+                            }, { transaction });
+                        }
+                        else {
+                            throw appError_1.AppError.BadRequest("Không thể giảm sản lượng! Tất cả các đợt BTP của kế hoạch này đã được QC nghiệm thu nhập kho thành phẩm.", "WIP_ALREADY_COMPLETED");
+                        }
                     }
                 }
                 //check qty to change status order

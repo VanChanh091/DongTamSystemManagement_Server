@@ -43,6 +43,7 @@ const CACHE_CONFIG = {
     //inventory
     inventory_gt: ["inventory:gt:"],
     inventory_lt: ["inventory:lt:"],
+    inventory_wip: ["inventory:wip:"],
     //delivery
     estimate: ["estimate:"],
     schedule: ["schedule:"],
@@ -123,6 +124,7 @@ exports.CacheManager = {
             //inventory
             inventory_gt: cacheKey_1.CacheKey.warehouse.inventory_gt.lastUpdated,
             inventory_lt: cacheKey_1.CacheKey.warehouse.inventory_lt.lastUpdated,
+            inventory_wip: cacheKey_1.CacheKey.warehouse.inventory_wip.lastUpdated,
             //delivery
             estimate: cacheKey_1.CacheKey.delivery.estimate.lastUpdated,
             schedule: cacheKey_1.CacheKey.delivery.schedule.lastUpdated,

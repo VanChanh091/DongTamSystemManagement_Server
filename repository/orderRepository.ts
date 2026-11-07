@@ -115,6 +115,38 @@ export const orderRepository = {
   },
   ///end auto complete
 
+  getAllPaperClassifications: async () => {
+    return await PaperClassifications.findAll({
+      attributes: ["classificationId", "paperCode"],
+      where: { pricePaper: { [Op.gt]: 0 }, isActive: true },
+      include: [
+        {
+          model: SupplierPaperCodes,
+          as: "supplierPaper",
+          attributes: ["layerType"],
+          required: true,
+          include: [
+            {
+              model: Suppliers,
+              as: "Supplier",
+              where: { isActive: true },
+              attributes: ["supplierName"],
+              required: true,
+            },
+          ],
+        },
+      ],
+      order: [
+        [
+          { model: SupplierPaperCodes, as: "supplierPaper" },
+          { model: Suppliers, as: "Supplier" },
+          "supplierName",
+          "ASC",
+        ],
+      ],
+    });
+  },
+
   //------------------------MEILISEARCH-----------------------------
   buildMeiliOrderOptions: ({
     whereCondition,
@@ -174,37 +206,5 @@ export const orderRepository = {
 
   syncAllOrdersForMeili: async () => {
     return await Order.findAll(orderRepository.buildMeiliOrderOptions({}));
-  },
-
-  getAllPaperClassifications: async () => {
-    return await PaperClassifications.findAll({
-      attributes: ["classificationId", "paperCode"],
-      where: { pricePaper: { [Op.gt]: 0 } },
-      include: [
-        {
-          model: SupplierPaperCodes,
-          as: "supplierPaper",
-          attributes: ["layerType"],
-          required: true,
-          include: [
-            {
-              model: Suppliers,
-              as: "Supplier",
-              where: { isActive: true },
-              attributes: ["supplierName"],
-              required: true,
-            },
-          ],
-        },
-      ],
-      order: [
-        [
-          { model: SupplierPaperCodes, as: "supplierPaper" },
-          { model: Suppliers, as: "Supplier" },
-          "supplierName",
-          "ASC",
-        ],
-      ],
-    });
   },
 };

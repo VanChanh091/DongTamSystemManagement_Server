@@ -453,4 +453,7 @@ exports.inboundService = {
         }
     },
 };
+const deductWipSheetQty = async ({ filter, deductQty, transaction, }) => {
+    let remainingQtyToDeduct = deductQty;
+};
 //# sourceMappingURL=inboundService.js.map

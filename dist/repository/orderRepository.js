@@ -94,6 +94,37 @@ exports.orderRepository = {
         });
     },
     ///end auto complete
+    getAllPaperClassifications: async () => {
+        return await paperClassifications_1.PaperClassifications.findAll({
+            attributes: ["classificationId", "paperCode"],
+            where: { pricePaper: { [sequelize_1.Op.gt]: 0 }, isActive: true },
+            include: [
+                {
+                    model: supplierPaperCodes_1.SupplierPaperCodes,
+                    as: "supplierPaper",
+                    attributes: ["layerType"],
+                    required: true,
+                    include: [
+                        {
+                            model: suppliers_1.Suppliers,
+                            as: "Supplier",
+                            where: { isActive: true },
+                            attributes: ["supplierName"],
+                            required: true,
+                        },
+                    ],
+                },
+            ],
+            order: [
+                [
+                    { model: supplierPaperCodes_1.SupplierPaperCodes, as: "supplierPaper" },
+                    { model: suppliers_1.Suppliers, as: "Supplier" },
+                    "supplierName",
+                    "ASC",
+                ],
+            ],
+        });
+    },
     //------------------------MEILISEARCH-----------------------------
     buildMeiliOrderOptions: ({ whereCondition, transaction, }) => {
         const queryOptions = {
@@ -127,37 +158,6 @@ exports.orderRepository = {
     },
     syncAllOrdersForMeili: async () => {
         return await order_1.Order.findAll(exports.orderRepository.buildMeiliOrderOptions({}));
-    },
-    getAllPaperClassifications: async () => {
-        return await paperClassifications_1.PaperClassifications.findAll({
-            attributes: ["classificationId", "paperCode"],
-            where: { pricePaper: { [sequelize_1.Op.gt]: 0 } },
-            include: [
-                {
-                    model: supplierPaperCodes_1.SupplierPaperCodes,
-                    as: "supplierPaper",
-                    attributes: ["layerType"],
-                    required: true,
-                    include: [
-                        {
-                            model: suppliers_1.Suppliers,
-                            as: "Supplier",
-                            where: { isActive: true },
-                            attributes: ["supplierName"],
-                            required: true,
-                        },
-                    ],
-                },
-            ],
-            order: [
-                [
-                    { model: supplierPaperCodes_1.SupplierPaperCodes, as: "supplierPaper" },
-                    { model: suppliers_1.Suppliers, as: "Supplier" },
-                    "supplierName",
-                    "ASC",
-                ],
-            ],
-        });
     },
 };
 //# sourceMappingURL=orderRepository.js.map

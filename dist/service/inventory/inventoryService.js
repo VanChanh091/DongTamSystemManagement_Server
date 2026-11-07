@@ -226,7 +226,7 @@ exports.inventoryService = {
                 //--------------------MEILISEARCH-----------------------
                 //  Xử lý Source Inventory
                 if (remainingQty === 0) {
-                    // bằng 0 -> Xóa khỏi Meilisearch
+                    // Xuất hết tồn -> Xóa khỏi Meilisearch
                     await meiliService_1.meiliService.deleteMeiliData({
                         indexKey: labelFields_1.MEILI_INDEX.INVENTORIES,
                         idOrIds: sourceInv.inventoryId,
@@ -234,7 +234,7 @@ exports.inventoryService = {
                     });
                 }
                 else {
-                    // Vẫn khác 0 -> Cập nhật lại số lượng
+                    // Còn tồn -> Cập nhật lại số lượng
                     await meiliService_1.meiliService.syncOrUpdateMeiliData({
                         indexKey: labelFields_1.MEILI_INDEX.INVENTORIES,
                         data: {
@@ -247,6 +247,15 @@ exports.inventoryService = {
                 }
                 // Xử lý Target Inventory:
                 if (newQtyTarget === 0) {
+                    // Nếu sau khi cộng mà bù vừa khớp về đúng 0 -> Xóa khỏi Meilisearch
+                    await meiliService_1.meiliService.deleteMeiliData({
+                        indexKey: labelFields_1.MEILI_INDEX.INVENTORIES,
+                        idOrIds: targetInv.inventoryId,
+                        transaction,
+                    });
+                }
+                else {
+                    // vẫn âm hoặc bù sang dương -> sync lại Meilisearch
                     const targetFullInvs = await inventoryRepository_1.inventoryRepository.syncInventoryForMeili(targetOrderId, transaction);
                     if (!targetFullInvs) {
                         await meiliService_1.meiliService.syncOrUpdateMeiliData({
@@ -255,14 +264,6 @@ exports.inventoryService = {
                             transaction,
                         });
                     }
-                }
-                else {
-                    // Nếu sau khi cộng mà bù vừa khớp về đúng 0 -> Xóa khỏi Meilisearch
-                    await meiliService_1.meiliService.deleteMeiliData({
-                        indexKey: labelFields_1.MEILI_INDEX.INVENTORIES,
-                        idOrIds: targetInv.inventoryId,
-                        transaction,
-                    });
                 }
                 return {
                     message: "Transfer quantity successfully",

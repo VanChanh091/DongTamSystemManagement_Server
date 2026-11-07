@@ -14,6 +14,7 @@ const reportPlanningPaper_1 = require("../models/report/reportPlanningPaper");
 const planningBoxMachineTime_1 = require("../models/planning/planningBoxMachineTime");
 const employeeCompanyInfo_1 = require("../models/employee/employeeCompanyInfo");
 const timeOverflowPlanning_1 = require("../models/planning/timeOverflowPlanning");
+const inventory_wip_sheets_1 = require("../models/warehouse/inventory/inventory_wip_sheets");
 exports.manufactureRepo = {
     //====================================HELPER=======================================
     getEmployeeByCode: async (reportedBy, transaction) => {
@@ -28,7 +29,7 @@ exports.manufactureRepo = {
             transaction,
         });
     },
-    //====================================PAPER========================================
+    //================================MANUFACTURE PAPER====================================
     buildQueryManuPapers: async (whereCondition) => {
         return await planningPaper_1.PlanningPaper.findAll({
             where: whereCondition,
@@ -165,7 +166,7 @@ exports.manufactureRepo = {
             transaction,
         });
     },
-    //====================================BOX========================================
+    //================================MANUFACTURE BOX====================================
     buildQueryManuBoxes: async ({ machine, targetStatus, }) => {
         return await planningBox_1.PlanningBox.findAll({
             attributes: {
@@ -293,6 +294,17 @@ exports.manufactureRepo = {
                 planningBoxId: { [sequelize_1.Op.ne]: planningBoxId },
             },
             transaction,
+        });
+    },
+    //================================INVENTORY WIP SHEETS====================================
+    getInvWipSheetByPlanningId: async (planningId, transaction) => {
+        return await inventory_wip_sheets_1.InventoryWipSheets.findOne({
+            where: { planningId: planningId, status: "in_wip" },
+            attributes: {
+                exclude: ["createdAt", "updatedAt", "planningId", "orderId", "totalPrice", "status"],
+            },
+            transaction,
+            lock: transaction?.LOCK.UPDATE,
         });
     },
 };

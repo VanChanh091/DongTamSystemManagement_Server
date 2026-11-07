@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = warehouseInventoryAssociations;
 function warehouseInventoryAssociations(models) {
-    const { Order, PlanningPaper, PlanningBox, InboundHistory, OutboundHistory, OutboundDetail, DeliveryItem, Inventory, LiquidationInv, InventoryTransfers, InventoryLog, } = models;
+    const { Order, PlanningPaper, PlanningBox, InboundHistory, OutboundHistory, OutboundDetail, DeliveryItem, Inventory, LiquidationInv, InventoryTransfers, InventoryLog, InventoryWipSheets, } = models;
     // INBOUND
     Order.hasMany(InboundHistory, { foreignKey: "orderId", onDelete: "CASCADE" });
     InboundHistory.belongsTo(Order, { foreignKey: "orderId" });
@@ -32,6 +32,12 @@ function warehouseInventoryAssociations(models) {
     // INVENTORY
     Order.hasOne(Inventory, { foreignKey: "orderId", onDelete: "CASCADE" });
     Inventory.belongsTo(Order, { foreignKey: "orderId" });
+    // INVENTORY WIP SHEETS
+    Order.hasMany(InventoryWipSheets, { foreignKey: "orderId", onDelete: "CASCADE" });
+    InventoryWipSheets.belongsTo(Order, { foreignKey: "orderId" });
+    PlanningPaper.hasMany(InventoryWipSheets, { foreignKey: "planningId", onDelete: "RESTRICT" });
+    InventoryWipSheets.belongsTo(PlanningPaper, { foreignKey: "planningId" });
+    // LIQUIDATION INVENTORY
     Order.hasOne(LiquidationInv, { foreignKey: "orderId", onDelete: "CASCADE" });
     LiquidationInv.belongsTo(Order, { foreignKey: "orderId" });
     Inventory.hasOne(LiquidationInv, {

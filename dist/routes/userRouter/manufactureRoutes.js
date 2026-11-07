@@ -8,8 +8,8 @@ const authMiddleware_1 = __importDefault(require("../../middlewares/authMiddlewa
 const manufactureController_1 = require("../../controller/user/manufacture/manufactureController");
 const permissionMiddleware_1 = require("../../middlewares/permissionMiddleware");
 const router = (0, express_1.Router)();
-const authorizePaperAccess = ({ departments = [], permissions = [], requireDept = true, } = {}) => (0, permissionMiddleware_1.authorizeAccess)({
-    departments: [...new Set(["Production", ...departments])],
+const authorizePaperAccess = ({ departments = [], permissions = [], requireDept = false, } = {}) => (0, permissionMiddleware_1.authorizeAccess)({
+    departments: [...new Set(["Production", "Operation", ...departments])],
     permissions: [
         ...new Set([
             "machine1350",
@@ -17,14 +17,15 @@ const authorizePaperAccess = ({ departments = [], permissions = [], requireDept 
             "machine1900",
             "machine2Layer",
             "MachineRollPaper",
+            "plan",
             ...permissions,
         ]),
     ],
     requireDept,
 });
-const authorizeBoxAccess = ({ departments = [], permissions = [], requireDept = true, } = {}) => (0, permissionMiddleware_1.authorizeAccess)({
-    departments: [...new Set(["Production", ...departments])],
-    permissions: [...new Set(["step2Production", ...permissions])],
+const authorizeBoxAccess = ({ departments = [], permissions = [], requireDept = false, } = {}) => (0, permissionMiddleware_1.authorizeAccess)({
+    departments: [...new Set(["Production", "Operation", ...departments])],
+    permissions: [...new Set(["step2Production", "plan", ...permissions])],
     requireDept,
 });
 //=========================PAPER=========================

@@ -76,6 +76,10 @@ exports.CacheKey = {
             page: (page) => `inventory:lt:page:${page}`,
             lastUpdated: "inventories:lt:lastUpdated",
         },
+        inventory_wip: {
+            page: (page) => `inventory:wip:page:${page}`,
+            lastUpdated: "inventories:wip:lastUpdated",
+        },
     },
     delivery: {
         estimate: {

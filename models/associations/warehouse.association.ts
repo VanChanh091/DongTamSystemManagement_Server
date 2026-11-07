@@ -11,6 +11,7 @@ export default function warehouseInventoryAssociations(models: any) {
     LiquidationInv,
     InventoryTransfers,
     InventoryLog,
+    InventoryWipSheets,
   } = models;
 
   // INBOUND
@@ -49,6 +50,14 @@ export default function warehouseInventoryAssociations(models: any) {
   Order.hasOne(Inventory, { foreignKey: "orderId", onDelete: "CASCADE" });
   Inventory.belongsTo(Order, { foreignKey: "orderId" });
 
+  // INVENTORY WIP SHEETS
+  Order.hasMany(InventoryWipSheets, { foreignKey: "orderId", onDelete: "CASCADE" });
+  InventoryWipSheets.belongsTo(Order, { foreignKey: "orderId" });
+
+  PlanningPaper.hasMany(InventoryWipSheets, { foreignKey: "planningId", onDelete: "RESTRICT" });
+  InventoryWipSheets.belongsTo(PlanningPaper, { foreignKey: "planningId" });
+
+  // LIQUIDATION INVENTORY
   Order.hasOne(LiquidationInv, { foreignKey: "orderId", onDelete: "CASCADE" });
   LiquidationInv.belongsTo(Order, { foreignKey: "orderId" });
 

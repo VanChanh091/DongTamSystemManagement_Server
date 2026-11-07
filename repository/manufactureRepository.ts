@@ -11,6 +11,7 @@ import { ReportPlanningPaper } from "../models/report/reportPlanningPaper";
 import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { EmployeeCompanyInfo } from "../models/employee/employeeCompanyInfo";
 import { timeOverflowPlanning } from "../models/planning/timeOverflowPlanning";
+import { InventoryWipSheets } from "../models/warehouse/inventory/inventory_wip_sheets";
 
 export const manufactureRepo = {
   //====================================HELPER=======================================
@@ -27,7 +28,7 @@ export const manufactureRepo = {
     });
   },
 
-  //====================================PAPER========================================
+  //================================MANUFACTURE PAPER====================================
   buildQueryManuPapers: async (whereCondition?: any) => {
     return await PlanningPaper.findAll({
       where: whereCondition,
@@ -190,7 +191,7 @@ export const manufactureRepo = {
     });
   },
 
-  //====================================BOX========================================
+  //================================MANUFACTURE BOX====================================
 
   buildQueryManuBoxes: async ({
     machine,
@@ -342,5 +343,17 @@ export const manufactureRepo = {
         transaction,
       },
     );
+  },
+
+  //================================INVENTORY WIP SHEETS====================================
+  getInvWipSheetByPlanningId: async (planningId: number, transaction: Transaction) => {
+    return await InventoryWipSheets.findOne({
+      where: { planningId: planningId, status: "in_wip" },
+      attributes: {
+        exclude: ["createdAt", "updatedAt", "planningId", "orderId", "totalPrice", "status"],
+      },
+      transaction,
+      lock: transaction?.LOCK.UPDATE,
+    });
   },
 };

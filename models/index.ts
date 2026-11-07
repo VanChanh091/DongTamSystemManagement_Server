@@ -55,6 +55,7 @@ import { initPaymentAllocationModel } from "./warehouse/payment/paymentAllocatio
 import { initQcShiftModel } from "./qualityControl/qcShift";
 import { initInspectionRequestModel } from "./qualityControl/inspection/inspection_request";
 import { initdebtDeductionRequestModel } from "./debt/debtDeductionRequest";
+import { initInventoryWipSheetsModel } from "./warehouse/inventory/inventory_wip_sheets";
 
 //admin
 const MachinePaper = initMachinePaperModel(sequelize);
@@ -133,6 +134,7 @@ const PaymentAllocation = initPaymentAllocationModel(sequelize);
 const Inventory = initInventoryModel(sequelize);
 const InventoryLog = initInventoryLogModel(sequelize);
 const InventoryTransfers = initInventoryTransfersModel(sequelize);
+const InventoryWipSheets = initInventoryWipSheetsModel(sequelize);
 const LiquidationInv = initLiquidationInventoryModel(sequelize);
 
 //delivery
@@ -227,6 +229,7 @@ const models = {
   InventoryTransfers,
   LiquidationInv,
   InventoryLog,
+  InventoryWipSheets,
 
   //Delivery
   DeliveryRequest,

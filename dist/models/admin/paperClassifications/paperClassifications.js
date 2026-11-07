@@ -16,6 +16,7 @@ function initPaperClassificationsModel(sequelize) {
         burstStrength: { type: sequelize_1.DataTypes.DOUBLE, allowNull: true, comment: "Độ bục" },
         ringCrush: { type: sequelize_1.DataTypes.DOUBLE, allowNull: true, comment: "Độ bền nén vòng" },
         pricePaper: { type: sequelize_1.DataTypes.DOUBLE, allowNull: true, defaultValue: 0 },
+        isActive: { type: sequelize_1.DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
         //FK
         supplierPaperId: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
         basisWeightId: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },

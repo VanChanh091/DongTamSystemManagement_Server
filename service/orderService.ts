@@ -197,6 +197,7 @@ export const orderService = {
       throw AppError.ServerError();
     }
   },
+
   //end get Order for auto complete
 
   //create order service

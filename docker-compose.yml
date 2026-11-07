@@ -9,6 +9,7 @@ services:
     image: redis:7-alpine
     container_name: redis-server
     restart: always
+    command: redis-server --tcp-keepalive 60 --timeout 0 #docker compose up -d redis để cập nhật config cho redis
     ports:
       - "6379:6379"
     volumes:

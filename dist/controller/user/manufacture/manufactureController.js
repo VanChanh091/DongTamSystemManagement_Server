@@ -110,7 +110,7 @@ exports.getPlanningBox = getPlanningBox;
 const addReportBox = async (req, res, next) => {
     const { planningBoxId, machine } = req.query;
     try {
-        const response = await manufactureBoxService_1.manuBoxService.addReportBox(Number(planningBoxId), machine, req.body);
+        const response = await manufactureBoxService_1.manuBoxService.addReportBox(Number(planningBoxId), machine, req.body, req.user);
         return res.status(201).json(response);
     }
     catch (error) {
@@ -133,7 +133,7 @@ const updateReportBox = async (req, res, next) => {
         let response;
         switch (action) {
             case "EDIT_REPORT":
-                response = await manufactureBoxService_1.manuBoxService.updateReportBox(idArray[0], machine, req.body);
+                response = await manufactureBoxService_1.manuBoxService.updateReportBox(idArray[0], machine, req.body, req.user);
                 break;
             case "REQUEST_COMPLETE":
                 response = await manufactureBoxService_1.manuBoxService.requestCompletePlanningBox(idArray, machine);

@@ -480,7 +480,7 @@ exports.deliveryRepository = {
     },
     searchOrderIdInDeliveryItem: async (keyword) => {
         return await deliveryItem_1.DeliveryItem.findAll({
-            where: { status: { [sequelize_1.Op.notIn]: ["cancelled", "completed"] } },
+            where: { status: { [sequelize_1.Op.notIn]: ["cancelled", "complet ed"] } },
             attributes: ["deliveryItemId"],
             include: [
                 { model: deliveryPlan_1.DeliveryPlan, attributes: ["deliveryDate"] },

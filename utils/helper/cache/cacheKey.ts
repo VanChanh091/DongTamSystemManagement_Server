@@ -81,6 +81,10 @@ export const CacheKey = {
       page: (page: number) => `inventory:lt:page:${page}`,
       lastUpdated: "inventories:lt:lastUpdated",
     },
+    inventory_wip: {
+      page: (page: number) => `inventory:wip:page:${page}`,
+      lastUpdated: "inventories:wip:lastUpdated",
+    },
   },
 
   delivery: {

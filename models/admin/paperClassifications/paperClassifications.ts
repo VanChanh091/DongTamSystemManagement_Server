@@ -11,6 +11,7 @@ export interface PaperClassificationsAttributes {
   burstStrength?: number;
   ringCrush?: number;
   pricePaper?: number;
+  isActive: boolean;
 
   //FK
   supplierPaperId: number;
@@ -23,7 +24,7 @@ export interface PaperClassificationsAttributes {
 //cho phép bỏ qua id khi tạo
 export type PaperClassificationsCreationAttributes = Optional<
   PaperClassificationsAttributes,
-  "classificationId" | "createdAt" | "updatedAt"
+  "classificationId" | "isActive" | "createdAt" | "updatedAt"
 >;
 
 //định nghĩa kiểu OOP
@@ -38,6 +39,7 @@ export class PaperClassifications
   declare burstStrength?: number;
   declare ringCrush?: number;
   declare pricePaper?: number;
+  declare isActive: boolean;
 
   //FK
   declare supplierPaperId: number;
@@ -61,6 +63,7 @@ export function initPaperClassificationsModel(sequelize: Sequelize): typeof Pape
       burstStrength: { type: DataTypes.DOUBLE, allowNull: true, comment: "Độ bục" },
       ringCrush: { type: DataTypes.DOUBLE, allowNull: true, comment: "Độ bền nén vòng" },
       pricePaper: { type: DataTypes.DOUBLE, allowNull: true, defaultValue: 0 },
+      isActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
 
       //FK
       supplierPaperId: { type: DataTypes.INTEGER, allowNull: false },

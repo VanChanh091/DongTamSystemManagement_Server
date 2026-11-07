@@ -12,7 +12,7 @@ const adminController_1 = require("../../controller/admin/adminController");
 const adminPaperCodeController_1 = require("../../controller/admin/adminPaperCodeController");
 const router = (0, express_1.Router)();
 const authorizeAdmin = () => (0, permissionMiddleware_1.authorizeAccess)({});
-const authorizeManagerSale = () => (0, permissionMiddleware_1.authorizeAccess)({ departments: ["Sale"], requireDept: true });
+const authorizeManagerSale = () => (0, permissionMiddleware_1.authorizeAccess)({ departments: ["Sale"], roles: ["manager"], requireDept: true });
 // Admin routes for managing orders authorizeAdmin(),
 //===============================ORDERS=====================================
 router.get("/orders", authMiddleware_1.default, authorizeManagerSale(), adminController_1.getOrderPending);

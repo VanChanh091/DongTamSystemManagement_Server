@@ -444,24 +444,25 @@ exports.outboundService = {
                     }
                     const oldDetail = item.outboundDetailId
                         ? oldDetails.find((d) => d.outboundDetailId === item.outboundDetailId)
-                        : null;
+                        : oldDetails.find((d) => d.orderId === item.orderId && !usedOldDetailIds.has(d.outboundDetailId));
                     // Logic giá & khuyến mãi
                     const isPromotion = !!item.isPromotion;
                     const currentPrice = isPromotion ? 0 : order.pricePaper;
                     const currentTotalPrice = Math.round(currentPrice * item.outboundQty);
                     const oldQty = oldDetail ? oldDetail.outboundQty : 0;
-                    // tính toán cập nhật tồn kho
-                    const finalQty = inventory.qtyInventory + oldQty - item.outboundQty;
+                    // tính toán cập nhật tồn kho chuẩn theo: totalQtyInbound - totalQtyOutbound
+                    const newTotalQtyOutbound = Math.max(0, inventory.totalQtyOutbound - oldQty + item.outboundQty);
+                    const finalQty = inventory.totalQtyInbound - newTotalQtyOutbound;
                     const finalValue = finalQty < 0 ? 0 : Math.round(finalQty * currentPrice);
+                    const actualChangeQty = finalQty - inventory.qtyInventory;
                     await inventory_1.Inventory.update({
-                        totalQtyOutbound: inventory.totalQtyOutbound - oldQty + item.outboundQty,
+                        totalQtyOutbound: newTotalQtyOutbound,
                         qtyInventory: finalQty,
                         valueInventory: finalValue,
                     }, { where: { orderId: item.orderId }, transaction });
-                    //inventory logs
-                    const netChangeQty = oldQty - item.outboundQty;
-                    if (netChangeQty !== 0) {
-                        logItems.push({ inventoryId: inventory.inventoryId, changeQty: netChangeQty });
+                    //inventory logs theo biến động tồn kho thực tế
+                    if (actualChangeQty !== 0) {
+                        logItems.push({ inventoryId: inventory.inventoryId, changeQty: actualChangeQty });
                     }
                     const vatRate = isPromotion ? 0 : (order.vat ?? 0) / 100;
                     const vatAmount = Math.round(currentTotalPrice * vatRate);
@@ -508,17 +509,21 @@ exports.outboundService = {
                             transaction,
                             options: { lock: transaction.LOCK.UPDATE },
                         });
-                        // hoàn kho
+                        // hoàn kho chuẩn dựa trên totalQtyInbound
                         if (inv) {
-                            const finalQty = inv.qtyInventory + oldDetail.outboundQty;
+                            const newTotalQtyOutbound = Math.max(0, inv.totalQtyOutbound - oldDetail.outboundQty);
+                            const finalQty = inv.totalQtyInbound - newTotalQtyOutbound;
                             const finalValue = finalQty < 0 ? 0 : Math.round(finalQty * oldDetail.price);
+                            const actualChangeQty = finalQty - inv.qtyInventory;
                             await inventory_1.Inventory.update({
-                                totalQtyOutbound: inv.totalQtyOutbound - oldDetail.outboundQty,
+                                totalQtyOutbound: newTotalQtyOutbound,
                                 qtyInventory: finalQty,
                                 valueInventory: finalValue,
                             }, { where: { orderId: oldDetail.orderId }, transaction });
-                            //inventory logs
-                            logItems.push({ inventoryId: inv.inventoryId, changeQty: oldDetail.outboundQty });
+                            // Ghi log đúng bằng lượng tồn kho thực tế được hoàn lại
+                            if (actualChangeQty !== 0) {
+                                logItems.push({ inventoryId: inv.inventoryId, changeQty: actualChangeQty });
+                            }
                         }
                         if (oldDetail.deliveryItemId) {
                             await deliveryItem_1.DeliveryItem.update({ status: "planned" }, { where: { deliveryItemId: oldDetail.deliveryItemId }, transaction });
@@ -593,21 +598,25 @@ exports.outboundService = {
                         options: { lock: transaction.LOCK.UPDATE },
                     });
                     if (inv) {
-                        // Tính toán số lượng và giá trị tuyệt đối sau khi hủy phiếu
-                        const finalQty = inv.qtyInventory + detail.outboundQty;
-                        const finalValue = finalQty < 0 ? 0 : finalQty * detail.price;
+                        // Tính toán lại tổng xuất và tồn kho chuẩn dựa trên totalQtyInbound
+                        const newTotalQtyOutbound = Math.max(0, inv.totalQtyOutbound - detail.outboundQty);
+                        const finalQty = inv.totalQtyInbound - newTotalQtyOutbound;
+                        const finalValue = finalQty < 0 ? 0 : Math.round(finalQty * detail.price);
+                        const actualChangeQty = finalQty - inv.qtyInventory;
                         await inventory_1.Inventory.update({
-                            totalQtyOutbound: inv.totalQtyOutbound - detail.outboundQty,
+                            totalQtyOutbound: newTotalQtyOutbound,
                             qtyInventory: finalQty,
                             valueInventory: finalValue,
                         }, {
                             where: { orderId: detail.orderId },
                             transaction,
                         });
-                        logItems.push({
-                            inventoryId: inv.inventoryId,
-                            changeQty: detail.outboundQty,
-                        });
+                        if (actualChangeQty !== 0) {
+                            logItems.push({
+                                inventoryId: inv.inventoryId,
+                                changeQty: actualChangeQty,
+                            });
+                        }
                     }
                     if (detail.deliveryItemId) {
                         await deliveryItem_1.DeliveryItem.update({ status: "planned" }, { where: { deliveryItemId: detail.deliveryItemId }, transaction });

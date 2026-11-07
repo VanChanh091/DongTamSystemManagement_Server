@@ -8,7 +8,14 @@ export const redisConfig = {
   host: process.env.REDIS_HOST as string,
   port: Number(process.env.REDIS_PORT) || 6379,
   db: Number(process.env.REDIS_DB) || 0,
+  keepAlive: 10000, // Gửi TCP keepalive probe mỗi 10 giây
+  connectTimeout: 10000, // Chờ kết nối tối đa 10s
   maxRetriesPerRequest: null, // BẮT BUỘC đối với BullMQ
+  retryStrategy(times: number) {
+    // Tự động thử lại khi mạng bị chập chờn
+    const delay = Math.min(times * 100, 3000);
+    return delay;
+  },
 };
 
 const redisCache = new Redis(redisConfig);

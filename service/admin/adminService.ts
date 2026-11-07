@@ -336,7 +336,7 @@ export const adminService = {
   }) => {
     try {
       const order = await Order.findByPk(orderId, {
-        attributes: ["orderId", "totalPriceVAT"],
+        attributes: ["orderId", "totalPriceVAT", "customerId"],
         include: [
           {
             model: Customer,

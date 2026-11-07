@@ -57,6 +57,7 @@ const paymentAllocation_1 = require("./warehouse/payment/paymentAllocation");
 const qcShift_1 = require("./qualityControl/qcShift");
 const inspection_request_1 = require("./qualityControl/inspection/inspection_request");
 const debtDeductionRequest_1 = require("./debt/debtDeductionRequest");
+const inventory_wip_sheets_1 = require("./warehouse/inventory/inventory_wip_sheets");
 //admin
 const MachinePaper = (0, machinePaper_1.initMachinePaperModel)(database_connect_1.sequelize);
 const MachineBox = (0, machineBox_1.initMachineBoxModel)(database_connect_1.sequelize);
@@ -120,6 +121,7 @@ const PaymentAllocation = (0, paymentAllocation_1.initPaymentAllocationModel)(da
 const Inventory = (0, inventory_1.initInventoryModel)(database_connect_1.sequelize);
 const InventoryLog = (0, inventoryLog_1.initInventoryLogModel)(database_connect_1.sequelize);
 const InventoryTransfers = (0, inventoryTransfers_1.initInventoryTransfersModel)(database_connect_1.sequelize);
+const InventoryWipSheets = (0, inventory_wip_sheets_1.initInventoryWipSheetsModel)(database_connect_1.sequelize);
 const LiquidationInv = (0, liquidationInventory_1.initLiquidationInventoryModel)(database_connect_1.sequelize);
 //delivery
 const DeliveryRequest = (0, deliveryRequest_1.initDeliveryRequestModel)(database_connect_1.sequelize);
@@ -195,6 +197,7 @@ const models = {
     InventoryTransfers,
     LiquidationInv,
     InventoryLog,
+    InventoryWipSheets,
     //Delivery
     DeliveryRequest,
     DeliveryPlan,
