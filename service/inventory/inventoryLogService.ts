@@ -9,7 +9,7 @@ import {
   InventoryLog,
   InventoryLogAttributes,
 } from "../../models/warehouse/inventory/inventoryLog";
-import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../../assets/configs/dayjs/dayjs.config";
 import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
 import {
   inventoryColumns,
@@ -108,7 +108,9 @@ export const inventoryLogService = {
       // const endDate = dayjsUtc.utc(targetDate).format("YYYY-MM-DD 23:59:59");
       // const dateTimestamp = dayjsUtc(targetDate).endOf("day").toDate();
       // const dateTimestamp = dayjsUtc(targetDate).toDate();
-      const dateTimestamp = dayjsUtc(targetDate).format("YYYY-MM-DD HH:mm:ss");
+      const dateTimestamp = dayjsUtc.tz(targetDate, VN_TZ).format("YYYY-MM-DD HH:mm:ss");
+
+      // console.log(`time: ${dateTimestamp}`);
 
       const baseQuery: any = {
         where: {
@@ -161,7 +163,7 @@ export const inventoryLogService = {
         ],
       };
 
-      const formattedDate = dayjsUtc.utc(dateTimestamp).format("YYYY-MM-DD");
+      const formattedDate = dayjsUtc.tz(dateTimestamp, VN_TZ).format("YYYY-MM-DD");
 
       await exportExcelStreamResponse(res, {
         baseQuery: baseQuery,

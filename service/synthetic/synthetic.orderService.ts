@@ -6,7 +6,7 @@ import { Order } from "../../models/order/order";
 import { MEILI_INDEX } from "../../assets/labelFields";
 import { Product } from "../../models/product/product";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
-import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../../assets/configs/dayjs/dayjs.config";
 import { orderRepository } from "../../repository/orderRepository";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { PlanningPaper } from "../../models/planning/planningPaper";
@@ -163,15 +163,15 @@ export const syntheticOrderService = {
         searchKeyword = "";
 
         if (startDate && endDate) {
-          const startTimestamp = dayjsUtc.utc(startDate).startOf("day").unix();
+          const startTimestamp = dayjsUtc.tz(startDate, VN_TZ).startOf("day").unix();
           filters.push(`dayReceiveOrder >= ${startTimestamp}`);
 
-          const endTimestamp = dayjsUtc.utc(endDate).endOf("day").unix();
+          const endTimestamp = dayjsUtc.tz(endDate, VN_TZ).endOf("day").unix();
           filters.push(`dayReceiveOrder <= ${endTimestamp}`);
         }
 
-        // console.log(`start: ${startDate} - end: ${endDate}`);
-        // console.log(`filter: ${filters.join(" AND ")}`);
+        console.log(`start: ${startDate} - end: ${endDate}`);
+        console.log(`filter: ${filters.join(" AND ")}`);
       }
 
       const searchResult = await index.search(searchKeyword, {
@@ -217,7 +217,7 @@ export const syntheticOrderService = {
     }
   },
 
-  completeOrder: async (orderIds: string[], allowNegativeInv = false) => {
+  completeOrder: async (orderIds: string[]) => {
     try {
       return await runInTransaction(async (transaction) => {
         const orders = await Order.findAll({
@@ -285,15 +285,6 @@ export const syntheticOrderService = {
             where: { orderId: { [Op.in]: regularOrderIds } },
             transaction,
           });
-
-          // const isNegativeInv = inventories.some((inv) => inv.valueInventory < 0);
-
-          // if (isNegativeInv && !allowNegativeInv) {
-          //   return {
-          //     message: "Có đơn hàng tồn kho bị âm. Tiếp tục để hoàn thành các đơn này",
-          //     allowNegativeInv: true,
-          //   };
-          // }
 
           // lọc và map dữ liệu tồn kho âm để cập nhật
           const inventoryUpdates = inventories
@@ -393,8 +384,8 @@ export const syntheticOrderService = {
       };
 
       if (fromDate && toDate) {
-        const startTimestamp = dayjsUtc(fromDate).startOf("day").toDate();
-        const endTimestamp = dayjsUtc(toDate).endOf("day").toDate();
+        const startTimestamp = dayjsUtc.tz(fromDate, VN_TZ).startOf("day").toDate();
+        const endTimestamp = dayjsUtc.tz(toDate, VN_TZ).endOf("day").toDate();
 
         // console.log(`start: ${fromDate} - end: ${toDate}`);
         // console.log(`startTimestamp: ${startTimestamp} - endTimestamp: ${endTimestamp}`);

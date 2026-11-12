@@ -100,6 +100,13 @@ export const inventorySettings: Settings = {
   rankingRules: rule,
 };
 
+export const invWipSheetSettings: Settings = {
+  searchableAttributes: ["orderId", "customerName"],
+  filterableAttributes: ["qtyRemaining", "createdAt"],
+  sortableAttributes: ["createdAt"],
+  rankingRules: rule,
+};
+
 //delivery
 export const deliveryRequestSettings: Settings = {
   searchableAttributes: ["orderId", "customerName", "status", "fullName"],

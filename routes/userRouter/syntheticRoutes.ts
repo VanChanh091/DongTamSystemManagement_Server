@@ -13,6 +13,7 @@ import { authorizeAccess } from "../../middlewares/permissionMiddleware";
 import {
   getErrorProductionReport,
   getReportProduction,
+  getReportProductionComparison,
   getRevenueReport,
 } from "../../controller/user/synthetic/synthetic.statisticController";
 
@@ -38,6 +39,7 @@ router.get("/report-revenue", authenticate, getRevenueReport);
 router.get("/report-err-production", authenticate, getErrorProductionReport);
 
 //==================PRODUCTION STAGE 1 REPORT====================
+router.get("/report-production/comparison", authenticate, getReportProductionComparison);
 router.get("/report-production", authenticate, getReportProduction);
 
 export default router;

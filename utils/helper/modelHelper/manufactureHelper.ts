@@ -1,5 +1,5 @@
 import { AppError } from "../../appError";
-import { MEILI_INDEX } from "../../../assets/labelFields";
+import { isTwoLayerMachine, machineLabels, MEILI_INDEX } from "../../../assets/labelFields";
 import { PlanningPaper } from "../../../models/planning/planningPaper";
 import { timeOverflowPlanning } from "../../../models/planning/timeOverflowPlanning";
 import { planningPaperRepository } from "../../../repository/planning/planningPaperRepository";
@@ -7,8 +7,9 @@ import { meiliService } from "../../../service/system/meiliService";
 import { runInTransaction } from "../transactionHelper";
 import { Order } from "../../../models/order/order";
 import { PaperRequirements } from "../../../models/planning/requirement/paperRequirements";
-import { Op } from "sequelize";
+import { Op, Transaction } from "sequelize";
 import { CrudHelper } from "../../../repository/helper/crud.helper.repository";
+import { MachinePaper } from "../../../models/admin/machinePaper";
 
 export const aggregateReportFields = (reports: any[]) => {
   const shiftProductions = new Set<string>();
@@ -105,4 +106,49 @@ export const updateStatusPaper = async ({
 
     return { message: `Planning status updated to ${targetStatus}`, ids };
   });
+};
+
+export const assertPaperMachinePermission = async ({
+  machine,
+  role,
+  userPermissions,
+  skipPermissionCheck = false,
+  denyMode = "unauthorized",
+  denyMessage,
+  transaction,
+}: {
+  machine: string;
+  role: string;
+  userPermissions: string[];
+  skipPermissionCheck?: boolean;
+  denyMode?: "unauthorized" | "forbidden";
+  denyMessage: string;
+  transaction?: Transaction;
+}) => {
+  const normalizedMachine = machine?.trim();
+  if (!normalizedMachine) {
+    throw AppError.BadRequest("Invalid machine: empty", "INVALID_MACHINE");
+  }
+
+  let machineLabel = machineLabels[normalizedMachine];
+  if (!machineLabel) {
+    const existingMachine = await MachinePaper.findOne({
+      where: { machineName: normalizedMachine },
+      attributes: ["machineId"],
+      transaction,
+    });
+    if (!existingMachine) {
+      throw AppError.BadRequest(`Invalid machine: ${machine}`, "INVALID_MACHINE");
+    }
+    machineLabel = isTwoLayerMachine(normalizedMachine) ? "machine2Layer" : "production";
+  }
+
+  if (role !== "admin" && role !== "manager" && !skipPermissionCheck) {
+    if (!userPermissions.includes(machineLabel)) {
+      if (denyMode === "forbidden") {
+        throw AppError.Forbidden(denyMessage, "ACCESS_DENIED");
+      }
+      throw AppError.Unauthorized(denyMessage, "ACCESS_DENIED");
+    }
+  }
 };

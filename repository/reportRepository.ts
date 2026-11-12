@@ -1,12 +1,12 @@
-import { FindOptions, Op, Transaction } from "sequelize";
-import { Customer } from "../models/customer/customer";
 import { Box } from "../models/order/box";
 import { Order } from "../models/order/order";
+import { Customer } from "../models/customer/customer";
+import { FindOptions, Op, Transaction } from "sequelize";
 import { PlanningBox } from "../models/planning/planningBox";
-import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 import { PlanningPaper } from "../models/planning/planningPaper";
 import { ReportPlanningBox } from "../models/report/reportPlanningBox";
 import { ReportPlanningPaper } from "../models/report/reportPlanningPaper";
+import { PlanningBoxTime } from "../models/planning/planningBoxMachineTime";
 
 export const reportRepository = {
   buildReportPaperOptions: ({

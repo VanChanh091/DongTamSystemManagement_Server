@@ -84,4 +84,5 @@ export type AuthorizeAccessParams = {
   departments?: string[];
   permissions?: string[];
   requireDept?: boolean;
+  roles?: string[];
 };

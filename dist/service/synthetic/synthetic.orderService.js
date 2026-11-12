@@ -121,13 +121,13 @@ exports.syntheticOrderService = {
             if (field === "dayReceiveOrder") {
                 searchKeyword = "";
                 if (startDate && endDate) {
-                    const startTimestamp = dayjs_config_1.dayjsUtc.utc(startDate).startOf("day").unix();
+                    const startTimestamp = dayjs_config_1.dayjsUtc.tz(startDate, dayjs_config_1.VN_TZ).startOf("day").unix();
                     filters.push(`dayReceiveOrder >= ${startTimestamp}`);
-                    const endTimestamp = dayjs_config_1.dayjsUtc.utc(endDate).endOf("day").unix();
+                    const endTimestamp = dayjs_config_1.dayjsUtc.tz(endDate, dayjs_config_1.VN_TZ).endOf("day").unix();
                     filters.push(`dayReceiveOrder <= ${endTimestamp}`);
                 }
-                // console.log(`start: ${startDate} - end: ${endDate}`);
-                // console.log(`filter: ${filters.join(" AND ")}`);
+                console.log(`start: ${startDate} - end: ${endDate}`);
+                console.log(`filter: ${filters.join(" AND ")}`);
             }
             const searchResult = await index.search(searchKeyword, {
                 filter: filters.join(" AND "),
@@ -168,7 +168,7 @@ exports.syntheticOrderService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    completeOrder: async (orderIds, allowNegativeInv = false) => {
+    completeOrder: async (orderIds) => {
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
                 const orders = await order_1.Order.findAll({
@@ -220,13 +220,6 @@ exports.syntheticOrderService = {
                         where: { orderId: { [sequelize_1.Op.in]: regularOrderIds } },
                         transaction,
                     });
-                    // const isNegativeInv = inventories.some((inv) => inv.valueInventory < 0);
-                    // if (isNegativeInv && !allowNegativeInv) {
-                    //   return {
-                    //     message: "Có đơn hàng tồn kho bị âm. Tiếp tục để hoàn thành các đơn này",
-                    //     allowNegativeInv: true,
-                    //   };
-                    // }
                     // lọc và map dữ liệu tồn kho âm để cập nhật
                     const inventoryUpdates = inventories
                         .filter((inv) => inv.qtyInventory < 0)
@@ -308,8 +301,8 @@ exports.syntheticOrderService = {
                 status: { [sequelize_1.Op.in]: ["accept", "planning", "completed"] },
             };
             if (fromDate && toDate) {
-                const startTimestamp = (0, dayjs_config_1.dayjsUtc)(fromDate).startOf("day").toDate();
-                const endTimestamp = (0, dayjs_config_1.dayjsUtc)(toDate).endOf("day").toDate();
+                const startTimestamp = dayjs_config_1.dayjsUtc.tz(fromDate, dayjs_config_1.VN_TZ).startOf("day").toDate();
+                const endTimestamp = dayjs_config_1.dayjsUtc.tz(toDate, dayjs_config_1.VN_TZ).endOf("day").toDate();
                 // console.log(`start: ${fromDate} - end: ${toDate}`);
                 // console.log(`startTimestamp: ${startTimestamp} - endTimestamp: ${endTimestamp}`);
                 whereCondition.dayApproved = { [sequelize_1.Op.between]: [startTimestamp, endTimestamp] };

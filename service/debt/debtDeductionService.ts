@@ -19,7 +19,7 @@ import {
   reportDebtDeductionColumns,
 } from "../../utils/mapping/report/reportDebtRowAndColumn";
 import { Response } from "express";
-import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../../assets/configs/dayjs/dayjs.config";
 import { coreCustomerPayment } from "../../utils/helper/core_debt_helper";
 
 export const debtDeductionService = {
@@ -592,8 +592,11 @@ export const debtDeductionService = {
       });
 
       if (fromDate && toDate) {
-        const startTimestamp = dayjsUtc(fromDate).startOf("day").toDate();
-        const endTimestamp = dayjsUtc(toDate).endOf("day").toDate();
+        const startTimestamp = dayjsUtc.tz(fromDate, VN_TZ).startOf("day").toDate();
+        const endTimestamp = dayjsUtc.tz(toDate, VN_TZ).endOf("day").toDate();
+
+        console.log(`start: ${fromDate} - end: ${toDate}`);
+        console.log(`startTimestamp: ${startTimestamp} - endTimestamp: ${endTimestamp}`);
 
         baseQuery.where = {
           ...baseQuery.where,

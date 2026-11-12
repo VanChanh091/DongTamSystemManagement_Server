@@ -12,6 +12,7 @@ import { UserNotifications } from "../../models/notification/userNotifications";
 import { PlanningPaper } from "../../models/planning/planningPaper";
 import { RequestType } from "../notification/requestType";
 import { notificationService } from "../notification/notificationService";
+import { assertPaperMachinePermission } from "../../utils/helper/modelHelper/manufactureHelper";
 
 export const inspectionRequestService = {
   //Tạo yêu cầu kiểm tra mới từ sản xuất
@@ -37,6 +38,14 @@ export const inspectionRequestService = {
         throw AppError.NotFound("Không tìm thấy kế hoạch sản xuất", "PLANNING_NOT_FOUND");
       }
       const machine = planning.chooseMachine;
+
+      await assertPaperMachinePermission({
+        machine,
+        role: user?.role ?? "",
+        userPermissions: Array.isArray(user?.permissions) ? user.permissions : [],
+        denyMode: "forbidden",
+        denyMessage: `Access denied: You don't have permission to request inspection for machine ${machine}`,
+      });
 
       const newRequest = await runInTransaction(async (transaction) => {
         const existingRequest = await InspectionRequest.findOne({

@@ -1,4 +1,4 @@
-import { dayjsUtc } from "../../../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../../../assets/configs/dayjs/dayjs.config";
 import { YearSalesData } from "../../../interface/synthetic/revenue.type";
 
 const VN_TIMEZONE_OFFSET_MS = 25_200_000; // 7 tiếng
@@ -87,4 +87,4 @@ export const reportEffectiveUserId = (
 
 // Helper lấy ngày ca giấy
 export const getPaperShiftDate = (date: string | Date): string =>
-  dayjsUtc(date).subtract(6, "hour").format("YYYY-MM-DD");
+  dayjsUtc.tz(date, VN_TZ).subtract(6, "hour").format("YYYY-MM-DD");

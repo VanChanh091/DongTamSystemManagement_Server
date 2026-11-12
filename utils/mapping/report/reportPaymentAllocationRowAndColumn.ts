@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import { dayjsUtc } from "../../../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../../../assets/configs/dayjs/dayjs.config";
 
 export const reportPaymentAllocationColumns: Partial<ExcelJS.Column>[] = [
   { header: "STT", key: "index", width: 8 },
@@ -31,7 +31,7 @@ export const mapReportPaymentAllocationRow = (item: any, index: number) => {
   return {
     index: index + 1,
     createdAt: item.createdAt
-      ? dayjsUtc(item.createdAt).tz("Asia/Ho_Chi_Minh").format("DD/MM/YYYY HH:mm")
+      ? dayjsUtc(item.createdAt).tz(VN_TZ).format("DD/MM/YYYY HH:mm")
       : "",
     customerId: item.customerId || item.Customer?.customerId || "",
     customerName: item.Customer?.customerName || item.Customer?.companyName || "",

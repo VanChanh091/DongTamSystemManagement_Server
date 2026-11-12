@@ -36,7 +36,7 @@ const mappingOutboundDetailRow = (item, index) => {
         index: index + 1,
         outboundSlipCode: outbound.outboundSlipCode || "",
         dateOutbound: outbound.dateOutbound
-            ? dayjs_config_1.dayjsUtc.utc(outbound.dateOutbound).format("DD/MM/YYYY")
+            ? dayjs_config_1.dayjsUtc.tz(outbound.dateOutbound, dayjs_config_1.VN_TZ).format("DD/MM/YYYY")
             : "",
         orderId: order.orderId || "",
         customerName: order?.Customer?.customerName || "",

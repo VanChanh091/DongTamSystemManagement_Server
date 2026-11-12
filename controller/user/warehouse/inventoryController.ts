@@ -3,6 +3,7 @@ import { inventoryService } from "../../../service/inventory/inventoryService";
 import { AppError } from "../../../utils/appError";
 import { liquidationInvService } from "../../../service/inventory/liquidationInvService";
 import { inventoryLogService } from "../../../service/inventory/inventoryLogService";
+import { invWipSheetService } from "../../../service/inventory/inventoryWipSheetService";
 
 //====================================INVENTORY========================================
 export const getAllInventory = async (req: Request, res: Response, next: NextFunction) => {
@@ -113,6 +114,53 @@ export const exportInventoryByDate = async (req: Request, res: Response, next: N
 
   try {
     await inventoryLogService.exportInventoryByDate(res, req.user.email, targetDate);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// =============================INVENTORY WIP SHEETS===================================
+export const getInventoryWipSheets = async (req: Request, res: Response, next: NextFunction) => {
+  const { field, keyword, page, pageSize } = req.query as {
+    field: string;
+    keyword: string;
+    page: string;
+    pageSize: string;
+  };
+
+  try {
+    let response;
+
+    if (field && keyword) {
+      response = await invWipSheetService.getInvWipSheetByFields({
+        field,
+        keyword,
+        page: Number(page),
+        pageSize: Number(pageSize),
+      });
+    } else {
+      response = await invWipSheetService.getAllInventoryWipSheets({
+        page: Number(page),
+        pageSize: Number(pageSize),
+      });
+    }
+
+    return res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const exportInvWipSheets = async (req: Request, res: Response, next: NextFunction) => {
+  const { fromDate, toDate } = req.body as { fromDate: string | Date; toDate: string | Date };
+
+  try {
+    await invWipSheetService.exportInventoryWipSheets({
+      res,
+      userName: req.user.email,
+      fromDate,
+      toDate,
+    });
   } catch (error) {
     next(error);
   }

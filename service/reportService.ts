@@ -6,7 +6,7 @@ import { Response } from "express";
 import { AppError } from "../utils/appError";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
 import { normalizeVN } from "../utils/helper/normalizeVN";
-import { dayjsUtc } from "../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../assets/configs/dayjs/dayjs.config";
 import redisCache from "../assets/configs/connect/redis.connect";
 import { CacheManager } from "../utils/helper/cache/cacheManager";
 import { reportRepository } from "../repository/reportRepository";
@@ -114,10 +114,10 @@ export const reportService = {
         searchKeyword = "";
 
         if (startDate && endDate) {
-          const startTimestamp = dayjsUtc.utc(startDate).startOf("day").unix();
+          const startTimestamp = dayjsUtc.tz(startDate, VN_TZ).startOf("day").unix();
           filters.push(`dayReported >= ${startTimestamp}`);
 
-          const endTimestamp = dayjsUtc.utc(endDate).endOf("day").unix();
+          const endTimestamp = dayjsUtc.tz(endDate, VN_TZ).endOf("day").unix();
           filters.push(`dayReported <= ${endTimestamp}`);
         }
       }
@@ -252,10 +252,10 @@ export const reportService = {
         searchKeyword = "";
 
         if (startDate && endDate) {
-          const startTimestamp = dayjsUtc.utc(startDate).startOf("day").unix();
+          const startTimestamp = dayjsUtc.tz(startDate, VN_TZ).startOf("day").unix();
           filters.push(`dayReported >= ${startTimestamp}`);
 
-          const endTimestamp = dayjsUtc.utc(endDate).endOf("day").unix();
+          const endTimestamp = dayjsUtc.tz(endDate, VN_TZ).endOf("day").unix();
           filters.push(`dayReported <= ${endTimestamp}`);
         }
       }
@@ -326,8 +326,8 @@ export const reportService = {
       let whereCondition: any = {};
 
       if (fromDate && toDate) {
-        const startTimestamp = dayjsUtc(fromDate).toDate();
-        const endTimestamp = dayjsUtc(toDate).toDate();
+        const startTimestamp = dayjsUtc.tz(fromDate, VN_TZ).toDate();
+        const endTimestamp = dayjsUtc.tz(toDate, VN_TZ).toDate();
 
         // console.log(`start: ${fromDate} - end: ${toDate}`);
         // console.log(`startTimestamp: ${startTimestamp} - endTimestamp: ${endTimestamp}`);
@@ -335,7 +335,11 @@ export const reportService = {
         whereCondition.dayReport = { [Op.between]: [startTimestamp, endTimestamp] };
       }
 
-      const baseQuery: any = reportRepository.buildReportPaperOptions({ machine, whereCondition });
+      const baseQuery: any = reportRepository.buildReportPaperOptions({
+        machine,
+        whereCondition,
+        isExport: true,
+      });
 
       const safeMachineName =
         machine && machine.trim() !== ""
@@ -366,11 +370,16 @@ export const reportService = {
     machine?: string,
   ) => {
     try {
-      let whereCondition: any = { machine: machine };
+      const normalizedMachine = typeof machine === "string" ? machine.trim() : undefined;
+      let whereCondition: any = {};
+
+      if (normalizedMachine) {
+        whereCondition.machine = normalizedMachine;
+      }
 
       if (fromDate && toDate) {
-        const startTimestamp = dayjsUtc(fromDate).startOf("day").toDate();
-        const endTimestamp = dayjsUtc(toDate).endOf("day").toDate();
+        const startTimestamp = dayjsUtc.tz(fromDate, VN_TZ).toDate();
+        const endTimestamp = dayjsUtc.tz(toDate, VN_TZ).toDate();
 
         // console.log(`start: ${fromDate} - end: ${toDate}`);
         // console.log(`startTimestamp: ${startTimestamp} - endTimestamp: ${endTimestamp}`);
@@ -378,12 +387,14 @@ export const reportService = {
         whereCondition.dayReport = { [Op.between]: [startTimestamp, endTimestamp] };
       }
 
-      const baseQuery: any = reportRepository.buildReportBoxOptions({ machine, whereCondition });
+      const baseQuery: any = reportRepository.buildReportBoxOptions({
+        machine: normalizedMachine,
+        whereCondition,
+      });
 
-      const safeMachineName =
-        machine && machine.trim() !== ""
-          ? normalizeVN(machine.replace(/\s+/g, "-"))
-          : "all_machines";
+      const safeMachineName = normalizedMachine
+        ? normalizeVN(normalizedMachine.replace(/\s+/g, "-"))
+        : "all_machines";
 
       await exportExcelStreamResponse(res, {
         baseQuery: baseQuery,

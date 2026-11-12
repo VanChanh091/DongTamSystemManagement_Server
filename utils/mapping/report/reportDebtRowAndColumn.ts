@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import { dayjsUtc } from "../../../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../../../assets/configs/dayjs/dayjs.config";
 import { DebtDeductionRequest } from "../../../models/debt/debtDeductionRequest";
 
 export const reportDebtDeductionColumns: Partial<ExcelJS.Column>[] = [
@@ -31,7 +31,7 @@ export const mapReportDebtDeductionRow = (item: DebtDeductionRequest, index: num
     customerName: item.Customer?.customerName || "",
     companyName: item.Customer?.companyName || "",
     createdAt: item.createdAt
-      ? dayjsUtc(item.createdAt).tz("Asia/Ho_Chi_Minh").format("DD/MM/YYYY HH:mm")
+      ? dayjsUtc(item.createdAt).tz(VN_TZ).format("DD/MM/YYYY HH:mm")
       : "",
     amountRequested: item.amountRequested,
     paymentMethod: formatPaymentMethod(item.paymentMethod),

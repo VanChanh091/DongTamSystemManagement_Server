@@ -1,7 +1,7 @@
 import { Op } from "sequelize";
 import { Order } from "../../../models/order/order";
 import { Customer } from "../../../models/customer/customer";
-import { dayjsUtc } from "../../../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../../../assets/configs/dayjs/dayjs.config";
 import { OutboundDetail } from "../../../models/warehouse/outbound/outboundDetail";
 import { OutboundHistory } from "../../../models/warehouse/outbound/outboundHistory";
 import { warehouseRepository } from "../../../repository/warehouseRepository";
@@ -31,8 +31,8 @@ export const buildSearchWhereCondition = async (
 
     if (isValidDateString(startDate) && isValidDateString(endDate)) {
       // Ép format về chuẩn YYYY-MM-DD của DB cho an toàn sạch sẽ
-      const formattedStart = dayjsUtc(startDate).format("YYYY-MM-DD");
-      const formattedEnd = dayjsUtc(endDate).format("YYYY-MM-DD");
+      const formattedStart = dayjsUtc.tz(startDate, VN_TZ).format("YYYY-MM-DD");
+      const formattedEnd = dayjsUtc.tz(endDate, VN_TZ).format("YYYY-MM-DD");
 
       searchWhereCondition.dateOutbound = {
         [Op.between]: [`${formattedStart} 00:00:00`, `${formattedEnd} 23:59:59`],
@@ -83,7 +83,7 @@ export const calculateTotalPriceByDate = async (
   if (!dataList || dataList.length === 0) return {};
 
   const uniqueDates = Array.from(
-    new Set(dataList.map((item: any) => dayjsUtc(item.dateOutbound).format("YYYY-MM-DD"))),
+    new Set(dataList.map((item: any) => dayjsUtc.tz(item.dateOutbound, VN_TZ).format("YYYY-MM-DD"))),
   );
 
   const dateConditions = uniqueDates.map((date) => ({

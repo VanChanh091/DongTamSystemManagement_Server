@@ -36,9 +36,9 @@ const mapReportPaperRow = (item, index) => {
         orderId: orderCell.orderId,
         customerName: orderCell.Customer.customerName,
         dayStartProduction: planningCell.dayStart
-            ? dayjs_config_1.dayjsUtc.utc(planningCell.dayStart).format("DD/MM/YYYY")
+            ? dayjs_config_1.dayjsUtc.tz(planningCell.dayStart, dayjs_config_1.VN_TZ).format("DD/MM/YYYY")
             : "",
-        dayReported: item.dayReport ? dayjs_config_1.dayjsUtc.utc(item.dayReport).format("DD/MM/YYYY HH:mm") : "",
+        dayReported: item.dayReport ? dayjs_config_1.dayjsUtc.tz(item.dayReport, dayjs_config_1.VN_TZ).format("DD/MM/YYYY HH:mm") : "",
         structure: (0, orderHelpers_1.formatterStructureOrder)(planningCell),
         flute: orderCell.flute,
         daoXa: orderCell.daoXa,

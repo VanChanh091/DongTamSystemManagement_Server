@@ -223,7 +223,7 @@ const createReportPlanning = async ({ planning, model, qtyProduced, qtyWasteNorm
         });
         if (affectedRows === 0) {
             await dailyReportPerformance_1.DailyReportPerformance.create({
-                dayReport: (0, dayjs_config_1.dayjsUtc)(currentDateTime).toDate(),
+                dayReport: dayjs_config_1.dayjsUtc.tz(currentDateTime, dayjs_config_1.VN_TZ).toDate(),
                 machine: machine,
                 flute: waveLayer,
                 totalLength: parseTotalLength,

@@ -19,6 +19,7 @@ const syncFunctions = {
     scrapReports: syncMeili_1.syncScrapReportToMeili,
     inbound: syncMeili_1.syncInboundToMeili,
     inventory: syncMeili_1.syncInventoryToMeili,
+    invWipSheets: syncMeili_1.syncInvWipSheetToMeili,
     outbounds: syncMeili_1.syncOutboundToMeili,
     reportPapers: syncMeili_1.syncReportPaperToMeili,
     reportBoxes: syncMeili_1.syncReportBoxToMeili,

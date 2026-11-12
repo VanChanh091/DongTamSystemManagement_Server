@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.dashboardSettings = exports.inspectionBoxSettings = exports.inspectionPaperSettings = exports.deliveryRequestSettings = exports.inventorySettings = exports.outboundSettings = exports.inboundSettings = exports.reportBoxSettings = exports.scrapReportSettings = exports.reportPaperSettings = exports.planningBoxSettings = exports.planningPaperSettings = exports.ordersSettings = exports.employeesSettings = exports.productsSettings = exports.customersSettings = void 0;
+exports.dashboardSettings = exports.inspectionBoxSettings = exports.inspectionPaperSettings = exports.deliveryRequestSettings = exports.invWipSheetSettings = exports.inventorySettings = exports.outboundSettings = exports.inboundSettings = exports.reportBoxSettings = exports.scrapReportSettings = exports.reportPaperSettings = exports.planningBoxSettings = exports.planningPaperSettings = exports.ordersSettings = exports.employeesSettings = exports.productsSettings = exports.customersSettings = void 0;
 const rule = ["words", "typo", "proximity", "attribute", "sort", "exactness"];
 //customer
 exports.customersSettings = {
@@ -86,6 +86,12 @@ exports.outboundSettings = {
 exports.inventorySettings = {
     searchableAttributes: ["orderId", "customerName", "fullName"],
     filterableAttributes: ["qtyInventory"],
+    rankingRules: rule,
+};
+exports.invWipSheetSettings = {
+    searchableAttributes: ["orderId", "customerName"],
+    filterableAttributes: ["qtyRemaining", "createdAt"],
+    sortableAttributes: ["createdAt"],
     rankingRules: rule,
 };
 //delivery

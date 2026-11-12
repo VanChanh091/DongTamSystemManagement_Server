@@ -1,10 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAllLiquidationInventory = exports.exportInventoryByDate = exports.migrateInitialInventoryLogs = exports.createNewInventory = exports.getAllInventory = void 0;
+exports.getAllLiquidationInventory = exports.exportInvWipSheets = exports.getInventoryWipSheets = exports.exportInventoryByDate = exports.migrateInitialInventoryLogs = exports.createNewInventory = exports.getAllInventory = void 0;
 const inventoryService_1 = require("../../../service/inventory/inventoryService");
 const appError_1 = require("../../../utils/appError");
 const liquidationInvService_1 = require("../../../service/inventory/liquidationInvService");
 const inventoryLogService_1 = require("../../../service/inventory/inventoryLogService");
+const inventoryWipSheetService_1 = require("../../../service/inventory/inventoryWipSheetService");
 //====================================INVENTORY========================================
 const getAllInventory = async (req, res, next) => {
     const { field, keyword, page, pageSize, filter } = req.query;
@@ -99,6 +100,47 @@ const exportInventoryByDate = async (req, res, next) => {
     }
 };
 exports.exportInventoryByDate = exportInventoryByDate;
+// =============================INVENTORY WIP SHEETS===================================
+const getInventoryWipSheets = async (req, res, next) => {
+    const { field, keyword, page, pageSize } = req.query;
+    try {
+        let response;
+        if (field && keyword) {
+            response = await inventoryWipSheetService_1.invWipSheetService.getInvWipSheetByFields({
+                field,
+                keyword,
+                page: Number(page),
+                pageSize: Number(pageSize),
+            });
+        }
+        else {
+            response = await inventoryWipSheetService_1.invWipSheetService.getAllInventoryWipSheets({
+                page: Number(page),
+                pageSize: Number(pageSize),
+            });
+        }
+        return res.status(200).json(response);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.getInventoryWipSheets = getInventoryWipSheets;
+const exportInvWipSheets = async (req, res, next) => {
+    const { fromDate, toDate } = req.body;
+    try {
+        await inventoryWipSheetService_1.invWipSheetService.exportInventoryWipSheets({
+            res,
+            userName: req.user.email,
+            fromDate,
+            toDate,
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.exportInvWipSheets = exportInvWipSheets;
 //=============================LIQUIDATION INVENTORY===================================
 const getAllLiquidationInventory = async (req, res, next) => {
     const { field, keyword, page, pageSize } = req.query;

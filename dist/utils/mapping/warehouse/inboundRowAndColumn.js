@@ -20,13 +20,14 @@ exports.inboundColumns = [
     { header: "SL Đơn Hàng", key: "qtyManu", style: { numFmt: "#,##0" } },
     { header: "SL Giấy Tấm", key: "qtyPaper", style: { numFmt: "#,##0" } },
     { header: "SL Nhập Kho", key: "qtyInbound", style: { numFmt: "#,##0" } },
+    { header: "Tổng Tiền", key: "totalPrice", style: { numFmt: "#,##0" } },
     { header: "Người Kiểm Hàng", key: "checkedBy" },
 ];
 const mappingInboundRow = (item, index) => {
     const order = item.Order;
     return {
         index: index + 1,
-        dateInbound: item.dateInbound ? (0, dayjs_config_1.dayjsUtc)(item.dateInbound).format("DD/MM/YYYY") : "",
+        dateInbound: item.dateInbound ? dayjs_config_1.dayjsUtc.tz(item.dateInbound, dayjs_config_1.VN_TZ).format("DD/MM/YYYY") : "",
         orderId: item.orderId ?? "",
         customerName: order.Customer.customerName ?? "",
         companyName: order.Customer.companyName ?? "",
@@ -41,6 +42,7 @@ const mappingInboundRow = (item, index) => {
         qtyManu: order.quantityManufacture ?? 0,
         qtyPaper: item.qtyPaper ?? 0,
         qtyInbound: item.qtyInbound ?? 0,
+        totalPrice: item.totalPrice ?? 0,
         checkedBy: item.QcSession.checkedBy ?? "",
     };
 };

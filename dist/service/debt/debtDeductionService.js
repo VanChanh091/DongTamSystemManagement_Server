@@ -445,8 +445,10 @@ exports.debtDeductionService = {
                 status: ["approved"],
             });
             if (fromDate && toDate) {
-                const startTimestamp = (0, dayjs_config_1.dayjsUtc)(fromDate).startOf("day").toDate();
-                const endTimestamp = (0, dayjs_config_1.dayjsUtc)(toDate).endOf("day").toDate();
+                const startTimestamp = dayjs_config_1.dayjsUtc.tz(fromDate, dayjs_config_1.VN_TZ).startOf("day").toDate();
+                const endTimestamp = dayjs_config_1.dayjsUtc.tz(toDate, dayjs_config_1.VN_TZ).endOf("day").toDate();
+                console.log(`start: ${fromDate} - end: ${toDate}`);
+                console.log(`startTimestamp: ${startTimestamp} - endTimestamp: ${endTimestamp}`);
                 baseQuery.where = {
                     ...baseQuery.where,
                     createdAt: { [sequelize_1.Op.between]: [startTimestamp, endTimestamp] },

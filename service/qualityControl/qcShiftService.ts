@@ -62,10 +62,7 @@ export const qcShiftService = {
           lock: transaction.LOCK.UPDATE,
         });
         if (!activeShift) {
-          throw AppError.BadRequest(
-            "Không tìm thấy ca QC đang hoạt động",
-            "ACTIVE_SHIFT_NOT_FOUND",
-          );
+          return { message: "Không có ca QC đang hoạt động", data: null };
         }
 
         // Cập nhật ca QC

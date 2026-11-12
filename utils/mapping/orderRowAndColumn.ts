@@ -2,7 +2,7 @@ import ExcelJS from "exceljs";
 import { Order } from "../../models/order/order";
 import { formatterStructureOrder } from "../helper/modelHelper/orderHelpers";
 import { formatDimension } from "../helper/exportPDF";
-import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../../assets/configs/dayjs/dayjs.config";
 
 const centerStyle: Partial<ExcelJS.Style> = {
   alignment: { vertical: "middle", horizontal: "center" },
@@ -123,9 +123,9 @@ export const mappingOrderRow = (item: Order, index: number) => {
     orderId: item.orderId,
     orderIdCustomer: item.orderIdCustomer ?? "",
 
-    dayReceive: item.dayReceiveOrder ? dayjsUtc(item.dayReceiveOrder).format("DD/MM/YYYY") : "",
+    dayReceive: item.dayReceiveOrder ? dayjsUtc.tz(item.dayReceiveOrder, VN_TZ).format("DD/MM/YYYY") : "",
     dateShipping: item.dateRequestShipping
-      ? dayjsUtc(item.dateRequestShipping).format("DD/MM/YYYY")
+      ? dayjsUtc.tz(item.dateRequestShipping, VN_TZ).format("DD/MM/YYYY")
       : "",
 
     customerName: item.Customer?.customerName ?? "",

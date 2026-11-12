@@ -202,8 +202,8 @@ exports.qcInspectionService = {
             let whereConditions = [];
             // console.log(`start: ${startDate} - endDate: ${endDate}`);
             if (startDate && endDate) {
-                const startTimestamp = dayjs_config_1.dayjsUtc.utc(startDate).startOf("day").format("YYYY-MM-DD HH:mm:ss");
-                const endTimestamp = dayjs_config_1.dayjsUtc.utc(endDate).endOf("day").format("YYYY-MM-DD HH:mm:ss");
+                const startTimestamp = dayjs_config_1.dayjsUtc.tz(startDate, dayjs_config_1.VN_TZ).startOf("day").format("YYYY-MM-DD HH:mm:ss");
+                const endTimestamp = dayjs_config_1.dayjsUtc.tz(endDate, dayjs_config_1.VN_TZ).endOf("day").format("YYYY-MM-DD HH:mm:ss");
                 // console.log(`formatStart: ${startTimestamp} - formatEnd: ${endTimestamp}`);
                 whereConditions.push({
                     timeInspection: {

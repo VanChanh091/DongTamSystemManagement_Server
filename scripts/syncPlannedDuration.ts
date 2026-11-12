@@ -3,6 +3,7 @@ dotenv.config();
 
 import { QueryTypes } from "sequelize";
 import { sequelize } from "../assets/configs/connect/database.connect";
+import { isRollPaperMachine, isTwoLayerMachine } from "../assets/labelFields";
 
 interface MachineRow {
   machineId: number;
@@ -22,8 +23,8 @@ interface MachineRow {
 
 const getSpeed = (flute: string, machine: string, info: MachineRow): number => {
   const layer = parseInt(flute && flute[0] ? flute[0] : "0", 10);
-  if (machine === "Máy 2 Lớp") return info.speed2Layer || 100;
-  if (machine === "Máy Quấn Cuồn") return info.paperRollSpeed || 80;
+  if (isTwoLayerMachine(machine)) return info.speed2Layer || 100;
+  if (isRollPaperMachine(machine)) return info.paperRollSpeed || 80;
   const key = `speed${layer}Layer` as keyof MachineRow;
   return (info[key] as number) || info.speed3Layer || 100;
 };

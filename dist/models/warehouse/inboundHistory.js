@@ -32,6 +32,7 @@ function initInboundHistoryModel(sequelize) {
             //indexes
             { fields: ["dateInbound"] },
             { fields: ["qtyInbound"] },
+            { fields: ["orderId", "dateInbound"], name: "idx_inbound_order_date" },
         ],
     });
     return InboundHistory;

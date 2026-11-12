@@ -21,6 +21,7 @@ router.post("/planning/export", authMiddleware_1.default, synthetic_planningCont
 router.get("/report-revenue", authMiddleware_1.default, synthetic_statisticController_1.getRevenueReport);
 router.get("/report-err-production", authMiddleware_1.default, synthetic_statisticController_1.getErrorProductionReport);
 //==================PRODUCTION STAGE 1 REPORT====================
+router.get("/report-production/comparison", authMiddleware_1.default, synthetic_statisticController_1.getReportProductionComparison);
 router.get("/report-production", authMiddleware_1.default, synthetic_statisticController_1.getReportProduction);
 exports.default = router;
 //# sourceMappingURL=syntheticRoutes.js.map

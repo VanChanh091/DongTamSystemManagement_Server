@@ -29,7 +29,7 @@ const mapReportDebtDeductionRow = (item, index) => {
         customerName: item.Customer?.customerName || "",
         companyName: item.Customer?.companyName || "",
         createdAt: item.createdAt
-            ? (0, dayjs_config_1.dayjsUtc)(item.createdAt).tz("Asia/Ho_Chi_Minh").format("DD/MM/YYYY HH:mm")
+            ? (0, dayjs_config_1.dayjsUtc)(item.createdAt).tz(dayjs_config_1.VN_TZ).format("DD/MM/YYYY HH:mm")
             : "",
         amountRequested: item.amountRequested,
         paymentMethod: formatPaymentMethod(item.paymentMethod),

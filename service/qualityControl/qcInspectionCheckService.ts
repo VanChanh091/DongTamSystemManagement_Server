@@ -18,7 +18,7 @@ import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
-import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../../assets/configs/dayjs/dayjs.config";
 import { Op } from "sequelize";
 import { searchFieldAtribute } from "../../interface/types";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
@@ -285,8 +285,8 @@ export const qcInspectionService = {
       // console.log(`start: ${startDate} - endDate: ${endDate}`);
 
       if (startDate && endDate) {
-        const startTimestamp = dayjsUtc.utc(startDate).startOf("day").format("YYYY-MM-DD HH:mm:ss");
-        const endTimestamp = dayjsUtc.utc(endDate).endOf("day").format("YYYY-MM-DD HH:mm:ss");
+        const startTimestamp = dayjsUtc.tz(startDate, VN_TZ).startOf("day").format("YYYY-MM-DD HH:mm:ss");
+        const endTimestamp = dayjsUtc.tz(endDate, VN_TZ).endOf("day").format("YYYY-MM-DD HH:mm:ss");
 
         // console.log(`formatStart: ${startTimestamp} - formatEnd: ${endTimestamp}`);
 

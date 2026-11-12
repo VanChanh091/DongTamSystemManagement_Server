@@ -7,7 +7,7 @@ import { AppError } from "../utils/appError";
 import { meiliService } from "./system/meiliService";
 import { MEILI_INDEX } from "../assets/labelFields";
 import { ScrapReport } from "../models/scrap/scrapReport";
-import { dayjsUtc } from "../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../assets/configs/dayjs/dayjs.config";
 import { reportRepository } from "../repository/reportRepository";
 import { runInTransaction } from "../utils/helper/transactionHelper";
 import { manufactureRepo } from "../repository/manufactureRepository";
@@ -99,15 +99,11 @@ export const scrapReportService = {
     keyword,
     startDate,
     endDate,
-    status,
-    machine,
   }: {
     page: number;
     pageSize: number;
-    status: string;
     field: string;
     keyword: string;
-    machine: string;
     startDate?: string;
     endDate?: string;
   }) => {
@@ -126,10 +122,10 @@ export const scrapReportService = {
         searchKeyword = "";
 
         if (startDate && endDate) {
-          const startTimestamp = dayjsUtc.utc(startDate).startOf("day").unix();
+          const startTimestamp = dayjsUtc.tz(startDate, VN_TZ).startOf("day").unix();
           filter.push(`reportedAt >= ${startTimestamp}`);
 
-          const endTimestamp = dayjsUtc.utc(endDate).endOf("day").unix();
+          const endTimestamp = dayjsUtc.tz(endDate, VN_TZ).endOf("day").unix();
           filter.push(`reportedAt <= ${endTimestamp}`);
         }
 
@@ -396,8 +392,8 @@ export const scrapReportService = {
           );
         }
 
-        const startDate = dayjsUtc.utc(dayCompleted).format("YYYY-MM-DD 00:00:00");
-        const endDate = dayjsUtc.utc(dayCompleted).format("YYYY-MM-DD 23:59:59");
+        const startDate = dayjsUtc.tz(dayCompleted, VN_TZ).format("YYYY-MM-DD 00:00:00");
+        const endDate = dayjsUtc.tz(dayCompleted, VN_TZ).format("YYYY-MM-DD 23:59:59");
 
         const missingScrap = await ScrapReport.findOne({
           where: {

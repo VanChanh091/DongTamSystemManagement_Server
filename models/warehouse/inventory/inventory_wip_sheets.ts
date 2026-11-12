@@ -46,10 +46,10 @@ export class InventoryWipSheets
 
   //FK
   declare planningId: number;
-  declare PlanningPaper: PlanningPaper[];
+  declare PlanningPaper: PlanningPaper;
 
   declare orderId: string;
-  declare Order: Order[];
+  declare Order: Order;
 }
 
 export function initInventoryWipSheetsModel(sequelize: Sequelize): typeof InventoryWipSheets {
@@ -60,7 +60,15 @@ export function initInventoryWipSheetsModel(sequelize: Sequelize): typeof Invent
       qtyRemaining: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
       unitPrice: { type: DataTypes.DOUBLE, allowNull: false, defaultValue: 0 },
       totalPrice: { type: DataTypes.DOUBLE, allowNull: false, defaultValue: 0 },
-      inboundedAt: { type: DataTypes.DATE, allowNull: true },
+      inboundedAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        get() {
+          const rawValue = this.getDataValue("inboundedAt");
+          if (!rawValue) return null;
+          return new Date(rawValue.getTime() - rawValue.getTimezoneOffset() * 60000).toISOString();
+        },
+      },
       status: {
         type: DataTypes.ENUM("in_wip", "completed", "canceled"),
         allowNull: false,
@@ -81,7 +89,8 @@ export function initInventoryWipSheetsModel(sequelize: Sequelize): typeof Invent
         { fields: ["planningId"] },
 
         //indexes
-        { fields: ["status", "createdAt"] },
+        { fields: ["qtyRemaining"] },
+        { fields: ["createdAt"] },
       ],
     },
   );

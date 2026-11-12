@@ -80,7 +80,7 @@ exports.scrapReportService = {
             throw appError_1.AppError.ServerError();
         }
     },
-    getScrapReportByField: async ({ page, pageSize, field, keyword, startDate, endDate, status, machine, }) => {
+    getScrapReportByField: async ({ page, pageSize, field, keyword, startDate, endDate, }) => {
         try {
             const validFields = ["reportedBy", "reportedAt"];
             if (!validFields.includes(field)) {
@@ -92,9 +92,9 @@ exports.scrapReportService = {
             if (field === "reportedAt") {
                 searchKeyword = "";
                 if (startDate && endDate) {
-                    const startTimestamp = dayjs_config_1.dayjsUtc.utc(startDate).startOf("day").unix();
+                    const startTimestamp = dayjs_config_1.dayjsUtc.tz(startDate, dayjs_config_1.VN_TZ).startOf("day").unix();
                     filter.push(`reportedAt >= ${startTimestamp}`);
-                    const endTimestamp = dayjs_config_1.dayjsUtc.utc(endDate).endOf("day").unix();
+                    const endTimestamp = dayjs_config_1.dayjsUtc.tz(endDate, dayjs_config_1.VN_TZ).endOf("day").unix();
                     filter.push(`reportedAt <= ${endTimestamp}`);
                 }
                 // console.log(`start: ${startDate} - end: ${endDate}`);
@@ -270,8 +270,8 @@ exports.scrapReportService = {
                 if (!isAllConfirmed) {
                     throw appError_1.AppError.BadRequest("Chỉ có thể phân bổ báo cáo đã được xác nhận", "INVALID_SCRAP_REPORT_STATUS");
                 }
-                const startDate = dayjs_config_1.dayjsUtc.utc(dayCompleted).format("YYYY-MM-DD 00:00:00");
-                const endDate = dayjs_config_1.dayjsUtc.utc(dayCompleted).format("YYYY-MM-DD 23:59:59");
+                const startDate = dayjs_config_1.dayjsUtc.tz(dayCompleted, dayjs_config_1.VN_TZ).format("YYYY-MM-DD 00:00:00");
+                const endDate = dayjs_config_1.dayjsUtc.tz(dayCompleted, dayjs_config_1.VN_TZ).format("YYYY-MM-DD 23:59:59");
                 const missingScrap = await scrapReport_1.ScrapReport.findOne({
                     where: {
                         machine,

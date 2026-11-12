@@ -10,6 +10,7 @@ const inventory_1 = require("../models/warehouse/inventory/inventory");
 const liquidationInventory_1 = require("../models/warehouse/inventory/liquidationInventory");
 const inventoryTransfers_1 = require("../models/warehouse/inventory/inventoryTransfers");
 const planningPaper_1 = require("../models/planning/planningPaper");
+const inventory_wip_sheets_1 = require("../models/warehouse/inventory/inventory_wip_sheets");
 exports.inventoryRepository = {
     //====================================INVENTORY========================================
     buildInventoryOptions: ({ page, pageSize, filter, //gt or lt
@@ -193,11 +194,12 @@ exports.inventoryRepository = {
                         "songE2Replace",
                         "lengthPaperPlanning",
                         "sizePaperPLaning",
+                        "hasBox",
                     ],
                 },
                 {
                     model: order_1.Order,
-                    attributes: ["orderId", "dvt", "isBox", "flute", "QC_box", "canLan"],
+                    attributes: ["orderId", "dvt", "flute", "QC_box"],
                     include: [
                         { model: customer_1.Customer, attributes: ["customerName"] },
                         { model: product_1.Product, attributes: ["productName"] },
@@ -215,6 +217,38 @@ exports.inventoryRepository = {
             queryOptions.nest = true;
         }
         return queryOptions;
+    },
+    invWipSheetTotals: async (whereCondition) => {
+        const result = await inventory_wip_sheets_1.InventoryWipSheets.findAll({
+            where: { ...whereCondition, qtyRemaining: { [sequelize_1.Op.gt]: 0 } },
+            attributes: [[sequelize_1.Sequelize.fn("SUM", sequelize_1.Sequelize.col("totalPrice")), "totalValueInventory"]],
+            raw: true,
+        });
+        return result[0];
+    },
+    buildMeiliWipSheetOptions: ({ whereCondition, transaction, }) => {
+        const options = {
+            where: whereCondition,
+            attributes: ["wipSheetId", "orderId", "qtyRemaining", "createdAt"],
+            include: [
+                {
+                    model: order_1.Order,
+                    attributes: ["orderId"],
+                    include: [{ model: customer_1.Customer, attributes: ["customerName"] }],
+                },
+            ],
+            transaction,
+        };
+        return options;
+    },
+    syncWipSheetForMeili: async (wipSheetId, transaction) => {
+        return await inventory_wip_sheets_1.InventoryWipSheets.findOne(exports.inventoryRepository.buildMeiliWipSheetOptions({
+            whereCondition: { wipSheetId },
+            transaction,
+        }));
+    },
+    syncAllWipSheetsForMeili: async ({ whereCondition }) => {
+        return await inventory_wip_sheets_1.InventoryWipSheets.findAll(exports.inventoryRepository.buildMeiliWipSheetOptions({ whereCondition }));
     },
     //====================================LIQUIDATION INVENTORY========================================
     getLiquidationInvByPage: async ({ page, pageSize, searching, }) => {

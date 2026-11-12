@@ -1,4 +1,4 @@
-import { dayjsUtc } from "../../../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../../../assets/configs/dayjs/dayjs.config";
 import { InboundHistory } from "../../../models/warehouse/inboundHistory";
 import { formatterStructureOrder } from "../../helper/modelHelper/orderHelpers";
 import ExcelJS from "exceljs";
@@ -17,9 +17,12 @@ export const inboundColumns: Partial<ExcelJS.Column>[] = [
   { header: "Khổ (SX)", key: "size" },
   { header: "Dài (SX)", key: "length" },
   { header: "DVT", key: "dvt" },
+
   { header: "SL Đơn Hàng", key: "qtyManu", style: { numFmt: "#,##0" } },
   { header: "SL Giấy Tấm", key: "qtyPaper", style: { numFmt: "#,##0" } },
   { header: "SL Nhập Kho", key: "qtyInbound", style: { numFmt: "#,##0" } },
+  { header: "Tổng Tiền", key: "totalPrice", style: { numFmt: "#,##0" } },
+
   { header: "Người Kiểm Hàng", key: "checkedBy" },
 ];
 
@@ -28,7 +31,7 @@ export const mappingInboundRow = (item: InboundHistory, index: number) => {
 
   return {
     index: index + 1,
-    dateInbound: item.dateInbound ? dayjsUtc(item.dateInbound).format("DD/MM/YYYY") : "",
+    dateInbound: item.dateInbound ? dayjsUtc.tz(item.dateInbound, VN_TZ).format("DD/MM/YYYY") : "",
     orderId: item.orderId ?? "",
     customerName: order.Customer.customerName ?? "",
     companyName: order.Customer.companyName ?? "",
@@ -40,9 +43,12 @@ export const mappingInboundRow = (item: InboundHistory, index: number) => {
     size: order.paperSizeManufacture ?? "",
     length: order.lengthPaperManufacture ?? "",
     dvt: order.dvt ?? "",
+
     qtyManu: order.quantityManufacture ?? 0,
     qtyPaper: item.qtyPaper ?? 0,
     qtyInbound: item.qtyInbound ?? 0,
+    totalPrice: item.totalPrice ?? 0,
+
     checkedBy: item.QcSession.checkedBy ?? "",
   };
 };

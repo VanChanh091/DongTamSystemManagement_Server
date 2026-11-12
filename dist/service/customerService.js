@@ -97,9 +97,9 @@ exports.customerService = {
             if (field === "createdAt") {
                 searchKeyword = "";
                 if (startDate && endDate) {
-                    const startTimestamp = dayjs_config_1.dayjsUtc.utc(startDate).startOf("day").unix();
+                    const startTimestamp = dayjs_config_1.dayjsUtc.tz(startDate, dayjs_config_1.VN_TZ).startOf("day").unix();
                     filters.push(`createdAt >= ${startTimestamp}`);
-                    const endTimestamp = dayjs_config_1.dayjsUtc.utc(endDate).endOf("day").unix();
+                    const endTimestamp = dayjs_config_1.dayjsUtc.tz(endDate, dayjs_config_1.VN_TZ).endOf("day").unix();
                     filters.push(`createdAt <= ${endTimestamp}`);
                 }
                 // console.log(`start: ${startDate} - end: ${endDate}`);

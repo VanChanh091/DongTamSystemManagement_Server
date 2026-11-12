@@ -7,7 +7,7 @@ const qcSessionService_1 = require("./qcSessionService");
 const inboundService_1 = require("../warehouse/inboundService");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
 exports.qcSubmitService = {
-    submitQC: async ({ inboundQty, processType, planningId, planningBoxId, totalSample = 3, samples, user, }) => {
+    submitQC: async ({ inboundQty, processType, planningId, planningBoxId, totalSample = 3, samples, user, isFinal, }) => {
         try {
             // console.log("submitQC called with:", {
             //   inboundQty,
@@ -44,6 +44,7 @@ exports.qcSubmitService = {
                             planningBoxId: planningBoxId,
                             inboundQty,
                             qcSessionId: session.qcSessionId,
+                            isFinal,
                             transaction,
                         });
                 }

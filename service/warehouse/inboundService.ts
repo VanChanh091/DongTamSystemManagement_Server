@@ -9,7 +9,7 @@ import { Order } from "../../models/order/order";
 import { MEILI_INDEX } from "../../assets/labelFields";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { PlanningBox } from "../../models/planning/planningBox";
-import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../../assets/configs/dayjs/dayjs.config";
 import { PlanningPaper } from "../../models/planning/planningPaper";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
@@ -17,6 +17,7 @@ import { InboundHistory } from "../../models/warehouse/inboundHistory";
 import { Inventory } from "../../models/warehouse/inventory/inventory";
 import { manufactureRepo } from "../../repository/manufactureRepository";
 import { warehouseRepository } from "../../repository/warehouseRepository";
+import { InventoryWipSheets } from "../../models/warehouse/inventory/inventory_wip_sheets";
 import { inventoryRepository } from "../../repository/inventoryRepository";
 import { syntheticRepository } from "../../repository/synthetic/syntheticRepository";
 import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
@@ -233,9 +234,62 @@ export const inboundService = {
         },
       );
 
-      if (isFirstInbound) {
-        await planning.update({ statusRequest: "inbounded" }, { transaction });
+      // Cập nhật trạng thái PlanningPaper và Tồn kho BTP (inventoryWipSheets)
+      const currentTotalInbound = totalInboundQty + inboundQty;
+      const isPaperCompleted = currentTotalInbound >= qtyProduced;
 
+      const invWipSheet = await InventoryWipSheets.findOne({
+        where: { planningId: planning.planningId, status: "in_wip" },
+        transaction,
+        lock: transaction?.LOCK.UPDATE,
+      });
+
+      if (isPaperCompleted) {
+        await planning.update({ statusRequest: "finalize" }, { transaction });
+
+        if (invWipSheet) {
+          await invWipSheet.update(
+            {
+              status: "completed",
+              qtyRemaining: 0,
+              totalPrice: 0,
+              inboundedAt: new Date(),
+            },
+            { transaction },
+          );
+
+          //--------------------MEILISEARCH-----------------------
+          await meiliService.deleteMeiliData({
+            indexKey: MEILI_INDEX.INVENTORY_WIP_SHEETS,
+            idOrIds: invWipSheet.wipSheetId,
+            transaction,
+          });
+        }
+      } else {
+        if (planning.statusRequest !== "inbounded") {
+          await planning.update({ statusRequest: "inbounded" }, { transaction });
+        }
+
+        if (invWipSheet) {
+          const newRemaining = Math.max(0, Number(invWipSheet.qtyRemaining || 0) - inboundQty);
+          const unitPrice = Number(invWipSheet.unitPrice || 0);
+
+          await invWipSheet.update(
+            { qtyRemaining: newRemaining, totalPrice: newRemaining * unitPrice },
+            { transaction },
+          );
+
+          //--------------------MEILISEARCH-----------------------
+          await meiliService.syncOrUpdateMeiliData({
+            indexKey: MEILI_INDEX.INVENTORY_WIP_SHEETS,
+            data: { wipSheetId: invWipSheet.wipSheetId, qtyRemaining: newRemaining },
+            isUpdate: true,
+            transaction,
+          });
+        }
+      }
+
+      if (isFirstInbound) {
         await Inventory.update(
           { dateInbound: new Date() },
           { where: { orderId: planning.orderId }, transaction },
@@ -275,11 +329,13 @@ export const inboundService = {
     planningBoxId,
     inboundQty,
     qcSessionId,
+    isFinal,
     transaction,
   }: {
     planningBoxId: number;
     inboundQty: number;
     qcSessionId: number;
+    isFinal?: boolean;
     transaction?: any;
   }) => {
     try {
@@ -351,9 +407,50 @@ export const inboundService = {
         },
       );
 
-      if (isFirstInbound) {
-        await planning.update({ statusRequest: "inbounded" }, { transaction });
+      // Cập nhật trạng thái PlanningBox và Tồn kho BTP (inventoryWipSheets)
+      const currentTotalInbound = totalInboundQty + inboundQty;
+      const quantityCustomer = Number(planning.Order?.quantityCustomer || 0);
+      const isBoxCompleted = currentTotalInbound >= quantityCustomer || isFinal === true;
 
+      if (isBoxCompleted) {
+        // Case 2: Đã nhập đủ hoặc vượt số lượng Order -> Chốt finalize
+        await planning.update({ statusRequest: "finalize" }, { transaction });
+
+        // Lấy danh sách wipSheetId trước khi chuyển completed để đồng bộ xóa Meilisearch
+        const wipSheets = await InventoryWipSheets.findAll({
+          where: { orderId: planning.orderId, status: "in_wip" },
+          attributes: ["wipSheetId"],
+          transaction,
+        });
+        const wipSheetIds = wipSheets.map((item) => item.wipSheetId);
+
+        // Chuyển toàn bộ BTP của đơn hàng về completed
+        await InventoryWipSheets.update(
+          {
+            status: "completed",
+            qtyRemaining: 0,
+            totalPrice: 0,
+            inboundedAt: new Date(),
+          },
+          { where: { wipSheetId: wipSheetIds }, transaction },
+        );
+
+        // --------------------MEILISEARCH-----------------------
+        if (wipSheetIds.length > 0) {
+          await meiliService.deleteMeiliData({
+            indexKey: MEILI_INDEX.INVENTORY_WIP_SHEETS,
+            idOrIds: wipSheetIds,
+            transaction,
+          });
+        }
+      } else {
+        // Case 1: Thùng ít hơn Order -> Đặt inbounded để có thể tiếp tục nhập thêm
+        if (planning.statusRequest !== "inbounded") {
+          await planning.update({ statusRequest: "inbounded" }, { transaction });
+        }
+      }
+
+      if (isFirstInbound) {
         await Inventory.update(
           { dateInbound: new Date() },
           { where: { orderId: planning.orderId }, transaction },
@@ -493,10 +590,10 @@ export const inboundService = {
         searchKeyword = "";
 
         if (startDate && endDate) {
-          const startTimestamp = dayjsUtc.utc(startDate).startOf("day").unix();
+          const startTimestamp = dayjsUtc.tz(startDate, VN_TZ).startOf("day").unix();
           filter.push(`dateInbound >= ${startTimestamp}`);
 
-          const endTimestamp = dayjsUtc.utc(endDate).endOf("day").unix();
+          const endTimestamp = dayjsUtc.tz(endDate, VN_TZ).endOf("day").unix();
           filter.push(`dateInbound <= ${endTimestamp}`);
         }
 
@@ -556,8 +653,8 @@ export const inboundService = {
       let whereCondition: any = {};
 
       if (fromDate && toDate) {
-        const startTimestamp = dayjsUtc(fromDate).startOf("day").toDate();
-        const endTimestamp = dayjsUtc(toDate).endOf("day").toDate();
+        const startTimestamp = dayjsUtc.tz(fromDate, VN_TZ).startOf("day").toDate();
+        const endTimestamp = dayjsUtc.tz(toDate, VN_TZ).endOf("day").toDate();
 
         // console.log(`start: ${fromDate} - end: ${toDate}`);
         // console.log(`startTimestamp: ${startTimestamp} - endTimestamp: ${endTimestamp}`);

@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { MachinePaper, MachinePaperCreationAttributes } from "../../models/admin/machinePaper";
+import { isRollPaperMachine, isTwoLayerMachine } from "../../assets/labelFields";
 import { MachineBox, MachineBoxCreationAttributes } from "../../models/admin/machineBox";
 import { adminService } from "../../service/admin/adminService";
 
@@ -53,12 +54,12 @@ export const getRawMachinePapers = async (req: Request, res: Response, next: Nex
       }
 
       // Nhóm "máy 2 lớp"
-      if (lower.includes("2 lớp")) {
+      if (isTwoLayerMachine(name)) {
         return { group: 2, val: 0 };
       }
 
       // Nhóm "máy quấn cuồn"
-      if (lower.includes("quấn cuồn")) {
+      if (isRollPaperMachine(name)) {
         return { group: 3, val: 0 };
       }
 

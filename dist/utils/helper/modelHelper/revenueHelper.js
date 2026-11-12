@@ -64,6 +64,6 @@ const reportEffectiveUserId = (currentUser, targetUserId, all) => {
 };
 exports.reportEffectiveUserId = reportEffectiveUserId;
 // Helper lấy ngày ca giấy
-const getPaperShiftDate = (date) => (0, dayjs_config_1.dayjsUtc)(date).subtract(6, "hour").format("YYYY-MM-DD");
+const getPaperShiftDate = (date) => dayjs_config_1.dayjsUtc.tz(date, dayjs_config_1.VN_TZ).subtract(6, "hour").format("YYYY-MM-DD");
 exports.getPaperShiftDate = getPaperShiftDate;
 //# sourceMappingURL=revenueHelper.js.map

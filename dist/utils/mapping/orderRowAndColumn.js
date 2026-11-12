@@ -103,9 +103,9 @@ const mappingOrderRow = (item, index) => {
         index: index + 1,
         orderId: item.orderId,
         orderIdCustomer: item.orderIdCustomer ?? "",
-        dayReceive: item.dayReceiveOrder ? (0, dayjs_config_1.dayjsUtc)(item.dayReceiveOrder).format("DD/MM/YYYY") : "",
+        dayReceive: item.dayReceiveOrder ? dayjs_config_1.dayjsUtc.tz(item.dayReceiveOrder, dayjs_config_1.VN_TZ).format("DD/MM/YYYY") : "",
         dateShipping: item.dateRequestShipping
-            ? (0, dayjs_config_1.dayjsUtc)(item.dateRequestShipping).format("DD/MM/YYYY")
+            ? dayjs_config_1.dayjsUtc.tz(item.dateRequestShipping, dayjs_config_1.VN_TZ).format("DD/MM/YYYY")
             : "",
         customerName: item.Customer?.customerName ?? "",
         companyName: item.Customer?.companyName ?? "",

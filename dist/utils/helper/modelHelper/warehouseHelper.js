@@ -24,8 +24,8 @@ const buildSearchWhereCondition = async (field, keyword, startDate, endDate) => 
         };
         if (isValidDateString(startDate) && isValidDateString(endDate)) {
             // Ép format về chuẩn YYYY-MM-DD của DB cho an toàn sạch sẽ
-            const formattedStart = (0, dayjs_config_1.dayjsUtc)(startDate).format("YYYY-MM-DD");
-            const formattedEnd = (0, dayjs_config_1.dayjsUtc)(endDate).format("YYYY-MM-DD");
+            const formattedStart = dayjs_config_1.dayjsUtc.tz(startDate, dayjs_config_1.VN_TZ).format("YYYY-MM-DD");
+            const formattedEnd = dayjs_config_1.dayjsUtc.tz(endDate, dayjs_config_1.VN_TZ).format("YYYY-MM-DD");
             searchWhereCondition.dateOutbound = {
                 [sequelize_1.Op.between]: [`${formattedStart} 00:00:00`, `${formattedEnd} 23:59:59`],
             };
@@ -68,7 +68,7 @@ exports.buildSearchWhereCondition = buildSearchWhereCondition;
 const calculateTotalPriceByDate = async (dataList, searchWhereCondition = {}) => {
     if (!dataList || dataList.length === 0)
         return {};
-    const uniqueDates = Array.from(new Set(dataList.map((item) => (0, dayjs_config_1.dayjsUtc)(item.dateOutbound).format("YYYY-MM-DD"))));
+    const uniqueDates = Array.from(new Set(dataList.map((item) => dayjs_config_1.dayjsUtc.tz(item.dateOutbound, dayjs_config_1.VN_TZ).format("YYYY-MM-DD"))));
     const dateConditions = uniqueDates.map((date) => ({
         dateOutbound: { [sequelize_1.Op.between]: [`${date} 00:00:00`, `${date} 23:59:59`] },
     }));

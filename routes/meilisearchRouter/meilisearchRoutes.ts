@@ -10,6 +10,7 @@ import {
   syncInspectionBoxToMeili,
   syncInspectionPaperToMeili,
   syncInventoryToMeili,
+  syncInvWipSheetToMeili,
   syncOrderToMeili,
   syncOutboundToMeili,
   syncPlanningBoxToMeili,
@@ -34,6 +35,7 @@ const syncFunctions: Record<string, (options?: any) => Promise<any>> = {
   scrapReports: syncScrapReportToMeili,
   inbound: syncInboundToMeili,
   inventory: syncInventoryToMeili,
+  invWipSheets: syncInvWipSheetToMeili,
   outbounds: syncOutboundToMeili,
   reportPapers: syncReportPaperToMeili,
   reportBoxes: syncReportBoxToMeili,
@@ -68,8 +70,8 @@ router.get("/:entity", authenticate, async (req, res, next) => {
     const actionMessage = shouldDeleteOnly
       ? `Delete all data of ${entity} from Meilisearch successfully`
       : shouldResync
-      ? `Reset and re-sync ${entity} to Meilisearch successfully`
-      : `Sync ${entity} to Meilisearch successfully`;
+        ? `Reset and re-sync ${entity} to Meilisearch successfully`
+        : `Sync ${entity} to Meilisearch successfully`;
 
     return res.status(200).json({ message: actionMessage });
   } catch (error) {

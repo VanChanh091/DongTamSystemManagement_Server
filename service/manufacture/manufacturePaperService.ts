@@ -6,11 +6,11 @@ import { Op, Transaction } from "sequelize";
 import { AppError } from "../../utils/appError";
 import { Order } from "../../models/order/order";
 import { meiliService } from "../system/meiliService";
+import { MEILI_INDEX } from "../../assets/labelFields";
 import { RequestType } from "../notification/requestType";
 import { PlanningBox } from "../../models/planning/planningBox";
 import { PlanningPaper } from "../../models/planning/planningPaper";
 import { reportRepository } from "../../repository/reportRepository";
-import { machineLabels, MEILI_INDEX } from "../../assets/labelFields";
 import { planningPaperService } from "../planning/planningPaperService";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { manufactureRepo } from "../../repository/manufactureRepository";
@@ -25,6 +25,7 @@ import { mergeShiftField } from "../../utils/helper/modelHelper/planning.timeRun
 import { InspectionRequest } from "../../models/qualityControl/inspection/inspection_request";
 import {
   aggregateReportFields,
+  assertPaperMachinePermission,
   updateStatusPaper,
 } from "../../utils/helper/modelHelper/manufactureHelper";
 import { CrudHelper } from "../../repository/helper/crud.helper.repository";
@@ -153,21 +154,16 @@ export const manuPaperService = {
           throw AppError.NotFound("planning not found", "PLANNING_NOT_FOUND");
         }
 
-        const machine = planning.chooseMachine;
-        const machineLabel = machineLabels[machine];
-        if (!machineLabel) {
-          throw AppError.BadRequest(`Invalid machine: ${machine}`, "INVALID_MACHINE");
-        }
-
         //check permission for machine (bỏ qua nếu là kế hoạch báo cáo)
-        if (role !== "admin" && role !== "manager" && !isOperationPlanning) {
-          if (!userPermissions.includes(machineLabel)) {
-            throw AppError.Unauthorized(
-              `Access denied: You don't have permission to report for machine ${machine}`,
-              "ACCESS_DENIED",
-            );
-          }
-        }
+        await assertPaperMachinePermission({
+          machine: planning.chooseMachine,
+          role,
+          userPermissions,
+          skipPermissionCheck: isOperationPlanning,
+          denyMode: "unauthorized",
+          denyMessage: `Access denied: You don't have permission to report for machine ${planning.chooseMachine}`,
+          transaction,
+        });
 
         // Cộng dồn số lượng mới vào số đã có
         const newQtyProduced = Number(planning.qtyProduced || 0) + Number(qtyProduced || 0);
@@ -415,12 +411,15 @@ export const manuPaperService = {
         }
 
         //check permission for machine (bỏ qua nếu là kế hoạch báo cáo)
-        const machineLabel = machineLabels[planning.chooseMachine];
-        if (role !== "admin" && role !== "manager" && !isOperationPlanning) {
-          if (!userPermissions.includes(machineLabel)) {
-            throw AppError.Unauthorized("Access denied for this machine", "ACCESS_DENIED");
-          }
-        }
+        await assertPaperMachinePermission({
+          machine: planning.chooseMachine,
+          role,
+          userPermissions,
+          skipPermissionCheck: isOperationPlanning,
+          denyMode: "unauthorized",
+          denyMessage: "Access denied for this machine",
+          transaction,
+        });
 
         const otherReportsSum =
           (await ReportPlanningPaper.sum("qtyProduced", {
@@ -651,19 +650,14 @@ export const manuPaperService = {
 
         // check permission
         const machine = planning.chooseMachine;
-        const machineLabel = machineLabels[machine];
-        if (!machineLabel) {
-          throw AppError.BadRequest(`Invalid machine: ${machine}`, "INVALID_MACHINE");
-        }
-
-        if (role !== "admin" && role !== "manager") {
-          if (!userPermissions.includes(machineLabel)) {
-            throw AppError.Forbidden(
-              `Access denied: You don't have permission to report for machine ${machine}`,
-              "ACCESS_DENIED",
-            );
-          }
-        }
+        await assertPaperMachinePermission({
+          machine,
+          role,
+          userPermissions,
+          denyMode: "forbidden",
+          denyMessage: `Access denied: You don't have permission to report for machine ${machine}`,
+          transaction,
+        });
 
         // Check if the planning is already completed
         if (planning.status === "complete") {

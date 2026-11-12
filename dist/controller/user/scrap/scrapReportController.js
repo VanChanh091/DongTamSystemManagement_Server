@@ -14,8 +14,6 @@ const getAllScrapReports = async (req, res, next) => {
                 pageSize: Number(pageSize),
                 startDate,
                 endDate,
-                status,
-                machine: machine,
             });
         }
         else if (page && pageSize) {

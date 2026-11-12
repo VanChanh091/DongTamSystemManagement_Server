@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
+require("./assets/configs/dayjs/dayjs.config");
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const http_1 = __importDefault(require("http"));
@@ -21,6 +22,7 @@ const telegramSendAlert_1 = require("./utils/telegram/telegramSendAlert");
 require("./utils/cronJob/cronjob");
 require("./assets/configs/queue/inspection.worker");
 const meilisearch_connect_1 = require("./assets/configs/connect/meilisearch.connect");
+const configs_1 = require("./assets/configs/meilisearch/configs");
 const app = (0, express_1.default)();
 const server = http_1.default.createServer(app);
 const io = (0, socket_1.initSocket)(server);
@@ -115,6 +117,6 @@ server.listen({ port: Number(process.env.PORT) || 5000, host: "0.0.0.0" }, async
     await (0, database_connect_1.connectDB)();
     // meilisearch
     await (0, meilisearch_connect_1.connectMeilisearch)();
-    // await setupMeilisearch();
+    await (0, configs_1.setupMeilisearch)();
 });
 //# sourceMappingURL=index.js.map

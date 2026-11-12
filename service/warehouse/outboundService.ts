@@ -12,7 +12,7 @@ import { Customer } from "../../models/customer/customer";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { exportWarehouse } from "../../utils/helper/exportPDF";
 import { DeliveryItem } from "../../models/delivery/deliveryItem";
-import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../../assets/configs/dayjs/dayjs.config";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { Inventory } from "../../models/warehouse/inventory/inventory";
@@ -144,10 +144,10 @@ export const outboundService = {
         searchKeyword = "";
 
         if (startDate && endDate) {
-          const startTimestamp = dayjsUtc.utc(startDate).startOf("day").unix();
+          const startTimestamp = dayjsUtc.tz(startDate, VN_TZ).startOf("day").unix();
           filter.push(`dateOutbound >= ${startTimestamp}`);
 
-          const endTimestamp = dayjsUtc.utc(endDate).endOf("day").unix();
+          const endTimestamp = dayjsUtc.tz(endDate, VN_TZ).endOf("day").unix();
           filter.push(`dateOutbound <= ${endTimestamp}`);
         }
 
@@ -928,8 +928,8 @@ export const outboundService = {
       let whereCondition: any = {};
 
       if (fromDate && toDate) {
-        const startTimestamp = dayjsUtc(fromDate).startOf("day").toDate();
-        const endTimestamp = dayjsUtc(toDate).endOf("day").toDate();
+        const startTimestamp = dayjsUtc.tz(fromDate, VN_TZ).startOf("day").toDate();
+        const endTimestamp = dayjsUtc.tz(toDate, VN_TZ).endOf("day").toDate();
 
         // console.log(`start: ${fromDate} - end: ${toDate}`);
         // console.log(`startTimestamp: ${startTimestamp} - endTimestamp: ${endTimestamp}`);

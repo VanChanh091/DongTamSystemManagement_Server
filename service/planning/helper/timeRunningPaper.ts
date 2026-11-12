@@ -4,6 +4,7 @@ import { PlanningPaper } from "../../../models/planning/planningPaper";
 import { timeOverflowPlanning } from "../../../models/planning/timeOverflowPlanning";
 import { AppError } from "../../../utils/appError";
 import { CrudHelper } from "../../../repository/helper/crud.helper.repository";
+import { isRollPaperMachine, isTwoLayerMachine } from "../../../assets/labelFields";
 
 //Công thức tính thời gian: time = (Thời gian A/B + (tổng dài / tốc độ)) / (hiệu suất / 100)
 // Trong đó:
@@ -100,6 +101,7 @@ export const calculateTimeRunning = async ({
     return updated;
   } catch (error) {
     if (error instanceof AppError) throw error;
+    throw AppError.ServerError("Failed to calculate time running");
   }
 };
 
@@ -178,12 +180,18 @@ const calculateTimeForOnePlanning = async ({
     const flute = Order?.flute || "3B";
     const speed = getSpeed(flute, machine, activeMachine);
     const performance = activeMachine.machinePerformance;
+    if (!performance || performance <= 0) {
+      throw AppError.BadRequest(
+        `Invalid machine performance for ${machine}`,
+        "INVALID_MACHINE_CONFIG",
+      );
+    }
 
     //check same size
     const isSameSize = lastGhepKho && ghepKho === lastGhepKho;
     let changeTime = 0;
 
-    if (machine === "Máy Quấn Cuồn") {
+    if (isRollPaperMachine(machine)) {
       changeTime = activeMachine.timeChangeSize;
     } else if (isFirst) {
       changeTime = activeMachine.timeChangeSize;
@@ -369,14 +377,27 @@ const handleOverflow = async ({
 const getSpeed = (flute: string, machine: string, info: Record<string, number>): number => {
   const layer = parseInt(flute?.[0] ?? "0", 10);
 
-  if (machine === "Máy 2 Lớp") return info.speed2Layer;
-  if (machine === "Máy Quấn Cuồn") return info.paperRollSpeed;
+  if (isTwoLayerMachine(machine)) {
+    if (!info.speed2Layer || info.speed2Layer <= 0) {
+      throw AppError.BadRequest(`Missing speed2Layer for ${machine}`, "INVALID_MACHINE_CONFIG");
+    }
+    return info.speed2Layer;
+  }
+  if (isRollPaperMachine(machine)) {
+    if (!info.paperRollSpeed || info.paperRollSpeed <= 0) {
+      throw AppError.BadRequest(`Missing paperRollSpeed for ${machine}`, "INVALID_MACHINE_CONFIG");
+    }
+    return info.paperRollSpeed;
+  }
 
   const key = `speed${layer}Layer`;
   const speed = info[key];
 
-  if (!speed) {
-    throw new Error(`Không tìm thấy tốc độ cho flute=${flute}`);
+  if (!speed || speed <= 0) {
+    throw AppError.BadRequest(
+      `Không tìm thấy tốc độ cho flute=${flute}`,
+      "INVALID_MACHINE_CONFIG",
+    );
   }
 
   return speed;

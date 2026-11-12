@@ -1,12 +1,24 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.meiliTransformer = void 0;
-const dayjs_config_1 = require("../dayjs/dayjs.config");
+exports.meiliTransformer = exports.toVnStartOfDayUnix = void 0;
+const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
+const VN_OFFSET_SEC = 7 * 3600;
+const toVnStartOfDayUnix = (date) => {
+    if (!date)
+        return null;
+    const d = date instanceof Date ? date : new Date(date);
+    if (isNaN(d.getTime()))
+        return null;
+    const vnTime = new Date(d.getTime() + VN_OFFSET_MS);
+    const utcDayStartMs = Date.UTC(vnTime.getUTCFullYear(), vnTime.getUTCMonth(), vnTime.getUTCDate());
+    return Math.floor(utcDayStartMs / 1000) - VN_OFFSET_SEC;
+};
+exports.toVnStartOfDayUnix = toVnStartOfDayUnix;
 exports.meiliTransformer = {
     customer: (customer) => {
         const raw = customer.get({ plain: true });
         const createdAtTimestamp = raw.createdAt
-            ? dayjs_config_1.dayjsUtc.utc(raw.createdAt).startOf("day").unix()
+            ? (0, exports.toVnStartOfDayUnix)(raw.createdAt)
             : null;
         return {
             ...raw,
@@ -26,7 +38,7 @@ exports.meiliTransformer = {
     order: (order) => {
         const raw = order.get({ plain: true });
         const dayReceiveOrderTimestamp = raw.dayReceiveOrder
-            ? dayjs_config_1.dayjsUtc.utc(raw.dayReceiveOrder).startOf("day").unix()
+            ? (0, exports.toVnStartOfDayUnix)(raw.dayReceiveOrder)
             : null;
         return {
             //search
@@ -43,6 +55,7 @@ exports.meiliTransformer = {
             orderSortValue: raw.orderSortValue,
         };
     },
+    //planning
     planningPaper: (paper) => {
         const raw = paper.get({ plain: true });
         return {
@@ -72,7 +85,7 @@ exports.meiliTransformer = {
     scrapReport: (db) => {
         const raw = db.get({ plain: true });
         const reportedAtTimestamp = raw.reportedAt
-            ? dayjs_config_1.dayjsUtc.utc(raw.reportedAt).startOf("day").unix()
+            ? (0, exports.toVnStartOfDayUnix)(raw.reportedAt)
             : null;
         return {
             scrapId: raw.scrapId,
@@ -81,10 +94,11 @@ exports.meiliTransformer = {
             status: raw.status,
         };
     },
+    //report
     reportPaper: (db) => {
         const raw = db.get({ plain: true });
         const dayReportTimestamp = raw.dayReport
-            ? dayjs_config_1.dayjsUtc.utc(raw.dayReport).startOf("day").unix()
+            ? (0, exports.toVnStartOfDayUnix)(raw.dayReport)
             : null;
         return {
             reportPaperId: raw.reportPaperId,
@@ -98,7 +112,7 @@ exports.meiliTransformer = {
     reportBox: (db) => {
         const raw = db.get({ plain: true });
         const dayReportTimestamp = raw.dayReport
-            ? dayjs_config_1.dayjsUtc.utc(raw.dayReport).startOf("day").unix()
+            ? (0, exports.toVnStartOfDayUnix)(raw.dayReport)
             : null;
         return {
             reportBoxId: raw.reportBoxId,
@@ -110,10 +124,11 @@ exports.meiliTransformer = {
             customerName: raw.PlanningBox?.Order?.Customer?.customerName,
         };
     },
+    //inbound & outbound
     inbound: (db) => {
         const raw = db.get({ plain: true });
         const dateInboundTimestamp = raw.dateInbound
-            ? dayjs_config_1.dayjsUtc.utc(raw.dateInbound).startOf("day").unix()
+            ? (0, exports.toVnStartOfDayUnix)(raw.dateInbound)
             : null;
         return {
             inboundId: raw.inboundId,
@@ -126,7 +141,7 @@ exports.meiliTransformer = {
     outbound: (db) => {
         const raw = db.get({ plain: true });
         const dateOutboundTimestamp = raw.dateOutbound
-            ? dayjs_config_1.dayjsUtc.utc(raw.dateOutbound).startOf("day").unix()
+            ? (0, exports.toVnStartOfDayUnix)(raw.dateOutbound)
             : null;
         return {
             outboundId: raw.outboundId,
@@ -136,6 +151,7 @@ exports.meiliTransformer = {
             customerName: raw.detail?.[0]?.Order?.Customer?.customerName,
         };
     },
+    //inventory
     inventory: (db) => {
         const raw = db.get({ plain: true });
         const order = raw.Order;
@@ -145,6 +161,20 @@ exports.meiliTransformer = {
             orderId: order?.orderId,
             customerName: order?.Customer?.customerName,
             fullName: order?.User?.fullName,
+        };
+    },
+    invWipSheet: (db) => {
+        const raw = db.get({ plain: true });
+        const order = raw.Order;
+        const createdAtTimestamp = raw.createdAt
+            ? (0, exports.toVnStartOfDayUnix)(raw.createdAt)
+            : null;
+        return {
+            wipSheetId: raw.wipSheetId,
+            orderId: raw.orderId,
+            customerName: order?.Customer?.customerName,
+            qtyRemaining: raw.qtyRemaining,
+            createdAt: createdAtTimestamp,
         };
     },
     deliveryRequest: (db) => {

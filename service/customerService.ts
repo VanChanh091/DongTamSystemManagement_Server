@@ -10,7 +10,7 @@ import { MEILI_INDEX } from "../assets/labelFields";
 import { Customer } from "../models/customer/customer";
 import { searchFieldAtribute } from "../interface/types";
 import { CacheKey } from "../utils/helper/cache/cacheKey";
-import { dayjsUtc } from "../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../assets/configs/dayjs/dayjs.config";
 import redisCache from "../assets/configs/connect/redis.connect";
 import { CacheManager } from "../utils/helper/cache/cacheManager";
 import { CustomerPayment } from "../models/customer/customerPayment";
@@ -123,10 +123,10 @@ export const customerService = {
         searchKeyword = "";
 
         if (startDate && endDate) {
-          const startTimestamp = dayjsUtc.utc(startDate).startOf("day").unix();
+          const startTimestamp = dayjsUtc.tz(startDate, VN_TZ).startOf("day").unix();
           filters.push(`createdAt >= ${startTimestamp}`);
 
-          const endTimestamp = dayjsUtc.utc(endDate).endOf("day").unix();
+          const endTimestamp = dayjsUtc.tz(endDate, VN_TZ).endOf("day").unix();
           filters.push(`createdAt <= ${endTimestamp}`);
         }
 

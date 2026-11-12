@@ -14,6 +14,7 @@ const outboundHistory_1 = require("../../models/warehouse/outbound/outboundHisto
 const paperRequirements_1 = require("../../models/planning/requirement/paperRequirements");
 const qcInspectionBox_1 = require("../../models/qualityControl/inspection/qcInspectionBox");
 const qcInspectionPaper_1 = require("../../models/qualityControl/inspection/qcInspectionPaper");
+const productionRevenueRule_1 = require("../../utils/helper/modelHelper/productionRevenueRule");
 exports.syntheticReportRepository = {
     //====================================REVENUE DAY========================================
     getRawOutboundByCustomer: async ({ startDate, endDate, userId, }) => {
@@ -33,22 +34,33 @@ exports.syntheticReportRepository = {
         });
     },
     //====================================REVENUE MONTH======================================
-    // gom nhóm theo ngày duyệt và lấy các đơn được duyệt mới nhất
+    // gom nhóm theo ngày duyệt đơn hàng
     getDailyApprovedOrders: async ({ startDate, endDate, userId, }) => {
-        return order_1.Order.findAll({
-            attributes: ["orderId", "totalPrice", "dayApproved"],
+        const dateExpr = (0, sequelize_1.fn)("DATE", (0, sequelize_1.col)("Order.dayApproved"));
+        return (await order_1.Order.findAll({
+            attributes: [
+                [dateExpr, "dateKey"],
+                [(0, sequelize_1.fn)("COALESCE", (0, sequelize_1.fn)("SUM", (0, sequelize_1.col)("Order.totalPrice")), 0), "totalAmount"],
+            ],
             where: {
                 dayApproved: { [sequelize_1.Op.between]: [startDate, endDate] },
-                status: { [sequelize_1.Op.in]: ["accept", "planning", "completed"] },
+                status: { [sequelize_1.Op.in]: [...productionRevenueRule_1.PRODUCTION_ACTIVE_ORDER_STATUSES] },
                 ...(userId ? { userId } : {}),
             },
+            group: [dateExpr],
             raw: true,
-        });
+        }));
     },
-    // lấy doanh số của giấy tấm
+    // lấy doanh số sản xuất giấy tấm theo ca 6h (gồm cả đơn thuần giấy tấm và đơn làm thùng)
     getDailyPaperProduction: async ({ startDate, endDate, userId, }) => {
-        return reportPlanningPaper_1.ReportPlanningPaper.findAll({
-            attributes: ["totalPrice", "dayReport"],
+        const shiftDateExpr = (0, sequelize_1.fn)("DATE", (0, sequelize_1.fn)("DATE_SUB", (0, sequelize_1.col)("ReportPlanningPaper.dayReport"), (0, sequelize_1.literal)("INTERVAL 6 HOUR")));
+        const orderIsBoxCol = (0, sequelize_1.col)("PlanningPaper->Order.isBox");
+        return (await reportPlanningPaper_1.ReportPlanningPaper.findAll({
+            attributes: [
+                [shiftDateExpr, "dateKey"],
+                [orderIsBoxCol, "isBox"],
+                [(0, sequelize_1.fn)("COALESCE", (0, sequelize_1.fn)("SUM", (0, sequelize_1.col)("ReportPlanningPaper.totalPrice")), 0), "totalAmount"],
+            ],
             where: { dayReport: { [sequelize_1.Op.between]: [startDate, endDate] } },
             include: [
                 {
@@ -61,21 +73,25 @@ exports.syntheticReportRepository = {
                             required: true,
                             attributes: [],
                             where: {
-                                isBox: false,
-                                status: { [sequelize_1.Op.in]: ["accept", "planning", "completed"] },
+                                status: { [sequelize_1.Op.in]: [...productionRevenueRule_1.PRODUCTION_ACTIVE_ORDER_STATUSES] },
                                 ...(userId ? { userId } : {}),
                             },
                         },
                     ],
                 },
             ],
+            group: [shiftDateExpr, orderIsBoxCol],
             raw: true,
-        });
+        }));
     },
-    //gom nhóm đơn làm thùng theo ngày nhập kho
+    // gom nhóm đơn làm thùng nhập kho theo ca 6h
     getDailyBoxProductionInbound: async ({ startDate, endDate, userId, }) => {
-        return inboundHistory_1.InboundHistory.findAll({
-            attributes: ["totalPrice", "dateInbound"],
+        const shiftDateExpr = (0, sequelize_1.fn)("DATE", (0, sequelize_1.fn)("DATE_SUB", (0, sequelize_1.col)("InboundHistory.dateInbound"), (0, sequelize_1.literal)("INTERVAL 6 HOUR")));
+        return (await inboundHistory_1.InboundHistory.findAll({
+            attributes: [
+                [shiftDateExpr, "dateKey"],
+                [(0, sequelize_1.fn)("COALESCE", (0, sequelize_1.fn)("SUM", (0, sequelize_1.col)("InboundHistory.totalPrice")), 0), "totalAmount"],
+            ],
             where: { dateInbound: { [sequelize_1.Op.between]: [startDate, endDate] } },
             include: [
                 {
@@ -84,22 +100,24 @@ exports.syntheticReportRepository = {
                     attributes: [],
                     where: {
                         isBox: true,
-                        status: { [sequelize_1.Op.in]: ["accept", "planning", "completed"] },
+                        status: { [sequelize_1.Op.in]: [...productionRevenueRule_1.PRODUCTION_ACTIVE_ORDER_STATUSES] },
                         ...(userId ? { userId } : {}),
                     },
                 },
             ],
+            group: [shiftDateExpr],
             raw: true,
-        });
+        }));
     },
-    //gom nhóm theo chi tiết xuất kho
+    // gom nhóm theo chi tiết xuất kho
     getDailyProductionOutbound: async ({ startDate, endDate, userId, }) => {
-        return outboundHistory_1.OutboundHistory.findAll({
+        const dateExpr = (0, sequelize_1.fn)("DATE", (0, sequelize_1.col)("OutboundHistory.dateOutbound"));
+        return (await outboundHistory_1.OutboundHistory.findAll({
             attributes: [
-                "totalPriceOrder",
-                "totalPriceVAT",
-                "totalPricePayment",
-                "dateOutbound",
+                [dateExpr, "dateKey"],
+                [(0, sequelize_1.fn)("COALESCE", (0, sequelize_1.fn)("SUM", (0, sequelize_1.col)("OutboundHistory.totalPriceOrder")), 0), "totalBeforeVat"],
+                [(0, sequelize_1.fn)("COALESCE", (0, sequelize_1.fn)("SUM", (0, sequelize_1.col)("OutboundHistory.totalPriceVAT")), 0), "totalVat"],
+                [(0, sequelize_1.fn)("COALESCE", (0, sequelize_1.fn)("SUM", (0, sequelize_1.col)("OutboundHistory.totalPricePayment")), 0), "totalPayment"],
             ],
             where: { dateOutbound: { [sequelize_1.Op.between]: [startDate, endDate] } },
             include: [
@@ -110,8 +128,9 @@ exports.syntheticReportRepository = {
                     where: userId ? { userId } : undefined,
                 },
             ],
+            group: [dateExpr],
             raw: true,
-        });
+        }));
     },
     //====================================REVENUE YEAR=======================================
     getRawOutboundMultiYear: async ({ startDate, endDate, userId, }) => {

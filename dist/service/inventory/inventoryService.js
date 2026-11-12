@@ -102,7 +102,7 @@ exports.inventoryService = {
                 .map((id) => rows.find((inventory) => inventory.inventoryId === id))
                 .filter(Boolean);
             return {
-                message: "Get customers from Meilisearch & DB successfully",
+                message: "Get inventory from Meilisearch & DB successfully",
                 data: finalData,
                 totalInventory: searchResult.totalHits,
                 totalPages: searchResult.totalPages,
@@ -401,7 +401,7 @@ exports.inventoryService = {
         try {
             let whereCondition = {};
             if (date) {
-                const dateTimestamp = (0, dayjs_config_1.dayjsUtc)(date).startOf("day").toDate();
+                const dateTimestamp = dayjs_config_1.dayjsUtc.tz(date, dayjs_config_1.VN_TZ).startOf("day").toDate();
                 // console.log(`date: ${date}`);
                 // console.log(`dateTimestamp: ${dateTimestamp}`);
                 whereCondition.dateInbound = { [sequelize_1.Op.lt]: dateTimestamp };

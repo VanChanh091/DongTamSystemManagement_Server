@@ -19,8 +19,8 @@ exports.paymentAllocationRepository = {
     buildAllocationQuery: ({ fromDate, toDate, customerId, search, isExport = false, }) => {
         const where = {};
         if (fromDate && toDate) {
-            const start = (0, dayjs_config_1.dayjsUtc)(fromDate).startOf("day").toDate();
-            const end = (0, dayjs_config_1.dayjsUtc)(toDate).endOf("day").toDate();
+            const start = dayjs_config_1.dayjsUtc.tz(fromDate, dayjs_config_1.VN_TZ).startOf("day").toDate();
+            const end = dayjs_config_1.dayjsUtc.tz(toDate, dayjs_config_1.VN_TZ).endOf("day").toDate();
             where.createdAt = { [sequelize_1.Op.between]: [start, end] };
         }
         if (customerId)

@@ -28,7 +28,7 @@ const mappingCustomerRow = (item, index) => {
         customerName: item.customerName,
         phone: item.phone,
         contactPerson: item.contactPerson,
-        createdAt: item.createdAt ? (0, dayjs_config_1.dayjsUtc)(item.createdAt).format("DD/MM/YYYY") : "",
+        createdAt: item.createdAt ? dayjs_config_1.dayjsUtc.tz(item.createdAt, dayjs_config_1.VN_TZ).format("DD/MM/YYYY") : "",
         debtLimit: Number(payment?.debtLimit ?? 0),
         paymentType: payment?.paymentType === "daily" ? "Ngày" : "Tháng",
         companyName: item.companyName,

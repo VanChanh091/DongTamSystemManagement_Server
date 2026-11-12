@@ -19,6 +19,7 @@ import { scrapReportRepository } from "../../../../repository/scrapReportReposit
 import { planningBoxRepository } from "../../../../repository/planning/planningBoxRepository";
 import { planningPaperRepository } from "../../../../repository/planning/planningPaperRepository";
 import { qcRepository } from "../../../../repository/qcRepository";
+import { InventoryWipSheets } from "../../../../models/warehouse/inventory/inventory_wip_sheets";
 
 interface SyncMeiliData {
   data: any[];
@@ -54,7 +55,9 @@ const syncMeiliData = async ({
 
     if (isDeleteAll) {
       const task = await index.deleteAllDocuments();
-      console.log(`🗑️ Đã gửi lệnh xóa toàn bộ dữ liệu của ${displayName}... TaskID: ${task.taskUid}`);
+      console.log(
+        `🗑️ Đã gửi lệnh xóa toàn bộ dữ liệu của ${displayName}... TaskID: ${task.taskUid}`,
+      );
       return task.taskUid;
     }
 
@@ -252,6 +255,24 @@ export const syncInventoryToMeili = async (options?: SyncOptions) => {
     indexName: "inventories",
     displayName: "inventories",
     primaryKey: "inventoryId",
+    isDeleteAll,
+    isResync,
+  });
+};
+
+export const syncInvWipSheetToMeili = async (options?: SyncOptions) => {
+  const { isDeleteAll, isResync } = parseSyncOptions(options);
+
+  const invWipSheets = await inventoryRepository.syncAllWipSheetsForMeili({
+    whereCondition: { qtyRemaining: { [Op.gt]: 0 }, status: { [Op.ne]: "completed" } },
+  });
+  const flattenData = invWipSheets.map(meiliTransformer.invWipSheet);
+
+  return await syncMeiliData({
+    data: flattenData,
+    indexName: "invWipSheets",
+    displayName: "invWipSheets",
+    primaryKey: "wipSheetId",
     isDeleteAll,
     isResync,
   });

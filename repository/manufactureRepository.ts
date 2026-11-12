@@ -3,7 +3,7 @@ import { Order } from "../models/order/order";
 import { Customer } from "../models/customer/customer";
 import { Op, Sequelize, Transaction } from "sequelize";
 import { PlanningBox } from "../models/planning/planningBox";
-import { dayjsUtc } from "../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../assets/configs/dayjs/dayjs.config";
 import { PlanningPaper } from "../models/planning/planningPaper";
 import { ReportPlanningBox } from "../models/report/reportPlanningBox";
 import { EmployeeBasicInfo } from "../models/employee/employeeBasicInfo";
@@ -155,8 +155,8 @@ export const manufactureRepo = {
     shiftProduction: "Ca 1" | "Ca 2" | "Ca 3";
     transaction?: Transaction;
   }) => {
-    const startDate = dayjsUtc.utc(dayCompleted).format("YYYY-MM-DD 00:00:00");
-    const endDate = dayjsUtc.utc(dayCompleted).format("YYYY-MM-DD 23:59:59");
+    const startDate = dayjsUtc.tz(dayCompleted, VN_TZ).format("YYYY-MM-DD 00:00:00");
+    const endDate = dayjsUtc.tz(dayCompleted, VN_TZ).format("YYYY-MM-DD 23:59:59");
 
     // console.log(`start: ${startDate} - end: ${endDate}`);
 

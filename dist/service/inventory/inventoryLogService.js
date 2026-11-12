@@ -88,7 +88,8 @@ exports.inventoryLogService = {
             // const endDate = dayjsUtc.utc(targetDate).format("YYYY-MM-DD 23:59:59");
             // const dateTimestamp = dayjsUtc(targetDate).endOf("day").toDate();
             // const dateTimestamp = dayjsUtc(targetDate).toDate();
-            const dateTimestamp = (0, dayjs_config_1.dayjsUtc)(targetDate).format("YYYY-MM-DD HH:mm:ss");
+            const dateTimestamp = dayjs_config_1.dayjsUtc.tz(targetDate, dayjs_config_1.VN_TZ).format("YYYY-MM-DD HH:mm:ss");
+            // console.log(`time: ${dateTimestamp}`);
             const baseQuery = {
                 where: {
                     inventoryLogId: {
@@ -138,7 +139,7 @@ exports.inventoryLogService = {
                     },
                 ],
             };
-            const formattedDate = dayjs_config_1.dayjsUtc.utc(dateTimestamp).format("YYYY-MM-DD");
+            const formattedDate = dayjs_config_1.dayjsUtc.tz(dateTimestamp, dayjs_config_1.VN_TZ).format("YYYY-MM-DD");
             await (0, excelExporter_1.exportExcelStreamResponse)(res, {
                 baseQuery: baseQuery,
                 model: inventoryLog_1.InventoryLog,

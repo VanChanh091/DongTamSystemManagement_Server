@@ -37,6 +37,9 @@ router.post("/inventory", authMiddleware_1.default, inventoryController_1.create
 //inventory logs
 router.post("/inventory-logs/migrate", authMiddleware_1.default, inventoryController_1.migrateInitialInventoryLogs);
 router.post("/inventory-logs/export", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAccess)({ departments: ["Operation"], permissions: ["plan"], requireDept: true }), inventoryController_1.exportInventoryByDate);
+//=====================INVENTORY WIP SHEETS=========================
+router.get("/inventory-wip-sheets", authMiddleware_1.default, inventoryController_1.getInventoryWipSheets);
+router.post("/inventory-wip-sheets/export", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAccess)({ departments: ["Accountant", "Operation"], permissions: ["accountant", "plan"], requireDept: false }), inventoryController_1.exportInvWipSheets);
 //========================LIQUIDATION===========================
 router.get("/liquidation", authMiddleware_1.default, inventoryController_1.getAllLiquidationInventory);
 //========================TEST CRASH===========================

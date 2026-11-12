@@ -106,6 +106,9 @@ function initOrderModel(sequelize) {
             { fields: ["orderSortValue"] },
             //sort
             { fields: ["statusPriority", "orderSortValue"] },
+            //revenue & production reporting
+            { fields: ["status", "dayApproved", "userId"], name: "idx_orders_status_approved_user" },
+            { fields: ["isBox", "status", "userId"], name: "idx_orders_box_status_user" },
         ],
     });
     return Order;

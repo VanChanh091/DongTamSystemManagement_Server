@@ -133,8 +133,8 @@ exports.manufactureRepo = {
         });
     },
     getPlanningByDateAndShift: async ({ machine, dayCompleted, shiftProduction, transaction, }) => {
-        const startDate = dayjs_config_1.dayjsUtc.utc(dayCompleted).format("YYYY-MM-DD 00:00:00");
-        const endDate = dayjs_config_1.dayjsUtc.utc(dayCompleted).format("YYYY-MM-DD 23:59:59");
+        const startDate = dayjs_config_1.dayjsUtc.tz(dayCompleted, dayjs_config_1.VN_TZ).format("YYYY-MM-DD 00:00:00");
+        const endDate = dayjs_config_1.dayjsUtc.tz(dayCompleted, dayjs_config_1.VN_TZ).format("YYYY-MM-DD 23:59:59");
         // console.log(`start: ${startDate} - end: ${endDate}`);
         return await planningPaper_1.PlanningPaper.findAll({
             where: {

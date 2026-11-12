@@ -32,16 +32,16 @@ const mappingEmployeeRow = (item, index) => {
         index: index + 1,
         employeeCode: companyInfo.employeeCode,
         fullName: item.fullName,
-        joinDate: companyInfo.joinDate ? (0, dayjs_config_1.dayjsUtc)(companyInfo.joinDate).format("DD/MM/YYYY") : "",
+        joinDate: companyInfo.joinDate ? dayjs_config_1.dayjsUtc.tz(companyInfo.joinDate, dayjs_config_1.VN_TZ).format("DD/MM/YYYY") : "",
         department: companyInfo.department,
         position: companyInfo.position,
         gender: item.gender,
-        birthday: item.birthday ? (0, dayjs_config_1.dayjsUtc)(item.birthday).format("DD/MM/YYYY") : "",
+        birthday: item.birthday ? dayjs_config_1.dayjsUtc.tz(item.birthday, dayjs_config_1.VN_TZ).format("DD/MM/YYYY") : "",
         birthPlace: item.birthPlace,
         homeTown: item.homeTown,
         citizenId: item.citizenId,
         citizenIssuedDate: item.citizenIssuedDate
-            ? (0, dayjs_config_1.dayjsUtc)(item.citizenIssuedDate).format("DD/MM/YYYY")
+            ? dayjs_config_1.dayjsUtc.tz(item.citizenIssuedDate, dayjs_config_1.VN_TZ).format("DD/MM/YYYY")
             : "",
         citizenIssuedPlace: item.citizenIssuedPlace,
         permanentAddress: item.permanentAddress,

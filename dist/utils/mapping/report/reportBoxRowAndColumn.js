@@ -41,23 +41,21 @@ exports.reportBoxColumns = [
     { header: "Loại Máy", key: "machine" },
 ];
 const getMachineQty = (machine, planningBox, item) => {
-    let qty = null;
-    // Ưu tiên tìm trong boxTimes (máy đã chạy báo cáo)
-    const foundBoxTime = planningBox.boxTimes?.find((bt) => bt.machine === machine);
-    if (foundBoxTime) {
-        qty = item.qtyProduced;
+    // Nếu đúng là máy của dòng báo cáo hiện tại thì lấy sản lượng của báo cáo đó
+    if (item.machine === machine) {
+        return item.qtyProduced ?? 0;
     }
-    else {
-        const foundAll = planningBox.allBoxTimes?.find((bt) => bt.machine === machine);
-        qty = foundAll?.qtyProduced || 0;
-    }
-    return qty;
+    // Ngược lại lấy sản lượng đã chạy của máy khác (từ boxTimes khi xuất tất cả máy hoặc allBoxTimes khi lọc 1 máy)
+    const foundBoxTime = planningBox?.boxTimes?.find((bt) => bt.machine === machine) ||
+        planningBox?.allBoxTimes?.find((bt) => bt.machine === machine);
+    return foundBoxTime?.qtyProduced || 0;
 };
 const mapReportBoxRow = (item, index) => {
     const planningBox = item.PlanningBox;
     const order = planningBox?.Order || {};
     const customer = order?.Customer || {};
     const box = order?.box || {};
+    const currentBoxTime = planningBox?.boxTimes?.find((bt) => bt.machine === item.machine) || planningBox?.boxTimes?.[0];
     const qtyFields = {
         qtyPrinted: 0,
         qtyCanLan: 0,
@@ -77,12 +75,12 @@ const mapReportBoxRow = (item, index) => {
         orderId: order.orderId,
         customerName: customer.customerName || "",
         dateShipping: order.dateRequestShipping
-            ? (0, dayjs_config_1.dayjsUtc)(order.dateRequestShipping).format("DD/MM/YYYY")
+            ? dayjs_config_1.dayjsUtc.tz(order.dateRequestShipping, dayjs_config_1.VN_TZ).format("DD/MM/YYYY")
             : "",
-        dayStartProduction: planningBox.boxTimes?.[0]?.dayStart || null
-            ? (0, dayjs_config_1.dayjsUtc)(planningBox.boxTimes?.[0]?.dayStart).format("DD/MM/YYYY")
+        dayStartProduction: currentBoxTime?.dayStart
+            ? dayjs_config_1.dayjsUtc.tz(currentBoxTime.dayStart, dayjs_config_1.VN_TZ).format("DD/MM/YYYY")
             : "",
-        dayReported: item.dayReport ? (0, dayjs_config_1.dayjsUtc)(item.dayReport).format("DD/MM/YYYY HH:mm") : "",
+        dayReported: item.dayReport ? dayjs_config_1.dayjsUtc.tz(item.dayReport, dayjs_config_1.VN_TZ).format("DD/MM/YYYY HH:mm") : "",
         // Thông số sản xuất
         structure: (0, orderHelpers_1.formatterStructureOrder)(planningBox),
         flute: order.flute,
@@ -91,8 +89,8 @@ const mapReportBoxRow = (item, index) => {
         size: Number(planningBox.size),
         child: order.numberChild,
         quantityOrd: order.quantityCustomer,
-        runningPlans: planningBox.boxTimes?.[0]?.runningPlan || null,
-        timeRunnings: planningBox.boxTimes?.[0]?.timeRunning || null,
+        runningPlans: currentBoxTime?.runningPlan || null,
+        timeRunnings: currentBoxTime?.timeRunning || null,
         ...qtyFields,
         lackOfQty: item.lackOfQty,
         inMatTruoc: box.inMatTruoc,
@@ -101,11 +99,11 @@ const mapReportBoxRow = (item, index) => {
         dan_2_Manh: box.dan_2_Manh ? "Có" : "",
         dongGhim1Manh: box.dongGhim1Manh ? "Có" : "",
         dongGhim2Manh: box.dan_2_Manh ? "Có" : "",
-        dmWasteLoss: planningBox.boxTimes?.[0]?.wasteBox || null,
+        dmWasteLoss: currentBoxTime?.wasteBox || null,
         wasteLossRp: item.wasteLoss,
         // Ca trưởng máy
         shiftManager: item.shiftManagement || "",
-        machine: planningBox.boxTimes?.[0]?.machine || null,
+        machine: item.machine || currentBoxTime?.machine || null,
     };
 };
 exports.mapReportBoxRow = mapReportBoxRow;

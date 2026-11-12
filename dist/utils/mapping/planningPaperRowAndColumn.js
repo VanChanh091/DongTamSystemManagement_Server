@@ -36,9 +36,9 @@ const mapPlanningPaperRow = (item, index) => {
         orderId: orderCell.orderId,
         customerName: orderCell.Customer.customerName,
         dateRequestShip: orderCell.dateRequestShipping
-            ? (0, dayjs_config_1.dayjsUtc)(orderCell.dateRequestShipping).format("DD/MM/YYYY")
+            ? dayjs_config_1.dayjsUtc.tz(orderCell.dateRequestShipping, dayjs_config_1.VN_TZ).format("DD/MM/YYYY")
             : "",
-        dayStart: item.dayStart ? (0, dayjs_config_1.dayjsUtc)(item.dayStart).format("DD/MM/YYYY") : "",
+        dayStart: item.dayStart ? dayjs_config_1.dayjsUtc.tz(item.dayStart, dayjs_config_1.VN_TZ).format("DD/MM/YYYY") : "",
         structure: (0, orderHelpers_1.formatterStructureOrder)(item),
         khoCapGiay: `${item.ghepKho} cm`,
         flute: orderCell.flute,

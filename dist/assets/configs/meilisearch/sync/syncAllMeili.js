@@ -19,6 +19,7 @@ const syncFunctions = [
     syncMeili_1.syncScrapReportToMeili,
     syncMeili_1.syncInspectionPaperToMeili,
     syncMeili_1.syncInspectionBoxToMeili,
+    syncMeili_1.syncInvWipSheetToMeili,
 ];
 /**
  * Đồng bộ hoặc xóa toàn bộ dữ liệu của tất cả các Index

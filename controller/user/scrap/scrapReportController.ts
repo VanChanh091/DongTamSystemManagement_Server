@@ -24,8 +24,6 @@ export const getAllScrapReports = async (req: Request, res: Response, next: Next
         pageSize: Number(pageSize),
         startDate,
         endDate,
-        status,
-        machine: machine!,
       });
     } else if (page && pageSize) {
       response = await scrapReportService.getScrapReportByStatus({

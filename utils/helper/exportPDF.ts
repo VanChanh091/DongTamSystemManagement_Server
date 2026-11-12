@@ -4,7 +4,7 @@ import PDFDocument from "pdfkit";
 import { Response } from "express";
 import { AppError } from "../appError";
 import { warehouseRepository } from "../../repository/warehouseRepository";
-import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../../assets/configs/dayjs/dayjs.config";
 
 let LOGO_BUFFER: Buffer;
 let FONT_REGULAR_BUFFER: Buffer;
@@ -685,7 +685,7 @@ function drawSignArea(doc: PDFKit.PDFDocument) {
 
 //======================HELPER===========================
 function formatDate(date: Date | string) {
-  return dayjsUtc.utc(date).format("D [tháng] M [năm] YYYY");
+  return dayjsUtc.tz(date, VN_TZ).format("D [tháng] M [năm] YYYY");
 }
 
 export function formatDimension(value?: number): string {

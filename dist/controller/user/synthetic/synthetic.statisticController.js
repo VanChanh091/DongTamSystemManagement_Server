@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getReportProduction = exports.getErrorProductionReport = exports.getRevenueReport = void 0;
+exports.getReportProductionComparison = exports.getReportProduction = exports.getErrorProductionReport = exports.getRevenueReport = void 0;
 const revenueService_1 = require("../../../service/synthetic/statistic/revenueService");
 const errProductionService_1 = require("../../../service/synthetic/statistic/errProductionService");
 const appError_1 = require("../../../utils/appError");
@@ -107,4 +107,31 @@ const getReportProduction = async (req, res, next) => {
     }
 };
 exports.getReportProduction = getReportProduction;
+const getReportProductionComparison = async (req, res, next) => {
+    const { years, target, dimensionKey } = req.query;
+    try {
+        let parsedYears = [];
+        if (years) {
+            if (typeof years === "string") {
+                parsedYears = years
+                    .split(",")
+                    .map((y) => Number(y.trim()))
+                    .filter((y) => !isNaN(y));
+            }
+        }
+        if (parsedYears.length === 0) {
+            parsedYears = [new Date().getFullYear()];
+        }
+        const result = await productionReportService_1.productionReportService.getProductionMultiYearComparison({
+            years: parsedYears,
+            target: target === "worker" ? "worker" : "machine",
+            dimensionKey: dimensionKey ? String(dimensionKey).trim() : undefined,
+        });
+        return res.status(200).json(result);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.getReportProductionComparison = getReportProductionComparison;
 //# sourceMappingURL=synthetic.statisticController.js.map

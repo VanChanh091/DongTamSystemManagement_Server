@@ -1,7 +1,6 @@
 import { AppError } from "../../../utils/appError";
 import { OrderStatus } from "../../../models/order/order";
 import { NextFunction, Request, Response } from "express";
-import { machinePaperType } from "../../../models/planning/planningPaper";
 import { planningPaperService } from "../../../service/planning/planningPaperService";
 
 export const getPlanningPapers = async (req: Request, res: Response, next: NextFunction) => {
@@ -40,7 +39,7 @@ export const handleUpdatePlanningPapers = async (
   const { action, planningIds, newMachine, newStatus, note, forceComplete } = req.body as {
     action: string;
     planningIds: number | number[];
-    newMachine?: machinePaperType;
+    newMachine?: string;
     newStatus?: OrderStatus;
     note?: string;
     forceComplete?: boolean;

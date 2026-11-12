@@ -1,8 +1,9 @@
-const machineLabels = {
+const machineLabels: Record<string, string> = {
   "Máy 1350": "machine1350",
   "Máy 1800": "machine1800",
   "Máy 1900": "machine1900",
   "Máy 2 Lớp": "machine2Layer",
+  "Máy 2 Lớp 2": "machine2Layer2",
   "Máy Quấn Cuồn": "MachineRollPaper",
 };
 
@@ -28,6 +29,7 @@ const validPermissions = [
   "machine1800",
   "machine1900",
   "machine2Layer",
+  "machine2Layer2",
   "MachineRollPaper",
   "step2Production",
   "QC",
@@ -57,10 +59,25 @@ const MEILI_INDEX = {
   INBOUND: "inboundHistories",
   OUTBOUNDS: "outbounds",
   INVENTORIES: "inventories",
+  INVENTORY_WIP_SHEETS: "invWipSheets",
   REPORT_PAPERS: "reportPapers",
   REPORT_BOXES: "reportBoxes",
   DASHBOARD: "dashboard",
   DELIVERY_REQUEST: "deliveryRequest",
 };
 
-export { machineLabels, MACHINE_FIELD_MAP, validPermissions, machineMap, MEILI_INDEX };
+const isTwoLayerMachine = (machineName?: string | null): boolean =>
+  (machineName ?? "").trim().toLowerCase().includes("2 lớp");
+
+const isRollPaperMachine = (machineName?: string | null): boolean =>
+  (machineName ?? "").trim().toLowerCase().includes("quấn cuồn");
+
+export {
+  machineLabels,
+  MACHINE_FIELD_MAP,
+  validPermissions,
+  machineMap,
+  MEILI_INDEX,
+  isTwoLayerMachine,
+  isRollPaperMachine,
+};

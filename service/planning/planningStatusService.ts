@@ -10,7 +10,8 @@ import { meiliService } from "../system/meiliService";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { PlanningBox } from "../../models/planning/planningBox";
 import { WasteNormPaper } from "../../models/admin/wasteNormPaper";
-import { machineMap, MEILI_INDEX } from "../../assets/labelFields";
+import { MachinePaper } from "../../models/admin/machinePaper";
+import { isRollPaperMachine, machineMap, MEILI_INDEX } from "../../assets/labelFields";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
@@ -122,9 +123,17 @@ export const planningStatusService = {
         if (!order) throw AppError.NotFound("Order not found", "ORDER_NOT_FOUND");
 
         const { chooseMachine, runningPlan, ghepKho } = planningData;
+        if (!chooseMachine?.trim()) {
+          throw AppError.BadRequest("chooseMachine is required", "INVALID_MACHINE");
+        }
 
         // Lấy thông số định mức và hệ số sóng cho máy đã chọn
-        const [wasteNorm, waveCoeff] = await Promise.all([
+        const [machineExists, wasteNorm, waveCoeff] = await Promise.all([
+          MachinePaper.findOne({
+            where: { machineName: chooseMachine },
+            attributes: ["machineId"],
+            transaction,
+          }),
           CrudHelper.findOne({
             model: WasteNormPaper,
             where: { machineName: chooseMachine },
@@ -137,9 +146,14 @@ export const planningStatusService = {
           }),
         ]);
 
+        if (!machineExists) {
+          throw AppError.BadRequest(`Invalid machine: ${chooseMachine}`, "INVALID_MACHINE");
+        }
+
         if (!wasteNorm || !waveCoeff) {
-          throw new Error(
+          throw AppError.BadRequest(
             `WasteNorm or WaveCrestCoefficient not found for machine: ${chooseMachine}`,
+            "MISSING_MACHINE_CONFIG",
           );
         }
 
@@ -174,8 +188,9 @@ export const planningStatusService = {
         });
 
         //tính toán định mức giấy sản xuất
-        const lengthPaper =
-          paperPlan.chooseMachine === "Máy Quấn Cuồn" ? 1 : paperPlan.lengthPaperPlanning;
+        const lengthPaper = isRollPaperMachine(paperPlan.chooseMachine)
+          ? 1
+          : paperPlan.lengthPaperPlanning;
 
         const paperRequirement = await handlePaperRequirements({
           planningId: paperPlan.planningId,
@@ -661,7 +676,7 @@ const handlePaperRequirements = async ({
   ghepKho: number;
   transaction: any;
 }) => {
-  const isRollMachine = planningData.chooseMachine === "Máy Quấn Cuồn";
+  const isRollMachine = isRollPaperMachine(planningData.chooseMachine);
 
   const layerConfigs = [
     { rawCode: planningData.dayReplace, isFlute: false },

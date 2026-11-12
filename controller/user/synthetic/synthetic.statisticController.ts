@@ -134,3 +134,40 @@ export const getReportProduction = async (req: Request, res: Response, next: Nex
     next(error);
   }
 };
+
+export const getReportProductionComparison = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { years, target, dimensionKey } = req.query as {
+    years?: string;
+    target?: "machine" | "worker";
+    dimensionKey?: string;
+  };
+
+  try {
+    let parsedYears: number[] = [];
+    if (years) {
+      if (typeof years === "string") {
+        parsedYears = years
+          .split(",")
+          .map((y) => Number(y.trim()))
+          .filter((y) => !isNaN(y));
+      }
+    }
+    if (parsedYears.length === 0) {
+      parsedYears = [new Date().getFullYear()];
+    }
+
+    const result = await productionReportService.getProductionMultiYearComparison({
+      years: parsedYears,
+      target: target === "worker" ? "worker" : "machine",
+      dimensionKey: dimensionKey ? String(dimensionKey).trim() : undefined,
+    });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};

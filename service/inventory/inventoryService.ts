@@ -10,7 +10,7 @@ import { Order } from "../../models/order/order";
 import { MEILI_INDEX } from "../../assets/labelFields";
 import { searchFieldAtribute } from "../../interface/types";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
-import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../../assets/configs/dayjs/dayjs.config";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { Inventory } from "../../models/warehouse/inventory/inventory";
@@ -116,7 +116,7 @@ export const inventoryService = {
         .filter(Boolean);
 
       return {
-        message: "Get customers from Meilisearch & DB successfully",
+        message: "Get inventory from Meilisearch & DB successfully",
         data: finalData,
         totalInventory: searchResult.totalHits,
         totalPages: searchResult.totalPages,
@@ -504,7 +504,7 @@ export const inventoryService = {
       let whereCondition: any = {};
 
       if (date) {
-        const dateTimestamp = dayjsUtc(date).startOf("day").toDate();
+        const dateTimestamp = dayjsUtc.tz(date, VN_TZ).startOf("day").toDate();
 
         // console.log(`date: ${date}`);
         // console.log(`dateTimestamp: ${dateTimestamp}`);

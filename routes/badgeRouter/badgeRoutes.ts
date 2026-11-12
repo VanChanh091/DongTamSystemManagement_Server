@@ -10,11 +10,29 @@ import {
   countRequestPrepareGoods,
   countWaitingCheck,
 } from "../../controller/badge/badgeController";
+import { AuthorizeAccessParams } from "../../interface/types";
 
 const router = Router();
 
-const authorizePlanningAccess = () =>
-  authorizeAccess({ departments: ["Operation"], permissions: ["plan"], requireDept: true });
+const authorizePlanningAccess = ({
+  departments = [],
+  permissions = [],
+  requireDept = true,
+  roles = [],
+}: AuthorizeAccessParams = {}) =>
+  authorizeAccess({
+    departments: [...new Set(["Operation", ...departments])],
+    permissions: [...new Set(["plan", ...permissions])],
+    roles,
+    requireDept,
+  });
+
+const canAccessManagerSale = authorizePlanningAccess({
+  departments: ["Sale"],
+  permissions: ["sale"],
+  roles: ["manager"],
+  requireDept: false,
+});
 
 //pending order
 router.get(
@@ -28,12 +46,12 @@ router.get(
 router.get(
   "/count-pending-planning",
   authenticate,
-  authorizePlanningAccess(),
+  canAccessManagerSale,
   countOrderPendingPlanning,
 );
 
 //planning stop
-router.get("/count-planning-stop", authenticate, authorizePlanningAccess(), countPlanningStop);
+router.get("/count-planning-stop", authenticate, canAccessManagerSale, countPlanningStop);
 
 //waiting check paper & box
 router.get(
@@ -44,12 +62,7 @@ router.get(
 );
 
 //delivery request
-router.get(
-  "/count-delivery-request",
-  authenticate,
-  authorizePlanningAccess(),
-  countDeliveryRequest,
-);
+router.get("/count-delivery-request", authenticate, canAccessManagerSale, countDeliveryRequest);
 
 //prepare goods
 router.get(

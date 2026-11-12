@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 import { EmployeeBasicInfo } from "../../models/employee/employeeBasicInfo";
-import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../../assets/configs/dayjs/dayjs.config";
 
 export const employeeColumns: Partial<ExcelJS.Column>[] = [
   { header: "STT", key: "index" },
@@ -34,16 +34,16 @@ export const mappingEmployeeRow = (item: EmployeeBasicInfo, index: number) => {
     index: index + 1,
     employeeCode: companyInfo.employeeCode,
     fullName: item.fullName,
-    joinDate: companyInfo.joinDate ? dayjsUtc(companyInfo.joinDate).format("DD/MM/YYYY") : "",
+    joinDate: companyInfo.joinDate ? dayjsUtc.tz(companyInfo.joinDate, VN_TZ).format("DD/MM/YYYY") : "",
     department: companyInfo.department,
     position: companyInfo.position,
     gender: item.gender,
-    birthday: item.birthday ? dayjsUtc(item.birthday).format("DD/MM/YYYY") : "",
+    birthday: item.birthday ? dayjsUtc.tz(item.birthday, VN_TZ).format("DD/MM/YYYY") : "",
     birthPlace: item.birthPlace,
     homeTown: item.homeTown,
     citizenId: item.citizenId,
     citizenIssuedDate: item.citizenIssuedDate
-      ? dayjsUtc(item.citizenIssuedDate).format("DD/MM/YYYY")
+      ? dayjsUtc.tz(item.citizenIssuedDate, VN_TZ).format("DD/MM/YYYY")
       : "",
     citizenIssuedPlace: item.citizenIssuedPlace,
     permanentAddress: item.permanentAddress,

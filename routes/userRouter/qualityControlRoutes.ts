@@ -12,7 +12,7 @@ import {
   updateResult,
   updateSession,
 } from "../../controller/user/QC/qcController";
-import { authorizeAccess, authorizeAnyPermission } from "../../middlewares/permissionMiddleware";
+import { authorizeAccess } from "../../middlewares/permissionMiddleware";
 import { handleUpdateScrapReport } from "../../controller/user/scrap/scrapReportController";
 import {
   checkingInspection,

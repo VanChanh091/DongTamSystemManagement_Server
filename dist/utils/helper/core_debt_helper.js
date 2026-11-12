@@ -188,7 +188,7 @@ exports.processDebtAggregation = processDebtAggregation;
 const checkIsClosingDay = ({ paymentType, closingDays, targetDate = new Date(), }) => {
     try {
         // tạo bản để tránh bị biến đổi đối tượng Date gốc
-        const targetDayjs = (0, dayjs_config_1.dayjsUtc)(targetDate);
+        const targetDayjs = dayjs_config_1.dayjsUtc.tz(targetDate, dayjs_config_1.VN_TZ);
         const dayOfWeek = targetDayjs.day(); // 0: Chủ Nhật, 1 -> 6: T2 -> T7
         const dateOfMonth = targetDayjs.date();
         const lastDayOfMonth = targetDayjs.endOf("month").date();

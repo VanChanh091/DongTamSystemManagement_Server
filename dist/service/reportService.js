@@ -86,9 +86,9 @@ exports.reportService = {
             if (field === "dayReported") {
                 searchKeyword = "";
                 if (startDate && endDate) {
-                    const startTimestamp = dayjs_config_1.dayjsUtc.utc(startDate).startOf("day").unix();
+                    const startTimestamp = dayjs_config_1.dayjsUtc.tz(startDate, dayjs_config_1.VN_TZ).startOf("day").unix();
                     filters.push(`dayReported >= ${startTimestamp}`);
-                    const endTimestamp = dayjs_config_1.dayjsUtc.utc(endDate).endOf("day").unix();
+                    const endTimestamp = dayjs_config_1.dayjsUtc.tz(endDate, dayjs_config_1.VN_TZ).endOf("day").unix();
                     filters.push(`dayReported <= ${endTimestamp}`);
                 }
             }
@@ -195,9 +195,9 @@ exports.reportService = {
             if (field === "dayReported") {
                 searchKeyword = "";
                 if (startDate && endDate) {
-                    const startTimestamp = dayjs_config_1.dayjsUtc.utc(startDate).startOf("day").unix();
+                    const startTimestamp = dayjs_config_1.dayjsUtc.tz(startDate, dayjs_config_1.VN_TZ).startOf("day").unix();
                     filters.push(`dayReported >= ${startTimestamp}`);
-                    const endTimestamp = dayjs_config_1.dayjsUtc.utc(endDate).endOf("day").unix();
+                    const endTimestamp = dayjs_config_1.dayjsUtc.tz(endDate, dayjs_config_1.VN_TZ).endOf("day").unix();
                     filters.push(`dayReported <= ${endTimestamp}`);
                 }
             }
@@ -250,13 +250,17 @@ exports.reportService = {
         try {
             let whereCondition = {};
             if (fromDate && toDate) {
-                const startTimestamp = (0, dayjs_config_1.dayjsUtc)(fromDate).toDate();
-                const endTimestamp = (0, dayjs_config_1.dayjsUtc)(toDate).toDate();
+                const startTimestamp = dayjs_config_1.dayjsUtc.tz(fromDate, dayjs_config_1.VN_TZ).toDate();
+                const endTimestamp = dayjs_config_1.dayjsUtc.tz(toDate, dayjs_config_1.VN_TZ).toDate();
                 // console.log(`start: ${fromDate} - end: ${toDate}`);
                 // console.log(`startTimestamp: ${startTimestamp} - endTimestamp: ${endTimestamp}`);
                 whereCondition.dayReport = { [sequelize_1.Op.between]: [startTimestamp, endTimestamp] };
             }
-            const baseQuery = reportRepository_1.reportRepository.buildReportPaperOptions({ machine, whereCondition });
+            const baseQuery = reportRepository_1.reportRepository.buildReportPaperOptions({
+                machine,
+                whereCondition,
+                isExport: true,
+            });
             const safeMachineName = machine && machine.trim() !== ""
                 ? (0, normalizeVN_1.normalizeVN)(machine.replace(/\s+/g, "-"))
                 : "all_machines";
@@ -279,17 +283,24 @@ exports.reportService = {
     },
     exportReportBox: async (res, fromDate, toDate, userName, machine) => {
         try {
-            let whereCondition = { machine: machine };
+            const normalizedMachine = typeof machine === "string" ? machine.trim() : undefined;
+            let whereCondition = {};
+            if (normalizedMachine) {
+                whereCondition.machine = normalizedMachine;
+            }
             if (fromDate && toDate) {
-                const startTimestamp = (0, dayjs_config_1.dayjsUtc)(fromDate).startOf("day").toDate();
-                const endTimestamp = (0, dayjs_config_1.dayjsUtc)(toDate).endOf("day").toDate();
+                const startTimestamp = dayjs_config_1.dayjsUtc.tz(fromDate, dayjs_config_1.VN_TZ).toDate();
+                const endTimestamp = dayjs_config_1.dayjsUtc.tz(toDate, dayjs_config_1.VN_TZ).toDate();
                 // console.log(`start: ${fromDate} - end: ${toDate}`);
                 // console.log(`startTimestamp: ${startTimestamp} - endTimestamp: ${endTimestamp}`);
                 whereCondition.dayReport = { [sequelize_1.Op.between]: [startTimestamp, endTimestamp] };
             }
-            const baseQuery = reportRepository_1.reportRepository.buildReportBoxOptions({ machine, whereCondition });
-            const safeMachineName = machine && machine.trim() !== ""
-                ? (0, normalizeVN_1.normalizeVN)(machine.replace(/\s+/g, "-"))
+            const baseQuery = reportRepository_1.reportRepository.buildReportBoxOptions({
+                machine: normalizedMachine,
+                whereCondition,
+            });
+            const safeMachineName = normalizedMachine
+                ? (0, normalizeVN_1.normalizeVN)(normalizedMachine.replace(/\s+/g, "-"))
                 : "all_machines";
             await (0, excelExporter_1.exportExcelStreamResponse)(res, {
                 baseQuery: baseQuery,

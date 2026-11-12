@@ -18,7 +18,7 @@ import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
 import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
 import { calculateTimeRunning, updateSortPlanning } from "./helper/timeRunningPaper";
-import { machinePaperType, PlanningPaper } from "../../models/planning/planningPaper";
+import { PlanningPaper } from "../../models/planning/planningPaper";
 import { planningPaperRepository } from "../../repository/planning/planningPaperRepository";
 import {
   mapPlanningPaperRow,
@@ -198,9 +198,23 @@ export const planningPaperService = {
     }
   },
 
-  changeMachinePlanning: async (planningIds: number[], newMachine: machinePaperType) => {
+  changeMachinePlanning: async (planningIds: number[], newMachine: string) => {
     try {
       return await runInTransaction(async (transaction) => {
+        const targetMachine = newMachine?.trim();
+        if (!targetMachine) {
+          throw AppError.BadRequest("newMachine is required", "INVALID_MACHINE");
+        }
+
+        const machineExists = await MachinePaper.findOne({
+          where: { machineName: targetMachine },
+          attributes: ["machineId"],
+          transaction,
+        });
+        if (!machineExists) {
+          throw AppError.BadRequest(`Invalid machine: ${newMachine}`, "INVALID_MACHINE");
+        }
+
         const plannings = await planningPaperRepository.getPapersById({ planningIds, transaction });
 
         if (plannings.length === 0) {
@@ -208,7 +222,7 @@ export const planningPaperService = {
         }
 
         for (const planning of plannings) {
-          planning.chooseMachine = newMachine;
+          planning.chooseMachine = targetMachine;
           planning.sortPlanning = null;
 
           await planning.save({ transaction });
@@ -217,7 +231,7 @@ export const planningPaperService = {
         //--------------------MEILISEARCH-----------------------
         const dataForMeili = plannings.map((p) => ({
           planningId: p.planningId,
-          chooseMachine: newMachine,
+          chooseMachine: targetMachine,
         }));
 
         await meiliService.syncOrUpdateMeiliData({
@@ -593,11 +607,16 @@ export const planningPaperService = {
         );
 
         // Lấy thông tin máy
+        if (!machine?.trim()) {
+          throw AppError.BadRequest("machine is required", "INVALID_MACHINE");
+        }
         const machineInfo = await MachinePaper.findAll({
           where: { machineName: machine },
           transaction,
         });
-        if (!machineInfo) throw AppError.NotFound("Machine not found", "MACHINE_NOT_FOUND");
+        if (machineInfo.length === 0) {
+          throw AppError.NotFound("Machine not found", "MACHINE_NOT_FOUND");
+        }
 
         // console.log(`machineInfo: ${JSON.stringify(machineInfo)}`);
 

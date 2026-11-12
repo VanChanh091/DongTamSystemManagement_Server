@@ -117,13 +117,14 @@ exports.CacheKey = {
         reports: {
             //revenue
             revenue_daily: (year, month, key) => `report:revenue_daily:${year}-${month}:${key}`,
-            revenue_monthly: (year, month, key) => `report:revenue_monthly:${year}-${month}:${key}`,
+            revenue_monthly: (year, month, key) => `report:v2:revenue_monthly:${year}-${month}:${key}`,
             revenue_yearly: (fromYear, toYear, key) => `report:revenue_yearly:${fromYear}-${toYear}:${key}`,
             //error production
             error_monthly: (year, month, type) => `report:error_monthly:${year}-${month}_type:${type}`,
             error_yearly: (year, type) => `report:error_yearly:${year}_type:${type}`,
             //production report
-            report_production: (startDate, endDate) => `report:production:${startDate}-${endDate}`,
+            report_production: (startDate, endDate) => `report:v2:production:${startDate}-${endDate}`,
+            report_production_compare: (year, target, filterKey) => `report:v3:prod_compare:${year}:${target}:${filterKey || "all"}`,
         },
     },
     qcInspection: {

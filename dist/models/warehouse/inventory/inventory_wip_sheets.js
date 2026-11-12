@@ -14,7 +14,16 @@ function initInventoryWipSheetsModel(sequelize) {
         qtyRemaining: { type: sequelize_1.DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
         unitPrice: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false, defaultValue: 0 },
         totalPrice: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false, defaultValue: 0 },
-        inboundedAt: { type: sequelize_1.DataTypes.DATE, allowNull: true },
+        inboundedAt: {
+            type: sequelize_1.DataTypes.DATE,
+            allowNull: true,
+            get() {
+                const rawValue = this.getDataValue("inboundedAt");
+                if (!rawValue)
+                    return null;
+                return new Date(rawValue.getTime() - rawValue.getTimezoneOffset() * 60000).toISOString();
+            },
+        },
         status: {
             type: sequelize_1.DataTypes.ENUM("in_wip", "completed", "canceled"),
             allowNull: false,
@@ -32,7 +41,8 @@ function initInventoryWipSheetsModel(sequelize) {
             { fields: ["orderId"] },
             { fields: ["planningId"] },
             //indexes
-            { fields: ["status", "createdAt"] },
+            { fields: ["qtyRemaining"] },
+            { fields: ["createdAt"] },
         ],
     });
     return InventoryWipSheets;

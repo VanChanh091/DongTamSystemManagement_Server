@@ -84,6 +84,7 @@ export function initInboundHistoryModel(sequelize: Sequelize): typeof InboundHis
         //indexes
         { fields: ["dateInbound"] },
         { fields: ["qtyInbound"] },
+        { fields: ["orderId", "dateInbound"], name: "idx_inbound_order_date" },
       ],
     },
   );

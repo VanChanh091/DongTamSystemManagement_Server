@@ -11,7 +11,9 @@ const redis_connect_1 = __importDefault(require("../../../assets/configs/connect
 const debtRepository_1 = require("../../../repository/debtRepository");
 const normalizeVN_1 = require("../../../utils/helper/normalizeVN");
 const revenueHelper_1 = require("../../../utils/helper/modelHelper/revenueHelper");
+const productionRevenueRule_1 = require("../../../utils/helper/modelHelper/productionRevenueRule");
 const dayjs_config_1 = require("../../../assets/configs/dayjs/dayjs.config");
+const normalizeAggDateKey = (value) => value instanceof Date ? (0, dayjs_config_1.dayjsUtc)(value).tz(dayjs_config_1.VN_TZ).format('YYYY-MM-DD') : String(value).slice(0, 10);
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { reports } = cacheKey_1.CacheKey.synthetic;
 const VN_TIMEZONE_OFFSET_MS = 25_200_000; // 7 tiếng
@@ -169,51 +171,47 @@ exports.statisticRevenueService = {
     },
     //revenue monthly
     getMonthlyRevenueReport: async (dto) => {
-        const now = new Date();
-        const currentYear = now.getFullYear();
-        const currentMonth = now.getMonth() + 1; // 1 - 12
+        const nowVn = dayjs_config_1.dayjsUtc.tz(new Date(), dayjs_config_1.VN_TZ);
+        const currentYear = nowVn.year();
+        const currentMonth = nowVn.month() + 1; // 1 - 12
         const year = dto.year || currentYear;
         const month = dto.month;
         try {
             // Phân quyền
             const effectiveUserId = (0, revenueHelper_1.reportEffectiveUserId)(dto.currentUser, dto.targetUserId, dto.all);
-            // Kiểm tra xem tháng được chọn có phải là tháng cũ không
             const cacheKey = reports.revenue_monthly(year, month, effectiveUserId ?? "all");
-            const isPastMonth = year < currentYear || (year === currentYear && month < currentMonth);
-            if (isPastMonth) {
-                const cached = await redis_connect_1.default.get(cacheKey);
-                if (cached) {
-                    if (devEnvironment)
-                        console.log("✅ Data Revenue monthly from Redis");
-                    const cachedData = JSON.parse(cached);
-                    return { ...cachedData, message: "Data Revenue monthly from Redis" };
-                }
+            const cached = await redis_connect_1.default.get(cacheKey);
+            if (cached) {
+                if (devEnvironment)
+                    console.log("✅ Data Revenue monthly from Redis");
+                const cachedData = JSON.parse(cached);
+                return { ...cachedData, message: "Data Revenue monthly from Redis" };
             }
             // =============== Xác định biên thời gian ==============
             const paddedMonth = String(month).padStart(2, "0");
-            const startOfMonth = (0, dayjs_config_1.dayjsUtc)(`${year}-${paddedMonth}-01`);
+            const startOfMonth = dayjs_config_1.dayjsUtc.tz(`${year}-${paddedMonth}-01`, dayjs_config_1.VN_TZ);
             const daysInMonth = startOfMonth.daysInMonth(); // Đảm bảo luôn có biến cho vòng lặp phía dưới
             // Biên thời gian thông thường: 00:00:00 ngày 01 -> 23:59:59 ngày cuối tháng
             const startDate = startOfMonth.startOf("month").format("YYYY-MM-DD 00:00:00");
             const endDate = startOfMonth.endOf("month").format("YYYY-MM-DD 23:59:59");
-            // Biên ca sản xuất giấy: 06:00:00 ngày 01 -> 05:59:59 ngày 01 tháng kế tiếp
-            const productionStartDate = `${year}-${paddedMonth}-01 06:00:00`;
+            // Biên ca sản xuất (giấy tấm & nhập kho thùng): 06:00:00 ngày 01 -> 05:59:59 ngày 01 tháng kế tiếp
             const nextMonth = startOfMonth.add(1, "month");
-            const productionEndDate = `${nextMonth.format("YYYY-MM")}-01 05:59:59`;
-            // Chạy 3 query gom nhóm song song
+            const productionStartDate = `${year}-${paddedMonth}-01 06:00:00`;
+            const productionEndMoment = nextMonth.startOf("month").hour(5).minute(59).second(59);
+            const productionEndDate = productionEndMoment.format("YYYY-MM-DD HH:mm:ss");
+            const isClosedMonth = nowVn.isAfter(productionEndMoment);
+            // Chạy 4 query gom nhóm song song (group ngay tại DB bằng Sequelize)
             const [ordersData, paperProdData, boxProdData, outboundData] = await Promise.all([
                 synthetic_reportRepository_1.syntheticReportRepository.getDailyApprovedOrders({
                     startDate,
                     endDate,
                     userId: effectiveUserId ?? undefined,
                 }),
-                // Sản xuất giấy tấm: lọc theo ca 6h
                 synthetic_reportRepository_1.syntheticReportRepository.getDailyPaperProduction({
                     startDate: productionStartDate,
                     endDate: productionEndDate,
                     userId: effectiveUserId ?? undefined,
                 }),
-                // Sản xuất thùng carton: lọc theo ca 6h
                 synthetic_reportRepository_1.syntheticReportRepository.getDailyBoxProductionInbound({
                     startDate: productionStartDate,
                     endDate: productionEndDate,
@@ -225,53 +223,42 @@ exports.statisticRevenueService = {
                     userId: effectiveUserId ?? undefined,
                 }),
             ]);
-            // Lọc bỏ đơn trùng lặp cùng 1 orderId, chỉ lấy đơn được duyệt mới nhất
-            const uniqueOrdersMap = new Map();
-            for (const row of ordersData) {
-                if (!uniqueOrdersMap.has(row.orderId)) {
-                    uniqueOrdersMap.set(row.orderId, row);
-                }
-            }
-            const cleanOrdersData = Array.from(uniqueOrdersMap.values());
             // === Gom nhóm thành Map ===
-            // Doanh số nhận đơn theo ngày duyệt dayApproved
-            const orderMap = (0, revenueHelper_1.aggregateDailyAmounts)({
-                records: cleanOrdersData,
-                getDateFn: (item) => item.dayApproved,
-                getAmountFn: (item) => item.totalPrice,
-            });
-            // Doanh số sản xuất giấy tấm theo ngày chạy máy
-            const paperProdMap = (0, revenueHelper_1.aggregateDailyAmounts)({
-                records: paperProdData,
-                getDateFn: (item) => (0, dayjs_config_1.dayjsUtc)(item.dayReport).subtract(6, "hour").toDate(),
-                getAmountFn: (item) => item.totalPrice,
-            });
-            // Doanh số sản xuất thùng theo ngày nhập kho
-            const boxProdMap = (0, revenueHelper_1.aggregateDailyAmounts)({
-                records: boxProdData,
-                getDateFn: (item) => (0, dayjs_config_1.dayjsUtc)(item.dateInbound).subtract(6, "hour").toDate(),
-                getAmountFn: (item) => item.totalPrice,
-            });
+            const orderMap = new Map();
+            for (const row of ordersData) {
+                const key = normalizeAggDateKey(row.dateKey);
+                orderMap.set(key, (orderMap.get(key) || 0) + Number(row.totalAmount || 0));
+            }
+            // Công đoạn 1 (giấy tấm): 100% đơn giấy tấm + 80% đơn làm thùng
+            const paperProdMap = new Map();
+            for (const row of paperProdData) {
+                const key = normalizeAggDateKey(row.dateKey);
+                const amount = (0, productionRevenueRule_1.calcPaperStageRevenue)(row.totalAmount, row.isBox);
+                paperProdMap.set(key, (paperProdMap.get(key) || 0) + amount);
+            }
+            // Công đoạn 2 (nhập kho thùng thành phẩm): 20% đơn làm thùng
+            const boxProdMap = new Map();
+            for (const row of boxProdData) {
+                const key = normalizeAggDateKey(row.dateKey);
+                const amount = (0, productionRevenueRule_1.calcBoxInboundStageRevenue)(row.totalAmount);
+                boxProdMap.set(key, (boxProdMap.get(key) || 0) + amount);
+            }
             // Doanh số bán hàng / xuất kho
-            const salesBeforeVatMap = (0, revenueHelper_1.aggregateDailyAmounts)({
-                records: outboundData,
-                getDateFn: (item) => item.dateOutbound,
-                getAmountFn: (item) => item.totalPriceOrder,
-            });
-            const salesVatMap = (0, revenueHelper_1.aggregateDailyAmounts)({
-                records: outboundData,
-                getDateFn: (item) => item.dateOutbound,
-                getAmountFn: (item) => item.totalPriceVAT,
-            });
-            const salesMap = (0, revenueHelper_1.aggregateDailyAmounts)({
-                records: outboundData,
-                getDateFn: (item) => item.dateOutbound,
-                getAmountFn: (item) => item.totalPricePayment,
-            });
+            const salesBeforeVatMap = new Map();
+            const salesVatMap = new Map();
+            const salesMap = new Map();
+            for (const row of outboundData) {
+                const key = normalizeAggDateKey(row.dateKey);
+                salesBeforeVatMap.set(key, (salesBeforeVatMap.get(key) || 0) + Number(row.totalBeforeVat || 0));
+                salesVatMap.set(key, (salesVatMap.get(key) || 0) + Number(row.totalVat || 0));
+                salesMap.set(key, (salesMap.get(key) || 0) + Number(row.totalPayment || 0));
+            }
             // Khởi tạo danh sách đủ các ngày trong tháng
             const details = [];
             const summary = {
                 totalOrderApproved: 0,
+                totalPaperProduction: 0,
+                totalBoxProduction: 0,
                 totalProduction: 0,
                 totalBeforeVat: 0,
                 totalVat: 0,
@@ -282,7 +269,6 @@ exports.statisticRevenueService = {
                 const paddedDay = String(day).padStart(2, "0");
                 const dateKey = `${year}-${paddedMonth}-${paddedDay}`;
                 const orderAmount = (0, revenueHelper_1.roundInt)(orderMap.get(dateKey) || 0);
-                // Doanh số sản xuất = Giấy tấm (Report) + Thùng carton (Inbound)
                 const paperAmount = (0, revenueHelper_1.roundInt)(paperProdMap.get(dateKey) || 0);
                 const boxAmount = (0, revenueHelper_1.roundInt)(boxProdMap.get(dateKey) || 0);
                 const prodAmount = paperAmount + boxAmount;
@@ -293,6 +279,8 @@ exports.statisticRevenueService = {
                 details.push({
                     date: dateKey,
                     orderApprovedAmount: orderAmount,
+                    paperProductionAmount: paperAmount,
+                    boxProductionAmount: boxAmount,
                     productionAmount: prodAmount,
                     totalBeforeVat,
                     totalVat,
@@ -300,6 +288,8 @@ exports.statisticRevenueService = {
                     returnAmount,
                 });
                 summary.totalOrderApproved += orderAmount;
+                summary.totalPaperProduction += paperAmount;
+                summary.totalBoxProduction += boxAmount;
                 summary.totalProduction += prodAmount;
                 summary.totalBeforeVat += totalBeforeVat;
                 summary.totalVat += totalVat;
@@ -310,9 +300,7 @@ exports.statisticRevenueService = {
                 summary,
                 data: details,
             };
-            if (isPastMonth) {
-                await redis_connect_1.default.set(cacheKey, JSON.stringify(reportData), "EX", TIMETTL); //cache 7 ngày
-            }
+            await redis_connect_1.default.set(cacheKey, JSON.stringify(reportData), "EX", isClosedMonth ? TIMETTL : CACHETTL);
             return reportData;
         }
         catch (error) {

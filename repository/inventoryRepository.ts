@@ -7,6 +7,7 @@ import { Inventory } from "../models/warehouse/inventory/inventory";
 import { LiquidationInventory } from "../models/warehouse/inventory/liquidationInventory";
 import { InventoryTransfers } from "../models/warehouse/inventory/inventoryTransfers";
 import { PlanningPaper } from "../models/planning/planningPaper";
+import { InventoryWipSheets } from "../models/warehouse/inventory/inventory_wip_sheets";
 
 export const inventoryRepository = {
   //====================================INVENTORY========================================
@@ -259,11 +260,12 @@ export const inventoryRepository = {
             "songE2Replace",
             "lengthPaperPlanning",
             "sizePaperPLaning",
+            "hasBox",
           ],
         },
         {
           model: Order,
-          attributes: ["orderId", "dvt", "isBox", "flute", "QC_box", "canLan"],
+          attributes: ["orderId", "dvt", "flute", "QC_box"],
           include: [
             { model: Customer, attributes: ["customerName"] },
             { model: Product, attributes: ["productName"] },
@@ -284,6 +286,54 @@ export const inventoryRepository = {
     }
 
     return queryOptions;
+  },
+
+  invWipSheetTotals: async (whereCondition?: any) => {
+    const result = await InventoryWipSheets.findAll({
+      where: { ...whereCondition, qtyRemaining: { [Op.gt]: 0 } },
+      attributes: [[Sequelize.fn("SUM", Sequelize.col("totalPrice")), "totalValueInventory"]],
+      raw: true,
+    });
+
+    return result[0];
+  },
+
+  buildMeiliWipSheetOptions: ({
+    whereCondition,
+    transaction,
+  }: {
+    whereCondition?: any;
+    transaction?: Transaction;
+  }): FindOptions => {
+    const options: FindOptions = {
+      where: whereCondition,
+      attributes: ["wipSheetId", "orderId", "qtyRemaining", "createdAt"],
+      include: [
+        {
+          model: Order,
+          attributes: ["orderId"],
+          include: [{ model: Customer, attributes: ["customerName"] }],
+        },
+      ],
+      transaction,
+    };
+
+    return options;
+  },
+
+  syncWipSheetForMeili: async (wipSheetId: number, transaction: Transaction) => {
+    return await InventoryWipSheets.findOne(
+      inventoryRepository.buildMeiliWipSheetOptions({
+        whereCondition: { wipSheetId },
+        transaction,
+      }),
+    );
+  },
+
+  syncAllWipSheetsForMeili: async ({ whereCondition }: { whereCondition?: any }) => {
+    return await InventoryWipSheets.findAll(
+      inventoryRepository.buildMeiliWipSheetOptions({ whereCondition }),
+    );
   },
 
   //====================================LIQUIDATION INVENTORY========================================

@@ -24,34 +24,49 @@ import {
   calculateSummaryByGhepKho,
   getPaperRequirements,
 } from "../../controller/user/planning/paperRequirementController";
+import { AuthorizeAccessParams } from "../../interface/types";
 
 const router = Router();
 
-const authorizePlanAccess = authorizeAccess({
-  departments: ["Operation"],
-  permissions: ["plan"],
-  requireDept: true,
+const authorizePlanAccess = ({
+  departments = [],
+  permissions = [],
+  requireDept = true,
+  roles = [],
+}: AuthorizeAccessParams = {}) =>
+  authorizeAccess({
+    departments: [...new Set(["Operation", ...departments])],
+    permissions: [...new Set(["plan", ...permissions])],
+    roles,
+    requireDept,
+  });
+
+const canAccessManagerSale = authorizePlanAccess({
+  departments: ["Sale"],
+  permissions: ["sale"],
+  roles: ["manager"],
+  requireDept: false,
 });
 
 // ========================= PLANNING STATUS =========================
-router.get("/planning-orders", authenticate, authorizePlanAccess, getOrderAccept);
-router.post("/planning-orders", authenticate, authorizePlanAccess, planningOrder);
-router.put("/planning-orders", authenticate, authorizePlanAccess, backOrderToReject);
+router.get("/planning-orders", authenticate, canAccessManagerSale, getOrderAccept);
+router.post("/planning-orders", authenticate, canAccessManagerSale, planningOrder);
+router.put("/planning-orders", authenticate, canAccessManagerSale, backOrderToReject);
 
 // Planning stop
-router.get("/planning-stops", authenticate, authorizePlanAccess, getPlanningStop);
-router.put("/planning-stops", authenticate, authorizePlanAccess, cancelOrContinuePlannning);
+router.get("/planning-stops", authenticate, authorizePlanAccess(), getPlanningStop);
+router.put("/planning-stops", authenticate, authorizePlanAccess(), cancelOrContinuePlannning);
 
 // ========================= PLANNING PAPER =========================
 router.get("/planning-papers", authenticate, getPlanningPapers);
-router.post("/planning-papers", authenticate, authorizePlanAccess, updateIndex_TimeRunning);
-router.put("/planning-papers", authenticate, authorizePlanAccess, handleUpdatePlanningPapers);
-router.post("/export", authenticate, authorizePlanAccess, exportExcelPlanningPaper);
+router.post("/planning-papers", authenticate, canAccessManagerSale, updateIndex_TimeRunning);
+router.put("/planning-papers", authenticate, canAccessManagerSale, handleUpdatePlanningPapers);
+router.post("/export", authenticate, canAccessManagerSale, exportExcelPlanningPaper);
 
 // ========================= PLANNING BOX =========================
 router.get("/planning-boxes", authenticate, getPlanningBoxes);
-router.post("/planning-boxes", authenticate, authorizePlanAccess, updateIndex_TimeRunningBox);
-router.put("/planning-boxes", authenticate, authorizePlanAccess, updatePlanningBoxes);
+router.post("/planning-boxes", authenticate, canAccessManagerSale, updateIndex_TimeRunningBox);
+router.put("/planning-boxes", authenticate, canAccessManagerSale, updatePlanningBoxes);
 
 // ========================= PAPER REQUIREMENTS =========================
 router.get(
@@ -68,6 +83,6 @@ router.get(
 );
 
 // Socket notification
-router.post("/notify-planning", authenticate, authorizePlanAccess, notifyUpdatePlanning);
+router.post("/notify-planning", authenticate, authorizePlanAccess(), notifyUpdatePlanning);
 
 export default router;

@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../../assets/configs/dayjs/dayjs.config";
 import { PlanningPaper } from "../../models/planning/planningPaper";
 import { formatterStructureOrder } from "../helper/modelHelper/orderHelpers";
 
@@ -48,9 +48,9 @@ export const mapPlanningPaperRow = (item: PlanningPaper, index: number) => {
     customerName: orderCell.Customer.customerName,
 
     dateRequestShip: orderCell.dateRequestShipping
-      ? dayjsUtc(orderCell.dateRequestShipping).format("DD/MM/YYYY")
+      ? dayjsUtc.tz(orderCell.dateRequestShipping, VN_TZ).format("DD/MM/YYYY")
       : "",
-    dayStart: item.dayStart ? dayjsUtc(item.dayStart).format("DD/MM/YYYY") : "",
+    dayStart: item.dayStart ? dayjsUtc.tz(item.dayStart, VN_TZ).format("DD/MM/YYYY") : "",
 
     structure: formatterStructureOrder(item),
     khoCapGiay: `${item.ghepKho} cm`,

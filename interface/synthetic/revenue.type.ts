@@ -47,7 +47,9 @@ export interface RevenueReportFilterInput {
 export interface DailyReportRow {
   date: string;
   orderApprovedAmount: number; // DS nhận đơn
-  productionAmount: number; // DS sản xuất
+  paperProductionAmount: number; // DS giấy tấm (100% đơn giấy tấm + 80% đơn làm thùng)
+  boxProductionAmount: number; // DS công đoạn 2 / nhập kho thùng (20% đơn làm thùng)
+  productionAmount: number; // Tổng DS sản xuất = paperProductionAmount + boxProductionAmount
   totalBeforeVat: number; // Tổng tiền (trước VAT)
   totalVat: number; // Tổng tiền VAT
   salesAmount: number; // Tổng tiền (sau VAT) / DS bán hàng
@@ -58,6 +60,8 @@ export interface MonthlyRevenueReportResponse {
   message: string;
   summary: {
     totalOrderApproved: number;
+    totalPaperProduction: number;
+    totalBoxProduction: number;
     totalProduction: number;
     totalBeforeVat: number; // Tổng tiền trước VAT
     totalVat: number; // Tổng tiền VAT

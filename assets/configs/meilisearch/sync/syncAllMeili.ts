@@ -15,6 +15,7 @@ import {
   syncScrapReportToMeili,
   syncInspectionPaperToMeili,
   syncInspectionBoxToMeili,
+  syncInvWipSheetToMeili,
 } from "./syncMeili";
 
 const syncFunctions = [
@@ -34,6 +35,7 @@ const syncFunctions = [
   syncScrapReportToMeili,
   syncInspectionPaperToMeili,
   syncInspectionBoxToMeili,
+  syncInvWipSheetToMeili,
 ];
 
 /**

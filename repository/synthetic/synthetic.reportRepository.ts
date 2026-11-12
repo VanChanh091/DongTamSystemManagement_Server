@@ -1,4 +1,4 @@
-import { col, fn, Op } from "sequelize";
+import { col, fn, literal, Op } from "sequelize";
 import { Order } from "../../models/order/order";
 import { Customer } from "../../models/customer/customer";
 import { OrderApproved } from "../../models/order/orderApproved";
@@ -12,6 +12,23 @@ import { OutboundHistory } from "../../models/warehouse/outbound/outboundHistory
 import { PaperRequirements } from "../../models/planning/requirement/paperRequirements";
 import { QcInspectionBox } from "../../models/qualityControl/inspection/qcInspectionBox";
 import { QcInspectionPaper } from "../../models/qualityControl/inspection/qcInspectionPaper";
+import { PRODUCTION_ACTIVE_ORDER_STATUSES } from "../../utils/helper/modelHelper/productionRevenueRule";
+
+export interface DailyAmountAggRow {
+  dateKey: string;
+  totalAmount: number | string;
+}
+
+export interface DailyPaperProductionAggRow extends DailyAmountAggRow {
+  isBox: boolean | number;
+}
+
+export interface DailyOutboundAggRow {
+  dateKey: string;
+  totalBeforeVat: number | string;
+  totalVat: number | string;
+  totalPayment: number | string;
+}
 
 export const syntheticReportRepository = {
   //====================================REVENUE DAY========================================
@@ -41,7 +58,7 @@ export const syntheticReportRepository = {
   },
 
   //====================================REVENUE MONTH======================================
-  // gom nhóm theo ngày duyệt và lấy các đơn được duyệt mới nhất
+  // gom nhóm theo ngày duyệt đơn hàng
   getDailyApprovedOrders: async ({
     startDate,
     endDate,
@@ -50,19 +67,24 @@ export const syntheticReportRepository = {
     startDate: string | Date;
     endDate: string | Date;
     userId?: number;
-  }) => {
-    return Order.findAll({
-      attributes: ["orderId", "totalPrice", "dayApproved"],
+  }): Promise<DailyAmountAggRow[]> => {
+    const dateExpr = fn("DATE", col("Order.dayApproved"));
+    return (await Order.findAll({
+      attributes: [
+        [dateExpr, "dateKey"],
+        [fn("COALESCE", fn("SUM", col("Order.totalPrice")), 0), "totalAmount"],
+      ],
       where: {
         dayApproved: { [Op.between]: [startDate, endDate] },
-        status: { [Op.in]: ["accept", "planning", "completed"] },
+        status: { [Op.in]: [...PRODUCTION_ACTIVE_ORDER_STATUSES] },
         ...(userId ? { userId } : {}),
       },
+      group: [dateExpr],
       raw: true,
-    });
+    })) as unknown as DailyAmountAggRow[];
   },
 
-  // lấy doanh số của giấy tấm
+  // lấy doanh số sản xuất giấy tấm theo ca 6h (gồm cả đơn thuần giấy tấm và đơn làm thùng)
   getDailyPaperProduction: async ({
     startDate,
     endDate,
@@ -71,9 +93,19 @@ export const syntheticReportRepository = {
     startDate: string | Date;
     endDate: string | Date;
     userId?: number;
-  }) => {
-    return ReportPlanningPaper.findAll({
-      attributes: ["totalPrice", "dayReport"],
+  }): Promise<DailyPaperProductionAggRow[]> => {
+    const shiftDateExpr = fn(
+      "DATE",
+      fn("DATE_SUB", col("ReportPlanningPaper.dayReport"), literal("INTERVAL 6 HOUR")),
+    );
+    const orderIsBoxCol = col("PlanningPaper->Order.isBox");
+
+    return (await ReportPlanningPaper.findAll({
+      attributes: [
+        [shiftDateExpr, "dateKey"],
+        [orderIsBoxCol, "isBox"],
+        [fn("COALESCE", fn("SUM", col("ReportPlanningPaper.totalPrice")), 0), "totalAmount"],
+      ],
       where: { dayReport: { [Op.between]: [startDate, endDate] } },
       include: [
         {
@@ -86,19 +118,19 @@ export const syntheticReportRepository = {
               required: true,
               attributes: [],
               where: {
-                isBox: false,
-                status: { [Op.in]: ["accept", "planning", "completed"] },
+                status: { [Op.in]: [...PRODUCTION_ACTIVE_ORDER_STATUSES] },
                 ...(userId ? { userId } : {}),
               },
             },
           ],
         },
       ],
+      group: [shiftDateExpr, orderIsBoxCol],
       raw: true,
-    });
+    })) as unknown as DailyPaperProductionAggRow[];
   },
 
-  //gom nhóm đơn làm thùng theo ngày nhập kho
+  // gom nhóm đơn làm thùng nhập kho theo ca 6h
   getDailyBoxProductionInbound: async ({
     startDate,
     endDate,
@@ -107,9 +139,17 @@ export const syntheticReportRepository = {
     startDate: string | Date;
     endDate: string | Date;
     userId?: number;
-  }) => {
-    return InboundHistory.findAll({
-      attributes: ["totalPrice", "dateInbound"],
+  }): Promise<DailyAmountAggRow[]> => {
+    const shiftDateExpr = fn(
+      "DATE",
+      fn("DATE_SUB", col("InboundHistory.dateInbound"), literal("INTERVAL 6 HOUR")),
+    );
+
+    return (await InboundHistory.findAll({
+      attributes: [
+        [shiftDateExpr, "dateKey"],
+        [fn("COALESCE", fn("SUM", col("InboundHistory.totalPrice")), 0), "totalAmount"],
+      ],
       where: { dateInbound: { [Op.between]: [startDate, endDate] } },
       include: [
         {
@@ -118,16 +158,17 @@ export const syntheticReportRepository = {
           attributes: [],
           where: {
             isBox: true,
-            status: { [Op.in]: ["accept", "planning", "completed"] },
+            status: { [Op.in]: [...PRODUCTION_ACTIVE_ORDER_STATUSES] },
             ...(userId ? { userId } : {}),
           },
         },
       ],
+      group: [shiftDateExpr],
       raw: true,
-    });
+    })) as unknown as DailyAmountAggRow[];
   },
 
-  //gom nhóm theo chi tiết xuất kho
+  // gom nhóm theo chi tiết xuất kho
   getDailyProductionOutbound: async ({
     startDate,
     endDate,
@@ -136,13 +177,15 @@ export const syntheticReportRepository = {
     startDate: string | Date;
     endDate: string | Date;
     userId?: number;
-  }) => {
-    return OutboundHistory.findAll({
+  }): Promise<DailyOutboundAggRow[]> => {
+    const dateExpr = fn("DATE", col("OutboundHistory.dateOutbound"));
+
+    return (await OutboundHistory.findAll({
       attributes: [
-        "totalPriceOrder",
-        "totalPriceVAT",
-        "totalPricePayment",
-        "dateOutbound",
+        [dateExpr, "dateKey"],
+        [fn("COALESCE", fn("SUM", col("OutboundHistory.totalPriceOrder")), 0), "totalBeforeVat"],
+        [fn("COALESCE", fn("SUM", col("OutboundHistory.totalPriceVAT")), 0), "totalVat"],
+        [fn("COALESCE", fn("SUM", col("OutboundHistory.totalPricePayment")), 0), "totalPayment"],
       ],
       where: { dateOutbound: { [Op.between]: [startDate, endDate] } },
       include: [
@@ -153,8 +196,9 @@ export const syntheticReportRepository = {
           where: userId ? { userId } : undefined,
         },
       ],
+      group: [dateExpr],
       raw: true,
-    });
+    })) as unknown as DailyOutboundAggRow[];
   },
 
   //====================================REVENUE YEAR=======================================

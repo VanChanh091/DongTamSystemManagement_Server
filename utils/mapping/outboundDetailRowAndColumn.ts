@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 import { formatDimension } from "../helper/exportPDF";
-import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../../assets/configs/dayjs/dayjs.config";
 import { OutboundDetail } from "../../models/warehouse/outbound/outboundDetail";
 
 export const outboundDetailColumns: Partial<ExcelJS.Column>[] = [
@@ -47,7 +47,7 @@ export const mappingOutboundDetailRow = (item: OutboundDetail, index: number) =>
     index: index + 1,
     outboundSlipCode: outbound.outboundSlipCode || "",
     dateOutbound: outbound.dateOutbound
-      ? dayjsUtc.utc(outbound.dateOutbound).format("DD/MM/YYYY")
+      ? dayjsUtc.tz(outbound.dateOutbound, VN_TZ).format("DD/MM/YYYY")
       : "",
 
     orderId: order.orderId || "",

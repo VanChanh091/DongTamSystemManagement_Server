@@ -3,7 +3,7 @@ import { PaymentAllocation } from "../models/warehouse/payment/paymentAllocation
 import { OutboundHistory } from "../models/warehouse/outbound/outboundHistory";
 import { Customer } from "../models/customer/customer";
 import { DebtDeductionRequest } from "../models/debt/debtDeductionRequest";
-import { dayjsUtc } from "../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../assets/configs/dayjs/dayjs.config";
 
 export const paymentAllocationRepository = {
   getOutboundAllocationHistory: async (outboundId: number) => {
@@ -31,8 +31,8 @@ export const paymentAllocationRepository = {
     const where: WhereOptions = {};
 
     if (fromDate && toDate) {
-      const start = dayjsUtc(fromDate).startOf("day").toDate();
-      const end = dayjsUtc(toDate).endOf("day").toDate();
+      const start = dayjsUtc.tz(fromDate, VN_TZ).startOf("day").toDate();
+      const end = dayjsUtc.tz(toDate, VN_TZ).endOf("day").toDate();
       where.createdAt = { [Op.between]: [start, end] };
     }
 

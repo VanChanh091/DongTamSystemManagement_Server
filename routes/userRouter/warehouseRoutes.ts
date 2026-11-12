@@ -17,8 +17,10 @@ import {
 import {
   createNewInventory,
   exportInventoryByDate,
+  exportInvWipSheets,
   getAllInventory,
   getAllLiquidationInventory,
+  getInventoryWipSheets,
   migrateInitialInventoryLogs,
 } from "../../controller/user/warehouse/inventoryController";
 import { authorizeAccess } from "../../middlewares/permissionMiddleware";
@@ -84,6 +86,15 @@ router.post(
   authenticate,
   authorizeAccess({ departments: ["Operation"], permissions: ["plan"], requireDept: true }),
   exportInventoryByDate,
+);
+
+//=====================INVENTORY WIP SHEETS=========================
+router.get("/inventory-wip-sheets", authenticate, getInventoryWipSheets);
+router.post(
+  "/inventory-wip-sheets/export",
+  authenticate,
+  authorizeAccess({ departments: ["Accountant", "Operation"], permissions: ["accountant", "plan"], requireDept: false }),
+  exportInvWipSheets,
 );
 
 //========================LIQUIDATION===========================

@@ -1,4 +1,4 @@
-import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../../assets/configs/dayjs/dayjs.config";
 import { DebtItemDTO, DeductionInput, ParsedExcelRow } from "../../interface/debt.type";
 import { PaymentType } from "../../models/customer/customerPayment";
 import { AppError } from "../appError";
@@ -205,7 +205,7 @@ export const checkIsClosingDay = ({
 }): boolean => {
   try {
     // tạo bản để tránh bị biến đổi đối tượng Date gốc
-    const targetDayjs = dayjsUtc(targetDate);
+    const targetDayjs = dayjsUtc.tz(targetDate, VN_TZ);
     const dayOfWeek = targetDayjs.day(); // 0: Chủ Nhật, 1 -> 6: T2 -> T7
     const dateOfMonth = targetDayjs.date();
     const lastDayOfMonth = targetDayjs.endOf("month").date();

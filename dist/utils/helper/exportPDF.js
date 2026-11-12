@@ -532,7 +532,7 @@ function drawSignArea(doc) {
 }
 //======================HELPER===========================
 function formatDate(date) {
-    return dayjs_config_1.dayjsUtc.utc(date).format("D [tháng] M [năm] YYYY");
+    return dayjs_config_1.dayjsUtc.tz(date, dayjs_config_1.VN_TZ).format("D [tháng] M [năm] YYYY");
 }
 function formatDimension(value) {
     if (value == null)

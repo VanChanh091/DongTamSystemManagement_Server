@@ -1,15 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.reportRepository = void 0;
-const sequelize_1 = require("sequelize");
-const customer_1 = require("../models/customer/customer");
 const box_1 = require("../models/order/box");
 const order_1 = require("../models/order/order");
+const customer_1 = require("../models/customer/customer");
+const sequelize_1 = require("sequelize");
 const planningBox_1 = require("../models/planning/planningBox");
-const planningBoxMachineTime_1 = require("../models/planning/planningBoxMachineTime");
 const planningPaper_1 = require("../models/planning/planningPaper");
 const reportPlanningBox_1 = require("../models/report/reportPlanningBox");
 const reportPlanningPaper_1 = require("../models/report/reportPlanningPaper");
+const planningBoxMachineTime_1 = require("../models/planning/planningBoxMachineTime");
 exports.reportRepository = {
     buildReportPaperOptions: ({ machine, page, pageSize, whereCondition, isExport = false, }) => {
         const reportPaperWhere = {};

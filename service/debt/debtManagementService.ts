@@ -4,8 +4,7 @@ import { Response } from "express";
 import { Transaction } from "sequelize";
 import { AppError } from "../../utils/appError";
 import { debtRepository } from "../../repository/debtRepository";
-import { dayjsUtc } from "../../assets/configs/dayjs/dayjs.config";
-import { PaymentType } from "../../models/customer/customerPayment";
+import { dayjsUtc, VN_TZ } from "../../assets/configs/dayjs/dayjs.config";
 import { styleHeaderStream } from "../../utils/helper/excelExporter";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { OutboundHistory } from "../../models/warehouse/outbound/outboundHistory";
@@ -13,7 +12,6 @@ import {
   PaymentAllocation,
   PaymentMethodType,
 } from "../../models/warehouse/payment/paymentAllocation";
-import { DebtItemDTO, DeductionInput, ParsedExcelRow } from "../../interface/debt.type";
 import {
   debtCustomerColumns,
   mappingDebtCustomerRow,
@@ -119,10 +117,10 @@ export const debtManagementService = {
         }
 
         // Đưa closingDate về mốc cuối ngày 23:59:59.999
-        const effectiveClosingDate = dayjsUtc(closingDate).endOf("day").toDate();
+        const effectiveClosingDate = dayjsUtc.tz(closingDate, VN_TZ).endOf("day").toDate();
 
         // Tính hạn thanh toán (dueDate)
-        const dueDate = dayjsUtc(effectiveClosingDate)
+        const dueDate = dayjsUtc.tz(effectiveClosingDate, VN_TZ)
           .add(Number(termDays) || 0, "day")
           .endOf("day")
           .toDate();
@@ -146,7 +144,7 @@ export const debtManagementService = {
         return {
           customerId,
           closedCount: updatedCount,
-          dueDateCalculated: dayjsUtc(dueDate).format("YYYY-MM-DD HH:mm:ss"),
+          dueDateCalculated: dayjsUtc.tz(dueDate, VN_TZ).format("YYYY-MM-DD HH:mm:ss"),
         };
       });
     } catch (error) {
@@ -159,8 +157,8 @@ export const debtManagementService = {
   processAutoDebtClosing: async (targetDate: Date = new Date()) => {
     try {
       return await runInTransaction(async (transaction: Transaction) => {
-        const closingDate = dayjsUtc(targetDate).endOf("day").toDate();
-        const formattedDate = dayjsUtc(closingDate).format("YYYY-MM-DD HH:mm:ss");
+        const closingDate = dayjsUtc.tz(targetDate, VN_TZ).endOf("day").toDate();
+        const formattedDate = dayjsUtc.tz(closingDate, VN_TZ).format("YYYY-MM-DD HH:mm:ss");
 
         // Lấy toàn bộ cấu hình công nợ của khách hàng
         const configs = await debtRepository.findAllRawCustomerPayment();
@@ -175,7 +173,7 @@ export const debtManagementService = {
           });
 
           if (isClosing) {
-            const calculatedDueDate = dayjsUtc(closingDate)
+            const calculatedDueDate = dayjsUtc.tz(closingDate, VN_TZ)
               .add(Number(config.paymentTermDays) || 0, "day")
               .endOf("day")
               .toDate();
@@ -214,7 +212,7 @@ export const debtManagementService = {
         };
       });
     } catch (error) {
-      console.error("Error in processAutoDebtClosing:", error);
+      console.error("Error in process auto debt closing:", error);
       if (error instanceof AppError) throw error;
       throw AppError.ServerError();
     }
@@ -226,7 +224,7 @@ export const debtManagementService = {
       const unpaidOutbounds = await debtRepository.findOutboundUnpaid({ targetDate });
       const { sortedCustomers, grandTotal } = processDebtAggregation(unpaidOutbounds);
 
-      const dateStr = dayjsUtc(targetDate).format("DD-MM-YYYY");
+      const dateStr = dayjsUtc.tz(targetDate, VN_TZ).format("DD-MM-YYYY");
       const fileName = `debt_customer_${dateStr}`;
 
       // 2. Cấu hình Header HTTP Response

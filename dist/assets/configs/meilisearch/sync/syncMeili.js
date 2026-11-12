@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.syncDashboardToMeili = exports.syncDeliveryRequestToMeili = exports.syncInspectionBoxToMeili = exports.syncInspectionPaperToMeili = exports.syncReportBoxToMeili = exports.syncReportPaperToMeili = exports.syncInventoryToMeili = exports.syncOutboundToMeili = exports.syncInboundToMeili = exports.syncScrapReportToMeili = exports.syncPlanningBoxToMeili = exports.syncPlanningPaperToMeili = exports.syncOrderToMeili = exports.syncEmployeeToMeili = exports.syncProductToMeili = exports.syncCustomerToMeili = exports.resetMeiliIndex = exports.parseSyncOptions = void 0;
+exports.syncDashboardToMeili = exports.syncDeliveryRequestToMeili = exports.syncInspectionBoxToMeili = exports.syncInspectionPaperToMeili = exports.syncReportBoxToMeili = exports.syncReportPaperToMeili = exports.syncInvWipSheetToMeili = exports.syncInventoryToMeili = exports.syncOutboundToMeili = exports.syncInboundToMeili = exports.syncScrapReportToMeili = exports.syncPlanningBoxToMeili = exports.syncPlanningPaperToMeili = exports.syncOrderToMeili = exports.syncEmployeeToMeili = exports.syncProductToMeili = exports.syncCustomerToMeili = exports.resetMeiliIndex = exports.parseSyncOptions = void 0;
 const sequelize_1 = require("sequelize");
 const user_1 = require("../../../../models/user/user");
 const appError_1 = require("../../../../utils/appError");
@@ -230,6 +230,22 @@ const syncInventoryToMeili = async (options) => {
     });
 };
 exports.syncInventoryToMeili = syncInventoryToMeili;
+const syncInvWipSheetToMeili = async (options) => {
+    const { isDeleteAll, isResync } = (0, exports.parseSyncOptions)(options);
+    const invWipSheets = await inventoryRepository_1.inventoryRepository.syncAllWipSheetsForMeili({
+        whereCondition: { qtyRemaining: { [sequelize_1.Op.gt]: 0 }, status: { [sequelize_1.Op.ne]: "completed" } },
+    });
+    const flattenData = invWipSheets.map(meiliTransformer_1.meiliTransformer.invWipSheet);
+    return await syncMeiliData({
+        data: flattenData,
+        indexName: "invWipSheets",
+        displayName: "invWipSheets",
+        primaryKey: "wipSheetId",
+        isDeleteAll,
+        isResync,
+    });
+};
+exports.syncInvWipSheetToMeili = syncInvWipSheetToMeili;
 //sync report
 const syncReportPaperToMeili = async (options) => {
     const { isDeleteAll, isResync } = (0, exports.parseSyncOptions)(options);

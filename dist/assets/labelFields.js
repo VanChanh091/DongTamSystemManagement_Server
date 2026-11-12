@@ -60,6 +60,7 @@ const MEILI_INDEX = {
     INBOUND: "inboundHistories",
     OUTBOUNDS: "outbounds",
     INVENTORIES: "inventories",
+    INVENTORY_WIP_SHEETS: "invWipSheets",
     REPORT_PAPERS: "reportPapers",
     REPORT_BOXES: "reportBoxes",
     DASHBOARD: "dashboard",

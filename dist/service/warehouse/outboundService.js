@@ -113,9 +113,9 @@ exports.outboundService = {
             if (field === "dateOutbound") {
                 searchKeyword = "";
                 if (startDate && endDate) {
-                    const startTimestamp = dayjs_config_1.dayjsUtc.utc(startDate).startOf("day").unix();
+                    const startTimestamp = dayjs_config_1.dayjsUtc.tz(startDate, dayjs_config_1.VN_TZ).startOf("day").unix();
                     filter.push(`dateOutbound >= ${startTimestamp}`);
-                    const endTimestamp = dayjs_config_1.dayjsUtc.utc(endDate).endOf("day").unix();
+                    const endTimestamp = dayjs_config_1.dayjsUtc.tz(endDate, dayjs_config_1.VN_TZ).endOf("day").unix();
                     filter.push(`dateOutbound <= ${endTimestamp}`);
                 }
                 // console.log(`start: ${startDate} - end: ${endDate}`);
@@ -698,8 +698,8 @@ exports.outboundService = {
         try {
             let whereCondition = {};
             if (fromDate && toDate) {
-                const startTimestamp = (0, dayjs_config_1.dayjsUtc)(fromDate).startOf("day").toDate();
-                const endTimestamp = (0, dayjs_config_1.dayjsUtc)(toDate).endOf("day").toDate();
+                const startTimestamp = dayjs_config_1.dayjsUtc.tz(fromDate, dayjs_config_1.VN_TZ).startOf("day").toDate();
+                const endTimestamp = dayjs_config_1.dayjsUtc.tz(toDate, dayjs_config_1.VN_TZ).endOf("day").toDate();
                 // console.log(`start: ${fromDate} - end: ${toDate}`);
                 // console.log(`startTimestamp: ${startTimestamp} - endTimestamp: ${endTimestamp}`);
                 whereCondition.dateOutbound = { [sequelize_1.Op.between]: [startTimestamp, endTimestamp] };

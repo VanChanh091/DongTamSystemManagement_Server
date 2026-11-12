@@ -5,7 +5,7 @@ import { PlanningBox } from "./planningBox";
 import { InboundHistory } from "../warehouse/inboundHistory";
 import { InspectionRequest } from "../qualityControl/inspection/inspection_request";
 
-export type machinePaperType = "Máy 1350" | "Máy 1800" | "Máy 1900" | "Máy 2 Lớp" | "Máy Quấn Cuồn";
+// export type machinePaperType = "Máy 1350" | "Máy 1800" | "Máy 1900" | "Máy 2 Lớp" | "Máy Quấn Cuồn";
 export type planningPaperStatus =
   | "planning"
   | "lackQty"
@@ -63,7 +63,7 @@ interface PlanningPaperAttributes {
   totalLoss?: number | null;
   qtyWasteNorm?: number | null;
 
-  chooseMachine: machinePaperType;
+  chooseMachine: string;
   shiftProduction?: string | null;
   shiftManagement?: string | null;
   note?: string | null;
@@ -177,7 +177,7 @@ export class PlanningPaper
   declare totalLoss?: number | null;
   declare qtyWasteNorm?: number | null;
 
-  declare chooseMachine: machinePaperType;
+  declare chooseMachine: string;
   declare shiftProduction?: string | null;
   declare shiftManagement?: string | null;
   declare note?: string | null;
@@ -269,7 +269,8 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
       note: { type: DataTypes.STRING },
 
       chooseMachine: {
-        type: DataTypes.ENUM("Máy 1350", "Máy 1800", "Máy 1900", "Máy 2 Lớp", "Máy Quấn Cuồn"),
+        // type: DataTypes.ENUM("Máy 1350", "Máy 1800", "Máy 1900", "Máy 2 Lớp", "Máy Quấn Cuồn"),
+        type: DataTypes.STRING,
         allowNull: false,
       },
       status: {

@@ -15,6 +15,7 @@ export const qcSubmitService = {
     totalSample = 3,
     samples,
     user,
+    isFinal,
   }: {
     inboundQty: number;
     processType: processTypeQC;
@@ -26,6 +27,7 @@ export const qcSubmitService = {
       checklist: qcChecklistData;
     }>;
     user: any;
+    isFinal?: boolean;
   }) => {
     try {
       // console.log("submitQC called with:", {
@@ -66,6 +68,7 @@ export const qcSubmitService = {
                 planningBoxId: planningBoxId!,
                 inboundQty,
                 qcSessionId: session.qcSessionId,
+                isFinal,
                 transaction,
               });
         }

@@ -3,7 +3,7 @@ import { CustomerPayment } from "../models/customer/customerPayment";
 import { OutboundHistory } from "../models/warehouse/outbound/outboundHistory";
 import { Customer } from "../models/customer/customer";
 import { PaymentAllocation } from "../models/warehouse/payment/paymentAllocation";
-import { dayjsUtc } from "../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../assets/configs/dayjs/dayjs.config";
 
 export const debtRepository = {
   findOneCustomerPayment: async (customerId: string, transaction: Transaction) => {
@@ -45,7 +45,7 @@ export const debtRepository = {
     };
 
     if (targetDate) {
-      const endOfDayStr = dayjsUtc(targetDate).endOf("day").format("YYYY-MM-DD HH:mm:ss");
+      const endOfDayStr = dayjsUtc.tz(targetDate, VN_TZ).endOf("day").format("YYYY-MM-DD HH:mm:ss");
       whereCondition.dateOutbound = { [Op.lte]: endOfDayStr };
     }
 

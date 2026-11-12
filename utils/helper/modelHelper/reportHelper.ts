@@ -2,7 +2,7 @@ import { Op } from "sequelize";
 import { PlanningPaper } from "../../../models/planning/planningPaper";
 import { DailyReportPerformance } from "../../../models/report/dailyReportPerformance";
 import { sequelize } from "../../../assets/configs/connect/database.connect";
-import { dayjsUtc } from "../../../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../../../assets/configs/dayjs/dayjs.config";
 import { UnifiedPerfInput } from "../../../interface/types";
 
 // Hàm làm tròn số thông minh
@@ -300,7 +300,7 @@ export const createReportPlanning = async ({
 
     if (affectedRows === 0) {
       await DailyReportPerformance.create({
-        dayReport: dayjsUtc(currentDateTime).toDate(),
+        dayReport: dayjsUtc.tz(currentDateTime, VN_TZ).toDate(),
         machine: machine,
         flute: waveLayer,
         totalLength: parseTotalLength,

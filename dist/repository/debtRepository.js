@@ -28,7 +28,7 @@ exports.debtRepository = {
             remainingAmount: { [sequelize_1.Op.gt]: 0 },
         };
         if (targetDate) {
-            const endOfDayStr = (0, dayjs_config_1.dayjsUtc)(targetDate).endOf("day").format("YYYY-MM-DD HH:mm:ss");
+            const endOfDayStr = dayjs_config_1.dayjsUtc.tz(targetDate, dayjs_config_1.VN_TZ).endOf("day").format("YYYY-MM-DD HH:mm:ss");
             whereCondition.dateOutbound = { [sequelize_1.Op.lte]: endOfDayStr };
         }
         if (customerId) {
