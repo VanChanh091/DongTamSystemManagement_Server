@@ -3,7 +3,7 @@ import { User } from "../../models/user/user";
 import { AppError } from "../../utils/appError";
 import { getIO } from "../../utils/socket/socket";
 import { Customer } from "../../models/customer/customer";
-import { debtRepository } from "../../repository/debtRepository";
+import { debtRepository } from "../../repository/debt/debtRepository";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { NotificationModel } from "../../models/notification/notification";
@@ -11,7 +11,7 @@ import { CrudHelper } from "../../repository/helper/crud.helper.repository";
 import { sendTelegramAlertOtp } from "../../utils/telegram/telegramSendAlert";
 import { DebtDeductionRequest } from "../../models/debt/debtDeductionRequest";
 import { UserNotifications } from "../../models/notification/userNotifications";
-import { debtDeductionRepository } from "../../repository/debtDeductionRepository";
+import { debtDeductionRepository } from "../../repository/debt/debtDeductionRepository";
 import { REQUEST_CONFIG, RequestAction, RequestType } from "../notification/requestType";
 import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
 import {

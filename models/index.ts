@@ -2,17 +2,17 @@ import { sequelize } from "../assets/configs/connect/database.connect";
 import { initCriteriaBoxCheckModel } from "./admin/criteriaCheck/criteriaBoxCheck";
 import { initCriteriaPaperCheckModel } from "./admin/criteriaCheck/criteriaPaperCheck";
 import { initFluteRatioCoefficientModel } from "./admin/fluteRatio";
-import { initMachineBoxModel } from "./admin/machineBox";
-import { initMachinePaperModel } from "./admin/machinePaper";
+import { initMachineBoxModel } from "./admin/machine/machineBox";
+import { initMachinePaperModel } from "./admin/machine/machinePaper";
 import { initPaperBasisWeightsModel } from "./admin/paperClassifications/paperBasisWeights";
 import { initPaperClassificationsModel } from "./admin/paperClassifications/paperClassifications";
 import { initPaperTypesModel } from "./admin/paperClassifications/paperTypes";
 import { initSupplierPaperCodesModel } from "./admin/paperClassifications/supplierPaperCodes";
 import { initSuppliersModel } from "./admin/paperClassifications/suppliers";
 import { initVehicleModel } from "./admin/vehicle";
-import { initWasteNormBoxModel } from "./admin/wasteNormBox";
-import { initWasteNormPaperModel } from "./admin/wasteNormPaper";
-import { initWaveCrestCoefficientModel } from "./admin/waveCrestCoefficient";
+import { initWasteNormBoxModel } from "./admin/waste/wasteNormBox";
+import { initWasteNormPaperModel } from "./admin/waste/wasteNormPaper";
+import { initWaveCrestCoefficientModel } from "./admin/waste/waveCrestCoefficient";
 import { setupAssociations } from "./associations";
 import { initCustomerModel } from "./customer/customer";
 import { initCustomerPaymentModel } from "./customer/customerPayment";
@@ -56,6 +56,8 @@ import { initQcShiftModel } from "./qualityControl/qcShift";
 import { initInspectionRequestModel } from "./qualityControl/inspection/inspection_request";
 import { initdebtDeductionRequestModel } from "./debt/debtDeductionRequest";
 import { initInventoryWipSheetsModel } from "./warehouse/inventory/inventory_wip_sheets";
+import { initActionPlanTargetModel } from "./admin/actionPlan/actionPlanTarget";
+import { initActionPlanDebtSnapshotModel } from "./admin/actionPlan/actionPlanDebtSnapshot";
 
 //admin
 const MachinePaper = initMachinePaperModel(sequelize);
@@ -148,6 +150,10 @@ const UserNotifications = initUserNotificationsModel(sequelize);
 
 //debt
 const DebtDeductionRequest = initdebtDeductionRequestModel(sequelize);
+
+//action plan
+const ActionPlanTarget = initActionPlanTargetModel(sequelize);
+const ActionPlanDebtSnapshot = initActionPlanDebtSnapshotModel(sequelize);
 
 const models = {
   //admin
@@ -242,6 +248,10 @@ const models = {
 
   //debt
   DebtDeductionRequest,
+
+  //action plan
+  ActionPlanTarget,
+  ActionPlanDebtSnapshot,
 };
 
 // Setup relationships

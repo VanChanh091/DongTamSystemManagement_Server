@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateStatusPaper = exports.aggregateReportFields = void 0;
+exports.assertPaperMachinePermission = exports.updateStatusPaper = exports.aggregateReportFields = void 0;
 const appError_1 = require("../../appError");
 const labelFields_1 = require("../../../assets/labelFields");
 const planningPaper_1 = require("../../../models/planning/planningPaper");
@@ -12,6 +12,7 @@ const order_1 = require("../../../models/order/order");
 const paperRequirements_1 = require("../../../models/planning/requirement/paperRequirements");
 const sequelize_1 = require("sequelize");
 const crud_helper_repository_1 = require("../../../repository/helper/crud.helper.repository");
+const machinePaper_1 = require("../../../models/admin/machine/machinePaper");
 const aggregateReportFields = (reports) => {
     const shiftProductions = new Set();
     const shiftManagements = new Set();
@@ -91,4 +92,31 @@ const updateStatusPaper = async ({ planningId, targetStatus, extraValidator, }) 
     });
 };
 exports.updateStatusPaper = updateStatusPaper;
+const assertPaperMachinePermission = async ({ machine, role, userPermissions, skipPermissionCheck = false, denyMode = "unauthorized", denyMessage, transaction, }) => {
+    const normalizedMachine = machine?.trim();
+    if (!normalizedMachine) {
+        throw appError_1.AppError.BadRequest("Invalid machine: empty", "INVALID_MACHINE");
+    }
+    let machineLabel = labelFields_1.machineLabels[normalizedMachine];
+    if (!machineLabel) {
+        const existingMachine = await machinePaper_1.MachinePaper.findOne({
+            where: { machineName: normalizedMachine },
+            attributes: ["machineId"],
+            transaction,
+        });
+        if (!existingMachine) {
+            throw appError_1.AppError.BadRequest(`Invalid machine: ${machine}`, "INVALID_MACHINE");
+        }
+        machineLabel = (0, labelFields_1.isTwoLayerMachine)(normalizedMachine) ? "machine2Layer" : "production";
+    }
+    if (role !== "admin" && role !== "manager" && !skipPermissionCheck) {
+        if (!userPermissions.includes(machineLabel)) {
+            if (denyMode === "forbidden") {
+                throw appError_1.AppError.Forbidden(denyMessage, "ACCESS_DENIED");
+            }
+            throw appError_1.AppError.Unauthorized(denyMessage, "ACCESS_DENIED");
+        }
+    }
+};
+exports.assertPaperMachinePermission = assertPaperMachinePermission;
 //# sourceMappingURL=manufactureHelper.js.map

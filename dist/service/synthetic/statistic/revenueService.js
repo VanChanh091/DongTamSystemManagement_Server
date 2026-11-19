@@ -8,12 +8,14 @@ const appError_1 = require("../../../utils/appError");
 const synthetic_reportRepository_1 = require("../../../repository/synthetic/synthetic.reportRepository");
 const cacheKey_1 = require("../../../utils/helper/cache/cacheKey");
 const redis_connect_1 = __importDefault(require("../../../assets/configs/connect/redis.connect"));
-const debtRepository_1 = require("../../../repository/debtRepository");
+const debtRepository_1 = require("../../../repository/debt/debtRepository");
 const normalizeVN_1 = require("../../../utils/helper/normalizeVN");
 const revenueHelper_1 = require("../../../utils/helper/modelHelper/revenueHelper");
 const productionRevenueRule_1 = require("../../../utils/helper/modelHelper/productionRevenueRule");
 const dayjs_config_1 = require("../../../assets/configs/dayjs/dayjs.config");
-const normalizeAggDateKey = (value) => value instanceof Date ? (0, dayjs_config_1.dayjsUtc)(value).tz(dayjs_config_1.VN_TZ).format('YYYY-MM-DD') : String(value).slice(0, 10);
+const normalizeAggDateKey = (value) => value instanceof Date
+    ? (0, dayjs_config_1.dayjsUtc)(value).tz(dayjs_config_1.VN_TZ).format("YYYY-MM-DD")
+    : String(value).slice(0, 10);
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { reports } = cacheKey_1.CacheKey.synthetic;
 const VN_TIMEZONE_OFFSET_MS = 25_200_000; // 7 tiếng
@@ -173,7 +175,6 @@ exports.statisticRevenueService = {
     getMonthlyRevenueReport: async (dto) => {
         const nowVn = dayjs_config_1.dayjsUtc.tz(new Date(), dayjs_config_1.VN_TZ);
         const currentYear = nowVn.year();
-        const currentMonth = nowVn.month() + 1; // 1 - 12
         const year = dto.year || currentYear;
         const month = dto.month;
         try {
@@ -232,15 +233,21 @@ exports.statisticRevenueService = {
             // Công đoạn 1 (giấy tấm): 100% đơn giấy tấm + 80% đơn làm thùng
             const paperProdMap = new Map();
             for (const row of paperProdData) {
-                const key = normalizeAggDateKey(row.dateKey);
-                const amount = (0, productionRevenueRule_1.calcPaperStageRevenue)(row.totalAmount, row.isBox);
+                const key = (0, revenueHelper_1.getPaperShiftDate)(row.dayReport);
+                const amount = (0, productionRevenueRule_1.calcPaperStageRevenue)({
+                    rawTotalPrice: row.totalPrice,
+                    isBox: row.PlanningPaper?.Order?.isBox,
+                    qtyProduced: row.qtyProduced,
+                    runningPlan: row.PlanningPaper?.runningPlan,
+                    orderTotalPrice: row.PlanningPaper?.Order?.totalPrice,
+                });
                 paperProdMap.set(key, (paperProdMap.get(key) || 0) + amount);
             }
             // Công đoạn 2 (nhập kho thùng thành phẩm): 20% đơn làm thùng
             const boxProdMap = new Map();
             for (const row of boxProdData) {
-                const key = normalizeAggDateKey(row.dateKey);
-                const amount = (0, productionRevenueRule_1.calcBoxInboundStageRevenue)(row.totalAmount);
+                const key = (0, revenueHelper_1.getPaperShiftDate)(row.dateInbound);
+                const amount = (0, productionRevenueRule_1.calcBoxInboundStageRevenue)(row.totalPrice);
                 boxProdMap.set(key, (boxProdMap.get(key) || 0) + amount);
             }
             // Doanh số bán hàng / xuất kho

@@ -1,11 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.finalizeReportRow = exports.accumulateReportData = exports.createReportAccumulator = exports.calculateAdherenceMetrics = exports.calculateEarnedMinutes = exports.getProductionDayBounds = exports.VN_TZ = void 0;
+exports.finalizeReportRow = exports.accumulateReportData = exports.createReportAccumulator = exports.calculateAdherenceMetrics = exports.calculateEarnedMinutes = exports.getProductionDayBounds = void 0;
 const dayjs_config_1 = require("../../../assets/configs/dayjs/dayjs.config");
-exports.VN_TZ = "Asia/Ho_Chi_Minh";
 // Quy đổi ngày sang khung giờ sản xuất (06:00 hôm nay -> 05:59:59 sáng hôm sau)
 const getProductionDayBounds = (dateStr) => {
-    const start = dayjs_config_1.dayjsUtc.tz(`${dateStr} 06:00:00`, exports.VN_TZ);
+    const start = dayjs_config_1.dayjsUtc.tz(`${dateStr} 06:00:00`, dayjs_config_1.VN_TZ);
     return {
         startDateTime: start.toDate(),
         endDateTime: start.add(1, "day").subtract(1, "ms").toDate(),
@@ -82,7 +81,7 @@ const finalizeReportRow = (acc, scrapKg, plannedMinutes) => {
             : 0;
     // Bẫy chia 0: % Lỗi / Tấn giấy (nhân 100 để ra tỷ lệ %)
     const totalQcErrors = Math.round(acc.totalQcErrors);
-    const qcErrorPerTon = totalPaperTon > 0 ? Math.round(((totalQcErrors / totalPaperTon) * 100) * 100) / 100 : 0;
+    const qcErrorPerTon = totalPaperTon > 0 ? Math.round((totalQcErrors / totalPaperTon) * 100 * 100) / 100 : 0;
     // % Đạt kế hoạch
     const adherence = (0, exports.calculateAdherenceMetrics)({
         totalPlannedMinutes: plannedMinutes ?? 0,

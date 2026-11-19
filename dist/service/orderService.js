@@ -196,6 +196,7 @@ exports.orderService = {
                     userId: userId,
                     dayReceiveOrder: new Date(),
                     ...restOrderData,
+                    price: Number(restOrderData.price ?? 0),
                     ...metrics,
                 }, { transaction });
                 //Cập nhật thông tin hình ảnh
@@ -284,7 +285,11 @@ exports.orderService = {
                         await orderImage_1.OrderImage.create(newImagePayload, { transaction });
                     }
                 }
-                await order.update({ ...restOrderData, ...metrics }, { transaction });
+                await order.update({
+                    ...restOrderData,
+                    price: Number(restOrderData.price ?? order.price ?? 0),
+                    ...metrics,
+                }, { transaction });
                 if (order.isBox) {
                     await (0, orderHelpers_1.updateChildTable)({
                         model: box_1.Box,

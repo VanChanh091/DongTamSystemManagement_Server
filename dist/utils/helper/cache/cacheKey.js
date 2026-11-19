@@ -126,6 +126,9 @@ exports.CacheKey = {
             report_production: (startDate, endDate) => `report:v2:production:${startDate}-${endDate}`,
             report_production_compare: (year, target, filterKey) => `report:v3:prod_compare:${year}:${target}:${filterKey || "all"}`,
         },
+        actionPlan: {
+            yearly: (year) => `action_plan:yearly:${year}`,
+        },
     },
     qcInspection: {
         paper: {

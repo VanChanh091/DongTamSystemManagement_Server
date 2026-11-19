@@ -13,7 +13,7 @@ const router = (0, express_1.Router)();
 //==========================ORDERS==========================
 router.get("/orders", authMiddleware_1.default, synthetic_orderController_1.getAllSyntheticOrders);
 router.post("/orders/export", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAccess)({ departments: ["Accountant"], permissions: ["accountant"], requireDept: true }), synthetic_orderController_1.exportExcelOrders);
-router.put("/orders", authMiddleware_1.default, synthetic_orderController_1.completeOrder);
+router.put("/orders", authMiddleware_1.default, (0, permissionMiddleware_1.authorizeAccess)({ departments: ["Operation"], permissions: ["plan"], requireDept: true }), synthetic_orderController_1.completeOrder);
 //=========================PLANNING=========================
 router.get("/planning", authMiddleware_1.default, synthetic_planningController_1.getSyntheticPlanning);
 router.post("/planning/export", authMiddleware_1.default, synthetic_planningController_1.exportExcelSyntheticPlanning);

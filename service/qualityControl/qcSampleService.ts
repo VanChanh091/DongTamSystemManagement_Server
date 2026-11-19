@@ -1,5 +1,5 @@
 import { AppError } from "../../utils/appError";
-import { qcRepository } from "../../repository/qcRepository";
+import { qcRepository } from "../../repository/production/qcRepository";
 import { QcSession } from "../../models/qualityControl/qcSession";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { qcChecklistData, QcSampleResult } from "../../models/qualityControl/qcSampleResult";

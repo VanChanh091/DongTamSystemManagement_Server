@@ -12,7 +12,7 @@ import { Vehicle, VehicleCreationAttributes } from "../../models/admin/vehicle";
 import {
   WaveCrestCoefficient,
   WaveCrestCreationAttributes,
-} from "../../models/admin/waveCrestCoefficient";
+} from "../../models/admin/waste/waveCrestCoefficient";
 import { OrderStatus } from "../../models/order/order";
 
 // ================================ ORDER ====================================

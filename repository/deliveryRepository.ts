@@ -61,7 +61,7 @@ export const deliveryRepository = {
             "QC_box",
             "paperSizeManufacture",
             "lengthPaperManufacture",
-            "quantityManufacture",
+            "quantityCustomer",
             "dvt",
             "isBox",
             "volume",

@@ -67,6 +67,11 @@ import {
   updatePaperType,
   updateSupplierPaperCode,
 } from "../../controller/admin/adminPaperCodeController";
+import {
+  getYearlyActionPlan,
+  saveYearlyTargets,
+  triggerDebtSnapshot,
+} from "../../controller/actionPlan/actionPlanController";
 const router = Router();
 
 const authorizeAdmin = () => authorizeAccess({});
@@ -171,5 +176,10 @@ router.put("/supplier-paper-codes", authenticate, authorizeAdmin(), updateSuppli
 router.get("/paper-classifications", authenticate, authorizeAdmin(), getAllPaperClassifications);
 router.post("/paper-classifications", authenticate, authorizeAdmin(), createPaperClassification);
 router.put("/paper-classifications", authenticate, authorizeAdmin(), updatePaperClassification);
+
+// ====================== ACTION PLAN ==========================
+router.get("/action-plan", authenticate, getYearlyActionPlan);
+router.post("/action-plan/targets", authenticate, authorizeAdmin(), saveYearlyTargets);
+router.post("/action-plan/debt-snapshot", authenticate, authorizeAdmin(), triggerDebtSnapshot);
 
 export default router;

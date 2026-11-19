@@ -15,7 +15,7 @@ import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { Inventory } from "../../models/warehouse/inventory/inventory";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
-import { inventoryRepository } from "../../repository/inventoryRepository";
+import { inventoryRepository } from "../../repository/warehouse/inventoryRepository";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
 import { InventoryTransfers } from "../../models/warehouse/inventory/inventoryTransfers";

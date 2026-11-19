@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { NextFunction, Request, Response } from "express";
-import { reportService } from "../../../service/reportService";
+import { reportService } from "../../../service/manufacture/reportService";
 import { qcInspectionService } from "../../../service/qualityControl/qcInspectionCheckService";
 
 //===============================REPORT PAPER & PAPER=====================================

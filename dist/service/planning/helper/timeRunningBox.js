@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.calTimeRunningPlanningBox = void 0;
-const wasteNormBox_1 = require("../../../models/admin/wasteNormBox");
+const wasteNormBox_1 = require("../../../models/admin/waste/wasteNormBox");
 const planningBox_1 = require("../../../models/planning/planningBox");
 const planningBoxMachineTime_1 = require("../../../models/planning/planningBoxMachineTime");
 const timeOverflowPlanning_1 = require("../../../models/planning/timeOverflowPlanning");

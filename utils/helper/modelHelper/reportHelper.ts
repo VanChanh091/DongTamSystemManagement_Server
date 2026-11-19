@@ -87,7 +87,7 @@ export const getPerformanceSummaryByRows = async (
   const unifiedData: UnifiedPerfInput[] = perfData.map((item: any) => ({
     dateKey: item.dayReport,
     fluteLayer: parseInt(item.flute),
-    length: Number(item.totalLength) || 0,
+    length: Math.round((Number(item.totalLength) || 0) * 100) / 100,
     duration: Number(item.totalDurations) || 0,
   }));
 
@@ -286,7 +286,7 @@ export const createReportPlanning = async ({
 
     const [affectedRows] = await DailyReportPerformance.update(
       {
-        totalLength: sequelize.literal(`totalLength + ${parseTotalLength}`),
+        totalLength: sequelize.literal(`ROUND(totalLength + ${parseTotalLength}, 2)`),
         totalDurations: sequelize.literal(`totalDurations + ${parseDuration}`),
       },
       {

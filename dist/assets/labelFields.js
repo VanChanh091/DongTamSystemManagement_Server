@@ -1,11 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MEILI_INDEX = exports.machineMap = exports.validPermissions = exports.MACHINE_FIELD_MAP = exports.machineLabels = void 0;
+exports.isRollPaperMachine = exports.isTwoLayerMachine = exports.MEILI_INDEX = exports.machineMap = exports.validPermissions = exports.MACHINE_FIELD_MAP = exports.machineLabels = void 0;
 const machineLabels = {
     "Máy 1350": "machine1350",
     "Máy 1800": "machine1800",
     "Máy 1900": "machine1900",
     "Máy 2 Lớp": "machine2Layer",
+    "Máy 2 Lớp 2": "machine2Layer2",
     "Máy Quấn Cuồn": "MachineRollPaper",
 };
 exports.machineLabels = machineLabels;
@@ -31,6 +32,7 @@ const validPermissions = [
     "machine1800",
     "machine1900",
     "machine2Layer",
+    "machine2Layer2",
     "MachineRollPaper",
     "step2Production",
     "QC",
@@ -67,4 +69,8 @@ const MEILI_INDEX = {
     DELIVERY_REQUEST: "deliveryRequest",
 };
 exports.MEILI_INDEX = MEILI_INDEX;
+const isTwoLayerMachine = (machineName) => (machineName ?? "").trim().toLowerCase().includes("2 lớp");
+exports.isTwoLayerMachine = isTwoLayerMachine;
+const isRollPaperMachine = (machineName) => (machineName ?? "").trim().toLowerCase().includes("quấn cuồn");
+exports.isRollPaperMachine = isRollPaperMachine;
 //# sourceMappingURL=labelFields.js.map

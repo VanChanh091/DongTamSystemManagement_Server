@@ -11,7 +11,7 @@ const deliveryController_1 = require("../../controller/user/delivery/deliveryCon
 const router = (0, express_1.default)();
 const DELIVERY_POLICIES = {
     estimate: { departments: ["Operation", "Sale"], permissions: ["plan", "sale"] },
-    request: { departments: ["Operation"], permissions: ["plan"] },
+    request: { departments: ["Operation",], permissions: ["plan"] },
     schedule: { departments: ["Operation", "Delivery"], permissions: ["plan", "delivery"] },
     prepare: { departments: ["Delivery"], permissions: ["delivery"] },
 };

@@ -1,7 +1,10 @@
 import { NextFunction, Request, Response } from "express";
-import { MachinePaper, MachinePaperCreationAttributes } from "../../models/admin/machinePaper";
+import {
+  MachinePaper,
+  MachinePaperCreationAttributes,
+} from "../../models/admin/machine/machinePaper";
 import { isRollPaperMachine, isTwoLayerMachine } from "../../assets/labelFields";
-import { MachineBox, MachineBoxCreationAttributes } from "../../models/admin/machineBox";
+import { MachineBox, MachineBoxCreationAttributes } from "../../models/admin/machine/machineBox";
 import { adminService } from "../../service/admin/adminService";
 
 //===============================PAPER=====================================

@@ -88,6 +88,16 @@ exports.inspectionWorker = new bullmq_1.Worker("INSPECTION_TIMER_QUEUE", async (
     connection: redis_connect_1.redisConfig,
     concurrency: 5, // Cho phép xử lý đồng thời tối đa 5 jobs
 });
+let isWorkerErrorLogged = false;
+exports.inspectionWorker.on("error", (err) => {
+    if (!isWorkerErrorLogged) {
+        isWorkerErrorLogged = true;
+        console.warn(`⚠️ [BullMQ Worker] Mất kết nối Redis: ${err?.code || err?.message}. Đang tự động thử lại...`);
+        setTimeout(() => {
+            isWorkerErrorLogged = false;
+        }, 15000);
+    }
+});
 exports.inspectionWorker.on("completed", (job) => {
     if (devEnvironment)
         console.log(`[InspectionWorker] Job ${job.id} (${job.name}) hoàn thành thành công.`);

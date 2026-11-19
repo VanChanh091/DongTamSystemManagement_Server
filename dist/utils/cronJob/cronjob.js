@@ -10,6 +10,7 @@ const sequelize_1 = require("sequelize");
 const orderImage_1 = require("../../models/order/orderImage");
 const cloudinary_connect_1 = __importDefault(require("../../assets/configs/connect/cloudinary.connect"));
 const debtManagementService_1 = require("../../service/debt/debtManagementService");
+const actionPlanService_1 = require("../../service/admin/actionPlanService");
 const qcShift_1 = require("../../models/qualityControl/qcShift");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const TIMEZONE = "Asia/Ho_Chi_Minh";
@@ -53,6 +54,17 @@ async () => {
         const result = await debtManagementService_1.debtManagementService.processAutoDebtClosing();
         console.log(`[CRONJOB SUCCESS] ${result.message}`);
         console.log(`Thời gian xử lý: ${result.processedAt}`);
+        // Chụp snapshot công nợ ngày 1 và 15 cho Kế hoạch hành động năm
+        try {
+            const snapResult = await actionPlanService_1.actionPlanService.captureDebtSnapshot({
+                snapshotDate: new Date(),
+                isCron: true,
+            });
+            console.log(`[CRONJOB ACTION PLAN SNAPSHOT] ${snapResult.message}`);
+        }
+        catch (snapError) {
+            console.error(`[CRONJOB ACTION PLAN SNAPSHOT ERROR]:`, snapError);
+        }
     }
     catch (error) {
         console.error(`[CRONJOB ERROR] [${startTime}] Lỗi khi chạy chốt công nợ:`, error);

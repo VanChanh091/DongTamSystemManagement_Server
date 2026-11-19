@@ -4,7 +4,7 @@ import { Customer } from "../../../models/customer/customer";
 import { dayjsUtc, VN_TZ } from "../../../assets/configs/dayjs/dayjs.config";
 import { OutboundDetail } from "../../../models/warehouse/outbound/outboundDetail";
 import { OutboundHistory } from "../../../models/warehouse/outbound/outboundHistory";
-import { warehouseRepository } from "../../../repository/warehouseRepository";
+import { warehouseRepository } from "../../../repository/warehouse/warehouseRepository";
 
 export const buildSearchWhereCondition = async (
   field: string,
@@ -83,7 +83,9 @@ export const calculateTotalPriceByDate = async (
   if (!dataList || dataList.length === 0) return {};
 
   const uniqueDates = Array.from(
-    new Set(dataList.map((item: any) => dayjsUtc.tz(item.dateOutbound, VN_TZ).format("YYYY-MM-DD"))),
+    new Set(
+      dataList.map((item: any) => dayjsUtc.tz(item.dateOutbound, VN_TZ).format("YYYY-MM-DD")),
+    ),
   );
 
   const dateConditions = uniqueDates.map((date) => ({

@@ -22,7 +22,7 @@ import {
   getSupplierAndPaperTypeMaps,
 } from "../../utils/helper/modelHelper/paperCodeHelper";
 import { CrudHelper } from "../../repository/helper/crud.helper.repository";
-import { adminRepository } from "../../repository/adminRepository";
+import { adminRepository } from "../../repository/admin/adminRepository";
 
 export const adminPaperCodeService = {
   //=============================== SUPPLIERS =================================

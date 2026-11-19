@@ -5,7 +5,7 @@ import { ScrapReport } from "../../models/scrap/scrapReport";
 import { DeliveryItem } from "../../models/delivery/deliveryItem";
 import { PlanningPaper } from "../../models/planning/planningPaper";
 import { DeliveryRequest } from "../../models/delivery/deliveryRequest";
-import { warehouseRepository } from "../../repository/warehouseRepository";
+import { warehouseRepository } from "../../repository/warehouse/warehouseRepository";
 import { DebtDeductionRequest } from "../../models/debt/debtDeductionRequest";
 
 //pending order

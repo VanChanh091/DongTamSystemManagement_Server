@@ -40,7 +40,7 @@ router.delete("/", authenticate, authorizeSaleAccess(), deleteOrder);
 router.get(
   "/order-id-raw",
   authenticate,
-  authorizeSaleAccess({ permissions: ["plan"], requireDept: false }),
+  authorizeSaleAccess({ departments: ["Operation"], permissions: ["plan"] }),
   getOrderIdRaw,
 );
 router.get("/order-detail", authenticate, authorizeSaleAccess(), getOrderDetail);

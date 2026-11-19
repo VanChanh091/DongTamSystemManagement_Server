@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.exportExcelReportBox = exports.exportExcelReportPaper = exports.getReportQcInspectionSummary = exports.getReportBoxes = exports.getReportPapers = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const reportService_1 = require("../../../service/reportService");
+const reportService_1 = require("../../../service/manufacture/reportService");
 const qcInspectionCheckService_1 = require("../../../service/qualityControl/qcInspectionCheckService");
 //===============================REPORT PAPER & PAPER=====================================
 const getReportPapers = async (req, res, next) => {

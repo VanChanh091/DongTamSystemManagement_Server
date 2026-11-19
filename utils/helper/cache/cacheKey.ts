@@ -146,6 +146,9 @@ export const CacheKey = {
         filterKey?: string | number | null,
       ) => `report:v3:prod_compare:${year}:${target}:${filterKey || "all"}`,
     },
+    actionPlan: {
+      yearly: (year: number) => `actionPlan:yearly:${year}`,
+    },
   },
 
   qcInspection: {

@@ -62,7 +62,8 @@ function initPlanningPaperModel(sequelize) {
         shiftManagement: { type: sequelize_1.DataTypes.STRING },
         note: { type: sequelize_1.DataTypes.STRING },
         chooseMachine: {
-            type: sequelize_1.DataTypes.ENUM("Máy 1350", "Máy 1800", "Máy 1900", "Máy 2 Lớp", "Máy Quấn Cuồn"),
+            // type: DataTypes.ENUM("Máy 1350", "Máy 1800", "Máy 1900", "Máy 2 Lớp", "Máy Quấn Cuồn"),
+            type: sequelize_1.DataTypes.STRING,
             allowNull: false,
         },
         status: {

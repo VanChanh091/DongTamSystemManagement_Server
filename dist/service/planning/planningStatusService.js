@@ -13,14 +13,15 @@ const order_1 = require("../../models/order/order");
 const meiliService_1 = require("../system/meiliService");
 const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
 const planningBox_1 = require("../../models/planning/planningBox");
-const wasteNormPaper_1 = require("../../models/admin/wasteNormPaper");
+const wasteNormPaper_1 = require("../../models/admin/waste/wasteNormPaper");
+const machinePaper_1 = require("../../models/admin/machine/machinePaper");
 const labelFields_1 = require("../../assets/labelFields");
 const redis_connect_1 = __importDefault(require("../../assets/configs/connect/redis.connect"));
 const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
 const inventory_1 = require("../../models/warehouse/inventory/inventory");
 const meilisearch_connect_1 = require("../../assets/configs/connect/meilisearch.connect");
-const waveCrestCoefficient_1 = require("../../models/admin/waveCrestCoefficient");
+const waveCrestCoefficient_1 = require("../../models/admin/waste/waveCrestCoefficient");
 const timeOverflowPlanning_1 = require("../../models/planning/timeOverflowPlanning");
 const meiliTransformer_1 = require("../../assets/configs/meilisearch/meiliTransformer");
 const planningBoxRepository_1 = require("../../repository/planning/planningBoxRepository");
@@ -107,8 +108,16 @@ exports.planningStatusService = {
                 if (!order)
                     throw appError_1.AppError.NotFound("Order not found", "ORDER_NOT_FOUND");
                 const { chooseMachine, runningPlan, ghepKho } = planningData;
+                if (!chooseMachine?.trim()) {
+                    throw appError_1.AppError.BadRequest("chooseMachine is required", "INVALID_MACHINE");
+                }
                 // Lấy thông số định mức và hệ số sóng cho máy đã chọn
-                const [wasteNorm, waveCoeff] = await Promise.all([
+                const [machineExists, wasteNorm, waveCoeff] = await Promise.all([
+                    machinePaper_1.MachinePaper.findOne({
+                        where: { machineName: chooseMachine },
+                        attributes: ["machineId"],
+                        transaction,
+                    }),
                     crud_helper_repository_1.CrudHelper.findOne({
                         model: wasteNormPaper_1.WasteNormPaper,
                         where: { machineName: chooseMachine },
@@ -120,8 +129,11 @@ exports.planningStatusService = {
                         options: { transaction },
                     }),
                 ]);
+                if (!machineExists) {
+                    throw appError_1.AppError.BadRequest(`Invalid machine: ${chooseMachine}`, "INVALID_MACHINE");
+                }
                 if (!wasteNorm || !waveCoeff) {
-                    throw new Error(`WasteNorm or WaveCrestCoefficient not found for machine: ${chooseMachine}`);
+                    throw appError_1.AppError.BadRequest(`WasteNorm or WaveCrestCoefficient not found for machine: ${chooseMachine}`, "MISSING_MACHINE_CONFIG");
                 }
                 // Parse cấu trúc giấy thành mảng lớp
                 const layers = parsePaperStructure(planningData);
@@ -149,7 +161,9 @@ exports.planningStatusService = {
                     transaction,
                 });
                 //tính toán định mức giấy sản xuất
-                const lengthPaper = paperPlan.chooseMachine === "Máy Quấn Cuồn" ? 1 : paperPlan.lengthPaperPlanning;
+                const lengthPaper = (0, labelFields_1.isRollPaperMachine)(paperPlan.chooseMachine)
+                    ? 1
+                    : paperPlan.lengthPaperPlanning;
                 const paperRequirement = await handlePaperRequirements({
                     planningId: paperPlan.planningId,
                     planningData,
@@ -514,7 +528,7 @@ const syncPlanningOrderToMeili = async ({ planningId, isBox, transaction, }) => 
 };
 //helper create paper requirement
 const handlePaperRequirements = async ({ planningId, planningData, waveCoeff, runningPlan, length, size, ghepKho, transaction, }) => {
-    const isRollMachine = planningData.chooseMachine === "Máy Quấn Cuồn";
+    const isRollMachine = (0, labelFields_1.isRollPaperMachine)(planningData.chooseMachine);
     const layerConfigs = [
         { rawCode: planningData.dayReplace, isFlute: false },
         { rawCode: planningData.songEReplace, isFlute: true, fluteLetter: "E" },

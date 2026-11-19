@@ -16,6 +16,7 @@ const authorizePaperAccess = ({ departments = [], permissions = [], requireDept 
             "machine1800",
             "machine1900",
             "machine2Layer",
+            "machine2Layer2",
             "MachineRollPaper",
             "plan",
             ...permissions,

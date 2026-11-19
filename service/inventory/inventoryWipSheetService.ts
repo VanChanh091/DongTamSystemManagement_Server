@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import { AppError } from "../../utils/appError";
 import { InventoryWipSheets } from "../../models/warehouse/inventory/inventory_wip_sheets";
-import { inventoryRepository } from "../../repository/inventoryRepository";
+import { inventoryRepository } from "../../repository/warehouse/inventoryRepository";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";

@@ -11,7 +11,6 @@ const planningPaper_1 = require("../../models/planning/planningPaper");
 const qcInspectionBox_1 = require("../../models/qualityControl/inspection/qcInspectionBox");
 const qcInspectionPaper_1 = require("../../models/qualityControl/inspection/qcInspectionPaper");
 const inspection_request_1 = require("../../models/qualityControl/inspection/inspection_request");
-const qcRepository_1 = require("../../repository/qcRepository");
 const appError_1 = require("../../utils/appError");
 const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
 const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
@@ -20,6 +19,7 @@ const planningBoxMachineTime_1 = require("../../models/planning/planningBoxMachi
 const dayjs_config_1 = require("../../assets/configs/dayjs/dayjs.config");
 const sequelize_1 = require("sequelize");
 const meilisearch_connect_1 = require("../../assets/configs/connect/meilisearch.connect");
+const qcRepository_1 = require("../../repository/production/qcRepository");
 const { paper, box } = cacheKey_1.CacheKey.qcInspection;
 const devEnvironment = process.env.NODE_ENV !== "production";
 exports.qcInspectionService = {
@@ -202,7 +202,10 @@ exports.qcInspectionService = {
             let whereConditions = [];
             // console.log(`start: ${startDate} - endDate: ${endDate}`);
             if (startDate && endDate) {
-                const startTimestamp = dayjs_config_1.dayjsUtc.tz(startDate, dayjs_config_1.VN_TZ).startOf("day").format("YYYY-MM-DD HH:mm:ss");
+                const startTimestamp = dayjs_config_1.dayjsUtc
+                    .tz(startDate, dayjs_config_1.VN_TZ)
+                    .startOf("day")
+                    .format("YYYY-MM-DD HH:mm:ss");
                 const endTimestamp = dayjs_config_1.dayjsUtc.tz(endDate, dayjs_config_1.VN_TZ).endOf("day").format("YYYY-MM-DD HH:mm:ss");
                 // console.log(`formatStart: ${startTimestamp} - formatEnd: ${endTimestamp}`);
                 whereConditions.push({

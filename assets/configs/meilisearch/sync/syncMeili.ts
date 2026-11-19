@@ -8,18 +8,17 @@ import { meiliClient } from "../../connect/meilisearch.connect";
 import { Customer } from "../../../../models/customer/customer";
 import { orderRepository } from "../../../../repository/orderRepository";
 import { PlanningPaper } from "../../../../models/planning/planningPaper";
-import { reportRepository } from "../../../../repository/reportRepository";
 import { productRepository } from "../../../../repository/productRepository";
 import { deliveryRepository } from "../../../../repository/deliveryRepository";
 import { customerRepository } from "../../../../repository/customerRepository";
 import { employeeRepository } from "../../../../repository/employeeRepository";
-import { warehouseRepository } from "../../../../repository/warehouseRepository";
-import { inventoryRepository } from "../../../../repository/inventoryRepository";
-import { scrapReportRepository } from "../../../../repository/scrapReportRepository";
+import { warehouseRepository } from "../../../../repository/warehouse/warehouseRepository";
+import { inventoryRepository } from "../../../../repository/warehouse/inventoryRepository";
 import { planningBoxRepository } from "../../../../repository/planning/planningBoxRepository";
 import { planningPaperRepository } from "../../../../repository/planning/planningPaperRepository";
-import { qcRepository } from "../../../../repository/qcRepository";
-import { InventoryWipSheets } from "../../../../models/warehouse/inventory/inventory_wip_sheets";
+import { scrapReportRepository } from "../../../../repository/production/scrapReportRepository";
+import { reportRepository } from "../../../../repository/production/reportRepository";
+import { qcRepository } from "../../../../repository/production/qcRepository";
 
 interface SyncMeiliData {
   data: any[];

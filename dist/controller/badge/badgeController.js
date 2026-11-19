@@ -7,7 +7,7 @@ const scrapReport_1 = require("../../models/scrap/scrapReport");
 const deliveryItem_1 = require("../../models/delivery/deliveryItem");
 const planningPaper_1 = require("../../models/planning/planningPaper");
 const deliveryRequest_1 = require("../../models/delivery/deliveryRequest");
-const warehouseRepository_1 = require("../../repository/warehouseRepository");
+const warehouseRepository_1 = require("../../repository/warehouse/warehouseRepository");
 const debtDeductionRequest_1 = require("../../models/debt/debtDeductionRequest");
 //pending order
 const countOrderPending = async (req, res, next) => {

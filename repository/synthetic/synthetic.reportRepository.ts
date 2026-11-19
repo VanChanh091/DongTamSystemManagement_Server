@@ -1,4 +1,4 @@
-import { col, fn, literal, Op } from "sequelize";
+import { col, fn, Op } from "sequelize";
 import { Order } from "../../models/order/order";
 import { Customer } from "../../models/customer/customer";
 import { OrderApproved } from "../../models/order/orderApproved";
@@ -21,6 +21,24 @@ export interface DailyAmountAggRow {
 
 export interface DailyPaperProductionAggRow extends DailyAmountAggRow {
   isBox: boolean | number;
+}
+
+export interface RawDailyPaperProductionRow {
+  dayReport: Date | string;
+  qtyProduced: number;
+  totalPrice: number;
+  PlanningPaper?: {
+    runningPlan: number;
+    Order?: {
+      isBox: boolean | number;
+      totalPrice: number;
+    };
+  };
+}
+
+export interface RawDailyBoxInboundRow {
+  dateInbound: Date | string;
+  totalPrice: number;
 }
 
 export interface DailyOutboundAggRow {
@@ -93,30 +111,20 @@ export const syntheticReportRepository = {
     startDate: string | Date;
     endDate: string | Date;
     userId?: number;
-  }): Promise<DailyPaperProductionAggRow[]> => {
-    const shiftDateExpr = fn(
-      "DATE",
-      fn("DATE_SUB", col("ReportPlanningPaper.dayReport"), literal("INTERVAL 6 HOUR")),
-    );
-    const orderIsBoxCol = col("PlanningPaper->Order.isBox");
-
+  }): Promise<RawDailyPaperProductionRow[]> => {
     return (await ReportPlanningPaper.findAll({
-      attributes: [
-        [shiftDateExpr, "dateKey"],
-        [orderIsBoxCol, "isBox"],
-        [fn("COALESCE", fn("SUM", col("ReportPlanningPaper.totalPrice")), 0), "totalAmount"],
-      ],
+      attributes: ["dayReport", "qtyProduced", "totalPrice"],
       where: { dayReport: { [Op.between]: [startDate, endDate] } },
       include: [
         {
           model: PlanningPaper,
           required: true,
-          attributes: [],
+          attributes: ["runningPlan"],
           include: [
             {
               model: Order,
               required: true,
-              attributes: [],
+              attributes: ["isBox", "totalPrice"],
               where: {
                 status: { [Op.in]: [...PRODUCTION_ACTIVE_ORDER_STATUSES] },
                 ...(userId ? { userId } : {}),
@@ -125,9 +133,9 @@ export const syntheticReportRepository = {
           ],
         },
       ],
-      group: [shiftDateExpr, orderIsBoxCol],
       raw: true,
-    })) as unknown as DailyPaperProductionAggRow[];
+      nest: true,
+    })) as unknown as RawDailyPaperProductionRow[];
   },
 
   // gom nhóm đơn làm thùng nhập kho theo ca 6h
@@ -139,17 +147,9 @@ export const syntheticReportRepository = {
     startDate: string | Date;
     endDate: string | Date;
     userId?: number;
-  }): Promise<DailyAmountAggRow[]> => {
-    const shiftDateExpr = fn(
-      "DATE",
-      fn("DATE_SUB", col("InboundHistory.dateInbound"), literal("INTERVAL 6 HOUR")),
-    );
-
+  }): Promise<RawDailyBoxInboundRow[]> => {
     return (await InboundHistory.findAll({
-      attributes: [
-        [shiftDateExpr, "dateKey"],
-        [fn("COALESCE", fn("SUM", col("InboundHistory.totalPrice")), 0), "totalAmount"],
-      ],
+      attributes: ["dateInbound", "totalPrice"],
       where: { dateInbound: { [Op.between]: [startDate, endDate] } },
       include: [
         {
@@ -163,9 +163,8 @@ export const syntheticReportRepository = {
           },
         },
       ],
-      group: [shiftDateExpr],
       raw: true,
-    })) as unknown as DailyAmountAggRow[];
+    })) as unknown as RawDailyBoxInboundRow[];
   },
 
   // gom nhóm theo chi tiết xuất kho

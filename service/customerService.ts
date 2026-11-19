@@ -22,7 +22,7 @@ import { meiliTransformer } from "../assets/configs/meilisearch/meiliTransformer
 import { customerColumns, mappingCustomerRow } from "../utils/mapping/customerRowAndColumn";
 import { createDataTable, updateChildTable } from "../utils/helper/modelHelper/orderHelpers";
 import { User } from "../models/user/user";
-import { debtRepository } from "../repository/debtRepository";
+import { debtRepository } from "../repository/debt/debtRepository";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { customer } = CacheKey;

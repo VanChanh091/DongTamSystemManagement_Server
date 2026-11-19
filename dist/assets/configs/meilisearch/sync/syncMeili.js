@@ -11,17 +11,17 @@ const meilisearch_connect_1 = require("../../connect/meilisearch.connect");
 const customer_1 = require("../../../../models/customer/customer");
 const orderRepository_1 = require("../../../../repository/orderRepository");
 const planningPaper_1 = require("../../../../models/planning/planningPaper");
-const reportRepository_1 = require("../../../../repository/reportRepository");
 const productRepository_1 = require("../../../../repository/productRepository");
 const deliveryRepository_1 = require("../../../../repository/deliveryRepository");
 const customerRepository_1 = require("../../../../repository/customerRepository");
 const employeeRepository_1 = require("../../../../repository/employeeRepository");
-const warehouseRepository_1 = require("../../../../repository/warehouseRepository");
-const inventoryRepository_1 = require("../../../../repository/inventoryRepository");
-const scrapReportRepository_1 = require("../../../../repository/scrapReportRepository");
+const warehouseRepository_1 = require("../../../../repository/warehouse/warehouseRepository");
+const inventoryRepository_1 = require("../../../../repository/warehouse/inventoryRepository");
 const planningBoxRepository_1 = require("../../../../repository/planning/planningBoxRepository");
 const planningPaperRepository_1 = require("../../../../repository/planning/planningPaperRepository");
-const qcRepository_1 = require("../../../../repository/qcRepository");
+const scrapReportRepository_1 = require("../../../../repository/production/scrapReportRepository");
+const reportRepository_1 = require("../../../../repository/production/reportRepository");
+const qcRepository_1 = require("../../../../repository/production/qcRepository");
 const parseSyncOptions = (options) => {
     if (typeof options === "boolean") {
         return { isDeleteAll: options, isResync: false };

@@ -6,7 +6,7 @@ const adminService_1 = require("../../service/admin/adminService");
 const adminCriteriaService_1 = require("../../service/admin/adminCriteriaService");
 const fluteRatio_1 = require("../../models/admin/fluteRatio");
 const vehicle_1 = require("../../models/admin/vehicle");
-const waveCrestCoefficient_1 = require("../../models/admin/waveCrestCoefficient");
+const waveCrestCoefficient_1 = require("../../models/admin/waste/waveCrestCoefficient");
 // ================================ ORDER ====================================
 //getOrderPending
 const getOrderPending = async (req, res, next) => {

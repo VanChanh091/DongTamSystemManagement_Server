@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteWasteBox = exports.updateWasteBox = exports.createWasteBox = exports.getWasteBoxes = exports.deleteWastePaper = exports.updateWastePaper = exports.createWastePaper = exports.getWastePapers = void 0;
-const wasteNormPaper_1 = require("../../models/admin/wasteNormPaper");
-const wasteNormBox_1 = require("../../models/admin/wasteNormBox");
+const wasteNormPaper_1 = require("../../models/admin/waste/wasteNormPaper");
+const wasteNormBox_1 = require("../../models/admin/waste/wasteNormBox");
 const adminService_1 = require("../../service/admin/adminService");
 //===============================WASTE PAPER=====================================
 const getWastePapers = async (req, res, next) => {

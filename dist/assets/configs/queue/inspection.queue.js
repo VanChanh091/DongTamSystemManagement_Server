@@ -8,6 +8,16 @@ const redis_connect_1 = require("../connect/redis.connect");
 exports.inspectionQueue = new bullmq_1.Queue("INSPECTION_TIMER_QUEUE", {
     connection: redis_connect_1.redisConfig,
 });
+let isQueueErrorLogged = false;
+exports.inspectionQueue.on("error", (err) => {
+    if (!isQueueErrorLogged) {
+        isQueueErrorLogged = true;
+        console.warn(`⚠️ [BullMQ Queue] Mất kết nối Redis: ${err?.code || err?.message}. Đang tự động thử lại...`);
+        setTimeout(() => {
+            isQueueErrorLogged = false;
+        }, 15000);
+    }
+});
 // Hàm tạo 2 mốc đếm giờ: 3 phút (nhắc nhở) và 5 phút (hết hạn)
 async function scheduleInspectionTimers(inspectionId) {
     const payload = { inspectionId };

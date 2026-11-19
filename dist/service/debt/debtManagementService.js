@@ -40,7 +40,7 @@ exports.debtManagementService = void 0;
 const xlsx = __importStar(require("xlsx"));
 const exceljs_1 = __importDefault(require("exceljs"));
 const appError_1 = require("../../utils/appError");
-const debtRepository_1 = require("../../repository/debtRepository");
+const debtRepository_1 = require("../../repository/debt/debtRepository");
 const dayjs_config_1 = require("../../assets/configs/dayjs/dayjs.config");
 const excelExporter_1 = require("../../utils/helper/excelExporter");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
@@ -111,7 +111,8 @@ exports.debtManagementService = {
                 // Đưa closingDate về mốc cuối ngày 23:59:59.999
                 const effectiveClosingDate = dayjs_config_1.dayjsUtc.tz(closingDate, dayjs_config_1.VN_TZ).endOf("day").toDate();
                 // Tính hạn thanh toán (dueDate)
-                const dueDate = dayjs_config_1.dayjsUtc.tz(effectiveClosingDate, dayjs_config_1.VN_TZ)
+                const dueDate = dayjs_config_1.dayjsUtc
+                    .tz(effectiveClosingDate, dayjs_config_1.VN_TZ)
                     .add(Number(termDays) || 0, "day")
                     .endOf("day")
                     .toDate();
@@ -158,7 +159,8 @@ exports.debtManagementService = {
                         targetDate: closingDate,
                     });
                     if (isClosing) {
-                        const calculatedDueDate = dayjs_config_1.dayjsUtc.tz(closingDate, dayjs_config_1.VN_TZ)
+                        const calculatedDueDate = dayjs_config_1.dayjsUtc
+                            .tz(closingDate, dayjs_config_1.VN_TZ)
                             .add(Number(config.paymentTermDays) || 0, "day")
                             .endOf("day")
                             .toDate();

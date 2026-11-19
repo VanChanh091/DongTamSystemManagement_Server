@@ -1,4 +1,4 @@
-import { inventoryRepository } from "../../repository/inventoryRepository";
+import { inventoryRepository } from "../../repository/warehouse/inventoryRepository";
 import { AppError } from "../../utils/appError";
 
 export const liquidationInvService = {

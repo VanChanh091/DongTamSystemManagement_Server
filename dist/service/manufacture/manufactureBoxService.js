@@ -12,10 +12,9 @@ const meiliService_1 = require("../system/meiliService");
 const labelFields_1 = require("../../assets/labelFields");
 const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
 const planningBoxService_1 = require("../planning/planningBoxService");
-const reportRepository_1 = require("../../repository/reportRepository");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
 const planningPaperService_1 = require("../planning/planningPaperService");
-const manufactureRepository_1 = require("../../repository/manufactureRepository");
+const manufactureRepository_1 = require("../../repository/production/manufactureRepository");
 const reportPlanningBox_1 = require("../../models/report/reportPlanningBox");
 const crud_helper_repository_1 = require("../../repository/helper/crud.helper.repository");
 const planningBoxMachineTime_1 = require("../../models/planning/planningBoxMachineTime");
@@ -25,6 +24,7 @@ const meiliTransformer_1 = require("../../assets/configs/meilisearch/meiliTransf
 const planningBoxRepository_1 = require("../../repository/planning/planningBoxRepository");
 const manufactureHelper_1 = require("../../utils/helper/modelHelper/manufactureHelper");
 const planning_timeRunning_helper_1 = require("../../utils/helper/modelHelper/planning.timeRunning.helper");
+const reportRepository_1 = require("../../repository/production/reportRepository");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { box } = cacheKey_1.CacheKey.manufacture;
 exports.manuBoxService = {
@@ -93,7 +93,7 @@ exports.manuBoxService = {
         }
     },
     addReportBox: async (planningBoxId, machine, data, user) => {
-        const { qtyProduced, dayCompleted, rpWasteLoss, shiftManagement, reportedBy, isPlanningReport } = data;
+        const { qtyProduced, dayCompleted, rpWasteLoss, shiftManagement, reportedBy, isPlanningReport, } = data;
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
                 if (!planningBoxId || !qtyProduced || !dayCompleted || !rpWasteLoss || !reportedBy) {
@@ -227,7 +227,7 @@ exports.manuBoxService = {
         }
     },
     updateReportBox: async (planningBoxId, machine, updateData, user) => {
-        const { qtyProduced: newQty, rpWasteLoss: newWaste, shiftManagement, reportedBy, isPlanningReport } = updateData;
+        const { qtyProduced: newQty, rpWasteLoss: newWaste, shiftManagement, reportedBy, isPlanningReport, } = updateData;
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
                 if (!reportedBy) {

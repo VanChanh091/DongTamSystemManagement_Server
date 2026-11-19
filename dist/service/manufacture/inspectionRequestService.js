@@ -12,6 +12,7 @@ const userNotifications_1 = require("../../models/notification/userNotifications
 const planningPaper_1 = require("../../models/planning/planningPaper");
 const requestType_1 = require("../notification/requestType");
 const notificationService_1 = require("../notification/notificationService");
+const manufactureHelper_1 = require("../../utils/helper/modelHelper/manufactureHelper");
 exports.inspectionRequestService = {
     //Tạo yêu cầu kiểm tra mới từ sản xuất
     createInspectionRequest: async ({ planningId, requestedBy, user, data, }) => {
@@ -25,6 +26,13 @@ exports.inspectionRequestService = {
                 throw appError_1.AppError.NotFound("Không tìm thấy kế hoạch sản xuất", "PLANNING_NOT_FOUND");
             }
             const machine = planning.chooseMachine;
+            await (0, manufactureHelper_1.assertPaperMachinePermission)({
+                machine,
+                role: user?.role ?? "",
+                userPermissions: Array.isArray(user?.permissions) ? user.permissions : [],
+                denyMode: "forbidden",
+                denyMessage: `Access denied: You don't have permission to request inspection for machine ${machine}`,
+            });
             const newRequest = await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
                 const existingRequest = await inspection_request_1.InspectionRequest.findOne({
                     where: { planningId, status: { [sequelize_1.Op.in]: ["pending", "in_progress"] } },

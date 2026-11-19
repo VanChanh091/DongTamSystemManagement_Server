@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { scrapReportService } from "../../../service/scrapReportService";
+import { scrapReportService } from "../../../service/manufacture/scrapReportService";
 
 export const getAllScrapReports = async (req: Request, res: Response, next: NextFunction) => {
   const { page, pageSize, field, keyword, startDate, endDate, status, machine } = req.query as {

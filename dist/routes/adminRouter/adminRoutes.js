@@ -10,6 +10,7 @@ const adminMachineController_1 = require("../../controller/admin/adminMachineCon
 const adminWasteNormController_1 = require("../../controller/admin/adminWasteNormController");
 const adminController_1 = require("../../controller/admin/adminController");
 const adminPaperCodeController_1 = require("../../controller/admin/adminPaperCodeController");
+const actionPlanController_1 = require("../../controller/actionPlan/actionPlanController");
 const router = (0, express_1.Router)();
 const authorizeAdmin = () => (0, permissionMiddleware_1.authorizeAccess)({});
 const authorizeManagerSale = () => (0, permissionMiddleware_1.authorizeAccess)({ departments: ["Sale"], roles: ["manager"], requireDept: true });
@@ -89,5 +90,9 @@ router.put("/supplier-paper-codes", authMiddleware_1.default, authorizeAdmin(), 
 router.get("/paper-classifications", authMiddleware_1.default, authorizeAdmin(), adminPaperCodeController_1.getAllPaperClassifications);
 router.post("/paper-classifications", authMiddleware_1.default, authorizeAdmin(), adminPaperCodeController_1.createPaperClassification);
 router.put("/paper-classifications", authMiddleware_1.default, authorizeAdmin(), adminPaperCodeController_1.updatePaperClassification);
+// ====================== ACTION PLAN ==========================
+router.get("/action-plan", authMiddleware_1.default, authorizeAdmin(), actionPlanController_1.getYearlyActionPlan);
+router.post("/action-plan/targets", authMiddleware_1.default, authorizeAdmin(), actionPlanController_1.saveYearlyTargets);
+router.post("/action-plan/debt-snapshot", authMiddleware_1.default, authorizeAdmin(), actionPlanController_1.triggerDebtSnapshot);
 exports.default = router;
 //# sourceMappingURL=adminRoutes.js.map

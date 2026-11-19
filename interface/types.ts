@@ -86,3 +86,12 @@ export type AuthorizeAccessParams = {
   requireDept?: boolean;
   roles?: string[];
 };
+
+export interface DeduplicatedOrderPlan {
+  orderId: string;
+  dateRequestShipping?: Date | string | null;
+  completedTsList: number[];
+  monthCandidateTsList: number[];
+  hasCompleteWithoutDate: boolean;
+  hasIncompletePaper: boolean;
+}

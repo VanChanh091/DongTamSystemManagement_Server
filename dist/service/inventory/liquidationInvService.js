@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.liquidationInvService = void 0;
-const inventoryRepository_1 = require("../../repository/inventoryRepository");
+const inventoryRepository_1 = require("../../repository/warehouse/inventoryRepository");
 const appError_1 = require("../../utils/appError");
 exports.liquidationInvService = {
     getAllLiquidationInv: async (page, pageSize) => {

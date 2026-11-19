@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.exportExcelScrapReports = exports.deleteScrapReport = exports.handleUpdateScrapReport = exports.updateScrapReport = exports.createScrapReport = exports.getAllScrapReports = void 0;
-const scrapReportService_1 = require("../../../service/scrapReportService");
+const scrapReportService_1 = require("../../../service/manufacture/scrapReportService");
 const getAllScrapReports = async (req, res, next) => {
     const { page, pageSize, field, keyword, startDate, endDate, status, machine } = req.query;
     try {

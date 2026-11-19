@@ -50,7 +50,16 @@ export function initDailyReportModel(sequelize: Sequelize): typeof DailyReportPe
       },
       machine: { type: DataTypes.STRING, allowNull: false },
       flute: { type: DataTypes.INTEGER, allowNull: false },
-      totalLength: { type: DataTypes.DOUBLE, allowNull: false },
+      totalLength: {
+        type: DataTypes.DOUBLE,
+        allowNull: false,
+        get() {
+          const rawValue = this.getDataValue("totalLength");
+          return rawValue !== null && rawValue !== undefined
+            ? Math.round(Number(rawValue) * 100) / 100
+            : 0;
+        },
+      },
       totalDurations: { type: DataTypes.INTEGER, allowNull: false },
     },
     {

@@ -13,7 +13,7 @@ const order_1 = require("../../models/order/order");
 const labelFields_1 = require("../../assets/labelFields");
 const cacheKey_1 = require("../../utils/helper/cache/cacheKey");
 const normalizeVN_1 = require("../../utils/helper/normalizeVN");
-const machinePaper_1 = require("../../models/admin/machinePaper");
+const machinePaper_1 = require("../../models/admin/machine/machinePaper");
 const planningBox_1 = require("../../models/planning/planningBox");
 const redis_connect_1 = __importDefault(require("../../assets/configs/connect/redis.connect"));
 const cacheManager_1 = require("../../utils/helper/cache/cacheManager");
@@ -168,19 +168,31 @@ exports.planningPaperService = {
     changeMachinePlanning: async (planningIds, newMachine) => {
         try {
             return await (0, transactionHelper_1.runInTransaction)(async (transaction) => {
+                const targetMachine = newMachine?.trim();
+                if (!targetMachine) {
+                    throw appError_1.AppError.BadRequest("newMachine is required", "INVALID_MACHINE");
+                }
+                const machineExists = await machinePaper_1.MachinePaper.findOne({
+                    where: { machineName: targetMachine },
+                    attributes: ["machineId"],
+                    transaction,
+                });
+                if (!machineExists) {
+                    throw appError_1.AppError.BadRequest(`Invalid machine: ${newMachine}`, "INVALID_MACHINE");
+                }
                 const plannings = await planningPaperRepository_1.planningPaperRepository.getPapersById({ planningIds, transaction });
                 if (plannings.length === 0) {
                     throw appError_1.AppError.NotFound("planning not found", "PLANNING_NOT_FOUND");
                 }
                 for (const planning of plannings) {
-                    planning.chooseMachine = newMachine;
+                    planning.chooseMachine = targetMachine;
                     planning.sortPlanning = null;
                     await planning.save({ transaction });
                 }
                 //--------------------MEILISEARCH-----------------------
                 const dataForMeili = plannings.map((p) => ({
                     planningId: p.planningId,
-                    chooseMachine: newMachine,
+                    chooseMachine: targetMachine,
                 }));
                 await meiliService_1.meiliService.syncOrUpdateMeiliData({
                     indexKey: labelFields_1.MEILI_INDEX.PLANNING_PAPERS,
@@ -464,12 +476,16 @@ exports.planningPaperService = {
                 // Lấy lại danh sách đã update
                 const plannings = await planningPaperRepository_1.planningPaperRepository.getPapersByUpdateIndex(updateIndex, transaction);
                 // Lấy thông tin máy
+                if (!machine?.trim()) {
+                    throw appError_1.AppError.BadRequest("machine is required", "INVALID_MACHINE");
+                }
                 const machineInfo = await machinePaper_1.MachinePaper.findAll({
                     where: { machineName: machine },
                     transaction,
                 });
-                if (!machineInfo)
+                if (machineInfo.length === 0) {
                     throw appError_1.AppError.NotFound("Machine not found", "MACHINE_NOT_FOUND");
+                }
                 // console.log(`machineInfo: ${JSON.stringify(machineInfo)}`);
                 const machineMap = {
                     m2: machineInfo.find((m) => m.type === "M2"),

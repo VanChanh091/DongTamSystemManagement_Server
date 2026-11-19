@@ -1,8 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteMachineBox = exports.updateMachineBox = exports.createMachineBox = exports.getMachineBoxes = exports.deleteMachinePaper = exports.updateMachinePaper = exports.createMachinePaper = exports.getRawMachinePapers = exports.getMachinePapers = void 0;
-const machinePaper_1 = require("../../models/admin/machinePaper");
-const machineBox_1 = require("../../models/admin/machineBox");
+const machinePaper_1 = require("../../models/admin/machine/machinePaper");
+const labelFields_1 = require("../../assets/labelFields");
+const machineBox_1 = require("../../models/admin/machine/machineBox");
 const adminService_1 = require("../../service/admin/adminService");
 //===============================PAPER=====================================
 const getMachinePapers = async (req, res, next) => {
@@ -48,11 +49,11 @@ const getRawMachinePapers = async (req, res, next) => {
                 return { group: 1, val: parseInt(matchNumber[0], 10) };
             }
             // Nhóm "máy 2 lớp"
-            if (lower.includes("2 lớp")) {
+            if ((0, labelFields_1.isTwoLayerMachine)(name)) {
                 return { group: 2, val: 0 };
             }
             // Nhóm "máy quấn cuồn"
-            if (lower.includes("quấn cuồn")) {
+            if ((0, labelFields_1.isRollPaperMachine)(name)) {
                 return { group: 3, val: 0 };
             }
             // Các trường hợp khác (nếu có phát sinh)

@@ -1,10 +1,10 @@
 import { User } from "../../models/user/user";
 import { AppError } from "../../utils/appError";
-import { qcRepository } from "../../repository/qcRepository";
 import { processTypeQC } from "../../models/qualityControl/qcCriteria";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { QcSession, statusQcSession } from "../../models/qualityControl/qcSession";
 import { CrudHelper } from "../../repository/helper/crud.helper.repository";
+import { qcRepository } from "../../repository/production/qcRepository";
 
 export const qcSessionService = {
   getAllQcSession: async () => {

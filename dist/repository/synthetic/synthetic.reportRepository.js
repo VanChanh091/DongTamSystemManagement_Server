@@ -53,25 +53,19 @@ exports.syntheticReportRepository = {
     },
     // lấy doanh số sản xuất giấy tấm theo ca 6h (gồm cả đơn thuần giấy tấm và đơn làm thùng)
     getDailyPaperProduction: async ({ startDate, endDate, userId, }) => {
-        const shiftDateExpr = (0, sequelize_1.fn)("DATE", (0, sequelize_1.fn)("DATE_SUB", (0, sequelize_1.col)("ReportPlanningPaper.dayReport"), (0, sequelize_1.literal)("INTERVAL 6 HOUR")));
-        const orderIsBoxCol = (0, sequelize_1.col)("PlanningPaper->Order.isBox");
         return (await reportPlanningPaper_1.ReportPlanningPaper.findAll({
-            attributes: [
-                [shiftDateExpr, "dateKey"],
-                [orderIsBoxCol, "isBox"],
-                [(0, sequelize_1.fn)("COALESCE", (0, sequelize_1.fn)("SUM", (0, sequelize_1.col)("ReportPlanningPaper.totalPrice")), 0), "totalAmount"],
-            ],
+            attributes: ["dayReport", "qtyProduced", "totalPrice"],
             where: { dayReport: { [sequelize_1.Op.between]: [startDate, endDate] } },
             include: [
                 {
                     model: planningPaper_1.PlanningPaper,
                     required: true,
-                    attributes: [],
+                    attributes: ["runningPlan"],
                     include: [
                         {
                             model: order_1.Order,
                             required: true,
-                            attributes: [],
+                            attributes: ["isBox", "totalPrice"],
                             where: {
                                 status: { [sequelize_1.Op.in]: [...productionRevenueRule_1.PRODUCTION_ACTIVE_ORDER_STATUSES] },
                                 ...(userId ? { userId } : {}),
@@ -80,18 +74,14 @@ exports.syntheticReportRepository = {
                     ],
                 },
             ],
-            group: [shiftDateExpr, orderIsBoxCol],
             raw: true,
+            nest: true,
         }));
     },
     // gom nhóm đơn làm thùng nhập kho theo ca 6h
     getDailyBoxProductionInbound: async ({ startDate, endDate, userId, }) => {
-        const shiftDateExpr = (0, sequelize_1.fn)("DATE", (0, sequelize_1.fn)("DATE_SUB", (0, sequelize_1.col)("InboundHistory.dateInbound"), (0, sequelize_1.literal)("INTERVAL 6 HOUR")));
         return (await inboundHistory_1.InboundHistory.findAll({
-            attributes: [
-                [shiftDateExpr, "dateKey"],
-                [(0, sequelize_1.fn)("COALESCE", (0, sequelize_1.fn)("SUM", (0, sequelize_1.col)("InboundHistory.totalPrice")), 0), "totalAmount"],
-            ],
+            attributes: ["dateInbound", "totalPrice"],
             where: { dateInbound: { [sequelize_1.Op.between]: [startDate, endDate] } },
             include: [
                 {
@@ -105,7 +95,6 @@ exports.syntheticReportRepository = {
                     },
                 },
             ],
-            group: [shiftDateExpr],
             raw: true,
         }));
     },

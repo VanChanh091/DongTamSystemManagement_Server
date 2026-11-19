@@ -3,7 +3,7 @@ import ExcelJS from "exceljs";
 import { Response } from "express";
 import { Transaction } from "sequelize";
 import { AppError } from "../../utils/appError";
-import { debtRepository } from "../../repository/debtRepository";
+import { debtRepository } from "../../repository/debt/debtRepository";
 import { dayjsUtc, VN_TZ } from "../../assets/configs/dayjs/dayjs.config";
 import { styleHeaderStream } from "../../utils/helper/excelExporter";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
@@ -120,7 +120,8 @@ export const debtManagementService = {
         const effectiveClosingDate = dayjsUtc.tz(closingDate, VN_TZ).endOf("day").toDate();
 
         // Tính hạn thanh toán (dueDate)
-        const dueDate = dayjsUtc.tz(effectiveClosingDate, VN_TZ)
+        const dueDate = dayjsUtc
+          .tz(effectiveClosingDate, VN_TZ)
           .add(Number(termDays) || 0, "day")
           .endOf("day")
           .toDate();
@@ -173,7 +174,8 @@ export const debtManagementService = {
           });
 
           if (isClosing) {
-            const calculatedDueDate = dayjsUtc.tz(closingDate, VN_TZ)
+            const calculatedDueDate = dayjsUtc
+              .tz(closingDate, VN_TZ)
               .add(Number(config.paymentTermDays) || 0, "day")
               .endOf("day")
               .toDate();

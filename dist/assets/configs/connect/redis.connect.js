@@ -48,9 +48,10 @@ exports.redisConfig = {
     keepAlive: 10000, // Gửi TCP keepalive probe mỗi 10 giây
     connectTimeout: 10000, // Chờ kết nối tối đa 10s
     maxRetriesPerRequest: null, // BẮT BUỘC đối với BullMQ
+    enableReadyCheck: false,
     retryStrategy(times) {
-        // Tự động thử lại khi mạng bị chập chờn
-        const delay = Math.min(times * 100, 3000);
+        // Giãn cách thời gian thử lại: 1s, 2s, 3s... tối đa 15s (tránh spam CPU và console)
+        const delay = Math.min(times * 1000, 15000);
         return delay;
     },
 };
@@ -59,9 +60,34 @@ const pubClient = new Redis(exports.redisConfig);
 exports.pubClient = pubClient;
 const subClient = pubClient.duplicate();
 exports.subClient = subClient;
-redisCache.on("connect", () => console.log("✅ Redis connected"));
-redisCache.on("error", (err) => console.error("❌ Redis error:", err));
-pubClient.on("error", (err) => console.error("❌ Redis Pub error:", err));
-subClient.on("error", (err) => console.error("❌ Redis Sub error:", err));
+// Gộp log của cả 3 client vào 1 dòng duy nhất
+const connectedClients = new Set();
+let isRedisDown = false;
+function handleClientReady(name) {
+    connectedClients.add(name);
+    // Khi cả 3 client đều đã sẵn sàng thì mới log 1 dòng duy nhất
+    if (connectedClients.size === 3) {
+        if (isRedisDown) {
+            console.log("✅ Redis đã kết nối lại thành công! (Cache, Pub, Sub)");
+            isRedisDown = false;
+        }
+        else {
+            console.log("✅ Redis connected! (Cache, Pub, Sub)");
+        }
+    }
+}
+function handleClientError(name, err) {
+    connectedClients.delete(name);
+    if (!isRedisDown) {
+        isRedisDown = true;
+        console.warn(`⚠️ Mất kết nối tới Redis (${err?.address || process.env.REDIS_HOST}:${err?.port || 6379} - ${err?.code || err?.message}). Đang tự động kết nối lại ngầm...`);
+    }
+}
+redisCache.on("ready", () => handleClientReady("Cache"));
+pubClient.on("ready", () => handleClientReady("Pub"));
+subClient.on("ready", () => handleClientReady("Sub"));
+redisCache.on("error", (err) => handleClientError("Cache", err));
+pubClient.on("error", (err) => handleClientError("Pub", err));
+subClient.on("error", (err) => handleClientError("Sub", err));
 exports.default = redisCache;
 //# sourceMappingURL=redis.connect.js.map

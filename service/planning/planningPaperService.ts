@@ -9,7 +9,7 @@ import { Order } from "../../models/order/order";
 import { MEILI_INDEX } from "../../assets/labelFields";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { normalizeVN } from "../../utils/helper/normalizeVN";
-import { MachinePaper } from "../../models/admin/machinePaper";
+import { MachinePaper } from "../../models/admin/machine/machinePaper";
 import { PlanningBox } from "../../models/planning/planningBox";
 import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";

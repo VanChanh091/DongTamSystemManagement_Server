@@ -9,7 +9,7 @@ import { Order } from "../../../models/order/order";
 import { PaperRequirements } from "../../../models/planning/requirement/paperRequirements";
 import { Op, Transaction } from "sequelize";
 import { CrudHelper } from "../../../repository/helper/crud.helper.repository";
-import { MachinePaper } from "../../../models/admin/machinePaper";
+import { MachinePaper } from "../../../models/admin/machine/machinePaper";
 
 export const aggregateReportFields = (reports: any[]) => {
   const shiftProductions = new Set<string>();

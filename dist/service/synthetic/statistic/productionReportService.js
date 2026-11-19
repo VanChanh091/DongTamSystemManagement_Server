@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getReportCacheTTL = exports.productionReportService = void 0;
 const appError_1 = require("../../../utils/appError");
-const productionReportRepository_1 = require("../../../repository/productionReportRepository");
+const productionReportRepository_1 = require("../../../repository/synthetic/productionReportRepository");
 const productionReportHelper_1 = require("../../../utils/helper/modelHelper/productionReportHelper");
 const productionRevenueRule_1 = require("../../../utils/helper/modelHelper/productionRevenueRule");
 const dayjs_config_1 = require("../../../assets/configs/dayjs/dayjs.config");

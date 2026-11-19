@@ -10,10 +10,9 @@ import { MEILI_INDEX } from "../../assets/labelFields";
 import { RequestType } from "../notification/requestType";
 import { PlanningBox } from "../../models/planning/planningBox";
 import { PlanningPaper } from "../../models/planning/planningPaper";
-import { reportRepository } from "../../repository/reportRepository";
 import { planningPaperService } from "../planning/planningPaperService";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
-import { manufactureRepo } from "../../repository/manufactureRepository";
+import { manufactureRepo } from "../../repository/production/manufactureRepository";
 import { NotificationModel } from "../../models/notification/notification";
 import { ReportPlanningPaper } from "../../models/report/reportPlanningPaper";
 import { UserNotifications } from "../../models/notification/userNotifications";
@@ -30,6 +29,7 @@ import {
 } from "../../utils/helper/modelHelper/manufactureHelper";
 import { CrudHelper } from "../../repository/helper/crud.helper.repository";
 import { InventoryWipSheets } from "../../models/warehouse/inventory/inventory_wip_sheets";
+import { reportRepository } from "../../repository/production/reportRepository";
 
 export const manuPaperService = {
   getPlanningPaper: async ({

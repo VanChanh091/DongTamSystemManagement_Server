@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.adminCriteriaService = void 0;
 const qcCriteria_1 = require("../../models/qualityControl/qcCriteria");
-const qcRepository_1 = require("../../repository/qcRepository");
+const qcRepository_1 = require("../../repository/production/qcRepository");
 const appError_1 = require("../../utils/appError");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
 exports.adminCriteriaService = {

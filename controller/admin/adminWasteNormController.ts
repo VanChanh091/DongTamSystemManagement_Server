@@ -1,8 +1,11 @@
 import {
   WasteNormPaper,
   WasteNormPaperCreationAttributes,
-} from "../../models/admin/wasteNormPaper";
-import { WasteNormBox, WasteNormBoxCreationAttributes } from "../../models/admin/wasteNormBox";
+} from "../../models/admin/waste/wasteNormPaper";
+import {
+  WasteNormBox,
+  WasteNormBoxCreationAttributes,
+} from "../../models/admin/waste/wasteNormBox";
 import { NextFunction, Request, Response } from "express";
 import { adminService } from "../../service/admin/adminService";
 

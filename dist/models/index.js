@@ -4,17 +4,17 @@ const database_connect_1 = require("../assets/configs/connect/database.connect")
 const criteriaBoxCheck_1 = require("./admin/criteriaCheck/criteriaBoxCheck");
 const criteriaPaperCheck_1 = require("./admin/criteriaCheck/criteriaPaperCheck");
 const fluteRatio_1 = require("./admin/fluteRatio");
-const machineBox_1 = require("./admin/machineBox");
-const machinePaper_1 = require("./admin/machinePaper");
+const machineBox_1 = require("./admin/machine/machineBox");
+const machinePaper_1 = require("./admin/machine/machinePaper");
 const paperBasisWeights_1 = require("./admin/paperClassifications/paperBasisWeights");
 const paperClassifications_1 = require("./admin/paperClassifications/paperClassifications");
 const paperTypes_1 = require("./admin/paperClassifications/paperTypes");
 const supplierPaperCodes_1 = require("./admin/paperClassifications/supplierPaperCodes");
 const suppliers_1 = require("./admin/paperClassifications/suppliers");
 const vehicle_1 = require("./admin/vehicle");
-const wasteNormBox_1 = require("./admin/wasteNormBox");
-const wasteNormPaper_1 = require("./admin/wasteNormPaper");
-const waveCrestCoefficient_1 = require("./admin/waveCrestCoefficient");
+const wasteNormBox_1 = require("./admin/waste/wasteNormBox");
+const wasteNormPaper_1 = require("./admin/waste/wasteNormPaper");
+const waveCrestCoefficient_1 = require("./admin/waste/waveCrestCoefficient");
 const associations_1 = require("./associations");
 const customer_1 = require("./customer/customer");
 const customerPayment_1 = require("./customer/customerPayment");
@@ -58,6 +58,8 @@ const qcShift_1 = require("./qualityControl/qcShift");
 const inspection_request_1 = require("./qualityControl/inspection/inspection_request");
 const debtDeductionRequest_1 = require("./debt/debtDeductionRequest");
 const inventory_wip_sheets_1 = require("./warehouse/inventory/inventory_wip_sheets");
+const actionPlanTarget_1 = require("./admin/actionPlan/actionPlanTarget");
+const actionPlanDebtSnapshot_1 = require("./admin/actionPlan/actionPlanDebtSnapshot");
 //admin
 const MachinePaper = (0, machinePaper_1.initMachinePaperModel)(database_connect_1.sequelize);
 const MachineBox = (0, machineBox_1.initMachineBoxModel)(database_connect_1.sequelize);
@@ -132,6 +134,9 @@ const NotificationModel = (0, notification_1.initNotificationModel)(database_con
 const UserNotifications = (0, userNotifications_1.initUserNotificationsModel)(database_connect_1.sequelize);
 //debt
 const DebtDeductionRequest = (0, debtDeductionRequest_1.initdebtDeductionRequestModel)(database_connect_1.sequelize);
+//action plan
+const ActionPlanTarget = (0, actionPlanTarget_1.initActionPlanTargetModel)(database_connect_1.sequelize);
+const ActionPlanDebtSnapshot = (0, actionPlanDebtSnapshot_1.initActionPlanDebtSnapshotModel)(database_connect_1.sequelize);
 const models = {
     //admin
     MachinePaper,
@@ -207,6 +212,9 @@ const models = {
     UserNotifications,
     //debt
     DebtDeductionRequest,
+    //action plan
+    ActionPlanTarget,
+    ActionPlanDebtSnapshot,
 };
 // Setup relationships
 (0, associations_1.setupAssociations)(models);

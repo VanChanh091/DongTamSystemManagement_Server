@@ -51,18 +51,31 @@ router.get(
 );
 
 //planning stop
-router.get("/count-planning-stop", authenticate, canAccessManagerSale, countPlanningStop);
+router.get(
+  "/count-planning-stop",
+  authenticate,
+  authorizePlanningAccess({ departments: ["QC", "Sale"], permissions: ["QC", "sale"] }),
+  countPlanningStop,
+);
 
 //waiting check paper & box
 router.get(
   "/count-waiting-check",
   authenticate,
-  authorizeAccess({ departments: ["QC"], permissions: ["QC"], requireDept: true }),
+  authorizeAccess({
+    departments: ["QC", "Sale", "Operation", "Delivery"],
+    requireDept: true,
+  }),
   countWaitingCheck,
 );
 
 //delivery request
-router.get("/count-delivery-request", authenticate, canAccessManagerSale, countDeliveryRequest);
+router.get(
+  "/count-delivery-request",
+  authenticate,
+  authorizePlanningAccess(),
+  countDeliveryRequest,
+);
 
 //prepare goods
 router.get(

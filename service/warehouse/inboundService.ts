@@ -15,10 +15,10 @@ import redisCache from "../../assets/configs/connect/redis.connect";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
 import { InboundHistory } from "../../models/warehouse/inboundHistory";
 import { Inventory } from "../../models/warehouse/inventory/inventory";
-import { manufactureRepo } from "../../repository/manufactureRepository";
-import { warehouseRepository } from "../../repository/warehouseRepository";
+import { manufactureRepo } from "../../repository/production/manufactureRepository";
+import { warehouseRepository } from "../../repository/warehouse/warehouseRepository";
 import { InventoryWipSheets } from "../../models/warehouse/inventory/inventory_wip_sheets";
-import { inventoryRepository } from "../../repository/inventoryRepository";
+import { inventoryRepository } from "../../repository/warehouse/inventoryRepository";
 import { syntheticRepository } from "../../repository/synthetic/syntheticRepository";
 import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
@@ -127,7 +127,6 @@ export const inboundService = {
       }
 
       const planning = await warehouseRepository.getBoxWaitingChecked();
-
       const responseData = { message: `get planning box waiting check`, data: planning };
 
       await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);

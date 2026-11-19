@@ -3,30 +3,40 @@ dotenv.config();
 
 import bcrypt from "bcrypt";
 import { Request } from "express";
-import { meiliService } from "../system/meiliService";
 import { AppError } from "../../utils/appError";
+import { meiliService } from "../system/meiliService";
 import { User, userRole } from "../../models/user/user";
+import { Customer } from "../../models/customer/customer";
 import { Order, OrderStatus } from "../../models/order/order";
-import { adminRepository } from "../../repository/adminRepository";
+import { OrderApproved } from "../../models/order/orderApproved";
+import { inventoryService } from "../inventory/inventoryService";
+import redisCache from "../../assets/configs/connect/redis.connect";
+import { debtRepository } from "../../repository/debt/debtRepository";
 import { Inventory } from "../../models/warehouse/inventory/inventory";
+import { CustomerPayment } from "../../models/customer/customerPayment";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { MEILI_INDEX, validPermissions } from "../../assets/labelFields";
-import { inventoryRepository } from "../../repository/inventoryRepository";
-import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
-import { inventoryService } from "../inventory/inventoryService";
-import { OrderApproved } from "../../models/order/orderApproved";
+import { adminRepository } from "../../repository/admin/adminRepository";
 import { NotificationModel } from "../../models/notification/notification";
-import { REQUEST_CONFIG, RequestAction, RequestType } from "../notification/requestType";
-import { UserNotifications } from "../../models/notification/userNotifications";
 import { CrudHelper } from "../../repository/helper/crud.helper.repository";
-import { debtRepository } from "../../repository/debtRepository";
-import { CustomerPayment } from "../../models/customer/customerPayment";
-import redisCache from "../../assets/configs/connect/redis.connect";
-import { Customer } from "../../models/customer/customer";
 import { sendTelegramAlertOtp } from "../../utils/telegram/telegramSendAlert";
+import {
+  orderZeroPriceOtpTemplate,
+  orderOverDebtLimitOtpTemplate,
+} from "../../utils/telegram/telegramTemplates";
+import { UserNotifications } from "../../models/notification/userNotifications";
+import { inventoryRepository } from "../../repository/warehouse/inventoryRepository";
+import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransformer";
+import { REQUEST_CONFIG, RequestAction, RequestType } from "../notification/requestType";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
-const debtOtpThresholdPercent = Number(process.env.DEBT_OTP_THRESHOLD_PERCENT);
+const debtLimitTier = Number(process.env.DEBT_LIMIT_TIER_THRESHOLD);
+const debtOtpThresholdPercentLow = Number(process.env.DEBT_OTP_THRESHOLD_PERCENT_LOW);
+const debtOtpThresholdPercentHigh = Number(process.env.DEBT_OTP_THRESHOLD_PERCENT_HIGH);
+
+const getDebtOtpThresholdPercent = (debtLimit: number): number => {
+  return debtLimit <= debtLimitTier ? debtOtpThresholdPercentLow : debtOtpThresholdPercentHigh;
+};
 
 export const adminService = {
   //===============================ADMIN CRUD=====================================
@@ -220,53 +230,55 @@ export const adminService = {
           req.io?.to(`user-${ownerId}`).emit("new-notification", newNotif);
         } else {
           //check role admin
-          // const isAdmin = req.user.role === "admin";
+          const isAdmin = req.user.role === "admin";
 
           // Logic kiểm tra và cập nhật hạn mức công nợ khách hàng
-          // const payment = order.Customer?.payment;
+          const payment = order.Customer?.payment;
 
-          // const currentDebt = await debtRepository.getCustomerCurrentDebt(
-          //   order.customerId,
-          //   transaction,
-          // );
-          // const debtLimit = Number(payment?.debtLimit || 0);
-          // const totalPrice = Number(order.totalPriceVAT || 0);
+          const currentDebt = await debtRepository.getCustomerCurrentDebt(
+            order.customerId,
+            transaction,
+          );
+          const debtLimit = Number(payment?.debtLimit || 0);
+          const totalPrice = Number(order.totalPriceVAT || 0);
 
           // // total debt after this order
-          // const newDebt = currentDebt + totalPrice;
+          const newDebt = currentDebt + totalPrice;
 
-          // if (!isAdmin) {
-          //   const thresholdPercent = Number(debtOtpThresholdPercent);
-          //   const otpMultiplier = 1 + thresholdPercent / 100;
+          if (!isAdmin) {
+            const isZeroPrice = Number(order.price ?? 0) <= 0;
+            const thresholdPercent = getDebtOtpThresholdPercent(debtLimit);
+            const otpMultiplier = 1 + thresholdPercent / 100;
+            const isOverDebtLimitOtp = newDebt > debtLimit * otpMultiplier;
 
-          //   //case > debtLimit * (1 + thresholdPercent%)
-          //   if (newDebt > debtLimit * otpMultiplier) {
-          //     if (!confirmationOTP) {
-          //       throw AppError.BadRequest(
-          //         `Vượt quá hạn mức cho phép, cần nhập OTP để duyệt đơn này!`,
-          //         "REQUIRE_OTP_CONFIRMATION",
-          //       );
-          //     }
+            // Yêu cầu OTP khi đơn giá 0đ HOẶC vượt hạn mức nợ ngưỡng cao
+            if (isZeroPrice || isOverDebtLimitOtp) {
+              if (!confirmationOTP) {
+                const message = isZeroPrice
+                  ? `Đơn hàng có đơn giá 0đ, cần nhập mã OTP để duyệt đơn này!`
+                  : `Vượt quá hạn mức cho phép, cần nhập OTP để duyệt đơn này!`;
+                throw AppError.BadRequest(message, "REQUIRE_OTP_CONFIRMATION");
+              }
 
-          //     const redisKey = `order_otp_code:${orderId}`;
-          //     const savedCode = await redisCache.get(redisKey);
+              const redisKey = `order_otp_code:${orderId}`;
+              const savedCode = await redisCache.get(redisKey);
 
-          //     if (!savedCode || Number(savedCode) !== confirmationOTP) {
-          //       throw AppError.BadRequest("Mã OTP không hợp lệ hoặc đã hết hạn.", "INVALID_OTP");
-          //     }
+              if (!savedCode || Number(savedCode) !== confirmationOTP) {
+                throw AppError.BadRequest("Mã OTP không hợp lệ hoặc đã hết hạn.", "INVALID_OTP");
+              }
 
-          //     await redisCache.del(redisKey); // Xóa mã OTP sau khi dùng
-          //   }
-          //   //case > 100%
-          //   else if (newDebt > debtLimit) {
-          //     if (!confirmOverLimit) {
-          //       throw AppError.BadRequest(
-          //         `Khách hàng vượt quá hạn mức cho phép!`,
-          //         "DEBT_LIMIT_EXCEEDED",
-          //       );
-          //     }
-          //   }
-          // }
+              await redisCache.del(redisKey); // Xóa mã OTP sau khi dùng
+            }
+            //case > 100%
+            else if (newDebt > debtLimit) {
+              if (!confirmOverLimit) {
+                throw AppError.BadRequest(
+                  `Khách hàng vượt quá hạn mức cho phép!`,
+                  "DEBT_LIMIT_EXCEEDED",
+                );
+              }
+            }
+          }
 
           //check type product
           const phiKhac = order.Product.typeProduct == "Phí Khác";
@@ -336,7 +348,7 @@ export const adminService = {
   }) => {
     try {
       const order = await Order.findByPk(orderId, {
-        attributes: ["orderId", "totalPriceVAT", "customerId"],
+        attributes: ["orderId", "price", "totalPriceVAT", "customerId"],
         include: [
           {
             model: Customer,
@@ -352,6 +364,7 @@ export const adminService = {
         throw AppError.NotFound("Không tìm thấy đơn hàng", "ORDER_NOT_FOUND");
       }
 
+      const isZeroPrice = Number(order.price ?? 0) <= 0;
       const payment = order.Customer?.payment;
       const currentDebt = await debtRepository.getCustomerCurrentDebt(order.customerId);
       const debtLimit = Number(payment?.debtLimit || 0);
@@ -369,22 +382,25 @@ export const adminService = {
       const redisKey = `order_otp_code:${orderId}`;
       await redisCache.set(redisKey, otp, "EX", 1800);
 
-      const message = `
-        🚨 <b>YÊU CẦU OTP DUYỆT ĐƠN VƯỢT HẠN MỨC</b>
-
-        📦 <b>Mã đơn hàng:</b> <code>${orderId}</code>
-        👤 <b>Người yêu cầu:</b> ${requesterName}
-        🏢 <b>Khách hàng:</b> ${order.Customer?.customerName || order.customerId}
-
-        💰 <b>Giá trị đơn:</b> ${orderPrice.toLocaleString()} đ
-        📊 <b>Công nợ hiện tại:</b> ${currentDebt.toLocaleString()} đ
-        🎯 <b>Hạn mức cấp phép:</b> ${debtLimit.toLocaleString()} đ
-        ⚠️ <b>Nợ sau duyệt:</b> <b>${debtToCheck.toLocaleString()} đ</b> (Vượt ${exceededPercent}%)
-
-        ───────────────────────
-        🔑 <b>MÃ OTP XÁC NHẬN:</b> <code>${otp}</code>
-        <i>(Mã có hiệu lực trong 30 phút. Chạm vào số để copy)</i>
-        `.trim();
+      const customerName = order.Customer?.customerName || order.customerId;
+      const message = isZeroPrice
+        ? orderZeroPriceOtpTemplate({
+            orderId,
+            requesterName,
+            customerName,
+            otp,
+          })
+        : orderOverDebtLimitOtpTemplate({
+            orderId,
+            requesterName,
+            customerName,
+            orderPrice,
+            currentDebt,
+            debtLimit,
+            debtToCheck,
+            exceededPercent,
+            otp,
+          });
 
       // send alert to Telegram
       sendTelegramAlertOtp(message);

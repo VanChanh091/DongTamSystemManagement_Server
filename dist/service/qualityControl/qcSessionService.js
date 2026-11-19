@@ -3,10 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.qcSessionService = void 0;
 const user_1 = require("../../models/user/user");
 const appError_1 = require("../../utils/appError");
-const qcRepository_1 = require("../../repository/qcRepository");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
 const qcSession_1 = require("../../models/qualityControl/qcSession");
 const crud_helper_repository_1 = require("../../repository/helper/crud.helper.repository");
+const qcRepository_1 = require("../../repository/production/qcRepository");
 exports.qcSessionService = {
     getAllQcSession: async () => {
         try {

@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.adminCriteriaCheckService = void 0;
 const criteriaBoxCheck_1 = require("../../models/admin/criteriaCheck/criteriaBoxCheck");
 const criteriaPaperCheck_1 = require("../../models/admin/criteriaCheck/criteriaPaperCheck");
-const qcRepository_1 = require("../../repository/qcRepository");
+const qcRepository_1 = require("../../repository/production/qcRepository");
 const appError_1 = require("../../utils/appError");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
 exports.adminCriteriaCheckService = {

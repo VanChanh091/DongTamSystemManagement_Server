@@ -103,6 +103,17 @@ export const inspectionWorker = new Worker<InspectionJobData>(
   },
 );
 
+let isWorkerErrorLogged = false;
+inspectionWorker.on("error", (err: any) => {
+  if (!isWorkerErrorLogged) {
+    isWorkerErrorLogged = true;
+    console.warn(`⚠️ [BullMQ Worker] Mất kết nối Redis: ${err?.code || err?.message}. Đang tự động thử lại...`);
+    setTimeout(() => {
+      isWorkerErrorLogged = false;
+    }, 15000);
+  }
+});
+
 inspectionWorker.on("completed", (job: Job<InspectionJobData>) => {
   if (devEnvironment)
     console.log(`[InspectionWorker] Job ${job.id} (${job.name}) hoàn thành thành công.`);

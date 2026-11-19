@@ -11,7 +11,7 @@ const paperTypes_1 = require("../../models/admin/paperClassifications/paperTypes
 const paperBasisWeights_1 = require("../../models/admin/paperClassifications/paperBasisWeights");
 const paperCodeHelper_1 = require("../../utils/helper/modelHelper/paperCodeHelper");
 const crud_helper_repository_1 = require("../../repository/helper/crud.helper.repository");
-const adminRepository_1 = require("../../repository/adminRepository");
+const adminRepository_1 = require("../../repository/admin/adminRepository");
 exports.adminPaperCodeService = {
     //=============================== SUPPLIERS =================================
     updateSupplier: async ({ supplierId, data, }) => {

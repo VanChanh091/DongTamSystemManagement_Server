@@ -3,7 +3,7 @@ import path from "path";
 import PDFDocument from "pdfkit";
 import { Response } from "express";
 import { AppError } from "../appError";
-import { warehouseRepository } from "../../repository/warehouseRepository";
+import { warehouseRepository } from "../../repository/warehouse/warehouseRepository";
 import { dayjsUtc, VN_TZ } from "../../assets/configs/dayjs/dayjs.config";
 
 let LOGO_BUFFER: Buffer;

@@ -2,7 +2,7 @@ import { AppError } from "../../../utils/appError";
 import {
   productionReportRepository,
   RawProductionReportPaperRow,
-} from "../../../repository/productionReportRepository";
+} from "../../../repository/synthetic/productionReportRepository";
 import {
   accumulateReportData,
   calculateEarnedMinutes,
@@ -64,10 +64,7 @@ const mapQcErrorsToReports = (
       }
     }
 
-    reportQcMap.set(
-      bestReport.reportPaperId,
-      (reportQcMap.get(bestReport.reportPaperId) || 0) + 1,
-    );
+    reportQcMap.set(bestReport.reportPaperId, (reportQcMap.get(bestReport.reportPaperId) || 0) + 1);
   }
 
   return reportQcMap;
@@ -179,10 +176,7 @@ export const productionReportService = {
         });
 
         const reportQcErrors = reportQcMap.get(report.reportPaperId) || 0;
-        const paperStageRevenue = calcPaperStageRevenue(
-          report.totalPrice,
-          planning?.Order?.isBox,
-        );
+        const paperStageRevenue = calcPaperStageRevenue(report.totalPrice, planning?.Order?.isBox);
 
         // 1. Gom theo Máy
         const machineKey = planning?.chooseMachine || "Chưa xác định";

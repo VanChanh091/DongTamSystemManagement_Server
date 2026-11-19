@@ -23,7 +23,7 @@ router.post("/", authMiddleware_1.default, uploadImage_1.default.single("orderIm
 router.put("/", authMiddleware_1.default, uploadImage_1.default.single("orderImage"), (0, exports.authorizeSaleAccess)(), orderController_1.updateOrder);
 router.delete("/", authMiddleware_1.default, (0, exports.authorizeSaleAccess)(), orderController_1.deleteOrder);
 //===============================ORDER AUTOCOMPLETE=====================================
-router.get("/order-id-raw", authMiddleware_1.default, (0, exports.authorizeSaleAccess)({ permissions: ["plan"], requireDept: false }), orderController_1.getOrderIdRaw);
+router.get("/order-id-raw", authMiddleware_1.default, (0, exports.authorizeSaleAccess)({ departments: ["Operation"], permissions: ["plan"] }), orderController_1.getOrderIdRaw);
 router.get("/order-detail", authMiddleware_1.default, (0, exports.authorizeSaleAccess)(), orderController_1.getOrderDetail);
 //============================PAPER CODE FOR STRUCTURE=================================
 router.get("/paper-code", authMiddleware_1.default, (0, exports.authorizeSaleAccess)(), orderController_1.getPaperCodeForStructure);

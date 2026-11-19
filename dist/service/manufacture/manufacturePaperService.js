@@ -10,14 +10,13 @@ const sequelize_1 = require("sequelize");
 const appError_1 = require("../../utils/appError");
 const order_1 = require("../../models/order/order");
 const meiliService_1 = require("../system/meiliService");
+const labelFields_1 = require("../../assets/labelFields");
 const requestType_1 = require("../notification/requestType");
 const planningBox_1 = require("../../models/planning/planningBox");
 const planningPaper_1 = require("../../models/planning/planningPaper");
-const reportRepository_1 = require("../../repository/reportRepository");
-const labelFields_1 = require("../../assets/labelFields");
 const planningPaperService_1 = require("../planning/planningPaperService");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
-const manufactureRepository_1 = require("../../repository/manufactureRepository");
+const manufactureRepository_1 = require("../../repository/production/manufactureRepository");
 const notification_1 = require("../../models/notification/notification");
 const reportPlanningPaper_1 = require("../../models/report/reportPlanningPaper");
 const userNotifications_1 = require("../../models/notification/userNotifications");
@@ -30,6 +29,7 @@ const inspection_request_1 = require("../../models/qualityControl/inspection/ins
 const manufactureHelper_1 = require("../../utils/helper/modelHelper/manufactureHelper");
 const crud_helper_repository_1 = require("../../repository/helper/crud.helper.repository");
 const inventory_wip_sheets_1 = require("../../models/warehouse/inventory/inventory_wip_sheets");
+const reportRepository_1 = require("../../repository/production/reportRepository");
 exports.manuPaperService = {
     getPlanningPaper: async ({ machine, filterType = "all", }) => {
         try {
@@ -114,17 +114,16 @@ exports.manuPaperService = {
                 if (!planning) {
                     throw appError_1.AppError.NotFound("planning not found", "PLANNING_NOT_FOUND");
                 }
-                const machine = planning.chooseMachine;
-                const machineLabel = labelFields_1.machineLabels[machine];
-                if (!machineLabel) {
-                    throw appError_1.AppError.BadRequest(`Invalid machine: ${machine}`, "INVALID_MACHINE");
-                }
                 //check permission for machine (bỏ qua nếu là kế hoạch báo cáo)
-                if (role !== "admin" && role !== "manager" && !isOperationPlanning) {
-                    if (!userPermissions.includes(machineLabel)) {
-                        throw appError_1.AppError.Unauthorized(`Access denied: You don't have permission to report for machine ${machine}`, "ACCESS_DENIED");
-                    }
-                }
+                await (0, manufactureHelper_1.assertPaperMachinePermission)({
+                    machine: planning.chooseMachine,
+                    role,
+                    userPermissions,
+                    skipPermissionCheck: isOperationPlanning,
+                    denyMode: "unauthorized",
+                    denyMessage: `Access denied: You don't have permission to report for machine ${planning.chooseMachine}`,
+                    transaction,
+                });
                 // Cộng dồn số lượng mới vào số đã có
                 const newQtyProduced = Number(planning.qtyProduced || 0) + Number(qtyProduced || 0);
                 const isCompleted = newQtyProduced >= planning.runningPlan;
@@ -309,12 +308,15 @@ exports.manuPaperService = {
                     throw appError_1.AppError.NotFound("Planning not found", "PLANNING_NOT_FOUND");
                 }
                 //check permission for machine (bỏ qua nếu là kế hoạch báo cáo)
-                const machineLabel = labelFields_1.machineLabels[planning.chooseMachine];
-                if (role !== "admin" && role !== "manager" && !isOperationPlanning) {
-                    if (!userPermissions.includes(machineLabel)) {
-                        throw appError_1.AppError.Unauthorized("Access denied for this machine", "ACCESS_DENIED");
-                    }
-                }
+                await (0, manufactureHelper_1.assertPaperMachinePermission)({
+                    machine: planning.chooseMachine,
+                    role,
+                    userPermissions,
+                    skipPermissionCheck: isOperationPlanning,
+                    denyMode: "unauthorized",
+                    denyMessage: "Access denied for this machine",
+                    transaction,
+                });
                 const otherReportsSum = (await reportPlanningPaper_1.ReportPlanningPaper.sum("qtyProduced", {
                     where: {
                         planningId: planning.planningId,
@@ -478,15 +480,14 @@ exports.manuPaperService = {
                 }
                 // check permission
                 const machine = planning.chooseMachine;
-                const machineLabel = labelFields_1.machineLabels[machine];
-                if (!machineLabel) {
-                    throw appError_1.AppError.BadRequest(`Invalid machine: ${machine}`, "INVALID_MACHINE");
-                }
-                if (role !== "admin" && role !== "manager") {
-                    if (!userPermissions.includes(machineLabel)) {
-                        throw appError_1.AppError.Forbidden(`Access denied: You don't have permission to report for machine ${machine}`, "ACCESS_DENIED");
-                    }
-                }
+                await (0, manufactureHelper_1.assertPaperMachinePermission)({
+                    machine,
+                    role,
+                    userPermissions,
+                    denyMode: "forbidden",
+                    denyMessage: `Access denied: You don't have permission to report for machine ${machine}`,
+                    transaction,
+                });
                 // Check if the planning is already completed
                 if (planning.status === "complete") {
                     throw appError_1.AppError.Conflict("Planning already completed", "PLANNING_HAS_COMPLETED");

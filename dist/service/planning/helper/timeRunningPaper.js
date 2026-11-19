@@ -6,6 +6,7 @@ const planningPaper_1 = require("../../../models/planning/planningPaper");
 const timeOverflowPlanning_1 = require("../../../models/planning/timeOverflowPlanning");
 const appError_1 = require("../../../utils/appError");
 const crud_helper_repository_1 = require("../../../repository/helper/crud.helper.repository");
+const labelFields_1 = require("../../../assets/labelFields");
 //Công thức tính thời gian: time = (Thời gian A/B + (tổng dài / tốc độ)) / (hiệu suất / 100)
 // Trong đó:
 // A: Thời gian thay đổi kích thước (phút) (nếu đơn đầu tiên trong ngày thì luôn tính thời gian thay đổi kích thước (30p))
@@ -73,6 +74,7 @@ const calculateTimeRunning = async ({ plannings, machineMap, machine, dayStart, 
     catch (error) {
         if (error instanceof appError_1.AppError)
             throw error;
+        throw appError_1.AppError.ServerError("Failed to calculate time running");
     }
 };
 exports.calculateTimeRunning = calculateTimeRunning;
@@ -113,10 +115,13 @@ const calculateTimeForOnePlanning = async ({ planning, machine, machineMap, curr
         const flute = Order?.flute || "3B";
         const speed = getSpeed(flute, machine, activeMachine);
         const performance = activeMachine.machinePerformance;
+        if (!performance || performance <= 0) {
+            throw appError_1.AppError.BadRequest(`Invalid machine performance for ${machine}`, "INVALID_MACHINE_CONFIG");
+        }
         //check same size
         const isSameSize = lastGhepKho && ghepKho === lastGhepKho;
         let changeTime = 0;
-        if (machine === "Máy Quấn Cuồn") {
+        if ((0, labelFields_1.isRollPaperMachine)(machine)) {
             changeTime = activeMachine.timeChangeSize;
         }
         else if (isFirst) {
@@ -260,14 +265,22 @@ const handleOverflow = async ({ hasOverFlow, predictedEnd, endOfWork, planningId
 };
 const getSpeed = (flute, machine, info) => {
     const layer = parseInt(flute?.[0] ?? "0", 10);
-    if (machine === "Máy 2 Lớp")
+    if ((0, labelFields_1.isTwoLayerMachine)(machine)) {
+        if (!info.speed2Layer || info.speed2Layer <= 0) {
+            throw appError_1.AppError.BadRequest(`Missing speed2Layer for ${machine}`, "INVALID_MACHINE_CONFIG");
+        }
         return info.speed2Layer;
-    if (machine === "Máy Quấn Cuồn")
+    }
+    if ((0, labelFields_1.isRollPaperMachine)(machine)) {
+        if (!info.paperRollSpeed || info.paperRollSpeed <= 0) {
+            throw appError_1.AppError.BadRequest(`Missing paperRollSpeed for ${machine}`, "INVALID_MACHINE_CONFIG");
+        }
         return info.paperRollSpeed;
+    }
     const key = `speed${layer}Layer`;
     const speed = info[key];
-    if (!speed) {
-        throw new Error(`Không tìm thấy tốc độ cho flute=${flute}`);
+    if (!speed || speed <= 0) {
+        throw appError_1.AppError.BadRequest(`Không tìm thấy tốc độ cho flute=${flute}`, "INVALID_MACHINE_CONFIG");
     }
     return speed;
 };

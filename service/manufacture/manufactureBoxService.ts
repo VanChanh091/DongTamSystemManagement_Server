@@ -8,10 +8,9 @@ import { meiliService } from "../system/meiliService";
 import { MEILI_INDEX } from "../../assets/labelFields";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { planningBoxService } from "../planning/planningBoxService";
-import { reportRepository } from "../../repository/reportRepository";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { planningPaperService } from "../planning/planningPaperService";
-import { manufactureRepo } from "../../repository/manufactureRepository";
+import { manufactureRepo } from "../../repository/production/manufactureRepository";
 import { ReportPlanningBox } from "../../models/report/reportPlanningBox";
 import { CrudHelper } from "../../repository/helper/crud.helper.repository";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
@@ -21,6 +20,7 @@ import { meiliTransformer } from "../../assets/configs/meilisearch/meiliTransfor
 import { planningBoxRepository } from "../../repository/planning/planningBoxRepository";
 import { aggregateReportFields } from "../../utils/helper/modelHelper/manufactureHelper";
 import { mergeShiftField } from "../../utils/helper/modelHelper/planning.timeRunning.helper";
+import { reportRepository } from "../../repository/production/reportRepository";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { box } = CacheKey.manufacture;
@@ -99,7 +99,14 @@ export const manuBoxService = {
   },
 
   addReportBox: async (planningBoxId: number, machine: string, data: any, user?: any) => {
-    const { qtyProduced, dayCompleted, rpWasteLoss, shiftManagement, reportedBy, isPlanningReport } = data;
+    const {
+      qtyProduced,
+      dayCompleted,
+      rpWasteLoss,
+      shiftManagement,
+      reportedBy,
+      isPlanningReport,
+    } = data;
 
     try {
       return await runInTransaction(async (transaction) => {
@@ -253,7 +260,13 @@ export const manuBoxService = {
   },
 
   updateReportBox: async (planningBoxId: number, machine: string, updateData: any, user?: any) => {
-    const { qtyProduced: newQty, rpWasteLoss: newWaste, shiftManagement, reportedBy, isPlanningReport } = updateData;
+    const {
+      qtyProduced: newQty,
+      rpWasteLoss: newWaste,
+      shiftManagement,
+      reportedBy,
+      isPlanningReport,
+    } = updateData;
 
     try {
       return await runInTransaction(async (transaction) => {

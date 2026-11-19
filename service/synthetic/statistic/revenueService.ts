@@ -13,11 +13,12 @@ import {
 } from "../../../interface/synthetic/revenue.type";
 import { CacheKey } from "../../../utils/helper/cache/cacheKey";
 import redisCache from "../../../assets/configs/connect/redis.connect";
-import { debtRepository } from "../../../repository/debtRepository";
+import { debtRepository } from "../../../repository/debt/debtRepository";
 import { normalizeVN } from "../../../utils/helper/normalizeVN";
 import {
   aggregateDailyAmounts,
   createEmptyYear,
+  getPaperShiftDate,
   reportEffectiveUserId,
   roundInt,
   toVNDate,
@@ -29,7 +30,9 @@ import {
 import { dayjsUtc, VN_TZ } from "../../../assets/configs/dayjs/dayjs.config";
 
 const normalizeAggDateKey = (value: string | Date): string =>
-  value instanceof Date ? dayjsUtc(value).tz(VN_TZ).format('YYYY-MM-DD') : String(value).slice(0, 10);
+  value instanceof Date
+    ? dayjsUtc(value).tz(VN_TZ).format("YYYY-MM-DD")
+    : String(value).slice(0, 10);
 
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { reports } = CacheKey.synthetic;
@@ -236,7 +239,6 @@ export const statisticRevenueService = {
   ): Promise<MonthlyRevenueReportResponse> => {
     const nowVn = dayjsUtc.tz(new Date(), VN_TZ);
     const currentYear = nowVn.year();
-    const currentMonth = nowVn.month() + 1; // 1 - 12
 
     const year = dto.year || currentYear;
     const month = dto.month;
@@ -304,16 +306,22 @@ export const statisticRevenueService = {
       // Công đoạn 1 (giấy tấm): 100% đơn giấy tấm + 80% đơn làm thùng
       const paperProdMap = new Map<string, number>();
       for (const row of paperProdData) {
-        const key = normalizeAggDateKey(row.dateKey);
-        const amount = calcPaperStageRevenue(row.totalAmount, row.isBox);
+        const key = getPaperShiftDate(row.dayReport);
+        const amount = calcPaperStageRevenue({
+          rawTotalPrice: row.totalPrice,
+          isBox: row.PlanningPaper?.Order?.isBox,
+          qtyProduced: row.qtyProduced,
+          runningPlan: row.PlanningPaper?.runningPlan,
+          orderTotalPrice: row.PlanningPaper?.Order?.totalPrice,
+        });
         paperProdMap.set(key, (paperProdMap.get(key) || 0) + amount);
       }
 
       // Công đoạn 2 (nhập kho thùng thành phẩm): 20% đơn làm thùng
       const boxProdMap = new Map<string, number>();
       for (const row of boxProdData) {
-        const key = normalizeAggDateKey(row.dateKey);
-        const amount = calcBoxInboundStageRevenue(row.totalAmount);
+        const key = getPaperShiftDate(row.dateInbound);
+        const amount = calcBoxInboundStageRevenue(row.totalPrice);
         boxProdMap.set(key, (boxProdMap.get(key) || 0) + amount);
       }
 

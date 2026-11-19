@@ -243,6 +243,7 @@ export const orderService = {
             userId: userId,
             dayReceiveOrder: new Date(),
             ...restOrderData,
+            price: Number(restOrderData.price ?? 0),
             ...metrics,
           },
           { transaction },
@@ -339,7 +340,14 @@ export const orderService = {
           }
         }
 
-        await order.update({ ...restOrderData, ...metrics }, { transaction });
+        await order.update(
+          {
+            ...restOrderData,
+            price: Number(restOrderData.price ?? order.price ?? 0),
+            ...metrics,
+          },
+          { transaction },
+        );
 
         if (order.isBox) {
           await updateChildTable({

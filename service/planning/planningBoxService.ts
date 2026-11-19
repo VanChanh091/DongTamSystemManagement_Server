@@ -6,7 +6,7 @@ import { Request } from "express";
 import { meiliService } from "../system/meiliService";
 import { AppError } from "../../utils/appError";
 import { MEILI_INDEX } from "../../assets/labelFields";
-import { MachineBox } from "../../models/admin/machineBox";
+import { MachineBox } from "../../models/admin/machine/machineBox";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { PlanningBox } from "../../models/planning/planningBox";
 import redisCache from "../../assets/configs/connect/redis.connect";

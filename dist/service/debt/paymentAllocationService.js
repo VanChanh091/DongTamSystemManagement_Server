@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.paymentAllocationService = void 0;
 const appError_1 = require("../../utils/appError");
-const paymentAllocationRepository_1 = require("../../repository/paymentAllocationRepository");
+const paymentAllocationRepository_1 = require("../../repository/debt/paymentAllocationRepository");
 const excelExporter_1 = require("../../utils/helper/excelExporter");
 const paymentAllocation_1 = require("../../models/warehouse/payment/paymentAllocation");
 const reportPaymentAllocationRowAndColumn_1 = require("../../utils/mapping/report/reportPaymentAllocationRowAndColumn");

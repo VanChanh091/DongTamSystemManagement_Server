@@ -10,7 +10,7 @@ import { deliveryScheduleService } from "./deliveryScheduleService";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 import { DeliveryRequest } from "../../models/delivery/deliveryRequest";
 import { deliveryRepository } from "../../repository/deliveryRepository";
-import { warehouseRepository } from "../../repository/warehouseRepository";
+import { warehouseRepository } from "../../repository/warehouse/warehouseRepository";
 import { calculateVolume } from "../../utils/helper/modelHelper/orderHelpers";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
 import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";

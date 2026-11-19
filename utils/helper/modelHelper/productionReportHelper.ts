@@ -1,11 +1,9 @@
-import { dayjsUtc } from "../../../assets/configs/dayjs/dayjs.config";
+import { dayjsUtc, VN_TZ } from "../../../assets/configs/dayjs/dayjs.config";
 import {
   PlanAdherenceResult,
   ProductionReportItem,
   ReportAccumulator,
 } from "../../../interface/synthetic/report.production.type";
-
-export const VN_TZ = "Asia/Ho_Chi_Minh";
 
 // Quy đổi ngày sang khung giờ sản xuất (06:00 hôm nay -> 05:59:59 sáng hôm sau)
 export const getProductionDayBounds = (dateStr: string) => {
@@ -134,7 +132,7 @@ export const finalizeReportRow = (
   // Bẫy chia 0: % Lỗi / Tấn giấy (nhân 100 để ra tỷ lệ %)
   const totalQcErrors = Math.round(acc.totalQcErrors);
   const qcErrorPerTon =
-    totalPaperTon > 0 ? Math.round(((totalQcErrors / totalPaperTon) * 100) * 100) / 100 : 0;
+    totalPaperTon > 0 ? Math.round((totalQcErrors / totalPaperTon) * 100 * 100) / 100 : 0;
 
   // % Đạt kế hoạch
   const adherence = calculateAdherenceMetrics({

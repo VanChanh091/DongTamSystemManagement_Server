@@ -6,6 +6,7 @@ import { Op } from "sequelize";
 import { OrderImage } from "../../models/order/orderImage";
 import cloudinary from "../../assets/configs/connect/cloudinary.connect";
 import { debtManagementService } from "../../service/debt/debtManagementService";
+import { actionPlanService } from "../../service/admin/actionPlanService";
 import { QcShift } from "../../models/qualityControl/qcShift";
 
 const devEnvironment = process.env.NODE_ENV !== "production";
@@ -62,6 +63,17 @@ cron.schedule(
 
       console.log(`[CRONJOB SUCCESS] ${result.message}`);
       console.log(`Thời gian xử lý: ${result.processedAt}`);
+
+      // Chụp snapshot công nợ ngày 1 và 15 cho Kế hoạch hành động năm
+      try {
+        const snapResult = await actionPlanService.captureDebtSnapshot({
+          snapshotDate: new Date(),
+          isCron: true,
+        });
+        console.log(`[CRONJOB ACTION PLAN SNAPSHOT] ${snapResult.message}`);
+      } catch (snapError) {
+        console.error(`[CRONJOB ACTION PLAN SNAPSHOT ERROR]:`, snapError);
+      }
     } catch (error) {
       console.error(`[CRONJOB ERROR] [${startTime}] Lỗi khi chạy chốt công nợ:`, error);
     }

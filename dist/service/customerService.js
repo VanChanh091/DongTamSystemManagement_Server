@@ -25,7 +25,7 @@ const meiliTransformer_1 = require("../assets/configs/meilisearch/meiliTransform
 const customerRowAndColumn_1 = require("../utils/mapping/customerRowAndColumn");
 const orderHelpers_1 = require("../utils/helper/modelHelper/orderHelpers");
 const user_1 = require("../models/user/user");
-const debtRepository_1 = require("../repository/debtRepository");
+const debtRepository_1 = require("../repository/debt/debtRepository");
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { customer } = cacheKey_1.CacheKey;
 exports.customerService = {

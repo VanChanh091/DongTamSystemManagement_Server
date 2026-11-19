@@ -72,7 +72,7 @@ const getPerformanceSummaryByRows = async (rows, machine) => {
     const unifiedData = perfData.map((item) => ({
         dateKey: item.dayReport,
         fluteLayer: parseInt(item.flute),
-        length: Number(item.totalLength) || 0,
+        length: Math.round((Number(item.totalLength) || 0) * 100) / 100,
         duration: Number(item.totalDurations) || 0,
     }));
     // Đẩy vào lõi tính toán
@@ -212,7 +212,7 @@ const createReportPlanning = async ({ planning, model, qtyProduced, qtyWasteNorm
         const rawFlute = planning.Order?.flute;
         const waveLayer = rawFlute ? parseInt(rawFlute, 10) : 0;
         const [affectedRows] = await dailyReportPerformance_1.DailyReportPerformance.update({
-            totalLength: database_connect_1.sequelize.literal(`totalLength + ${parseTotalLength}`),
+            totalLength: database_connect_1.sequelize.literal(`ROUND(totalLength + ${parseTotalLength}, 2)`),
             totalDurations: database_connect_1.sequelize.literal(`totalDurations + ${parseDuration}`),
         }, {
             where: {

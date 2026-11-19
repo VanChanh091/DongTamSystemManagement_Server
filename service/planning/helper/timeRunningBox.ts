@@ -1,4 +1,4 @@
-import { WasteNormBox } from "../../../models/admin/wasteNormBox";
+import { WasteNormBox } from "../../../models/admin/waste/wasteNormBox";
 import { PlanningBox } from "../../../models/planning/planningBox";
 import { PlanningBoxTime } from "../../../models/planning/planningBoxMachineTime";
 import { timeOverflowPlanning } from "../../../models/planning/timeOverflowPlanning";

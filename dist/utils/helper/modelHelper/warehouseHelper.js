@@ -7,7 +7,7 @@ const customer_1 = require("../../../models/customer/customer");
 const dayjs_config_1 = require("../../../assets/configs/dayjs/dayjs.config");
 const outboundDetail_1 = require("../../../models/warehouse/outbound/outboundDetail");
 const outboundHistory_1 = require("../../../models/warehouse/outbound/outboundHistory");
-const warehouseRepository_1 = require("../../../repository/warehouseRepository");
+const warehouseRepository_1 = require("../../../repository/warehouse/warehouseRepository");
 const buildSearchWhereCondition = async (field, keyword, startDate, endDate) => {
     let searchWhereCondition = {};
     if (field === "dateOutbound") {

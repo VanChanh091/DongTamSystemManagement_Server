@@ -1,6 +1,6 @@
 import { Response } from "express";
 import { AppError } from "../../utils/appError";
-import { paymentAllocationRepository } from "../../repository/paymentAllocationRepository";
+import { paymentAllocationRepository } from "../../repository/debt/paymentAllocationRepository";
 import { exportExcelStreamResponse } from "../../utils/helper/excelExporter";
 import { PaymentAllocation } from "../../models/warehouse/payment/paymentAllocation";
 import {

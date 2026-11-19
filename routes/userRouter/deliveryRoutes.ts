@@ -22,7 +22,7 @@ type DeliveryScope = "estimate" | "request" | "schedule" | "prepare";
 
 const DELIVERY_POLICIES: Record<DeliveryScope, { departments: string[]; permissions: string[] }> = {
   estimate: { departments: ["Operation", "Sale"], permissions: ["plan", "sale"] },
-  request: { departments: ["Operation"], permissions: ["plan"] },
+  request: { departments: ["Operation", ], permissions: ["plan"] },
   schedule: { departments: ["Operation", "Delivery"], permissions: ["plan", "delivery"] },
   prepare: { departments: ["Delivery"], permissions: ["delivery"] },
 };

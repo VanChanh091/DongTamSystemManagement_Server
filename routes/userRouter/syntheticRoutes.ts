@@ -27,7 +27,12 @@ router.post(
   authorizeAccess({ departments: ["Accountant"], permissions: ["accountant"], requireDept: true }),
   exportExcelOrders,
 );
-router.put("/orders", authenticate, completeOrder);
+router.put(
+  "/orders",
+  authenticate,
+  authorizeAccess({ departments: ["Operation"], permissions: ["plan"], requireDept: true }),
+  completeOrder,
+);
 
 //=========================PLANNING=========================
 router.get("/planning", authenticate, getSyntheticPlanning);

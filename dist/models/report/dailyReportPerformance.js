@@ -21,7 +21,16 @@ function initDailyReportModel(sequelize) {
         },
         machine: { type: sequelize_1.DataTypes.STRING, allowNull: false },
         flute: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
-        totalLength: { type: sequelize_1.DataTypes.DOUBLE, allowNull: false },
+        totalLength: {
+            type: sequelize_1.DataTypes.DOUBLE,
+            allowNull: false,
+            get() {
+                const rawValue = this.getDataValue("totalLength");
+                return rawValue !== null && rawValue !== undefined
+                    ? Math.round(Number(rawValue) * 100) / 100
+                    : 0;
+            },
+        },
         totalDurations: { type: sequelize_1.DataTypes.INTEGER, allowNull: false },
     }, {
         sequelize,

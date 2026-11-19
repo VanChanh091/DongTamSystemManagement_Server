@@ -12,7 +12,6 @@ import {
   QcInspectionPaper,
 } from "../../models/qualityControl/inspection/qcInspectionPaper";
 import { InspectionRequest } from "../../models/qualityControl/inspection/inspection_request";
-import { qcRepository } from "../../repository/qcRepository";
 import { AppError } from "../../utils/appError";
 import { CacheKey } from "../../utils/helper/cache/cacheKey";
 import { CacheManager } from "../../utils/helper/cache/cacheManager";
@@ -22,6 +21,7 @@ import { dayjsUtc, VN_TZ } from "../../assets/configs/dayjs/dayjs.config";
 import { Op } from "sequelize";
 import { searchFieldAtribute } from "../../interface/types";
 import { meiliClient } from "../../assets/configs/connect/meilisearch.connect";
+import { qcRepository } from "../../repository/production/qcRepository";
 
 const { paper, box } = CacheKey.qcInspection;
 const devEnvironment = process.env.NODE_ENV !== "production";
@@ -285,7 +285,10 @@ export const qcInspectionService = {
       // console.log(`start: ${startDate} - endDate: ${endDate}`);
 
       if (startDate && endDate) {
-        const startTimestamp = dayjsUtc.tz(startDate, VN_TZ).startOf("day").format("YYYY-MM-DD HH:mm:ss");
+        const startTimestamp = dayjsUtc
+          .tz(startDate, VN_TZ)
+          .startOf("day")
+          .format("YYYY-MM-DD HH:mm:ss");
         const endTimestamp = dayjsUtc.tz(endDate, VN_TZ).endOf("day").format("YYYY-MM-DD HH:mm:ss");
 
         // console.log(`formatStart: ${startTimestamp} - formatEnd: ${endTimestamp}`);

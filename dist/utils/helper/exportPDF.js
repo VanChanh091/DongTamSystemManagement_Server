@@ -9,7 +9,7 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const pdfkit_1 = __importDefault(require("pdfkit"));
 const appError_1 = require("../appError");
-const warehouseRepository_1 = require("../../repository/warehouseRepository");
+const warehouseRepository_1 = require("../../repository/warehouse/warehouseRepository");
 const dayjs_config_1 = require("../../assets/configs/dayjs/dayjs.config");
 let LOGO_BUFFER;
 let FONT_REGULAR_BUFFER;

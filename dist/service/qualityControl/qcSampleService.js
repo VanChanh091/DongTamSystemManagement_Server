@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.qcSampleService = void 0;
 const appError_1 = require("../../utils/appError");
-const qcRepository_1 = require("../../repository/qcRepository");
+const qcRepository_1 = require("../../repository/production/qcRepository");
 const qcSession_1 = require("../../models/qualityControl/qcSession");
 const transactionHelper_1 = require("../../utils/helper/transactionHelper");
 const qcSampleResult_1 = require("../../models/qualityControl/qcSampleResult");

@@ -3,7 +3,7 @@ import {
   QcCriteria,
   QcCriteriaCreationAttributes,
 } from "../../models/qualityControl/qcCriteria";
-import { qcRepository } from "../../repository/qcRepository";
+import { qcRepository } from "../../repository/production/qcRepository";
 import { AppError } from "../../utils/appError";
 import { runInTransaction } from "../../utils/helper/transactionHelper";
 

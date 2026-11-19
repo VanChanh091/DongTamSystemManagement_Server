@@ -1,0 +1,533 @@
+import { Box } from "../../models/order/box";
+import { User } from "../../models/user/user";
+import { Order } from "../../models/order/order";
+import { Product } from "../../models/product/product";
+import { Customer } from "../../models/customer/customer";
+import { InboundSumByPlanning } from "../../interface/types";
+import { PlanningBox } from "../../models/planning/planningBox";
+import { QcSession } from "../../models/qualityControl/qcSession";
+import { PlanningPaper } from "../../models/planning/planningPaper";
+import { FindOptions, Op, Sequelize, Transaction } from "sequelize";
+import { InboundHistory } from "../../models/warehouse/inboundHistory";
+import { Inventory } from "../../models/warehouse/inventory/inventory";
+import { OutboundDetail } from "../../models/warehouse/outbound/outboundDetail";
+import { OutboundHistory } from "../../models/warehouse/outbound/outboundHistory";
+import { PlanningBoxTime } from "../../models/planning/planningBoxMachineTime";
+import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
+import { CustomerPayment } from "../../models/customer/customerPayment";
+
+export const warehouseRepository = {
+  //====================================WAITING CHECK========================================
+
+  //paper
+  getPaperWaitingChecked: async () => {
+    const paper = await PlanningPaper.findAll({
+      where: {
+        hasBox: false,
+        qtyProduced: { [Op.ne]: 0 },
+        statusRequest: { [Op.in]: ["requested", "inbounded"] },
+      },
+      attributes: { exclude: ["createdAt", "updatedAt"] },
+      include: [
+        {
+          model: timeOverflowPlanning,
+          as: "timeOverFlow",
+          attributes: { exclude: ["createdAt", "updatedAt", "status"] },
+        },
+        {
+          model: Order,
+          where: { isBox: false },
+          attributes: [
+            "orderId",
+            "dayReceiveOrder",
+            "flute",
+            "QC_box",
+            "canLan",
+            "daoXa",
+            "quantityManufacture",
+            "dateRequestShipping",
+            "instructSpecial",
+            "dvt",
+            "isBox",
+            "isFSC",
+            "customerId",
+            "productId",
+          ],
+          include: [
+            { model: Customer, attributes: ["customerName", "companyName"] },
+            {
+              model: Box,
+              as: "box",
+              attributes: { exclude: ["createdAt", "updatedAt", "orderId"] },
+            },
+          ],
+        },
+        { model: InboundHistory, as: "inbound", attributes: ["dateInbound", "qtyInbound"] },
+      ],
+      order: [["sortPlanning", "ASC"]],
+    });
+
+    return paper.filter((paper) => {
+      const totalInbound = paper.inbound.reduce((sum, inbound) => sum + inbound.qtyInbound, 0);
+      return (paper.qtyProduced ?? 0) > totalInbound;
+    });
+  },
+
+  //box
+  getBoxWaitingChecked: async () => {
+    const box = await PlanningBox.findAll({
+      where: { statusRequest: { [Op.in]: ["requested", "inbounded"] } },
+      attributes: {
+        exclude: [
+          "hasIn",
+          "hasBe",
+          "hasXa",
+          "hasDan",
+          "hasCanLan",
+          "hasCatKhe",
+          "hasCanMang",
+          "hasDongGhim",
+          "hasOverFlow",
+          "isRequestCheck",
+          "createdAt",
+          "updatedAt",
+        ],
+      },
+      include: [
+        {
+          model: Order,
+          attributes: [
+            "orderId",
+            "dayReceiveOrder",
+            "flute",
+            "isFSC",
+            "QC_box",
+            "numberChild",
+            "dateRequestShipping",
+            "customerId",
+            "productId",
+            "quantityCustomer",
+          ],
+          include: [
+            {
+              model: Customer,
+              attributes: ["customerName", "companyName"],
+            },
+            {
+              model: Box,
+              as: "box",
+              attributes: { exclude: ["createdAt", "updatedAt", "orderId"] },
+            },
+          ],
+        },
+        { model: PlanningBoxTime, as: "boxTimes", attributes: ["machine", "qtyProduced"] },
+        { model: InboundHistory, as: "inbound", attributes: ["dateInbound", "qtyInbound"] },
+      ],
+    });
+
+    return box.filter((box) => {
+      const totalInbound = box.inbound.reduce((sum, inbound) => sum + inbound.qtyInbound, 0);
+
+      //tìm min qtyProduced của boxTimes
+      const qtyProduced = box.boxTimes?.map((bt) => bt.qtyProduced ?? 0) ?? [];
+      const minQtyProduced = qtyProduced.length > 0 ? Math.min(...qtyProduced) : 0;
+
+      return minQtyProduced > totalInbound;
+    });
+  },
+
+  getBoxCheckedDetail: async (planningBoxId: number) => {
+    return await PlanningBox.findByPk(planningBoxId, {
+      attributes: ["planningBoxId", "qtyPaper", "hasOverFlow", "orderId", "planningId"],
+      include: [
+        {
+          model: PlanningBoxTime,
+          as: "boxTimes",
+          attributes: {
+            exclude: ["createdAt", "updatedAt", "boxTimeId", "status", "sortPlanning"],
+          },
+        },
+      ],
+    });
+  },
+
+  //====================================INBOUND HISTORY========================================
+
+  getInboundSumByPlanning: async (
+    key: "planningId" | "planningBoxId",
+    ids: number[],
+  ): Promise<InboundSumByPlanning[]> => {
+    if (!ids.length) return [];
+
+    const rows = await InboundHistory.findAll({
+      attributes: [key, [Sequelize.fn("SUM", Sequelize.col("qtyInbound")), "totalInbound"]],
+      where: { [key]: ids },
+      group: [key],
+      raw: true,
+    });
+
+    return rows as unknown as InboundSumByPlanning[];
+  },
+
+  buildInboundOptions: ({
+    page,
+    pageSize,
+    whereCondition,
+    isExport = false,
+  }: {
+    page?: number;
+    pageSize?: number;
+    whereCondition?: any;
+    isExport?: boolean;
+  }): FindOptions => {
+    const queryOptions: FindOptions = {
+      where: whereCondition,
+      attributes: { exclude: ["createdAt", "updatedAt"] },
+      include: [
+        {
+          model: Order,
+          attributes: [
+            "QC_box",
+            "day",
+            "flute",
+            "matE",
+            "matB",
+            "matC",
+            "matA",
+            "matE2",
+            "songE",
+            "songB",
+            "songC",
+            "songA",
+            "songE2",
+            "dvt",
+            "dayReceiveOrder",
+            "lengthPaperManufacture",
+            "paperSizeManufacture",
+            "quantityManufacture",
+            "isFSC",
+          ],
+          include: [
+            { model: Customer, attributes: ["customerName", "companyName"] },
+            { model: Product, attributes: ["typeProduct", "productName"] },
+          ],
+        },
+        { model: QcSession, attributes: ["checkedBy"] },
+      ],
+      order: [["dateInbound", "DESC"]],
+    };
+
+    if (page && pageSize) {
+      queryOptions.offset = (page - 1) * pageSize;
+      queryOptions.limit = pageSize;
+    }
+
+    if (isExport) {
+      queryOptions.raw = true;
+      queryOptions.nest = true;
+    }
+
+    return queryOptions;
+  },
+
+  //------------------------MEILISEARCH-----------------------------
+  buildMeiliInboundOptions: ({
+    whereCondition,
+    transaction,
+  }: {
+    whereCondition?: any;
+    transaction?: Transaction;
+  }): FindOptions => {
+    const queryOptions: FindOptions = {
+      where: whereCondition,
+      attributes: ["inboundId", "dateInbound"],
+      include: [
+        {
+          model: Order,
+          attributes: ["orderId"],
+          include: [{ model: Customer, attributes: ["customerName"] }],
+        },
+        { model: QcSession, attributes: ["checkedBy"] },
+      ],
+      transaction,
+    };
+
+    return queryOptions;
+  },
+
+  syncInboundForMeili: async (inboundId: number, transaction: Transaction) => {
+    return await InboundHistory.findOne(
+      warehouseRepository.buildMeiliInboundOptions({ whereCondition: { inboundId }, transaction }),
+    );
+  },
+
+  syncAllInboundsForMeili: () => {
+    return InboundHistory.findAll(warehouseRepository.buildMeiliInboundOptions({}));
+  },
+
+  //====================================OUTBOUND HISTORY========================================
+
+  getOutboundByPage: async ({
+    page,
+    pageSize,
+    whereCondition,
+  }: {
+    page?: number;
+    pageSize?: number;
+    whereCondition?: any;
+  }) => {
+    const query: any = {
+      where: whereCondition,
+      attributes: { exclude: ["createdAt", "updatedAt"] },
+      include: [
+        {
+          model: OutboundDetail,
+          as: "detail",
+          attributes: ["outboundDetailId", "orderId"],
+          separate: true,
+          limit: 1,
+          include: [
+            {
+              model: Order,
+              attributes: ["orderId", "dayReceiveOrder"],
+              include: [{ model: Customer, attributes: ["customerName", "companyName"] }],
+            },
+          ],
+        },
+      ],
+    };
+
+    if (page && pageSize) {
+      query.offset = (page - 1) * pageSize;
+      query.limit = pageSize;
+
+      query.order = [["dateOutbound", "DESC"]];
+    }
+
+    return await OutboundHistory.findAndCountAll(query);
+  },
+
+  getOutboundDetail: async (outboundId: number) => {
+    return await OutboundDetail.findAll({
+      attributes: { exclude: ["createdAt", "updatedAt"] },
+      where: { outboundId },
+      include: [
+        {
+          model: Order,
+          attributes: [
+            "dayReceiveOrder",
+            "flute",
+            "QC_box",
+            "lengthPaperCustomer",
+            "paperSizeCustomer",
+            "lengthPaperManufacture",
+            "paperSizeManufacture",
+            "quantityCustomer",
+            "dvt",
+            "discount",
+            "isFSC",
+          ],
+          include: [
+            { model: Customer, attributes: ["customerName", "companyName"] },
+            { model: Product, attributes: ["typeProduct", "productName"] },
+            { model: Inventory, attributes: ["qtyInventory"] },
+          ],
+        },
+      ],
+    });
+  },
+
+  findByPK: async (outboundId: number) => {
+    return await OutboundHistory.findByPk(outboundId, {
+      attributes: ["outboundId"],
+    });
+  },
+
+  //total price by date
+  getTotalPriceByDateRanges: async ({ whereCondition }: { whereCondition: any }) => {
+    return await OutboundHistory.findAll({
+      where: whereCondition,
+      attributes: [
+        [Sequelize.fn("DATE", Sequelize.col("dateOutbound")), "dateStr"],
+        [Sequelize.fn("SUM", Sequelize.col("totalPriceOrder")), "total"],
+      ],
+      group: [Sequelize.fn("DATE", Sequelize.col("dateOutbound"))],
+      raw: true,
+    });
+  },
+
+  //total price 3 cols
+  getTotalPriceGrandTotal: async (whereCondition?: any) => {
+    return await OutboundHistory.findOne({
+      where: whereCondition,
+      attributes: [
+        [Sequelize.fn("SUM", Sequelize.col("totalPriceOrder")), "totalPriceOrder"],
+        [Sequelize.fn("SUM", Sequelize.col("totalPriceVAT")), "totalPriceVAT"],
+        [Sequelize.fn("SUM", Sequelize.col("totalPricePayment")), "totalPricePayment"],
+      ],
+      raw: true,
+    });
+  },
+
+  ///start autoComplete
+  getOrderInboundQty: async (orderId: string) => {
+    return await Order.findOne({
+      where: { orderId },
+      attributes: [
+        "orderId",
+        "dayReceiveOrder",
+        "flute",
+        "QC_box",
+        "quantityCustomer",
+        "dvt",
+        "pricePaper",
+        "vat",
+        "lengthPaperManufacture",
+        "paperSizeManufacture",
+        "lengthPaperCustomer",
+        "paperSizeCustomer",
+      ],
+      include: [
+        { model: Customer, attributes: ["customerName"] },
+        { model: Product, attributes: ["typeProduct", "productName"] },
+        { model: User, attributes: ["fullName"] },
+      ],
+    });
+  },
+
+  searchOrderIds: async (keyword: string) => {
+    return await Order.findAll({
+      where: { orderId: { [Op.startsWith]: keyword } },
+      attributes: ["orderId", "dayReceiveOrder", "lengthPaperManufacture", "paperSizeManufacture"],
+      include: [
+        { model: Customer, attributes: ["customerName"] },
+        {
+          model: Inventory,
+          attributes: ["qtyInventory"],
+          required: true,
+        },
+      ],
+      limit: 40,
+      order: [["orderId", "ASC"]],
+    });
+  },
+  ///end autoComplete
+
+  sumOutboundQty: async (orderId: string, transaction: Transaction) => {
+    return await OutboundDetail.sum("outboundQty", {
+      where: { orderId },
+      transaction,
+    });
+  },
+
+  sumOutboundQtyExcludeOutbound: async ({
+    orderId,
+    outboundId,
+    transaction,
+  }: {
+    orderId: string;
+    outboundId: number;
+    transaction?: Transaction;
+  }) => {
+    return await OutboundDetail.sum("outboundQty", {
+      where: {
+        orderId,
+        outboundId: { [Op.ne]: outboundId },
+      },
+      transaction,
+    });
+  },
+
+  findOneForExportPDF: async (outboundId: number) => {
+    return await OutboundHistory.findByPk(outboundId, {
+      attributes: { exclude: ["createdAt", "updatedAt", "totalOutboundQty"] },
+      include: [
+        {
+          model: OutboundDetail,
+          as: "detail",
+          attributes: { exclude: ["createdAt", "updatedAt", "deliveredQty", "outboundId"] },
+          include: [
+            {
+              model: Order,
+              attributes: [
+                "orderId",
+                "flute",
+                "QC_box",
+                "quantityCustomer",
+                "lengthPaperCustomer",
+                "lengthPaperManufacture",
+                "paperSizeCustomer",
+                "paperSizeManufacture",
+                "dvt",
+                "discount",
+                "vat",
+                "pricePaper",
+                "orderIdCustomer",
+              ],
+              include: [
+                {
+                  model: Customer,
+                  attributes: ["customerName", "companyName", "companyAddress", "mst", "phone"],
+                },
+                { model: Product, attributes: ["typeProduct", "productName"] },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+  },
+
+  //------------------------MEILISEARCH-----------------------------
+  buildMeiliOutboundOptions: ({
+    whereCondition,
+    transaction,
+  }: {
+    whereCondition?: any;
+    transaction?: Transaction;
+  }): FindOptions => {
+    const queryOptions: FindOptions = {
+      where: whereCondition,
+      attributes: ["outboundId", "outboundSlipCode", "dateOutbound", "status"],
+      include: [
+        {
+          model: OutboundDetail,
+          as: "detail",
+          attributes: ["outboundDetailId"],
+          include: [
+            {
+              model: Order,
+              attributes: ["orderId"],
+              include: [{ model: Customer, attributes: ["customerName"] }],
+            },
+          ],
+        },
+      ],
+      transaction,
+    };
+
+    return queryOptions;
+  },
+
+  syncOutboundForMeili: async (outboundId: number, transaction: Transaction) => {
+    return await OutboundHistory.findOne(
+      warehouseRepository.buildMeiliOutboundOptions({
+        whereCondition: { outboundId },
+        transaction,
+      }),
+    );
+  },
+
+  syncAllOutboundsForMeili: async () => {
+    return await OutboundHistory.findAll(warehouseRepository.buildMeiliOutboundOptions({}));
+  },
+
+  getCustomerPaymentById: async (customerId: string, transaction: Transaction) => {
+    return await CustomerPayment.findOne({
+      where: { customerId },
+      attributes: ["cusPaymentId", "customerId", "debtLimit"],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+  },
+};
