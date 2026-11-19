@@ -60,7 +60,13 @@ export const syntheticReportRepository = {
     userId?: number;
   }) => {
     return OutboundHistory.findAll({
-      attributes: ["customerId", "dateOutbound", "totalPricePayment", "remainingAmount"],
+      attributes: [
+        "customerId",
+        "dateOutbound",
+        "totalPriceOrder",
+        "totalPricePayment",
+        "remainingAmount",
+      ],
       where: { dateOutbound: { [Op.between]: [startDate, endDate] } },
       include: [
         {
@@ -211,10 +217,10 @@ export const syntheticReportRepository = {
     userId?: number | null;
   }) => {
     return OutboundHistory.findAll({
-      attributes: ["customerId", "dateOutbound", "totalPricePayment"],
+      attributes: ["customerId", "dateOutbound", "totalPriceOrder", "totalPricePayment"],
       where: {
         dateOutbound: { [Op.between]: [startDate, endDate] },
-        totalPricePayment: { [Op.gt]: 0 }, // Lấy cả âm lẫn dương, chỉ loại bỏ đơn = 0
+        totalPriceOrder: { [Op.gt]: 0 },
       },
       include: [
         {

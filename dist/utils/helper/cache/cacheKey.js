@@ -127,7 +127,7 @@ exports.CacheKey = {
             report_production_compare: (year, target, filterKey) => `report:v3:prod_compare:${year}:${target}:${filterKey || "all"}`,
         },
         actionPlan: {
-            yearly: (year) => `action_plan:yearly:${year}`,
+            yearly: (year) => `actionPlan:yearly:${year}`,
         },
     },
     qcInspection: {
@@ -138,6 +138,12 @@ exports.CacheKey = {
         box: {
             page: (machine, page) => `inspection:box:${machine}:${page}`,
             lastUpdated: "qcInspectionBox:lastUpdated",
+        },
+    },
+    debt: {
+        debtDeduction: {
+            page: (page) => `debt:deduction:page:${page}`,
+            lastUpdated: "debtDeduction:lastUpdated",
         },
     },
 };

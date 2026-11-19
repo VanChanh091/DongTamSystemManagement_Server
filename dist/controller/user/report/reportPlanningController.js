@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.exportExcelReportBox = exports.exportExcelReportPaper = exports.getReportQcInspectionSummary = exports.getReportBoxes = exports.getReportPapers = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const reportService_1 = require("../../../service/manufacture/reportService");
+const reportPlanningService_1 = require("../../../service/report/reportPlanningService");
 const qcInspectionCheckService_1 = require("../../../service/qualityControl/qcInspectionCheckService");
 //===============================REPORT PAPER & PAPER=====================================
 const getReportPapers = async (req, res, next) => {
@@ -15,7 +15,7 @@ const getReportPapers = async (req, res, next) => {
         let response;
         // 1. Nhánh tìm kiếm theo field
         if (field && keyword && machine) {
-            response = await reportService_1.reportService.getReportPaperByField({
+            response = await reportPlanningService_1.reportPlanningService.getReportPaperByField({
                 field,
                 keyword,
                 machine,
@@ -27,7 +27,7 @@ const getReportPapers = async (req, res, next) => {
         }
         // 2. Nhánh lấy tất cả
         else {
-            response = await reportService_1.reportService.getReportPaper(machine, Number(page), Number(pageSize));
+            response = await reportPlanningService_1.reportPlanningService.getReportPaper(machine, Number(page), Number(pageSize));
         }
         return res.status(200).json(response);
     }
@@ -42,7 +42,7 @@ const getReportBoxes = async (req, res, next) => {
         let response;
         // 1. Nhánh tìm kiếm theo field
         if (field && keyword && machine) {
-            response = await reportService_1.reportService.getReportBoxByField({
+            response = await reportPlanningService_1.reportPlanningService.getReportBoxByField({
                 field,
                 keyword,
                 machine,
@@ -54,7 +54,7 @@ const getReportBoxes = async (req, res, next) => {
         }
         // 2. Nhánh lấy tất cả
         else {
-            response = await reportService_1.reportService.getReportBox(machine, Number(page), Number(pageSize));
+            response = await reportPlanningService_1.reportPlanningService.getReportBox(machine, Number(page), Number(pageSize));
         }
         return res.status(200).json(response);
     }
@@ -86,7 +86,7 @@ exports.getReportQcInspectionSummary = getReportQcInspectionSummary;
 const exportExcelReportPaper = async (req, res, next) => {
     const { fromDate, toDate, machine } = req.body;
     try {
-        const response = await reportService_1.reportService.exportReportPaper({
+        const response = await reportPlanningService_1.reportPlanningService.exportReportPaper({
             res,
             fromDate,
             toDate,
@@ -103,7 +103,7 @@ exports.exportExcelReportPaper = exportExcelReportPaper;
 const exportExcelReportBox = async (req, res, next) => {
     const { fromDate, toDate, machine } = req.body;
     try {
-        const response = await reportService_1.reportService.exportReportBox(res, fromDate, toDate, req.user.email, machine);
+        const response = await reportPlanningService_1.reportPlanningService.exportReportBox(res, fromDate, toDate, req.user.email, machine);
         return res.status(200).json(response);
     }
     catch (error) {

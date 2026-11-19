@@ -50,6 +50,8 @@ const CACHE_CONFIG = {
     //qcInspection
     inspectionPaper: ["inspection:paper:"],
     inspectionBox: ["inspection:box:"],
+    //debt
+    debtDeduction: ["debt:deduction:"],
 };
 exports.CacheManager = {
     //Xóa cache theo prefix
@@ -131,6 +133,8 @@ exports.CacheManager = {
             //qcInspection
             inspectionPaper: cacheKey_1.CacheKey.qcInspection.paper.lastUpdated,
             inspectionBox: cacheKey_1.CacheKey.qcInspection.box.lastUpdated,
+            //debt
+            debtDeduction: cacheKey_1.CacheKey.debt.debtDeduction.lastUpdated,
         };
         const key = map[module];
         if (!key)

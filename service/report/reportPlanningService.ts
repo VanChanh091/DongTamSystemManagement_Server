@@ -30,7 +30,7 @@ import { reportRepository } from "../../repository/production/reportRepository";
 const devEnvironment = process.env.NODE_ENV !== "production";
 const { paper, box } = CacheKey.report;
 
-export const reportService = {
+export const reportPlanningService = {
   //====================================PAPER========================================
   getReportPaper: async (machine: string, page: number, pageSize: number) => {
     try {

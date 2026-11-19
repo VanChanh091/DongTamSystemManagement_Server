@@ -87,7 +87,9 @@ export const createVnDateHelpers = (year: number) => {
     let endDayOffset = isStartAfterMidnight ? 1 : 0;
 
     // Nếu timeStart ở trước 24:00 nhưng timeRunning < timeStart (vd 22:00 -> 03:00) -> xuyên đêm (+1 ngày)
-    if (!isStartAfterMidnight && startMins !== null && endMins < startMins) {
+    if (startMins === null && endMins < 6 * 60) {
+      endDayOffset = 1;
+    } else if (!isStartAfterMidnight && startMins !== null && endMins < startMins) {
       endDayOffset = 1;
     }
 

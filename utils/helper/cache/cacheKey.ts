@@ -161,4 +161,11 @@ export const CacheKey = {
       lastUpdated: "qcInspectionBox:lastUpdated",
     },
   },
+
+  debt: {
+    debtDeduction: {
+      page: (page: number) => `debt:deduction:page:${page}`,
+      lastUpdated: "debtDeduction:lastUpdated",
+    },
+  },
 };

@@ -9,7 +9,6 @@ const dailyReportPerformance_1 = require("../../models/report/dailyReportPerform
 const actionPlanDebtSnapshot_1 = require("../../models/admin/actionPlan/actionPlanDebtSnapshot");
 const outboundHistory_1 = require("../../models/warehouse/outbound/outboundHistory");
 exports.actionPlanRepository = {
-    // Lấy danh sách mục tiêu năm đã cấu hình
     getTargetsByYear: async (year) => {
         return await actionPlanTarget_1.ActionPlanTarget.findAll({
             where: { year },
@@ -25,30 +24,39 @@ exports.actionPlanRepository = {
             raw: true,
         });
     },
-    // Lấy toàn bộ PXK xuất trong năm
-    getOutboundsForYear: async (startDate, endDate) => {
-        return await outboundHistory_1.OutboundHistory.findAll({
-            attributes: ["outboundId", "dateOutbound", "totalPricePayment"],
+    // TỐI ƯU 1: Gom nhóm doanh thu theo tháng ngay tại SQL (tận dụng idx_outbound_summary_by_year)
+    // Lưu ý: Nếu DB của bạn lưu dateOutbound theo giờ VN sẵn (không phải UTC), đổi thành fn("MONTH", col("dateOutbound"))
+    getOutboundRevenueByMonth: async (startDate, endDate) => {
+        return (await outboundHistory_1.OutboundHistory.findAll({
+            attributes: [
+                [(0, sequelize_1.fn)("MONTH", (0, sequelize_1.fn)("DATE_ADD", (0, sequelize_1.col)("dateOutbound"), (0, sequelize_1.literal)("INTERVAL 7 HOUR"))), "month"],
+                [(0, sequelize_1.fn)("SUM", (0, sequelize_1.col)("totalPricePayment")), "totalRevenue"],
+            ],
             where: { dateOutbound: { [sequelize_1.Op.between]: [startDate, endDate] } },
+            group: ["month"],
             raw: true,
-        });
+        }));
     },
-    // Lấy phiếu kế hoạch phát sinh hoặc hoàn thành trong năm
+    // TỐI ƯU 2: Gom nhóm tổng phút chạy thực tế theo tháng ngay tại SQL
+    getDailyReportDurationsByMonth: async (startDateStr, endDateStr) => {
+        return (await dailyReportPerformance_1.DailyReportPerformance.findAll({
+            attributes: [
+                [(0, sequelize_1.fn)("MONTH", (0, sequelize_1.col)("dayReport")), "month"],
+                [(0, sequelize_1.fn)("SUM", (0, sequelize_1.col)("totalDurations")), "totalDurations"],
+            ],
+            where: { dayReport: { [sequelize_1.Op.between]: [startDateStr, endDateStr] } },
+            group: [(0, sequelize_1.fn)("MONTH", (0, sequelize_1.col)("dayReport"))],
+            raw: true,
+        }));
+    },
+    // TỐI ƯU 3: Bỏ nest: true và bỏ các cột thừa (planningId, Order.orderId, Order.status)
     getPlanningPapersForYear: async (startDate, endDate) => {
         return await planningPaper_1.PlanningPaper.findAll({
-            attributes: [
-                "planningId",
-                "orderId",
-                "dayStart",
-                "dayCompleted",
-                "timeStart",
-                "timeRunning",
-                "status",
-            ],
+            attributes: ["orderId", "dayStart", "dayCompleted", "timeStart", "timeRunning", "status"],
             include: [
                 {
                     model: order_1.Order,
-                    attributes: ["orderId", "dateRequestShipping", "status"],
+                    attributes: ["dateRequestShipping"],
                     required: true,
                 },
             ],
@@ -60,18 +68,22 @@ exports.actionPlanRepository = {
                 ],
             },
             raw: true,
-            nest: true,
         });
     },
-    // Lấy tổng thời gian chạy thực tế theo báo cáo ngày
-    getDailyReportPerformanceForYear: async (startDateStr, endDateStr) => {
-        return await dailyReportPerformance_1.DailyReportPerformance.findAll({
-            attributes: ["dayReport", "totalDurations"],
-            where: { dayReport: { [sequelize_1.Op.between]: [startDateStr, endDateStr] } },
+    // SỬA LỖI LOGIC: Lấy các orderId còn phiếu chưa xếp lịch (dayStart & dayCompleted đều null)
+    // Tránh việc đơn có 2 phiếu (1 phiếu xong trong năm, 1 phiếu chưa xếp lịch) bị tính nhầm là đã hoàn thành
+    getUnscheduledIncompleteOrderIds: async () => {
+        const rows = (await planningPaper_1.PlanningPaper.findAll({
+            attributes: [[(0, sequelize_1.fn)("DISTINCT", (0, sequelize_1.col)("orderId")), "orderId"]],
+            where: {
+                status: { [sequelize_1.Op.notIn]: ["complete", "cancel"] },
+                dayStart: { [sequelize_1.Op.is]: null },
+                dayCompleted: { [sequelize_1.Op.is]: null },
+            },
             raw: true,
-        });
+        }));
+        return new Set(rows.map((r) => r.orderId));
     },
-    // Lấy toàn bộ snapshot công nợ đã chốt trong năm
     getDebtSnapshotsByYear: async (year) => {
         return await actionPlanDebtSnapshot_1.ActionPlanDebtSnapshot.findAll({
             where: { year },

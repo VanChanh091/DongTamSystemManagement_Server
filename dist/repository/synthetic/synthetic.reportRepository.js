@@ -19,7 +19,13 @@ exports.syntheticReportRepository = {
     //====================================REVENUE DAY========================================
     getRawOutboundByCustomer: async ({ startDate, endDate, userId, }) => {
         return outboundHistory_1.OutboundHistory.findAll({
-            attributes: ["customerId", "dateOutbound", "totalPricePayment", "remainingAmount"],
+            attributes: [
+                "customerId",
+                "dateOutbound",
+                "totalPriceOrder",
+                "totalPricePayment",
+                "remainingAmount",
+            ],
             where: { dateOutbound: { [sequelize_1.Op.between]: [startDate, endDate] } },
             include: [
                 {
@@ -124,10 +130,10 @@ exports.syntheticReportRepository = {
     //====================================REVENUE YEAR=======================================
     getRawOutboundMultiYear: async ({ startDate, endDate, userId, }) => {
         return outboundHistory_1.OutboundHistory.findAll({
-            attributes: ["customerId", "dateOutbound", "totalPricePayment"],
+            attributes: ["customerId", "dateOutbound", "totalPriceOrder", "totalPricePayment"],
             where: {
                 dateOutbound: { [sequelize_1.Op.between]: [startDate, endDate] },
-                totalPricePayment: { [sequelize_1.Op.gt]: 0 }, // Lấy cả âm lẫn dương, chỉ loại bỏ đơn = 0
+                totalPriceOrder: { [sequelize_1.Op.gt]: 0 },
             },
             include: [
                 {

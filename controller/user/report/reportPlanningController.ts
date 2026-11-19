@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { NextFunction, Request, Response } from "express";
-import { reportService } from "../../../service/manufacture/reportService";
+import { reportPlanningService } from "../../../service/report/reportPlanningService";
 import { qcInspectionService } from "../../../service/qualityControl/qcInspectionCheckService";
 
 //===============================REPORT PAPER & PAPER=====================================
@@ -30,7 +30,7 @@ export const getReportPapers = async (req: Request, res: Response, next: NextFun
 
     // 1. Nhánh tìm kiếm theo field
     if (field && keyword && machine) {
-      response = await reportService.getReportPaperByField({
+      response = await reportPlanningService.getReportPaperByField({
         field,
         keyword,
         machine,
@@ -42,7 +42,7 @@ export const getReportPapers = async (req: Request, res: Response, next: NextFun
     }
     // 2. Nhánh lấy tất cả
     else {
-      response = await reportService.getReportPaper(machine, Number(page), Number(pageSize));
+      response = await reportPlanningService.getReportPaper(machine, Number(page), Number(pageSize));
     }
 
     return res.status(200).json(response);
@@ -75,7 +75,7 @@ export const getReportBoxes = async (req: Request, res: Response, next: NextFunc
 
     // 1. Nhánh tìm kiếm theo field
     if (field && keyword && machine) {
-      response = await reportService.getReportBoxByField({
+      response = await reportPlanningService.getReportBoxByField({
         field,
         keyword,
         machine,
@@ -87,7 +87,7 @@ export const getReportBoxes = async (req: Request, res: Response, next: NextFunc
     }
     // 2. Nhánh lấy tất cả
     else {
-      response = await reportService.getReportBox(machine, Number(page), Number(pageSize));
+      response = await reportPlanningService.getReportBox(machine, Number(page), Number(pageSize));
     }
 
     return res.status(200).json(response);
@@ -135,7 +135,7 @@ export const exportExcelReportPaper = async (req: Request, res: Response, next: 
   };
 
   try {
-    const response = await reportService.exportReportPaper({
+    const response = await reportPlanningService.exportReportPaper({
       res,
       fromDate,
       toDate,
@@ -156,7 +156,7 @@ export const exportExcelReportBox = async (req: Request, res: Response, next: Ne
   };
 
   try {
-    const response = await reportService.exportReportBox(
+    const response = await reportPlanningService.exportReportBox(
       res,
       fromDate,
       toDate,

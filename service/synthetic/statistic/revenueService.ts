@@ -120,7 +120,7 @@ export const statisticRevenueService = {
 
           const dayNumber = new Date(timestamp + VN_TIMEZONE_OFFSET_MS).getUTCDate();
 
-          const amount = roundInt(record.totalPricePayment);
+          const amount = roundInt(record.totalPriceOrder);
           const debt = roundInt(record.remainingAmount);
 
           if (amount === 0 && debt === 0) continue;
@@ -492,7 +492,7 @@ export const statisticRevenueService = {
 
           const reportYear = vnDate.getUTCFullYear();
           const reportMonth = vnDate.getUTCMonth() + 1;
-          const amount = roundInt(record.totalPricePayment);
+          const amount = roundInt(record.totalPriceOrder);
           if (amount === 0) continue;
 
           if (!yearsList.includes(reportYear)) continue;

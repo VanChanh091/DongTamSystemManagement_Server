@@ -21,6 +21,11 @@ import {
 import { Response } from "express";
 import { dayjsUtc, VN_TZ } from "../../assets/configs/dayjs/dayjs.config";
 import { coreCustomerPayment } from "../../utils/helper/core_debt_helper";
+import { CacheKey } from "../../utils/helper/cache/cacheKey";
+import { CacheManager } from "../../utils/helper/cache/cacheManager";
+
+const devEnvironment = process.env.NODE_ENV !== "production";
+const { debtDeduction } = CacheKey.debt;
 
 export const debtDeductionService = {
   getDebtDeductionRequests: async ({
@@ -46,17 +51,17 @@ export const debtDeductionService = {
 
       const filterUserId = isAuthorizedManager ? targetUserId : currentUser.userId;
 
-      // const cacheKey = paper.all(machine, page);
-      // const { isChanged } = await CacheManager.check(ReportPlanningPaper, "reportPaper");
+      // const cacheKey = debtDeduction.page(page);
+      // const { isChanged } = await CacheManager.check(DebtDeductionRequest, "debtDeduction");
 
       // if (isChanged) {
-      //   await CacheManager.clear("reportPaper");
+      //   await CacheManager.clear("debtDeduction");
       // } else {
       //   const cachedData = await redisCache.get(cacheKey);
       //   if (cachedData) {
-      //     if (devEnvironment) console.log("✅ Data Report Planning Paper from Redis");
+      //     if (devEnvironment) console.log("✅ Data Debt Deduction from Redis");
       //     const parsed = JSON.parse(cachedData);
-      //     return { ...parsed, message: "Get all report planning paper from cache" };
+      //     return { ...parsed, message: "Get all debt deduction requests from cache" };
       //   }
       // }
 
@@ -112,7 +117,7 @@ export const debtDeductionService = {
         currentPage: page,
       };
 
-      //  await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
+      // await redisCache.set(cacheKey, JSON.stringify(responseData), "EX", 3600);
 
       return responseData;
     } catch (error) {

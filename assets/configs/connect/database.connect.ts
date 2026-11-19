@@ -34,7 +34,7 @@ const sequelize = new Sequelize(dbConfig.database, dbConfig.username, dbConfig.p
   host: dbConfig.host,
   dialect: "mysql",
   port: 3306,
-  timezone: "+07:00",
+  timezone: "+07:00", // Thiết lập múi giờ cho MySQL (UTC+7)
   logging: false,
 
   pool: {

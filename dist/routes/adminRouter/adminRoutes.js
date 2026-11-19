@@ -91,7 +91,7 @@ router.get("/paper-classifications", authMiddleware_1.default, authorizeAdmin(),
 router.post("/paper-classifications", authMiddleware_1.default, authorizeAdmin(), adminPaperCodeController_1.createPaperClassification);
 router.put("/paper-classifications", authMiddleware_1.default, authorizeAdmin(), adminPaperCodeController_1.updatePaperClassification);
 // ====================== ACTION PLAN ==========================
-router.get("/action-plan", authMiddleware_1.default, authorizeAdmin(), actionPlanController_1.getYearlyActionPlan);
+router.get("/action-plan", authMiddleware_1.default, actionPlanController_1.getYearlyActionPlan);
 router.post("/action-plan/targets", authMiddleware_1.default, authorizeAdmin(), actionPlanController_1.saveYearlyTargets);
 router.post("/action-plan/debt-snapshot", authMiddleware_1.default, authorizeAdmin(), actionPlanController_1.triggerDebtSnapshot);
 exports.default = router;

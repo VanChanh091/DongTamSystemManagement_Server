@@ -78,7 +78,7 @@ exports.statisticRevenueService = {
                     if (Number.isNaN(timestamp))
                         continue;
                     const dayNumber = new Date(timestamp + VN_TIMEZONE_OFFSET_MS).getUTCDate();
-                    const amount = (0, revenueHelper_1.roundInt)(record.totalPricePayment);
+                    const amount = (0, revenueHelper_1.roundInt)(record.totalPriceOrder);
                     const debt = (0, revenueHelper_1.roundInt)(record.remainingAmount);
                     if (amount === 0 && debt === 0)
                         continue;
@@ -380,7 +380,7 @@ exports.statisticRevenueService = {
                         continue;
                     const reportYear = vnDate.getUTCFullYear();
                     const reportMonth = vnDate.getUTCMonth() + 1;
-                    const amount = (0, revenueHelper_1.roundInt)(record.totalPricePayment);
+                    const amount = (0, revenueHelper_1.roundInt)(record.totalPriceOrder);
                     if (amount === 0)
                         continue;
                     if (!yearsList.includes(reportYear))

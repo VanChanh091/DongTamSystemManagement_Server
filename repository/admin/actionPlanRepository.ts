@@ -1,7 +1,6 @@
-import { Op } from "sequelize";
+import { col, fn, Op } from "sequelize";
 import { Order } from "../../models/order/order";
 import { PlanningPaper } from "../../models/planning/planningPaper";
-import { timeOverflowPlanning } from "../../models/planning/timeOverflowPlanning";
 import { ActionPlanTarget } from "../../models/admin/actionPlan/actionPlanTarget";
 import { DailyReportPerformance } from "../../models/report/dailyReportPerformance";
 import { ActionPlanDebtSnapshot } from "../../models/admin/actionPlan/actionPlanDebtSnapshot";
@@ -28,8 +27,12 @@ export const actionPlanRepository = {
   // Lấy toàn bộ PXK xuất trong năm
   getOutboundsForYear: async (startDate: Date, endDate: Date) => {
     return await OutboundHistory.findAll({
-      attributes: ["outboundId", "dateOutbound", "totalPricePayment"],
+      attributes: [
+        [fn("MONTH", col("dateOutbound")), "month"],
+        [fn("SUM", col("totalPriceOrder")), "totalRevenue"],
+      ],
       where: { dateOutbound: { [Op.between]: [startDate, endDate] } },
+      group: [fn("MONTH", col("dateOutbound"))],
       raw: true,
     });
   },
@@ -37,19 +40,11 @@ export const actionPlanRepository = {
   // Lấy phiếu kế hoạch phát sinh hoặc hoàn thành trong năm
   getPlanningPapersForYear: async (startDate: Date, endDate: Date) => {
     return await PlanningPaper.findAll({
-      attributes: [
-        "planningId",
-        "orderId",
-        "dayStart",
-        "dayCompleted",
-        "timeStart",
-        "timeRunning",
-        "status",
-      ],
+      attributes: ["orderId", "dayStart", "dayCompleted", "timeStart", "timeRunning", "status"],
       include: [
         {
           model: Order,
-          attributes: ["orderId", "dateRequestShipping", "status"],
+          attributes: ["dateRequestShipping"],
           required: true,
         },
       ],
@@ -61,15 +56,18 @@ export const actionPlanRepository = {
         ],
       },
       raw: true,
-      nest: true,
     });
   },
 
   // Lấy tổng thời gian chạy thực tế theo báo cáo ngày
   getDailyReportPerformanceForYear: async (startDateStr: string, endDateStr: string) => {
     return await DailyReportPerformance.findAll({
-      attributes: ["dayReport", "totalDurations"],
+      attributes: [
+        [fn("MONTH", col("dayReport")), "month"],
+        [fn("SUM", col("totalDurations")), "totalMinutes"],
+      ],
       where: { dayReport: { [Op.between]: [startDateStr, endDateStr] } },
+      group: [fn("MONTH", col("dayReport"))],
       raw: true,
     });
   },

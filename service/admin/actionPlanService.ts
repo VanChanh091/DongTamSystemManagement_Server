@@ -53,7 +53,7 @@ export const actionPlanService = {
     const targetMap = new Map(targets.map((t: any) => [Number(t.month), t]));
     const result = {
       year,
-      salesTable: buildSalesTable(outbounds, targetMap, dateHelpers),
+      salesTable: buildSalesTable(outbounds, targetMap),
       debtTable: buildDebtTable(debtSnapshots, targetMap),
       planningTable: buildPlanningTable(planningRows, targetMap, dateHelpers, year, nowMs),
       prodTable: buildProductionTable(
@@ -183,20 +183,12 @@ export const actionPlanService = {
 };
 
 // bảng bán hàng
-const buildSalesTable = (
-  outbounds: any[],
-  targetMap: Map<number, any>,
-  { getVnMonthIndex }: VnDateHelpers,
-) => {
+const buildSalesTable = (outbounds: any[], targetMap: Map<number, any>) => {
   const actualRevenueByMonth = new Array(12).fill(0);
-
   for (let i = 0; i < outbounds.length; i++) {
-    const ob = outbounds[i];
-    if (!ob.dateOutbound) continue;
-
-    const mIdx = getVnMonthIndex(ob.dateOutbound);
+    const mIdx = Number(outbounds[i].month) - 1;
     if (mIdx >= 0 && mIdx <= 11) {
-      actualRevenueByMonth[mIdx] += Number(ob.totalPricePayment) || 0;
+      actualRevenueByMonth[mIdx] = Number(outbounds[i].totalRevenue) || 0;
     }
   }
 
@@ -274,10 +266,11 @@ const buildPlanningTable = (
     if (!row.orderId) continue;
 
     let orderItem = orderPlanMap.get(row.orderId);
+
     if (!orderItem) {
       orderItem = {
         orderId: row.orderId,
-        dateRequestShipping: row.Order?.dateRequestShipping,
+        dateRequestShipping: row["Order.dateRequestShipping"],
         completedTsList: [],
         monthCandidateTsList: [],
         hasCompleteWithoutDate: false,
@@ -317,7 +310,10 @@ const buildPlanningTable = (
       !orderItem.hasIncompletePaper &&
       (orderItem.completedTsList.length > 0 || orderItem.hasCompleteWithoutDate);
 
+    // Khi xét hoàn thành & trễ hạn
     if (isAllCompleted) {
+      if (orderItem.monthCandidateTsList.length === 0) continue;
+
       const refMs =
         orderItem.completedTsList.length > 0
           ? Math.max(...orderItem.completedTsList)
@@ -328,7 +324,7 @@ const buildPlanningTable = (
       if (compYear === year && compMonthIdx >= 0 && compMonthIdx <= 11) {
         statsByMonth[compMonthIdx].total += 1;
 
-        if (!orderItem.hasCompleteWithoutDate && deadline20hMs !== null) {
+        if (orderItem.completedTsList.length > 0 && deadline20hMs !== null) {
           const finalCompletedMs = Math.max(...orderItem.completedTsList);
           if (finalCompletedMs > deadline20hMs) {
             statsByMonth[compMonthIdx].late += 1;
@@ -389,23 +385,20 @@ const buildProductionTable = (
   endOfYearMs: number,
   nowMs: number,
 ) => {
-  const prodHoursByMonth = new Array(12).fill(0);
   const lateProdHoursByMonth = new Array(12).fill(0);
   const totalPlansByMonth = new Array(12).fill(0);
   const onTimePlansByMonth = new Array(12).fill(0);
+  const prodHoursByMonth = new Array(12).fill(0);
 
-  // 1. Tổng giờ chạy thực tế (tham khảo)
+  // Tổng giờ chạy thực tế
   for (let i = 0; i < prodReports.length; i++) {
-    const rep = prodReports[i];
-    if (!rep.dayReport) continue;
-
-    const mIdx = getVnMonthIndex(rep.dayReport);
+    const mIdx = Number(prodReports[i].month) - 1;
     if (mIdx >= 0 && mIdx <= 11) {
-      prodHoursByMonth[mIdx] += (Number(rep.totalDurations) || 0) / 60;
+      prodHoursByMonth[mIdx] = (Number(prodReports[i].totalMinutes) || 0) / 60;
     }
   }
 
-  // 2. Thống kê lệnh sản xuất đúng tiến độ & trễ tiến độ
+  // Thống kê lệnh sản xuất đúng tiến độ & trễ tiến độ
   const nowDate = new Date(nowMs);
 
   for (let i = 0; i < planningRows.length; i++) {
@@ -450,7 +443,7 @@ const buildProductionTable = (
     }
   }
 
-  // 3. Chuẩn hóa dữ liệu từng tháng (chỉ tính các tháng đã vận hành có giờ SX > 0)
+  // Chuẩn hóa dữ liệu từng tháng (chỉ tính các tháng đã vận hành có giờ SX > 0)
   const totalHoursMonthly = MONTHS.map((m) => {
     const val = prodHoursByMonth[m - 1];
     return val > 0 ? Math.round(val * 10) / 10 : 0;
@@ -486,7 +479,7 @@ const buildProductionTable = (
     return totalPlans > 0 ? round2((onTimePlans / totalPlans) * 100) : null;
   });
 
-  // 4. Tổng hợp cả năm
+  // Tổng hợp cả năm
   const sumTotal = Math.round(totalHoursMonthly.reduce((a, b) => a + b, 0) * 10) / 10;
 
   const validLateHours = lateHoursMonthly.filter((h): h is number => h !== null);
