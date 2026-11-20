@@ -417,7 +417,7 @@ exports.debtDeductionService = {
                     options: { transaction, lock: transaction.LOCK.UPDATE },
                 });
                 if (!request || request.status !== "pending") {
-                    throw appError_1.AppError.BadRequest("Yêu cầu không hợp lệ hoặc đã được xử lý");
+                    throw appError_1.AppError.BadRequest("Yêu cầu không hợp lệ hoặc đã được xử lý", "REQUEST_NOT_INVALID");
                 }
                 const { allocatedTotal, excessAmount } = await processDebtDeductionApproval({
                     request,

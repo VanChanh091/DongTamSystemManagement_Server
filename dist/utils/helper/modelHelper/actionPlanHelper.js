@@ -28,6 +28,7 @@ const parseTimeStrToMinutes = (timeStr) => {
 };
 exports.parseTimeStrToMinutes = parseTimeStrToMinutes;
 const createVnDateHelpers = (year) => {
+    // Lấy offset động từ chính dayjsUtc + VN_TZ (chỉ gọi 1 lần duy nhất mỗi request)
     const vnOffsetMs = dayjs_config_1.dayjsUtc.tz(`${year}-01-01`, dayjs_config_1.VN_TZ).utcOffset() * MIN_MS;
     const getVnMonthIndex = (d) => {
         if (typeof d === "string" && d.length === 10) {
@@ -45,6 +46,7 @@ const createVnDateHelpers = (year) => {
             monthIdx: dt.getUTCMonth(),
         };
     };
+    // Mốc 20:00:00 giờ VN của ngày dateRequestShipping
     const getDeadline20hMs = (dateRequestShipping) => {
         if (typeof dateRequestShipping === "string" && dateRequestShipping.length === 10) {
             const y = Number(dateRequestShipping.slice(0, 4));
@@ -59,7 +61,7 @@ const createVnDateHelpers = (year) => {
         const midnightMs = Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()) - vnOffsetMs;
         return midnightMs + 20 * HOUR_MS;
     };
-    // SỬA LỖI LOGIC: Xử lý cả trường hợp timeStart === null nhưng timeRunning thuộc khung 00:00 -> 05:59 hôm sau
+    // Tính số giờ trễ SX theo khung ca 06:00 hôm nay -> 06:00 hôm sau
     const calcPlanDelayHours = (startTs, timeStart, timeRunning, dayCompleted) => {
         const endMins = (0, exports.parseTimeStrToMinutes)(timeRunning);
         if (endMins === null)
@@ -71,8 +73,11 @@ const createVnDateHelpers = (year) => {
         const midnightMs = Date.UTC(vnStartDt.getUTCFullYear(), vnStartDt.getUTCMonth(), vnStartDt.getUTCDate()) -
             vnOffsetMs;
         const startMins = (0, exports.parseTimeStrToMinutes)(timeStart);
+        // Ca SX chạy từ 06:00 hôm nay -> 06:00 hôm sau:
+        // Nếu timeStart qua 12h đêm (00:00 -> 05:59) thì bản thân timeStart đã nằm ở ngày hôm sau (+1 ngày)
         const isStartAfterMidnight = startMins !== null && startMins < 6 * 60;
         let endDayOffset = isStartAfterMidnight ? 1 : 0;
+        // Nếu timeStart ở trước 24:00 nhưng timeRunning < timeStart (vd 22:00 -> 03:00) -> xuyên đêm (+1 ngày)
         if (startMins === null && endMins < 6 * 60) {
             endDayOffset = 1;
         }

@@ -553,7 +553,10 @@ export const debtDeductionService = {
         });
 
         if (!request || request.status !== "pending") {
-          throw AppError.BadRequest("Yêu cầu không hợp lệ hoặc đã được xử lý");
+          throw AppError.BadRequest(
+            "Yêu cầu không hợp lệ hoặc đã được xử lý",
+            "REQUEST_NOT_INVALID",
+          );
         }
 
         const { allocatedTotal, excessAmount } = await processDebtDeductionApproval({

@@ -5,6 +5,7 @@ exports.scheduleInspectionTimers = scheduleInspectionTimers;
 exports.cancelInspectionTimers = cancelInspectionTimers;
 const bullmq_1 = require("bullmq");
 const redis_connect_1 = require("../connect/redis.connect");
+const dayjs_config_1 = require("../dayjs/dayjs.config");
 exports.inspectionQueue = new bullmq_1.Queue("INSPECTION_TIMER_QUEUE", {
     connection: redis_connect_1.redisConfig,
 });
@@ -12,7 +13,8 @@ let isQueueErrorLogged = false;
 exports.inspectionQueue.on("error", (err) => {
     if (!isQueueErrorLogged) {
         isQueueErrorLogged = true;
-        console.warn(`⚠️ [BullMQ Queue] Mất kết nối Redis: ${err?.code || err?.message}. Đang tự động thử lại...`);
+        const time = dayjs_config_1.dayjsUtc.tz(new Date(), dayjs_config_1.VN_TZ).format("YYYY-MM-DD HH:mm:ss");
+        console.warn(`[${time}] ⚠️ [BullMQ Queue] Mất kết nối Redis: ${err?.code || err?.message}. Đang tự động thử lại...`);
         setTimeout(() => {
             isQueueErrorLogged = false;
         }, 15000);

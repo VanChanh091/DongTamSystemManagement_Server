@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { Worker, Job } from "bullmq";
+import { dayjsUtc, VN_TZ } from "../dayjs/dayjs.config";
 import { User } from "../../../models/user/user";
 import { getIO } from "../../../utils/socket/socket";
 import { redisConfig } from "../connect/redis.connect";
@@ -107,7 +108,8 @@ let isWorkerErrorLogged = false;
 inspectionWorker.on("error", (err: any) => {
   if (!isWorkerErrorLogged) {
     isWorkerErrorLogged = true;
-    console.warn(`⚠️ [BullMQ Worker] Mất kết nối Redis: ${err?.code || err?.message}. Đang tự động thử lại...`);
+    const time = dayjsUtc.tz(new Date(), VN_TZ).format("YYYY-MM-DD HH:mm:ss");
+    console.warn(`[${time}] ⚠️ [BullMQ Worker] Mất kết nối Redis: ${err?.code || err?.message}. Đang tự động thử lại...`);
     setTimeout(() => {
       isWorkerErrorLogged = false;
     }, 15000);

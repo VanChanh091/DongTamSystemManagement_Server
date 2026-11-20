@@ -3,18 +3,15 @@
     <channel>
         <title>DongTam Updates</title>
         <item>
-            <title>Version 4.8.8</title>
-            <sparkle:version>4.8.8</sparkle:version> 
+            <title>Version 4.9.0</title>
+            <sparkle:version>4.9.0</sparkle:version> 
             <description>
-                Thêm tồn kho bán thành phẩm
-                Thêm tính năng hỗ trợ và cảnh báo khi lên đơn hàng
-                Đồng bộ hóa lại các múi giờ theo giờ Việt Nam
-                Thêm 1 máy giấy sóng mới
-                Cho phép kế hoạch nhập số lượng sản xuất
-                Thêm tính năng hiển thị dữ liệu dạng biểu đồ
-                Tách dữ liệu của doanh số sản xuất thành 3 cột
-                Thay đổi công thức tính doanh số sản xuất 80/20
-                Tối ưu phân quyền theo phòng ban
+                Đưa doanh thu về các mốc tiền trước VAT
+                Format lại toàn bộ múi giờ theo giờ Việt Nam
+                Tái cấu trúc menu theo từng phòng ban riêng biệt
+                Thay đổi công thức tính doanh số sản xuất
+                Thêm chức năng mục tiêu hành động năm
+                Thêm phần xử lý cho trường hợp đơn giá bằng 0
             </description>
             <pubDate>Thu, 12 November 2026</pubDate>
             <enclosure url="dongtam.exe" 

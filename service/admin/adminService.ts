@@ -178,7 +178,10 @@ export const adminService = {
     confirmationOTP?: number;
   }) => {
     try {
-      return await runInTransaction(async (transaction) => {
+      const redisKey = `order_otp_code:${orderId}`;
+      let shouldDeleteOtp = false;
+
+      const result = await runInTransaction(async (transaction) => {
         if (!["accept", "reject"].includes(newStatus)) {
           throw AppError.BadRequest("Invalid status", "INVALID_STATUS");
         }
@@ -246,32 +249,31 @@ export const adminService = {
           const newDebt = currentDebt + totalPrice;
 
           if (!isAdmin) {
-            const isZeroPrice = Number(order.price ?? 0) <= 0;
-            const thresholdPercent = getDebtOtpThresholdPercent(debtLimit);
-            const otpMultiplier = 1 + thresholdPercent / 100;
-            const isOverDebtLimitOtp = newDebt > debtLimit * otpMultiplier;
+            // Ưu tiên cao nhất: Có nhập OTP -> xác thực và pass toàn bộ điều kiện
+            if (confirmationOTP !== undefined && confirmationOTP !== null) {
+              const savedCode = await redisCache.get(redisKey);
 
-            // Yêu cầu OTP khi đơn giá 0đ HOẶC vượt hạn mức nợ ngưỡng cao
-            if (isZeroPrice || isOverDebtLimitOtp) {
-              if (!confirmationOTP) {
+              if (!savedCode || Number(savedCode) !== Number(confirmationOTP)) {
+                throw AppError.BadRequest("Mã OTP không hợp lệ hoặc đã hết hạn.", "INVALID_OTP");
+              }
+
+              // Đánh dấu sẽ xóa OTP sau khi transaction commit thành công
+              shouldDeleteOtp = true;
+            } else {
+              // Chưa có OTP: Kiểm tra ngưỡng bắt buộc OTP hoặc xác nhận vượt hạn mức
+              const isZeroPrice = Number(order.price ?? 0) <= 0;
+              const thresholdPercent = getDebtOtpThresholdPercent(debtLimit);
+              const otpMultiplier = 1 + thresholdPercent / 100;
+              const isOverDebtLimitOtp = newDebt > debtLimit * otpMultiplier;
+
+              if (isZeroPrice || isOverDebtLimitOtp) {
                 const message = isZeroPrice
                   ? `Đơn hàng có đơn giá 0đ, cần nhập mã OTP để duyệt đơn này!`
                   : `Vượt quá hạn mức cho phép, cần nhập OTP để duyệt đơn này!`;
                 throw AppError.BadRequest(message, "REQUIRE_OTP_CONFIRMATION");
               }
 
-              const redisKey = `order_otp_code:${orderId}`;
-              const savedCode = await redisCache.get(redisKey);
-
-              if (!savedCode || Number(savedCode) !== confirmationOTP) {
-                throw AppError.BadRequest("Mã OTP không hợp lệ hoặc đã hết hạn.", "INVALID_OTP");
-              }
-
-              await redisCache.del(redisKey); // Xóa mã OTP sau khi dùng
-            }
-            //case > 100%
-            else if (newDebt > debtLimit) {
-              if (!confirmOverLimit) {
+              if (newDebt > debtLimit && !confirmOverLimit) {
                 throw AppError.BadRequest(
                   `Khách hàng vượt quá hạn mức cho phép!`,
                   "DEBT_LIMIT_EXCEEDED",
@@ -332,6 +334,12 @@ export const adminService = {
 
         return { message: "Order status updated successfully" };
       });
+
+      if (shouldDeleteOtp) {
+        await redisCache.del(redisKey);
+      }
+
+      return result;
     } catch (error) {
       console.error("failed to update order", error);
       if (error instanceof AppError) throw error;

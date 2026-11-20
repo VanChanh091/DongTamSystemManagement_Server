@@ -322,12 +322,11 @@ export function initPlanningPaperModel(sequelize: Sequelize): typeof PlanningPap
         { fields: ["status"] },
 
         //Composite indexes
-        { fields: ["chooseMachine", "status"] },
+        { fields: ["dayStart", "timeRunning"] },
+        { fields: ["dayCompleted", "shiftProduction"] },
         { fields: ["chooseMachine", "dayStart"] },
         { fields: ["chooseMachine", "status", "dayStart"] },
         { fields: ["deliveryPlanned", "dayStart", "status"] },
-        { fields: ["dayStart", "timeRunning"] },
-        { fields: ["dayCompleted", "shiftProduction"] },
 
         //get paper waiting check
         { fields: ["statusRequest", "hasBox"] },

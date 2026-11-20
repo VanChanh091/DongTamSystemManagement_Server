@@ -1,5 +1,6 @@
 import { Queue } from "bullmq";
 import { redisConfig } from "../connect/redis.connect";
+import { dayjsUtc, VN_TZ } from "../dayjs/dayjs.config";
 
 export const inspectionQueue = new Queue<{
   inspectionId: number;
@@ -11,7 +12,8 @@ let isQueueErrorLogged = false;
 inspectionQueue.on("error", (err: any) => {
   if (!isQueueErrorLogged) {
     isQueueErrorLogged = true;
-    console.warn(`⚠️ [BullMQ Queue] Mất kết nối Redis: ${err?.code || err?.message}. Đang tự động thử lại...`);
+    const time = dayjsUtc.tz(new Date(), VN_TZ).format("YYYY-MM-DD HH:mm:ss");
+    console.warn(`[${time}] ⚠️ [BullMQ Queue] Mất kết nối Redis: ${err?.code || err?.message}. Đang tự động thử lại...`);
     setTimeout(() => {
       isQueueErrorLogged = false;
     }, 15000);

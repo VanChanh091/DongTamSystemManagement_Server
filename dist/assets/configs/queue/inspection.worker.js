@@ -7,6 +7,7 @@ exports.inspectionWorker = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const bullmq_1 = require("bullmq");
+const dayjs_config_1 = require("../dayjs/dayjs.config");
 const user_1 = require("../../../models/user/user");
 const socket_1 = require("../../../utils/socket/socket");
 const redis_connect_1 = require("../connect/redis.connect");
@@ -92,7 +93,8 @@ let isWorkerErrorLogged = false;
 exports.inspectionWorker.on("error", (err) => {
     if (!isWorkerErrorLogged) {
         isWorkerErrorLogged = true;
-        console.warn(`⚠️ [BullMQ Worker] Mất kết nối Redis: ${err?.code || err?.message}. Đang tự động thử lại...`);
+        const time = dayjs_config_1.dayjsUtc.tz(new Date(), dayjs_config_1.VN_TZ).format("YYYY-MM-DD HH:mm:ss");
+        console.warn(`[${time}] ⚠️ [BullMQ Worker] Mất kết nối Redis: ${err?.code || err?.message}. Đang tự động thử lại...`);
         setTimeout(() => {
             isWorkerErrorLogged = false;
         }, 15000);

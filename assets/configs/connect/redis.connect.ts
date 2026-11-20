@@ -1,5 +1,6 @@
 import * as RedisImport from "ioredis";
 const Redis = (RedisImport as any).default || RedisImport;
+import { dayjsUtc, VN_TZ } from "../dayjs/dayjs.config";
 
 import dotenv from "dotenv";
 dotenv.config();
@@ -28,15 +29,17 @@ const subClient = pubClient.duplicate();
 const connectedClients = new Set<string>();
 let isRedisDown = false;
 
+const getTimestamp = () => dayjsUtc.tz(new Date(), VN_TZ).format("YYYY-MM-DD HH:mm:ss");
+
 function handleClientReady(name: string) {
   connectedClients.add(name);
   // Khi cả 3 client đều đã sẵn sàng thì mới log 1 dòng duy nhất
   if (connectedClients.size === 3) {
     if (isRedisDown) {
-      console.log("✅ Redis đã kết nối lại thành công! (Cache, Pub, Sub)");
+      console.log(`[${getTimestamp()}] ✅ Redis đã kết nối lại thành công! (Cache, Pub, Sub)`);
       isRedisDown = false;
     } else {
-      console.log("✅ Redis connected! (Cache, Pub, Sub)");
+      console.log(`[${getTimestamp()}] ✅ Redis connected! (Cache, Pub, Sub)`);
     }
   }
 }
@@ -46,7 +49,7 @@ function handleClientError(name: string, err: any) {
   if (!isRedisDown) {
     isRedisDown = true;
     console.warn(
-      `⚠️ Mất kết nối tới Redis (${err?.address || process.env.REDIS_HOST}:${err?.port || 6379} - ${err?.code || err?.message}). Đang tự động kết nối lại ngầm...`,
+      `[${getTimestamp()}] ⚠️ Mất kết nối tới Redis (${err?.address || process.env.REDIS_HOST}:${err?.port || 6379} - ${err?.code || err?.message}). Đang tự động kết nối lại ngầm...`,
     );
   }
 }
