@@ -120,8 +120,8 @@ export const statisticRevenueService = {
 
           const dayNumber = new Date(timestamp + VN_TIMEZONE_OFFSET_MS).getUTCDate();
 
-          const amount = roundInt(record.totalPriceOrder);
-          const debt = roundInt(record.remainingAmount);
+          const amount = Number(record.totalPriceOrder) || 0;
+          const debt = Number(record.remainingAmount) || 0;
 
           if (amount === 0 && debt === 0) continue;
 
@@ -147,12 +147,16 @@ export const statisticRevenueService = {
         }
 
         const allDetails: CustomerDailySalesRow[] = Array.from(customerMap.values()).map((row) => {
+          // Round tổng từng ngày sau khi đã cộng xong tất cả raw
+          for (const d of Object.keys(row.dailyAmounts)) {
+            row.dailyAmounts[Number(d)] = roundInt(row.dailyAmounts[Number(d)]);
+          }
           return {
             customerId: row.customerId,
             customerName: row.customerName,
             dailyAmounts: row.dailyAmounts,
-            totalCustomerSales: row.totalCustomerSales,
-            totalCustomerDebt: row.totalCustomerDebt,
+            totalCustomerSales: roundInt(row.totalCustomerSales),
+            totalCustomerDebt: roundInt(row.totalCustomerDebt),
           };
         });
 
@@ -356,14 +360,14 @@ export const statisticRevenueService = {
         const paddedDay = String(day).padStart(2, "0");
         const dateKey = `${year}-${paddedMonth}-${paddedDay}`;
 
-        const orderAmount = roundInt(orderMap.get(dateKey) || 0);
-        const paperAmount = roundInt(paperProdMap.get(dateKey) || 0);
-        const boxAmount = roundInt(boxProdMap.get(dateKey) || 0);
+        const orderAmount = Math.round(orderMap.get(dateKey) || 0);
+        const paperAmount = Math.round(paperProdMap.get(dateKey) || 0);
+        const boxAmount = Math.round(boxProdMap.get(dateKey) || 0);
         const prodAmount = paperAmount + boxAmount;
 
-        const totalBeforeVat = roundInt(salesBeforeVatMap.get(dateKey) || 0);
-        const totalVat = roundInt(salesVatMap.get(dateKey) || 0);
-        const saleAmount = roundInt(salesMap.get(dateKey) || 0);
+        const totalBeforeVat = Math.round(salesBeforeVatMap.get(dateKey) || 0);
+        const totalVat = Math.round(salesVatMap.get(dateKey) || 0);
+        const saleAmount = Math.round(salesMap.get(dateKey) || 0);
         const returnAmount = 0;
 
         details.push({
@@ -492,8 +496,7 @@ export const statisticRevenueService = {
 
           const reportYear = vnDate.getUTCFullYear();
           const reportMonth = vnDate.getUTCMonth() + 1;
-          const amount = roundInt(record.totalPriceOrder);
-          if (amount === 0) continue;
+          const amount = Number(record.totalPriceOrder) || 0;
 
           if (!yearsList.includes(reportYear)) continue;
 

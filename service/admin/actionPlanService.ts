@@ -18,7 +18,7 @@ const { actionPlan } = CacheKey.synthetic;
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 const TIMETTL = 7 * 24 * 60 * 60; // 7 ngày
-const CACHETTL = 15 * 60; // 30 phút
+const CACHETTL = 15 * 60; // 15 phút
 
 type VnDateHelpers = ReturnType<typeof createVnDateHelpers>;
 

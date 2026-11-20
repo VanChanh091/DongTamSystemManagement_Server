@@ -28,8 +28,8 @@ export const aggregateDailyAmounts = <T>({
     // 2. Dịch sang UTC+7 và cắt chuỗi 'YYYY-MM-DD'
     const dateKey = new Date(timestamp + VN_TIMEZONE_OFFSET_MS).toISOString().slice(0, 10);
 
-    // 3. Gom dồn số tiền (làm tròn số tiền của từng bản ghi)
-    const amount = roundInt(getAmountFn(item));
+    // 3. Gom dồn số tiền thô (round sau khi cộng xong)
+    const amount = Number(getAmountFn(item)) || 0;
     map.set(dateKey, (map.get(dateKey) || 0) + amount);
   }
 

@@ -220,7 +220,6 @@ export const syntheticReportRepository = {
       attributes: ["customerId", "dateOutbound", "totalPriceOrder", "totalPricePayment"],
       where: {
         dateOutbound: { [Op.between]: [startDate, endDate] },
-        totalPriceOrder: { [Op.gt]: 0 },
       },
       include: [
         {
